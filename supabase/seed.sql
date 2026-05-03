@@ -1,0 +1,3 @@
+-- Seed Supabase Bento Pop.
+-- V1 : pas de données — la première app (quiz-wheel) utilise des Popys en dur.
+-- Les seeds arriveront avec la deuxième app ou la migration Supabase de quiz-wheel.

@@ -1,0 +1,52 @@
+/**
+ * Variables CSS Bento Pop — alignées sur `src/tokens.ts`.
+ * À importer une fois dans le `globals.css` de chaque app :
+ *   @import "@bento-pop/brand/tokens.css";
+ */
+
+:root {
+  /* Couleurs */
+  --bento-yellow: #fbbf24;
+  --bento-yellow-alt: #f59e0b;
+  --bento-yellow-deep: #d97706;
+  --bento-orange: #f59331;
+  --bento-cream: #fbf3de;
+  --bento-cream-alt: #f5e8c9;
+  --bento-ink: #0a0a0a;
+  --bento-ink-soft: #1a1a1a;
+  --bento-pink: #f4a6a6;
+  --bento-red: #e63946;
+
+  /* Compartiment tints */
+  --bento-tint-base: #fff4d8;
+  --bento-tint-a: #ffecc2;
+  --bento-tint-b: #ffe5a8;
+  --bento-tint-c: #fff0c7;
+  --bento-tint-d: #ffd98a;
+  --bento-tint-lit: #ffd857;
+
+  /* Rayons */
+  --bento-radius-sm: 8px;
+  --bento-radius-md: 16px;
+  --bento-radius-lg: 22px;
+  --bento-radius-xl: 30px;
+  --bento-radius-bento: 36px;
+  --bento-radius-pill: 999px;
+
+  /* Bordures */
+  --bento-border-thin: 2px;
+  --bento-border-base: 3px;
+  --bento-border-thick: 5px;
+  --bento-border-bold: 6px;
+
+  /* Ombres signature (relief plat noir) */
+  --bento-shadow-stamp: 0 4px 0 var(--bento-ink);
+  --bento-shadow-stamp-lg: 0 8px 0 var(--bento-ink);
+  --bento-shadow-stamp-xl: 0 10px 0 var(--bento-ink);
+  --bento-shadow-card: 0 8px 0 var(--bento-ink), 0 14px 30px rgba(0, 0, 0, 0.25);
+  --bento-shadow-reveal: 0 12px 0 var(--bento-ink), 0 24px 60px rgba(0, 0, 0, 0.4);
+
+  /* Easings */
+  --bento-ease-pop: cubic-bezier(0.2, 1.8, 0.4, 1);
+  --bento-ease-bounce: cubic-bezier(0.3, 1.5, 0.5, 1);
+}

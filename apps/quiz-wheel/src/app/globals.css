@@ -1,0 +1,224 @@
+@import '@bento-pop/brand/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+  color: var(--bento-ink);
+  background: var(--bento-yellow);
+}
+
+/* ---------- Décor : étoiles autour des compartiments ---------- */
+.spark {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  display: none;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+}
+.compartment.lit .spark,
+.compartment.winner .spark {
+  display: block;
+}
+.spark.s1 {
+  top: -18px;
+  left: 20%;
+  background: #fff;
+  animation: twinkle 0.6s ease-in-out infinite;
+}
+.spark.s2 {
+  top: 20%;
+  right: -18px;
+  background: var(--bento-ink);
+  animation: twinkle 0.7s ease-in-out infinite 0.2s;
+}
+.spark.s3 {
+  bottom: -18px;
+  right: 25%;
+  background: #fff;
+  animation: twinkle 0.8s ease-in-out infinite 0.1s;
+}
+
+/* ---------- Layouts de la grille bento ---------- */
+.bento-grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  gap: 12px;
+}
+
+/* Variant A — Shokado 7 */
+.variant-A {
+  grid-template-columns: 1.4fr 1fr 1fr 1.1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+.variant-A > :nth-child(1) {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+}
+.variant-A > :nth-child(2) {
+  grid-column: 2 / 4;
+  grid-row: 1 / 2;
+}
+.variant-A > :nth-child(3) {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+}
+.variant-A > :nth-child(4) {
+  grid-column: 3 / 4;
+  grid-row: 2 / 3;
+}
+.variant-A > :nth-child(5) {
+  grid-column: 4 / 5;
+  grid-row: 1 / 3;
+}
+.variant-A > :nth-child(6) {
+  grid-column: 1 / 3;
+  grid-row: 3 / 4;
+}
+.variant-A > :nth-child(7) {
+  grid-column: 3 / 5;
+  grid-row: 3 / 4;
+}
+
+/* Variant B — Kyūkaku 9 (3x3) */
+.variant-B {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+/* Variant C — Stratifié 6 */
+.variant-C {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1.1fr 0.95fr 1.05fr;
+}
+.variant-C > :nth-child(1) {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+.variant-C > :nth-child(2) {
+  grid-column: 2 / 4;
+  grid-row: 1 / 2;
+}
+.variant-C > :nth-child(3) {
+  grid-column: 1 / 4;
+  grid-row: 2 / 3;
+}
+.variant-C > :nth-child(4) {
+  grid-column: 1 / 2;
+  grid-row: 3 / 4;
+}
+.variant-C > :nth-child(5) {
+  grid-column: 2 / 3;
+  grid-row: 3 / 4;
+}
+.variant-C > :nth-child(6) {
+  grid-column: 3 / 4;
+  grid-row: 3 / 4;
+}
+
+/* ---------- Compartiment ---------- */
+.compartment {
+  position: relative;
+  border-radius: var(--bento-radius-lg);
+  background: var(--bento-tint-base);
+  border: 5px solid var(--bento-ink);
+  overflow: visible;
+  transition:
+    transform 0.2s var(--bento-ease-bounce),
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+  box-shadow: var(--bento-shadow-stamp), inset 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+.compartment.tint-a { background: var(--bento-tint-a); }
+.compartment.tint-b { background: var(--bento-tint-b); }
+.compartment.tint-c { background: var(--bento-tint-c); }
+.compartment.tint-d { background: var(--bento-tint-d); }
+
+.compartment .popy-img {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.15));
+  pointer-events: none;
+  transition: transform 0.25s var(--bento-ease-bounce);
+}
+
+.compartment.lit {
+  background: var(--bento-tint-lit);
+  transform: scale(1.04) rotate(-1.5deg);
+  box-shadow:
+    0 6px 0 var(--bento-ink),
+    0 0 0 6px rgba(255, 220, 100, 0.5),
+    0 0 40px rgba(255, 180, 30, 0.7),
+    0 0 80px rgba(255, 140, 10, 0.4);
+  z-index: 8;
+}
+.compartment.lit .popy-img {
+  transform: scale(1.08) rotate(3deg);
+}
+
+.compartment.winner {
+  background: var(--bento-tint-lit);
+  animation: winnerBounce 0.9s var(--bento-ease-pop) 1;
+  box-shadow:
+    0 6px 0 var(--bento-ink),
+    0 0 0 8px rgba(255, 220, 100, 0.6),
+    0 0 60px rgba(255, 180, 30, 0.9),
+    0 0 120px rgba(255, 140, 10, 0.6);
+  z-index: 10;
+}
+.compartment.winner::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border: 4px dashed var(--bento-ink);
+  border-radius: 28px;
+  animation: spinDash 6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes winnerBounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.15) rotate(-4deg); }
+  70% { transform: scale(0.98) rotate(2deg); }
+  100% { transform: scale(1.06) rotate(0); }
+}
+@keyframes spinDash {
+  to { transform: rotate(360deg); }
+}
+@keyframes twinkle {
+  0%, 100% { transform: scale(1) rotate(0); opacity: 1; }
+  50% { transform: scale(0.4) rotate(90deg); opacity: 0.5; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50% { transform: translateY(-10px) rotate(calc(var(--r, 0deg) + 2deg)); }
+}
+@keyframes popyBoing {
+  0% { transform: scale(0.2) rotate(-20deg); }
+  60% { transform: scale(1.15) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* Mode présentation : curseur masqué après inactivité */
+.cursor-hidden,
+.cursor-hidden * {
+  cursor: none !important;
+}

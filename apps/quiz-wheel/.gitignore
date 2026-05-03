@@ -1,0 +1,6 @@
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+.env.local
+.env.*.local
