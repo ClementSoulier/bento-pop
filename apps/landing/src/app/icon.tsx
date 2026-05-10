@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises';
 import { ImageResponse } from 'next/og';
+import { popyDataUrl } from './_og/assets';
 
 export const contentType = 'image/png';
 
@@ -41,10 +41,8 @@ export async function generateImageMetadata() {
   });
 }
 
-export default async function Icon({ id }: { id: string }) {
+export default function Icon({ id }: { id: string }) {
   const config = getConfig(id);
-  const popyBuffer = await readFile(new URL('./_og/popy.png', import.meta.url));
-  const popySrc = `data:image/png;base64,${Buffer.from(popyBuffer).toString('base64')}`;
   const popyPx = Math.round(config.size * config.popyRatio);
 
   return new ImageResponse(
@@ -60,7 +58,7 @@ export default async function Icon({ id }: { id: string }) {
           borderRadius: config.size * config.radiusRatio,
         }}
       >
-        <img src={popySrc} alt="" width={popyPx} height={popyPx} />
+        <img src={popyDataUrl} alt="" width={popyPx} height={popyPx} />
       </div>
     ),
     { width: config.size, height: config.size },

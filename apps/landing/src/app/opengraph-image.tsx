@@ -1,24 +1,11 @@
-import { readFile } from 'node:fs/promises';
 import { ImageResponse } from 'next/og';
+import { logoDataUrl, popyDataUrl } from './_og/assets';
 
 export const alt = 'Bento Pop — Le Talk-Show Pop Culture';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-// On lit les binaires relativement au fichier courant : Next trace ces
-// imports via `new URL(..., import.meta.url)` et embarque les PNG dans la
-// sortie standalone.
-async function loadDataUrl(relative: string): Promise<string> {
-  const buffer = await readFile(new URL(relative, import.meta.url));
-  return `data:image/png;base64,${Buffer.from(buffer).toString('base64')}`;
-}
-
-export default async function OpenGraphImage() {
-  const [logoSrc, popySrc] = await Promise.all([
-    loadDataUrl('./_og/logo.png'),
-    loadDataUrl('./_og/popy.png'),
-  ]);
-
+export default function OpenGraphImage() {
   return new ImageResponse(
     (
       <div
@@ -36,7 +23,7 @@ export default async function OpenGraphImage() {
       >
         {/* Popy flottant en haut à droite */}
         <img
-          src={popySrc}
+          src={popyDataUrl}
           alt=""
           width={220}
           height={220}
@@ -69,7 +56,7 @@ export default async function OpenGraphImage() {
             justifyContent: 'flex-start',
           }}
         >
-          <img src={logoSrc} alt="Bento Pop" width={820} height={189} />
+          <img src={logoDataUrl} alt="Bento Pop" width={820} height={189} />
         </div>
 
         {/* Footer : tagline + URL */}

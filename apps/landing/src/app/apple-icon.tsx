@@ -1,13 +1,10 @@
-import { readFile } from 'node:fs/promises';
 import { ImageResponse } from 'next/og';
+import { popyDataUrl } from './_og/assets';
 
 export const size = { width: 180, height: 180 };
 export const contentType = 'image/png';
 
-export default async function AppleIcon() {
-  const popyBuffer = await readFile(new URL('./_og/popy.png', import.meta.url));
-  const popySrc = `data:image/png;base64,${Buffer.from(popyBuffer).toString('base64')}`;
-
+export default function AppleIcon() {
   return new ImageResponse(
     (
       <div
@@ -22,7 +19,7 @@ export default async function AppleIcon() {
       >
         {/* iOS applique son propre masque arrondi : pas de borderRadius ici,
             on laisse le popy occuper l'espace en gardant une petite marge. */}
-        <img src={popySrc} alt="" width={150} height={150} />
+        <img src={popyDataUrl} alt="" width={150} height={150} />
       </div>
     ),
     { ...size },
