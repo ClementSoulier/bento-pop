@@ -17,6 +17,8 @@ Monorepo des outils numériques de **Bento Pop**, média pop culture animé par 
 ```
 bento-pop/
 ├── apps/
+│   ├── landing/                    # Site public bento-pop.com
+│   ├── admin/                      # Backoffice (admin.bento-pop.com)
 │   └── quiz-wheel/                 # Écran plateau — tirage au sort de jeu
 ├── packages/
 │   ├── brand/                      # Tokens, typo, assets, preset Tailwind
@@ -41,11 +43,16 @@ nvm use                             # ou fnm use
 corepack enable
 pnpm install
 
-# Lancer l'app quiz-wheel en dev
-pnpm --filter quiz-wheel dev        # http://localhost:3000
+# Lancer une app en dev (port dédié)
+pnpm dev:landing                    # http://localhost:3000
+pnpm dev:admin                      # http://localhost:3100
+pnpm dev:quiz                       # http://localhost:3000
+pnpm dev                            # toutes les apps en parallèle (Turbo)
 
-# Build complet (cache Turbo)
+# Build (cache Turbo)
 pnpm build
+pnpm build:landing
+pnpm build:admin
 
 # Lint + typecheck partout
 pnpm lint
@@ -56,7 +63,18 @@ pnpm typecheck
 
 | App           | Port | Statut | Description                                                |
 | ------------- | ---- | ------ | ---------------------------------------------------------- |
+| `landing`     | 3000 | V1     | Site public bento-pop.com (hero, agenda, vote, équipe…). |
+| `admin`       | 3100 | V1     | Backoffice : agenda, sondages, liens, team, CTAs.         |
 | `quiz-wheel`  | 3000 | V1     | Écran plateau plein écran, tirage de jeu sur boîte bento. |
+
+## Backoffice — premier accès
+
+L'app `admin` lit/écrit dans Supabase. Pour la première mise en service :
+
+1. Pousser la migration `supabase/migrations/20260510000000_admin_and_content_tables.sql` dans le SQL Editor du projet Supabase (ou via `supabase db push` si la CLI est liée).
+2. Renseigner `apps/admin/.env` à partir de `.env.example` — les 3 clés Supabase sont les mêmes que côté `apps/landing/.env`.
+3. Sur `http://localhost:3100/login`, le tout premier compte connecté est automatiquement promu **admin** par un trigger SQL. Crée donc d'abord ton utilisateur via le dashboard Supabase (Auth › Users › Add user).
+4. Une fois connecté : édite l'agenda, lance des sondages, gère les réseaux et la team. Les loaders de la landing lisent ces tables avec un fallback statique en cas d'erreur DB, donc la prod ne casse pas pendant la transition.
 
 ## Mode régie hors-ligne `quiz-wheel`
 

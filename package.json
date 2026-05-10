@@ -6,6 +6,11 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --concurrency=20",
+    "dev:landing": "pnpm --filter @bento-pop/landing dev",
+    "dev:admin": "pnpm --filter @bento-pop/admin dev",
+    "dev:quiz": "pnpm --filter quiz-wheel dev",
+    "build:landing": "pnpm --filter @bento-pop/landing build",
+    "build:admin": "pnpm --filter @bento-pop/admin build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules .turbo",

@@ -38,3 +38,7 @@ next-env.d.ts
 .supabase/
 supabase/.branches/
 supabase/.temp/
+
+# Drop folder pour les sources d'assets (photos brutes, etc.) — les versions
+# optimisées sont versionnées dans `packages/brand/assets/` après traitement.
+/assets/

@@ -38,3 +38,15 @@ export const texturePaths = {
 export const fontPaths = {
   extendaYotta: 'fonts/extenda-100-yotta.otf',
 } as const;
+
+/** Photos plateau / convention — utilisées en backgrounds décoratifs. */
+export const plateauPaths = {
+  '01': 'plateau/plateau-01.jpg',
+  '02': 'plateau/plateau-02.jpg',
+  '03': 'plateau/plateau-03.jpg',
+  '04': 'plateau/plateau-04.jpg',
+  '05': 'plateau/plateau-05.jpg',
+} as const;
+
+export type PlateauKey = keyof typeof plateauPaths;
+export const plateauKeys = Object.keys(plateauPaths) as PlateauKey[];
