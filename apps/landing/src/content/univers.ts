@@ -14,9 +14,9 @@ import popyIntello from '@bento-pop/brand/assets/mascot/popy-intello.png';
 export async function getUnivers(): Promise<UniversContent> {
   return {
     eyebrow: 'Les Univers du Bento',
-    title: 'Le plein de saveur \nsur un seul plateau',
+    title: 'Le plein de saveurs \nsur un seul plateau',
     description:
-      "Comme pour un vrai bento, chaque sujet se complète, s'enrichi alimente nos discussions passionnées !",
+      "Comme pour un vrai bento, chaque sujet se complète, s'enrichit, alimente nos discussions passionnées !",
     items: [
       {
         id: 'cinema',

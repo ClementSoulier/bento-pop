@@ -12,7 +12,7 @@ const STATIC_FALLBACK: TeamContent = {
     { id: 'rob',        name: 'Rob',        nick: 'Le Visuel',   bio: 'Réalisation, montage et direction artistique. Il rend tout ça regardable — et beau.',             photo: { kind: 'gradient', from: '#2ec4b6', to: '#1a8a80', initials: 'RB' }, rotation: 2,   order: 4 },
   ],
   quote:
-    "Au quatre coin de la France, on vous donne rendez-vous IRL sur les conventions avec nos invités et notre bonne humeur.",
+    "Aux quatre coins de la France, on vous donne rendez-vous IRL sur les conventions avec nos invités et notre bonne humeur.",
 };
 
 export const getTeam = cache(async (): Promise<TeamContent> => {
