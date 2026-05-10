@@ -1,12 +1,51 @@
 import { readFile } from 'node:fs/promises';
 import { ImageResponse } from 'next/og';
 
-export const size = { width: 64, height: 64 };
 export const contentType = 'image/png';
 
-export default async function Icon() {
+type IconConfig = {
+  size: number;
+  /** Diamètre du popy en proportion du canvas (0..1). */
+  popyRatio: number;
+  /** Rayon des coins en proportion du canvas (0 = carré, 0.5 = cercle). */
+  radiusRatio: number;
+};
+
+function getConfig(id: string): IconConfig {
+  switch (id) {
+    case '64':
+      return { size: 64, popyRatio: 0.9, radiusRatio: 0.22 };
+    case '192':
+      return { size: 192, popyRatio: 0.85, radiusRatio: 0.18 };
+    case '512':
+      return { size: 512, popyRatio: 0.85, radiusRatio: 0.18 };
+    case 'maskable':
+      // Android applique sa propre forme (cercle/squircle) sur l'image.
+      // Le popy doit tenir dans la "safe zone" intérieure de 80% → ratio 0.65
+      // pour garder une marge confortable. Pas de borderRadius : le canvas
+      // est full-bleed.
+      return { size: 512, popyRatio: 0.65, radiusRatio: 0 };
+    default:
+      return { size: 64, popyRatio: 0.9, radiusRatio: 0.22 };
+  }
+}
+
+export async function generateImageMetadata() {
+  return (['64', '192', '512', 'maskable'] as const).map((id) => {
+    const config = getConfig(id);
+    return {
+      id,
+      contentType: 'image/png' as const,
+      size: { width: config.size, height: config.size },
+    };
+  });
+}
+
+export default async function Icon({ id }: { id: string }) {
+  const config = getConfig(id);
   const popyBuffer = await readFile(new URL('./_og/popy.png', import.meta.url));
   const popySrc = `data:image/png;base64,${Buffer.from(popyBuffer).toString('base64')}`;
+  const popyPx = Math.round(config.size * config.popyRatio);
 
   return new ImageResponse(
     (
@@ -18,12 +57,12 @@ export default async function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: 14,
+          borderRadius: config.size * config.radiusRatio,
         }}
       >
-        <img src={popySrc} alt="" width={58} height={58} />
+        <img src={popySrc} alt="" width={popyPx} height={popyPx} />
       </div>
     ),
-    { ...size },
+    { width: config.size, height: config.size },
   );
 }

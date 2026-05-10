@@ -59,6 +59,13 @@ export const metadata: Metadata = {
     description:
       'Cinéma, gaming, mangas et débats de société. En live depuis les plus grandes conventions.',
   },
+  // PWA — ajoute les meta `apple-mobile-web-app-*` pour l'installation iOS
+  // (Android lit directement le manifest pour ces réglages).
+  appleWebApp: {
+    capable: true,
+    title: 'Bento Pop',
+    statusBarStyle: 'default',
+  },
 };
 
 export const viewport: Viewport = {
