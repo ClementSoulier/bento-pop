@@ -15,20 +15,28 @@ export async function createServerClient() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return null;
 
-  const cookieStore = await cookies();
-  return createSupabaseServerClient<Database>(url, anonKey, {
-    cookies: {
-      getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })),
-      setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) => {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        } catch {
-          // Le `set` peut échouer dans un Server Component (read-only). C'est
-          // normal — le middleware se charge déjà de poser les cookies.
-        }
+  try {
+    const cookieStore = await cookies();
+    return createSupabaseServerClient<Database>(url, anonKey, {
+      cookies: {
+        getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })),
+        setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) => {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Le `set` peut échouer dans un Server Component (read-only). C'est
+            // normal — le middleware se charge déjà de poser les cookies.
+          }
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    // URL Supabase malformée, indispo réseau, etc. — on log et on retourne
+    // null pour que les loaders basculent sur leur fallback statique au lieu
+    // de propager un 500 à l'utilisateur.
+    console.error('[supabase/server] createServerClient failed:', err);
+    return null;
+  }
 }
