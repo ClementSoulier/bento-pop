@@ -56,7 +56,9 @@ ENV NODE_ENV=production \
     PORT=3200 \
     HOSTNAME=0.0.0.0
 
-RUN addgroup -g 1001 -S nodejs \
+# curl pour le healthcheck Coolify (sinon l'image n'a ni curl ni wget fiable)
+RUN apk add --no-cache curl \
+ && addgroup -g 1001 -S nodejs \
  && adduser  -u 1001 -S nextjs -G nodejs
 
 # Sortie standalone : server.js à apps/landing/server.js + node_modules pruné
