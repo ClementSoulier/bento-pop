@@ -31,7 +31,9 @@ const yujiSyuku = Yuji_Syuku({
   display: 'swap',
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bento-pop.com';
+// `||` (et pas `??`) pour traiter aussi la chaîne vide comme « non défini » :
+// au build Docker, un ARG non transmis devient une ENV "" et casserait `new URL("")`.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
