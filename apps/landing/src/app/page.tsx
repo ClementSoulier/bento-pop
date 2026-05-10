@@ -7,6 +7,11 @@ import { Debriefs } from '@/sections/Debriefs/Debriefs';
 import { Team } from '@/sections/Team/Team';
 import { Footer } from '@/sections/Footer/Footer';
 
+// Le contenu (équipe, hero TikTok, agenda, etc.) vient de Supabase et est édité
+// via l'admin. On force un rendu dynamique pour éviter qu'un build sans accès
+// Supabase ne fige le fallback statique pendant 1 an dans le cache Next.
+export const dynamic = 'force-dynamic';
+
 export default function Page() {
   return (
     <>
