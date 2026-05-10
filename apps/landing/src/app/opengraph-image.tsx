@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og';
 import { logoDataUrl, popyDataUrl } from './_og/assets';
 
-export const alt = 'Bento Pop — Le Talk-Show Pop Culture';
+export const alt =
+  'Bento Pop — Le talk-show pop culture qui parcourt la France · Cinéma, gaming, mangas et débats de société, sur YouTube et en podcast.';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 

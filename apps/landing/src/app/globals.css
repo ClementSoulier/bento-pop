@@ -241,6 +241,52 @@ button {
   border-radius: 4px;
 }
 
+/* ---------- Skip link « Aller au contenu » ----------
+ * Standard WCAG 2.4.1 (Bypass Blocks). Caché par défaut (translaté hors écran),
+ * révélé au focus clavier en position fixe en haut à gauche.
+ */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 12px 18px;
+  background: var(--bento-ink);
+  color: var(--bento-cream);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  border: 3px solid var(--bento-cream);
+  box-shadow: 0 4px 0 var(--bento-red);
+  transform: translateY(calc(-100% - 16px));
+  transition: transform 0.15s ease-out;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: none;
+}
+
+/* ---------- prefers-reduced-motion ----------
+ * Coupe court à toutes les animations et transitions pour les utilisateurs
+ * qui le demandent (sensibilité vestibulaire, troubles de concentration).
+ * `0.01ms` plutôt que `0` pour ne pas casser les listeners `animationend`.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ---------- Rivets BentoFrame (façon « baguettes » noires) ---------- */
 .bento-frame--rivets .bento-rivet-top,
 .bento-frame--rivets .bento-rivet-bottom {

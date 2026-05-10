@@ -7,7 +7,6 @@ export function SpotifyEmbed({ showId }: SpotifyEmbedProps) {
         src={`https://open.spotify.com/embed/show/${showId}?utm_source=generator&theme=0`}
         height={352}
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        allowFullScreen
         loading="lazy"
         title="Bento Pop Podcast"
         className="block w-full"

@@ -15,8 +15,12 @@ export function AgendaRow({ event }: AgendaRowProps) {
   const { day, month, year } = formatAgendaDate(event.date);
   const isPast = event.status === 'done';
   const isLive = event.status === 'live';
+  // Mois rouge sur fond blanc : ~3.7:1, FAIL pour texte normal. Sur fond
+  // jaune (cas isLive) : ~2.3:1, encore moins. On bascule en ink → toujours
+  // au-dessus de 12:1, et la barre rouge décorative n'est pas perdue car
+  // c'est la pastille de status qui porte l'accent rouge.
   return (
-    <div
+    <article
       className={clsx(
         'grid items-center gap-6',
         'border-[3px] border-bento-ink rounded-[18px] bg-white px-6 py-4',
@@ -27,20 +31,21 @@ export function AgendaRow({ event }: AgendaRowProps) {
         isPast && 'opacity-55',
       )}
     >
-      <div
-        className="border-r-[3px] border-dashed border-bento-ink pr-4 text-center md:pr-5"
+      <time
+        dateTime={event.date}
+        className="block border-r-[3px] border-dashed border-bento-ink pr-4 text-center md:pr-5"
         aria-label={`${day} ${month} ${year}`}
       >
-        <div className="font-display text-[36px] leading-none">{day}</div>
-        <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-bento-red">
+        <span className="font-display block text-[36px] leading-none">{day}</span>
+        <span className="mt-1 block text-[11px] font-bold uppercase tracking-[0.2em] text-bento-ink">
           {month}
-        </div>
-        <div className="mt-0.5 text-[10px] font-medium opacity-60">{year}</div>
-      </div>
+        </span>
+        <span className="mt-0.5 block text-[10px] font-medium opacity-60">{year}</span>
+      </time>
       <div>
         <h3 className="font-display text-[24px] leading-none mb-1.5">{event.title}</h3>
         <div className="flex items-center gap-1.5 text-[13px] font-semibold text-bento-ink/70">
-          <PinIcon width={14} height={14} />
+          <PinIcon width={14} height={14} aria-hidden />
           {event.place}
         </div>
       </div>
@@ -56,6 +61,6 @@ export function AgendaRow({ event }: AgendaRowProps) {
       >
         {event.statusLabel}
       </div>
-    </div>
+    </article>
   );
 }

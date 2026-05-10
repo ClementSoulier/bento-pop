@@ -19,10 +19,10 @@ export function LegalPage({ eyebrow, title, updatedAt, children }: LegalPageProp
   return (
     <>
       <Nav />
-      <main className="bg-bento-yellow px-7 pb-24 pt-16">
+      <main id="main" tabIndex={-1} className="bg-bento-yellow px-7 pb-24 pt-16">
         <article className="mx-auto max-w-[760px]">
           <header className="mb-12">
-            <p className="mb-3 inline-flex items-center gap-2.5 text-[12px] font-bold uppercase tracking-[0.3em] text-bento-red">
+            <p className="mb-3 inline-flex items-center gap-2.5 text-[12px] font-bold uppercase tracking-[0.3em] text-bento-ink">
               <span className="inline-block h-[3px] w-7 rounded-[3px] bg-bento-red" />
               {eyebrow}
             </p>

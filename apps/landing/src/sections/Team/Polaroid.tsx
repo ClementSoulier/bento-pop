@@ -23,8 +23,7 @@ export function Polaroid({ member }: PolaroidProps) {
 }
 
 function PhotoSlot({ member }: { member: TeamMember }) {
-  const { photo, nick } = member;
-  const initials = photo.kind === 'gradient' ? photo.initials : photo.initials;
+  const { photo } = member;
   return (
     <div
       className="relative grid aspect-square place-items-center overflow-hidden border-[3px] border-bento-ink"
@@ -35,14 +34,17 @@ function PhotoSlot({ member }: { member: TeamMember }) {
       }
     >
       {photo.kind === 'image' ? (
-        <img src={photo.url} alt={member.name} className="h-full w-full object-cover" />
+        // alt vide : le nom du membre est déjà annoncé par le <h3> juste après —
+        // un alt redondant ferait lire le nom deux fois aux lecteurs d'écran.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo.url} alt="" className="h-full w-full object-cover" />
       ) : (
         <span
           className="font-display text-[64px] leading-none text-bento-cream/95"
           aria-hidden
           style={{ textShadow: '0 4px 0 rgba(0,0,0,0.25)' }}
         >
-          {initials}
+          {photo.initials}
         </span>
       )}
     </div>

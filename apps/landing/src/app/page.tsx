@@ -6,6 +6,12 @@ import { Univers } from '@/sections/Univers/Univers';
 import { Debriefs } from '@/sections/Debriefs/Debriefs';
 import { Team } from '@/sections/Team/Team';
 import { Footer } from '@/sections/Footer/Footer';
+import { JsonLd } from '@/components/JsonLd';
+import {
+  tvSeriesSchema,
+  podcastSeriesSchema,
+  faqSchema,
+} from '@/lib/seo/structured-data';
 
 // Le contenu (équipe, hero TikTok, agenda, etc.) vient de Supabase et est édité
 // via l'admin. On force un rendu dynamique pour éviter qu'un build sans accès
@@ -15,8 +21,9 @@ export const dynamic = 'force-dynamic';
 export default function Page() {
   return (
     <>
+      <JsonLd data={[tvSeriesSchema(), podcastSeriesSchema(), faqSchema()]} />
       <Nav />
-      <main>
+      <main id="main" tabIndex={-1}>
         <Hero />
         <Agenda />
         <Thermometre />

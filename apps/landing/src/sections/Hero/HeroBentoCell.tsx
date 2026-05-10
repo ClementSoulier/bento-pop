@@ -25,9 +25,8 @@ export function HeroBentoCell({ cell }: HeroBentoCellProps) {
           <iframe
             src={`https://www.youtube-nocookie.com/embed/${cell.youtubeId}?rel=0&modestbranding=1`}
             title={cell.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share"
             referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
             loading="lazy"
             className="absolute inset-0 h-full w-full border-0"
           />
@@ -135,7 +134,6 @@ export function HeroBentoCell({ cell }: HeroBentoCellProps) {
           title="Vidéo TikTok"
           allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
           loading="lazy"
           className="absolute inset-0 h-full w-full border-0"
         />

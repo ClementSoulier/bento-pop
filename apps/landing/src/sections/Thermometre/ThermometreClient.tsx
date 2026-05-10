@@ -56,18 +56,32 @@ export function ThermometreClient({ week, initialCounts, closingNote }: Props) {
     });
   };
 
+  const hasVoted = voted !== null;
   return (
     <div
       className="mx-auto max-w-[760px] rounded-[28px] border-[5px] border-bento-cream bg-bento-cream px-10 pb-8 pt-9 text-bento-ink"
       style={{ boxShadow: '0 10px 0 var(--bento-red), 0 20px 40px rgba(0,0,0,0.4)' }}
+      role="group"
+      aria-labelledby="thermometre-question"
+      aria-busy={pending}
     >
       <span className="mb-4 inline-flex items-center gap-2 rounded-full border-[3px] border-bento-ink bg-bento-red px-3 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-bento-cream shadow-stamp">
         ● {week.weekTag}
       </span>
-      <h3 className="font-display mb-7 text-[clamp(24px,3vw,32px)] leading-[1.05]">
+      <h3 id="thermometre-question" className="font-display mb-7 text-[clamp(24px,3vw,32px)] leading-[1.05]">
         {week.question}
       </h3>
-      <div className="mb-5 flex flex-col gap-3">
+      {/*
+        Région live qui annonce les résultats au lecteur d'écran après vote.
+        `aria-live="polite"` pour ne pas couper la voix en cours ; `atomic` pour
+        que toute la liste soit relue à chaque changement (pas seulement la
+        partie modifiée).
+      */}
+      <div
+        className="mb-5 flex flex-col gap-3"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {week.options.map((opt, i) => {
           const c = counts[opt.id] ?? 0;
           const pct = total > 0 ? (c / total) * 100 : 0;
@@ -78,8 +92,8 @@ export function ThermometreClient({ week, initialCounts, closingNote }: Props) {
               index={i}
               pct={pct}
               isMine={voted === opt.id}
-              hasVoted={voted !== null}
-              disabled={voted !== null || pending}
+              hasVoted={hasVoted}
+              disabled={hasVoted || pending}
               onClick={() => cast(opt.id)}
             />
           );

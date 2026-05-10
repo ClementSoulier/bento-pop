@@ -21,6 +21,10 @@ export function VoteOption({
   onClick,
 }: VoteOptionProps) {
   const letter = String.fromCharCode(65 + index);
+  // Annonce SR : avant vote → action ; après vote → résultat + signal du choix.
+  const ariaLabel = hasVoted
+    ? `${option.label}, ${pct.toFixed(0)} %${isMine ? ' — votre choix' : ''}`
+    : `Voter pour ${option.label}`;
   return (
     <button
       type="button"
@@ -34,6 +38,7 @@ export function VoteOption({
         hasVoted && !isMine && 'cursor-default',
       )}
       aria-pressed={isMine}
+      aria-label={ariaLabel}
     >
       <span
         aria-hidden

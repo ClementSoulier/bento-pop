@@ -33,7 +33,19 @@ export async function Hero() {
           <Eyebrow>{hero.eyebrow}</Eyebrow>
           <h1 className="font-display my-4 text-[clamp(48px,7vw,96px)]">
             {hero.headline.prefix}
-            <span className="inline-block text-bento-red" style={{ transform: 'rotate(-2deg)' }}>
+            <span
+              className="inline-block text-bento-red"
+              style={{
+                transform: 'rotate(-2deg)',
+                /*
+                 * Stroke noir ink autour du rouge : ramène la lisibilité du
+                 * couple rouge/jaune (sinon ~2.3:1) au niveau d'un contour
+                 * net qui « pop » dans la DA Bento Pop sans changer la couleur.
+                 */
+                WebkitTextStroke: '2px var(--bento-ink)',
+                paintOrder: 'stroke fill',
+              }}
+            >
               {hero.headline.accent}
             </span>
             {hero.headline.suffix}
