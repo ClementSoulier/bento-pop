@@ -2,7 +2,7 @@
 # Build context = racine du monorepo. Dans Coolify :
 #   Base Directory      = /
 #   Dockerfile Location = /apps/admin/Dockerfile
-#   Port                = 3100
+#   Port                = 3300
 
 ARG NODE_VERSION=20-alpine
 
@@ -50,7 +50,7 @@ FROM node:${NODE_VERSION} AS runner
 WORKDIR /repo
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3100 \
+    PORT=3300 \
     HOSTNAME=0.0.0.0
 
 RUN addgroup -g 1001 -S nodejs \
@@ -63,6 +63,6 @@ COPY --from=builder --chown=nextjs:nodejs /repo/apps/admin/.next/static     ./ap
 # COPY --from=builder --chown=nextjs:nodejs /repo/apps/admin/public ./apps/admin/public
 
 USER nextjs
-EXPOSE 3100
+EXPOSE 3300
 
 CMD ["node", "apps/admin/server.js"]
