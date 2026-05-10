@@ -1,10 +1,24 @@
+import { readFile } from 'node:fs/promises';
 import { ImageResponse } from 'next/og';
 
 export const alt = 'Bento Pop — Le Talk-Show Pop Culture';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-export default function OpenGraphImage() {
+// On lit les binaires relativement au fichier courant : Next trace ces
+// imports via `new URL(..., import.meta.url)` et embarque les PNG dans la
+// sortie standalone.
+async function loadDataUrl(relative: string): Promise<string> {
+  const buffer = await readFile(new URL(relative, import.meta.url));
+  return `data:image/png;base64,${Buffer.from(buffer).toString('base64')}`;
+}
+
+export default async function OpenGraphImage() {
+  const [logoSrc, popySrc] = await Promise.all([
+    loadDataUrl('./_og/logo.png'),
+    loadDataUrl('./_og/popy.png'),
+  ]);
+
   return new ImageResponse(
     (
       <div
@@ -16,9 +30,25 @@ export default function OpenGraphImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: 80,
+          padding: 72,
+          position: 'relative',
         }}
       >
+        {/* Popy flottant en haut à droite */}
+        <img
+          src={popySrc}
+          alt=""
+          width={220}
+          height={220}
+          style={{
+            position: 'absolute',
+            top: 32,
+            right: 36,
+            transform: 'rotate(8deg)',
+          }}
+        />
+
+        {/* Eyebrow */}
         <div
           style={{
             fontSize: 22,
@@ -30,23 +60,39 @@ export default function OpenGraphImage() {
         >
           Bento Pop · Saison 02
         </div>
+
+        {/* Logo central */}
         <div
           style={{
-            fontSize: 110,
-            fontWeight: 900,
-            lineHeight: 0.95,
-            textTransform: 'uppercase',
             display: 'flex',
-            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
           }}
         >
-          <span>Le Talk-Show</span>
-          <span style={{ color: '#e63946' }}>Pop Culture</span>
-          <span>qui parcourt la France.</span>
+          <img src={logoSrc} alt="Bento Pop" width={820} height={189} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div style={{ fontSize: 26, fontWeight: 600 }}>
-            Cinéma · Gaming · Mangas · Société
+
+        {/* Footer : tagline + URL */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 30,
+              fontWeight: 600,
+              display: 'flex',
+              flexDirection: 'column',
+              lineHeight: 1.2,
+            }}
+          >
+            <span>Le Talk-Show Pop Culture qui parcourt la France.</span>
+            <span style={{ fontSize: 22, fontWeight: 500, opacity: 0.75, marginTop: 6 }}>
+              Cinéma · Gaming · Mangas · Société
+            </span>
           </div>
           <div
             style={{

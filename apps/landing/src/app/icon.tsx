@@ -1,9 +1,13 @@
+import { readFile } from 'node:fs/promises';
 import { ImageResponse } from 'next/og';
 
 export const size = { width: 64, height: 64 };
 export const contentType = 'image/png';
 
-export default function Icon() {
+export default async function Icon() {
+  const popyBuffer = await readFile(new URL('./_og/popy.png', import.meta.url));
+  const popySrc = `data:image/png;base64,${Buffer.from(popyBuffer).toString('base64')}`;
+
   return new ImageResponse(
     (
       <div
@@ -11,16 +15,13 @@ export default function Icon() {
           width: '100%',
           height: '100%',
           background: '#fbbf24',
-          color: '#0a0a0a',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 44,
-          fontWeight: 900,
-          letterSpacing: -2,
+          borderRadius: 14,
         }}
       >
-        B
+        <img src={popySrc} alt="" width={58} height={58} />
       </div>
     ),
     { ...size },
