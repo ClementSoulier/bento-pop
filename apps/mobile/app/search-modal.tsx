@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
   Pressable,
@@ -37,6 +38,13 @@ import { clearBentoSlot, ensureBento, setBentoSlot, upsertItem } from '@/lib/ben
  *
  * Cf. design Claude Design — `SearchModalScreen` dans `screens.jsx`.
  */
+
+// Largeur fixe par tile = (largeur écran - paddings horizontaux - 2 gaps) / 3.
+// Sans ça, `flex: 1` sur les items provoque l'étirement à 100% quand il n'y a
+// qu'un seul résultat. La hauteur est implicite (ratio 2/3 du poster).
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const TILE_WIDTH = Math.floor((SCREEN_WIDTH - 32 - 20) / 3);
+
 export default function SearchModal() {
   const params = useLocalSearchParams<{ category?: string }>();
   const category = (params.category ?? 'film') as CategoryKey;
@@ -214,7 +222,7 @@ export default function SearchModal() {
           }}
         >
           {results.length > 0
-            ? `${results.length} résultats`
+            ? `${results.length} résultat${results.length > 1 ? 's' : ''}`
             : query.trim()
             ? error
               ? 'Erreur API'
@@ -244,7 +252,7 @@ export default function SearchModal() {
           data={results}
           keyExtractor={(r) => `${r.source}:${r.externalId}`}
           numColumns={3}
-          columnWrapperStyle={{ gap: 10 }}
+          columnWrapperStyle={{ gap: 10, justifyContent: 'flex-start' }}
           contentContainerStyle={{ gap: 10, paddingBottom: 100 }}
           renderItem={({ item, index }) => {
             const isSelected = selected?.externalId === item.externalId;
@@ -254,7 +262,7 @@ export default function SearchModal() {
                 onPress={() => setSelected(item)}
                 style={[
                   {
-                    flex: 1,
+                    width: TILE_WIDTH,
                     backgroundColor: '#ffffff',
                     borderWidth: 2.5,
                     borderColor: '#0a0a0a',
