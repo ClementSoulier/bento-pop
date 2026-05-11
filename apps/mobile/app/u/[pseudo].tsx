@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -7,6 +7,7 @@ import { BentoGrid, type BentoItems, PALETTES, type PaletteKey } from '@/compone
 import { CATEGORY_META } from '@/components/bento/categories';
 import { SHADOWS, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
+import { shareBento } from '@/lib/share';
 import type { CategoryKey } from '@/supabase/types';
 import { loadPublicBentoByPseudo } from '@/lib/bento-actions';
 
@@ -213,8 +214,13 @@ export default function PublicBento() {
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => {
-                    // TODO P3.2 — capture + share natif
+                  onPress={async () => {
+                    const outcome = await shareBento(pseudo);
+                    if (outcome === 'copied') {
+                      Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
+                    } else if (outcome === 'unsupported') {
+                      Alert.alert('Oups', 'Partage non supporté sur ce navigateur.');
+                    }
                   }}
                   style={[
                     {
