@@ -11,11 +11,16 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "typeRoots": ["./node_modules/@types"],
     // `bundler` (au lieu du `node` par défaut d'expo/tsconfig.base) permet
     // à TS de résoudre les `exports.*` (subpath exports) déclarés par les
     // packages workspace comme `@bento-pop/supabase-mobile/types`.
     "moduleResolution": "bundler"
+    // typeRoots NON spécifié intentionnellement : avec `node-linker=hoisted`
+    // au root du monorepo, @types/node et @types/react sont au
+    // `<monorepo>/node_modules/@types/`, pas dans `apps/mobile/node_modules/`.
+    // Le résolveur TS par défaut remonte la chaîne, et `pnpm.overrides`
+    // (cf. root package.json) garantit qu'on a une seule version de
+    // @types/react alignée sur 18.
   },
   "include": [
     "**/*.ts",
