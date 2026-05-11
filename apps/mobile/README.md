@@ -17,13 +17,12 @@ App companion Bento Pop : compose ton bento culturel (film, série, artiste, cha
 # Depuis la racine du monorepo
 pnpm install
 
-# Crée le projet Supabase distant + lie-le
-cd supabase-mobile
+# Lie le projet Supabase distant (créé manuellement sur supabase.com)
+cd apps/mobile
 supabase link --project-ref <PROJECT_REF>
 supabase db push    # applique la migration initiale
 
 # Configure les env vars de l'app
-cd ../apps/mobile
 cp .env.example .env
 # Édite .env avec EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY
 ```
@@ -60,7 +59,7 @@ app/
 
 ## Modèle de données (Supabase)
 
-Cf. `supabase-mobile/migrations/20260511000000_initial_schema.sql`.
+Cf. `apps/mobile/supabase/migrations/20260511000000_initial_schema.sql`.
 
 - `bento_categories` (table de référence évolutive : 6 catégories MVP)
 - `users` (1:1 avec `auth.users`, anonymous sign-in)

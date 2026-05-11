@@ -1,9 +1,9 @@
 # Projet Supabase dédié à l'app mobile "Mon Bento Pop".
-# Séparé du projet landing (`/supabase/`) pour isoler les données
+# Séparé du projet landing (`/supabase/` au root) pour isoler les données
 # communautaires (millions de bentos potentiels) des données plateau.
 #
-# Pour linker au projet distant :
-#   cd supabase-mobile
+# Pour linker au projet distant (depuis la racine du monorepo) :
+#   cd apps/mobile
 #   supabase link --project-ref <project-ref>
 #   supabase db push
 
