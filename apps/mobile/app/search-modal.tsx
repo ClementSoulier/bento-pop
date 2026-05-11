@@ -283,12 +283,38 @@ export default function SearchModal() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <LinearGradient
-                      colors={palette.colors}
-                      start={palette.start}
-                      end={palette.end}
-                      style={StyleSheet.absoluteFillObject}
-                    />
+                    <>
+                      <LinearGradient
+                        colors={palette.colors}
+                        start={palette.start}
+                        end={palette.end}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      {/* Fallback signature : grosse initiale en filigrane,
+                          déplacé du centre pour rester visible quand le titre
+                          en bas le recouvrirait. */}
+                      <View
+                        pointerEvents="none"
+                        style={[
+                          StyleSheet.absoluteFillObject,
+                          { alignItems: 'center', justifyContent: 'center', paddingBottom: 12 },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: 'Extenda',
+                            fontSize: 64,
+                            lineHeight: 60,
+                            color: palette.ink,
+                            opacity: 0.22,
+                            letterSpacing: -2,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {getInitial(item.title)}
+                        </Text>
+                      </View>
+                    </>
                   )}
                   {/* Overlay sombre du bas pour lisibilité titre */}
                   <LinearGradient
@@ -396,4 +422,10 @@ export default function SearchModal() {
 
 function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+/** Première lettre du titre — pour le fallback visuel signature. */
+function getInitial(s: string): string {
+  const match = s.trim().match(/[A-Za-zÀ-ÿ0-9]/);
+  return (match?.[0] ?? '?').toUpperCase();
 }

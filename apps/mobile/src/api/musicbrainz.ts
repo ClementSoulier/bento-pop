@@ -1,4 +1,5 @@
 import type { SearchResult } from './types';
+import { enrichWithWikipediaThumbs } from './wikipedia';
 
 /**
  * Client MusicBrainz (artistes + chansons).
@@ -37,14 +38,15 @@ type MBArtist = {
   'life-span'?: { begin?: string; end?: string };
 };
 
-/** Recherche artiste musical. */
+/** Recherche artiste musical. MusicBrainz ne renvoie pas de photo (raisons
+ * légales), on enrichit avec Wikipedia REST quand l'artiste a une page. */
 export async function searchArtists(query: string): Promise<SearchResult[]> {
   if (!query.trim()) return [];
   const data = await mbFetch<{ artists: MBArtist[] }>('/artist', {
     query: query.trim(),
     limit: '12',
   });
-  return data.artists.map((a) => {
+  const base: SearchResult[] = data.artists.map((a) => {
     const year = a['life-span']?.begin ? parseInt(a['life-span']!.begin!.slice(0, 4), 10) : undefined;
     const parts = [a.country, a.type, a.disambiguation].filter(Boolean);
     return {
@@ -53,10 +55,11 @@ export async function searchArtists(query: string): Promise<SearchResult[]> {
       title: a.name,
       subtitle: parts.join(' · ') || undefined,
       year,
-      imageUrl: undefined, // pas de photo d'artiste dans MB (légal)
+      imageUrl: undefined,
       raw: { type: 'artist', ...a },
     };
   });
+  return enrichWithWikipediaThumbs(base);
 }
 
 type MBRecording = {

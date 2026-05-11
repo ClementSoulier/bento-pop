@@ -30,6 +30,8 @@ type TileProps = {
  * Config par taille. `letterSpacing` positif pour aérer la police Extenda
  * Yotta dont le crénage natif est très serré ; sans ça les lettres se
  * touchent (« SEVERANCE », « ORELSAN » illisibles).
+ * `initial` = taille de la grosse initiale du fallback visuel (rendue en
+ * filigrane derrière le gradient quand pas de photo).
  */
 const SIZE_CONF: Record<TileSize, {
   title: number;
@@ -37,11 +39,18 @@ const SIZE_CONF: Record<TileSize, {
   pad: number;
   stamp: number;
   letterSpacing: number;
+  initial: number;
 }> = {
-  lg: { title: 28, sub: 13, pad: 16, stamp: 9, letterSpacing: 1.2 },
-  md: { title: 17, sub: 11, pad: 12, stamp: 9, letterSpacing: 0.8 },
-  sm: { title: 13, sub: 9.5, pad: 9, stamp: 8, letterSpacing: 0.5 },
+  lg: { title: 28, sub: 13, pad: 16, stamp: 9, letterSpacing: 1.2, initial: 140 },
+  md: { title: 17, sub: 11, pad: 12, stamp: 9, letterSpacing: 0.8, initial: 96 },
+  sm: { title: 13, sub: 9.5, pad: 9, stamp: 8, letterSpacing: 0.5, initial: 68 },
 };
+
+/** Première lettre du titre — pour le fallback visuel signature. */
+function getInitial(s: string): string {
+  const match = s.trim().match(/[A-Za-zÀ-ÿ0-9]/);
+  return (match?.[0] ?? '?').toUpperCase();
+}
 
 const RADIUS = 18;
 const BORDER = 2.5;
@@ -87,7 +96,8 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
 
   const content = (
     <>
-      {/* Background : image en plein cadre OU dégradé palette.
+      {/* Background : image en plein cadre OU dégradé palette + grosse
+          initiale en filigrane (fallback signature quand pas de photo).
           NB : `inset: 0` n'est pas fiable sur RN 0.76 (l'Image rend à sa
           taille native en haut-gauche). On utilise `StyleSheet.absoluteFillObject`
           (top/left/right/bottom: 0) qui force le remplissage du parent. */}
@@ -98,12 +108,32 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
           resizeMode="cover"
         />
       ) : (
-        <LinearGradient
-          colors={palette.colors}
-          start={palette.start}
-          end={palette.end}
-          style={StyleSheet.absoluteFillObject}
-        />
+        <>
+          <LinearGradient
+            colors={palette.colors}
+            start={palette.start}
+            end={palette.end}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}
+          >
+            <Text
+              style={{
+                fontFamily: 'Extenda',
+                fontSize: conf.initial,
+                lineHeight: conf.initial * 0.92,
+                color: palette.ink,
+                opacity: 0.18,
+                letterSpacing: -3,
+                textTransform: 'uppercase',
+              }}
+            >
+              {getInitial(data.title)}
+            </Text>
+          </View>
+        </>
       )}
 
       {/* Overlay sombre du bas (lisibilité texte sur image) */}
