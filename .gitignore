@@ -42,3 +42,10 @@ supabase/.temp/
 # Drop folder pour les sources d'assets (photos brutes, etc.) — les versions
 # optimisées sont versionnées dans `packages/brand/assets/` après traitement.
 /assets/
+
+# Garde-fou : `eas-cli` et `expo` créent un `eas.json` / `app.json` à la
+# racine quand on lance la commande depuis le mauvais répertoire. Les vrais
+# fichiers vivent dans `apps/mobile/`. On ignore ceux du root pour éviter
+# qu'ils soient commités par erreur (mauvais projectId / mauvais bundleId).
+/eas.json
+/app.json
