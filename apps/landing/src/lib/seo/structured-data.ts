@@ -14,7 +14,13 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
 const YOUTUBE_CHANNEL = 'https://www.youtube.com/@BentoPop.Officiel';
 const SPOTIFY_SHOW = 'https://open.spotify.com/show/0HmT9Na37Ujd3pvTl4to89';
+const APPLE_PODCAST = 'https://podcasts.apple.com/podcast/id1867722601';
+const DEEZER_PODCAST = 'https://www.deezer.com/show/1002514832';
 const INSTAGRAM = 'https://www.instagram.com/bento.pop.officiel/';
+// L'entité Wikidata est le pivot du knowledge graph : Google et les LLMs s'en
+// servent pour relier toutes les surfaces (site, YouTube, podcasts, social)
+// à une même entité. Lien réciproque côté Wikidata : propriété P973.
+const WIKIDATA = 'https://www.wikidata.org/wiki/Q139741636';
 
 export function organizationSchema() {
   return {
@@ -35,7 +41,14 @@ export function organizationSchema() {
       "Bento Pop est un média pop culture français : un talk-show YouTube hebdomadaire et un podcast, animés par Dark Hifus. Émissions en live depuis les plus grandes conventions.",
     foundingDate: '2024',
     inLanguage: 'fr-FR',
-    sameAs: [YOUTUBE_CHANNEL, SPOTIFY_SHOW, INSTAGRAM],
+    sameAs: [
+      YOUTUBE_CHANNEL,
+      SPOTIFY_SHOW,
+      APPLE_PODCAST,
+      DEEZER_PODCAST,
+      INSTAGRAM,
+      WIKIDATA,
+    ],
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'business',
@@ -106,7 +119,7 @@ export function tvSeriesSchema() {
         url: YOUTUBE_CHANNEL,
       },
     },
-    sameAs: [YOUTUBE_CHANNEL, SPOTIFY_SHOW],
+    sameAs: [YOUTUBE_CHANNEL, SPOTIFY_SHOW, APPLE_PODCAST, DEEZER_PODCAST, WIKIDATA],
   } as const;
 }
 
@@ -124,7 +137,7 @@ export function podcastSeriesSchema() {
     webFeed: SPOTIFY_SHOW,
     author: { '@id': `${SITE_URL}/#organization` },
     publisher: { '@id': `${SITE_URL}/#organization` },
-    sameAs: [SPOTIFY_SHOW, YOUTUBE_CHANNEL],
+    sameAs: [SPOTIFY_SHOW, APPLE_PODCAST, DEEZER_PODCAST, YOUTUBE_CHANNEL, WIKIDATA],
   } as const;
 }
 
