@@ -17,6 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { searchByCategory } from '@/api/search';
 import type { SearchResult } from '@/api/types';
+import { fetchWikipediaThumbnail } from '@/api/wikipedia';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
 import { StampButton } from '@/components/primitives';
@@ -85,16 +86,28 @@ export default function SearchModal() {
     if (!selected || !userId) return;
     setSubmitting(true);
     try {
+      // Enrichissement Wikipedia LAZY (uniquement à la sélection) :
+      // - Si la source a déjà une image (TMDb), on garde
+      // - Sinon on tente Wikipedia une seule fois pour l'item choisi
+      // C'est BEAUCOUP plus rapide que d'enrichir les 12 résultats à chaque
+      // frappe, et la couverture Wikipedia (~80% pour artiste/créateur/lieu
+      // notables) compense le fallback gradient + initiale signature.
+      let enriched = selected;
+      if (!selected.imageUrl) {
+        const wikiThumb = await fetchWikipediaThumbnail(selected.title);
+        if (wikiThumb) enriched = { ...selected, imageUrl: wikiThumb };
+      }
+
       // Persistance Supabase
-      const itemId = await upsertItem(selected, category);
+      const itemId = await upsertItem(enriched, category);
       const bentoId = await ensureBento(userId);
       await setBentoSlot(bentoId, category, itemId);
       // Sync state local pour affichage immédiat dans le composer
-      const idx = results.findIndex((r) => r.externalId === selected.externalId);
+      const idx = results.findIndex((r) => r.externalId === enriched.externalId);
       setSlot(category, {
-        title: selected.title,
-        subtitle: selected.subtitle,
-        imageUrl: selected.imageUrl,
+        title: enriched.title,
+        subtitle: enriched.subtitle,
+        imageUrl: enriched.imageUrl,
         paletteKey: paletteForResult(idx >= 0 ? idx : 0),
         itemId,
       });

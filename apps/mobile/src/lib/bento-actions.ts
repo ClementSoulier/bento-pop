@@ -20,6 +20,11 @@ const CATEGORY_IDS: Record<CategoryKey, number> = {
  * Trouve un item existant correspondant à un résultat de recherche, ou le
  * crée. Le catalogue `items` est mutualisé : si Alice a déjà choisi « Dune »
  * sur TMDb, Bob réutilise la même ligne (dedup via UNIQUE (source, external_id)).
+ *
+ * Si l'item existe déjà SANS image et que la nouvelle recherche en a une
+ * (typiquement : Wikipedia enrichi lazy à la sélection, alors que l'item
+ * avait été créé avant cette source d'image), on hydrate la ligne — tous
+ * les bentos qui pointent dessus bénéficient rétroactivement de la photo.
  */
 export async function upsertItem(
   result: SearchResult,
@@ -28,11 +33,19 @@ export async function upsertItem(
   // 1. Lookup
   const { data: existing } = await supabase
     .from('items')
-    .select('id')
+    .select('id, image_url')
     .eq('external_source', result.source)
     .eq('external_id', result.externalId)
     .maybeSingle();
-  if (existing) return existing.id;
+  if (existing) {
+    if (!existing.image_url && result.imageUrl) {
+      await supabase
+        .from('items')
+        .update({ image_url: result.imageUrl })
+        .eq('id', existing.id);
+    }
+    return existing.id;
+  }
 
   // 2. Insertion
   const { data: inserted, error } = await supabase

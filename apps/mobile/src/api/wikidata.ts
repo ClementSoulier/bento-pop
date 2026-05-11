@@ -1,5 +1,4 @@
 import type { SearchResult } from './types';
-import { enrichWithWikipediaThumbs } from './wikipedia';
 
 /**
  * Client Wikidata pour la catégorie "créateur de contenu".
@@ -42,7 +41,9 @@ export async function searchCreators(query: string): Promise<SearchResult[]> {
   if (!res.ok) throw new Error(`Wikidata search failed: ${res.status}`);
   const data = (await res.json()) as { search: WDSearchHit[] };
 
-  const base: SearchResult[] = data.search.map((h) => ({
+  // Pas d'image au moment de la recherche : on enrichira Wikipedia à la
+  // sélection (cf. search-modal `onConfirm`) pour ne pas faire 12 fetches.
+  return data.search.map((h) => ({
     externalId: h.id,
     source: 'wikidata' as const,
     title: h.label || h.id,
@@ -50,6 +51,4 @@ export async function searchCreators(query: string): Promise<SearchResult[]> {
     imageUrl: undefined,
     raw: h,
   }));
-  // Enrichit avec la vignette Wikipedia (couvre ~80% des créateurs notables).
-  return enrichWithWikipediaThumbs(base);
 }

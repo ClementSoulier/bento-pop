@@ -1,5 +1,4 @@
 import type { SearchResult } from './types';
-import { enrichWithWikipediaThumbs } from './wikipedia';
 
 /**
  * Client Nominatim (OpenStreetMap) pour les lieux de voyage.
@@ -66,7 +65,9 @@ export async function searchPlaces(query: string): Promise<SearchResult[]> {
   if (!res.ok) throw new Error(`Nominatim search failed: ${res.status}`);
   const data = (await res.json()) as NominatimHit[];
 
-  const base: SearchResult[] = data
+  // Pas d'image au moment de la recherche : on enrichira Wikipedia à la
+  // sélection (cf. search-modal `onConfirm`) pour ne pas faire 12 fetches.
+  return data
     .filter((h) => {
       // On garde si le type OU l'addresstype matche un niveau pertinent.
       const t = h.type ?? '';
@@ -89,7 +90,4 @@ export async function searchPlaces(query: string): Promise<SearchResult[]> {
         raw: h,
       };
     });
-  // Enrichit avec photo Wikipedia (très bonne couverture pour les villes
-  // notables, plus faible pour les villages / hameaux).
-  return enrichWithWikipediaThumbs(base);
 }

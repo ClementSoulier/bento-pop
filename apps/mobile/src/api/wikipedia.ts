@@ -48,21 +48,3 @@ export async function fetchWikipediaThumbnail(title: string): Promise<string | n
   return null;
 }
 
-/**
- * Enrichit un tableau de résultats de recherche avec leurs vignettes Wikipedia.
- *
- * Parallèle (Promise.all) : 12 résultats → ~12 fetches en // → ~200-500ms total
- * au pire cas (fr+en). Les résultats sans match restent avec `imageUrl: undefined`
- * et tomberont sur le fallback visuel signature (initiale + gradient palette).
- */
-export async function enrichWithWikipediaThumbs<T extends { title: string; imageUrl?: string }>(
-  items: T[],
-): Promise<T[]> {
-  return Promise.all(
-    items.map(async (item) => {
-      if (item.imageUrl) return item; // déjà une image (TMDb…) → on touche pas
-      const thumb = await fetchWikipediaThumbnail(item.title);
-      return thumb ? { ...item, imageUrl: thumb } : item;
-    }),
-  );
-}
