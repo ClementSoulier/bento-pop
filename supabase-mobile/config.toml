@@ -1,0 +1,43 @@
+# Projet Supabase dédié à l'app mobile "Mon Bento Pop".
+# Séparé du projet landing (`/supabase/`) pour isoler les données
+# communautaires (millions de bentos potentiels) des données plateau.
+#
+# Pour linker au projet distant :
+#   cd supabase-mobile
+#   supabase link --project-ref <project-ref>
+#   supabase db push
+
+project_id = "bento-pop-mobile"
+
+[api]
+enabled = true
+port = 54331
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54332
+shadow_port = 54330
+major_version = 15
+
+[studio]
+enabled = true
+port = 54333
+
+[auth]
+enabled = true
+# Anonymous sign-in : essentiel pour le modèle MVP (pas d'email obligatoire).
+# Chaque 1er lancement de l'app crée un auth.users anonyme dont l'uid sert
+# de pivot RLS. À l'étape "claim" (v2), on convertit en user permanent
+# via supabase.auth.updateUser({ email, password }) — l'uid est préservé,
+# donc le bento et le pseudo restent liés.
+enable_anonymous_sign_ins = true
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false  # MVP : pas d'email à valider
+
+[storage]
+enabled = false  # MVP : pas de stockage media côté nous, on consomme les CDN externes

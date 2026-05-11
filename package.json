@@ -9,6 +9,8 @@
     "dev:landing": "pnpm --filter @bento-pop/landing dev",
     "dev:admin": "pnpm --filter @bento-pop/admin dev",
     "dev:quiz": "pnpm --filter quiz-wheel dev",
+    "dev:mobile": "pnpm --filter @bento-pop/mobile dev",
+    "dev:mobile:web": "pnpm --filter @bento-pop/mobile dev:web",
     "build:landing": "pnpm --filter @bento-pop/landing build",
     "build:admin": "pnpm --filter @bento-pop/admin build",
     "lint": "turbo run lint",
@@ -26,5 +28,11 @@
     "node": ">=20.11.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "@types/react": "~18.3.12",
+      "@types/react-dom": "~18.3.5"
+    }
+  }
 }

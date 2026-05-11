@@ -1,0 +1,38 @@
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+ios/
+android/
+*.orig.*
+*.jks
+*.p12
+*.key
+*.mobileprovision
+
+# Metro / Watchman
+.metro-health-check*
+
+# Node
+node_modules/
+
+# Caches
+.turbo/
+.cache/
+
+# OS
+.DS_Store
+*.log
+
+# Env
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+
+# Generated
+expo-env.d.ts
+nativewind-env.d.ts
