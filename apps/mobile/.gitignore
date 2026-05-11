@@ -3,6 +3,10 @@
 dist/
 web-build/
 
+# Supabase CLI local state (link, branches, etc.)
+supabase/.temp/
+supabase/.branches/
+
 # Native
 ios/
 android/
