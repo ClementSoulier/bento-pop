@@ -45,6 +45,8 @@ node_modules/
 .vscode/
 .idea/
 
-# Generated
+# Generated (Expo regenerates this on each `expo` command).
 expo-env.d.ts
-nativewind-env.d.ts
+# NB : nativewind-env.d.ts est commité — il déclare le `className` prop
+# pour les composants RN. Sans lui, le typecheck CI plante sur les fichiers
+# qui utilisent NativeWind.
