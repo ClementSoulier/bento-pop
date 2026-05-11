@@ -6,7 +6,7 @@ const STATIC_FALLBACK: AgendaContent = {
   eyebrow: "L'Agenda du Bento",
   title: 'Le Bento pose ses valises',
   description:
-    "On parcourt la France de convention en convention. Retrouvez-nous bientôt près de chez vous !peux",
+    "On parcourt la France de convention en convention. Retrouvez-nous bientôt près de chez vous !",
   events: [
     { id: 'jx-2026',        date: '2026-07-03', title: 'Japan Expo',     place: 'Paris Nord Villepinte',      stand: 'Stand B-12 · Hall 7', status: 'live', statusLabel: 'En direct',     order: 1 },
     { id: 'pm-2026',        date: '2026-09-12', title: 'Paris Manga',    place: 'Porte de Versailles, Paris', stand: 'Stand Pop·14',        status: 'soon', statusLabel: 'Prochainement', order: 2 },
