@@ -1,13 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { BentoGrid, type BentoItems, PALETTES, type PaletteKey } from '@/components/bento';
+import {
+  BentoGrid,
+  type BentoItems,
+  PALETTES,
+  type PaletteKey,
+  ShareImage,
+} from '@/components/bento';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { SHADOWS, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
-import { shareBento } from '@/lib/share';
+import { shareBentoImage } from '@/lib/share-image';
 import type { CategoryKey } from '@/supabase/types';
 import { loadPublicBentoByPseudo } from '@/lib/bento-actions';
 
@@ -30,6 +36,7 @@ const PALETTE_KEYS = Object.keys(PALETTES) as PaletteKey[];
 export default function PublicBento() {
   const { pseudo: rawPseudo } = useLocalSearchParams<{ pseudo: string }>();
   const pseudo = rawPseudo ?? '';
+  const shareImageRef = useRef<View>(null);
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'found'; slots: BentoItems; displayName: string | null; publishedAt: string; isFeatured: boolean }
@@ -109,6 +116,18 @@ export default function PublicBento() {
           <NotFound pseudo={pseudo} />
         ) : (
           <View style={{ flex: 1 }}>
+            {/*
+              ShareImage offscreen — rendue hors-écran (top: -10000) pour que
+              `react-native-view-shot` puisse la capturer en PNG 600×800
+              déclenché par le bouton Partager. `pointerEvents="none"` pour
+              être sûr qu'elle n'intercepte aucun tap.
+            */}
+            <View
+              pointerEvents="none"
+              style={{ position: 'absolute', top: -10000, left: 0 }}
+            >
+              <ShareImage ref={shareImageRef} items={state.slots} pseudo={pseudo} />
+            </View>
             {/* Header profil */}
             <View style={{ alignItems: 'center', paddingTop: 20, paddingBottom: 14 }}>
               <View style={{ position: 'relative' }}>
@@ -215,7 +234,7 @@ export default function PublicBento() {
                 </Pressable>
                 <Pressable
                   onPress={async () => {
-                    const outcome = await shareBento(pseudo);
+                    const outcome = await shareBentoImage(pseudo, shareImageRef);
                     if (outcome === 'copied') {
                       Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
                     } else if (outcome === 'unsupported') {

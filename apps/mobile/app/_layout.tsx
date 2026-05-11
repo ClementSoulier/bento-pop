@@ -6,10 +6,10 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
-import { View } from 'react-native';
 import { queryClient } from '@/lib/query-client';
 import { FONTS } from '@/lib/fonts';
 import { useSession } from '@/state/session';
+import { Splash } from '@/components/Splash';
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
@@ -28,9 +28,10 @@ export default function RootLayout() {
   }, [init]);
 
   if (!fontsLoaded || !initialized) {
-    // Pas d'écran de chargement custom au MVP — l'écran reste sur le splash
-    // natif Expo. À remplacer par un Splash Bento Pop animé en P2.
-    return <View style={{ flex: 1, backgroundColor: '#fbbf24' }} />;
+    // Splash custom (logo + Popy animé) tant que les fonts ne sont pas
+    // chargées ET que la session anonymous n'est pas démarrée. Voilà
+    // ce que l'utilisateur voit pendant ~500ms-2s au boot.
+    return <Splash />;
   }
 
   return (
