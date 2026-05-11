@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { MiniBentoCard } from '@/components/bento';
 import { Sticker, TopChip, YellowBg } from '@/components/primitives';
 import { loadFeaturedBentos } from '@/lib/featured';
+import { useBlocked } from '@/state/blocked';
 
 /**
  * Tab « À la une » : bentos mis en avant par l'équipe Bento Pop.
@@ -21,16 +22,24 @@ import { loadFeaturedBentos } from '@/lib/featured';
  * instantanément (au prochain pull-to-refresh ou changement d'écran).
  */
 export default function FeaturedTab() {
-  const { data: bentos = [], isLoading: loading, isFetching, refetch } = useQuery({
+  const {
+    data: bentos = [],
+    isLoading: loading,
+    isFetching,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ['featured-bentos'],
     queryFn: () => loadFeaturedBentos(12),
   });
 
   const refreshing = isFetching && !loading;
+  const blocked = useBlocked((s) => s.pseudos);
+  const visibleBentos = bentos.filter((b) => !blocked.has(b.pseudo.toLowerCase()));
 
   // Split : 4 premiers en « équipe », le reste en « coups de cœur »
-  const team = bentos.slice(0, 4);
-  const others = bentos.slice(4);
+  const team = visibleBentos.slice(0, 4);
+  const others = visibleBentos.slice(4);
 
   return (
     <YellowBg>
@@ -66,7 +75,9 @@ export default function FeaturedTab() {
             <View style={{ alignItems: 'center', paddingTop: 60 }}>
               <ActivityIndicator size="large" color="#0a0a0a" />
             </View>
-          ) : bentos.length === 0 ? (
+          ) : isError ? (
+            <ErrorState onRetry={() => refetch()} />
+          ) : visibleBentos.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 }}>
               <Text
                 style={{
@@ -166,5 +177,55 @@ export default function FeaturedTab() {
         </ScrollView>
       </SafeAreaView>
     </YellowBg>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 32 }}>
+      <Text
+        style={{
+          fontFamily: 'Extenda',
+          fontSize: 22,
+          textAlign: 'center',
+          letterSpacing: 1,
+        }}
+      >
+        Oups, ça coince
+      </Text>
+      <Text
+        style={{
+          marginTop: 8,
+          fontSize: 13,
+          color: 'rgba(10,10,10,0.65)',
+          textAlign: 'center',
+          lineHeight: 19,
+        }}
+      >
+        On n&apos;arrive pas à charger les bentos. Vérifie ta connexion et réessaie.
+      </Text>
+      <Pressable
+        onPress={onRetry}
+        style={{
+          marginTop: 16,
+          backgroundColor: '#0a0a0a',
+          borderRadius: 999,
+          paddingVertical: 10,
+          paddingHorizontal: 22,
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: 'Bungee',
+            fontSize: 12,
+            letterSpacing: 1,
+            color: '#fbbf24',
+            textTransform: 'uppercase',
+          }}
+        >
+          Réessayer
+        </Text>
+      </Pressable>
+    </View>
   );
 }

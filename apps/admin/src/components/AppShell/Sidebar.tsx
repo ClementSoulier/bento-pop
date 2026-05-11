@@ -29,6 +29,7 @@ const NAV = [
   { id: 'links',     href: '/links',    label: 'Liens & CTAs', Icon: LinkIcon },
   { id: 'team',      href: '/team',     label: 'Team',       Icon: UsersIcon },
   { id: 'bentos',    href: '/bentos',   label: 'Bentos (mobile)', Icon: DashboardIcon },
+  { id: 'reports',   href: '/reports',  label: 'Modération',      Icon: PollIcon },
 ] as const;
 
 const SYSTEM_NAV = [

@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { useSession } from '@/state/session';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { deleteOwnAccount } from '@/lib/bento-actions';
+import { exportUserData } from '@/lib/data-export';
 import { SHADOWS, StampButton, YellowBg } from '@/components/primitives';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
@@ -17,6 +18,19 @@ export default function ProfileTab() {
   const pseudo = profile?.pseudo ?? '';
   const popy = popyForPseudo(pseudo);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const onExport = async () => {
+    if (!userId) return;
+    setExporting(true);
+    try {
+      await exportUserData(userId);
+    } catch (e) {
+      Alert.alert('Export impossible', (e as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const confirmDelete = () => {
     Alert.alert(
@@ -141,6 +155,10 @@ export default function ProfileTab() {
             <ProfileLink
               label="Conditions d'utilisation"
               onPress={() => Linking.openURL(TERMS_URL)}
+            />
+            <ProfileLink
+              label={exporting ? 'Export en cours…' : 'Exporter mes données'}
+              onPress={exporting ? () => {} : onExport}
             />
           </View>
 

@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SHADOWS, TopChip, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { useBlocked } from '@/state/blocked';
 import { supabase } from '@/supabase/client';
 
 type UserHit = {
@@ -33,7 +34,8 @@ export default function SearchTab() {
   const [query, setQuery] = useState('');
   const debounced = useDebouncedValue(query.trim().toLowerCase(), 300);
 
-  const { data: results = [], isFetching: loading } = useQuery({
+  const blocked = useBlocked((s) => s.pseudos);
+  const { data: rawResults = [], isFetching: loading, isError, refetch } = useQuery({
     queryKey: ['user-search', debounced],
     enabled: debounced.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -51,6 +53,8 @@ export default function SearchTab() {
       }));
     },
   });
+
+  const results = rawResults.filter((r) => !blocked.has(r.pseudo.toLowerCase()));
 
   return (
     <YellowBg>
@@ -121,6 +125,41 @@ export default function SearchTab() {
             >
               Tape pour chercher
             </Text>
+          ) : isError ? (
+            <View style={{ alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 }}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: 'rgba(10,10,10,0.65)',
+                  textAlign: 'center',
+                  lineHeight: 19,
+                }}
+              >
+                Recherche indisponible. Vérifie ta connexion.
+              </Text>
+              <Pressable
+                onPress={() => refetch()}
+                style={{
+                  marginTop: 12,
+                  backgroundColor: '#0a0a0a',
+                  borderRadius: 999,
+                  paddingVertical: 8,
+                  paddingHorizontal: 18,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'Bungee',
+                    fontSize: 11,
+                    letterSpacing: 1,
+                    color: '#fbbf24',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Réessayer
+                </Text>
+              </Pressable>
+            </View>
           ) : (
             <FlatList
               data={results}

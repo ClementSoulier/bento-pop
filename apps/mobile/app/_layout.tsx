@@ -9,7 +9,9 @@ import { useEffect } from 'react';
 import { queryClient } from '@/lib/query-client';
 import { FONTS } from '@/lib/fonts';
 import { useSession } from '@/state/session';
+import { useBlocked } from '@/state/blocked';
 import { Splash } from '@/components/Splash';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
@@ -25,6 +27,8 @@ export default function RootLayout() {
       // TODO P2 : surfacer dans une UI d'erreur. Pour le MVP on log.
       console.error('[session.init] failed', err);
     });
+    // Hydrate la liste locale de pseudos bloqués (mute list device).
+    useBlocked.getState().load();
   }, [init]);
 
   if (!fontsLoaded || !initialized) {
@@ -54,6 +58,7 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          <OfflineBanner />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

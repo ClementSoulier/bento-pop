@@ -15,6 +15,7 @@ import { SHADOWS, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { shareBentoImage } from '@/lib/share-image';
 import { submitReport } from '@/lib/report';
+import { useBlocked } from '@/state/blocked';
 import type { CategoryKey } from '@/supabase/types';
 import { loadPublicBentoByPseudo } from '@/lib/bento-actions';
 
@@ -115,52 +116,7 @@ export default function PublicBento() {
             <Text style={{ fontSize: 16, fontWeight: '800' }}>‹</Text>
           </Pressable>
           {state.kind === 'found' ? (
-            <Pressable
-              onPress={() => {
-                Alert.alert(
-                  'Signaler ce bento',
-                  `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirme-tu ?`,
-                  [
-                    { text: 'Annuler', style: 'cancel' },
-                    {
-                      text: 'Signaler',
-                      style: 'destructive',
-                      onPress: async () => {
-                        try {
-                          await submitReport({
-                            targetKind: 'bento',
-                            targetPseudo: pseudo,
-                          });
-                          Alert.alert(
-                            'Merci',
-                            "Notre équipe va examiner ce bento sous 24h.",
-                          );
-                        } catch (e) {
-                          Alert.alert('Oups', (e as Error).message);
-                        }
-                      },
-                    },
-                  ],
-                );
-              }}
-              style={{
-                marginLeft: 'auto',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: 'Bungee',
-                  fontSize: 10,
-                  letterSpacing: 1.5,
-                  color: 'rgba(10,10,10,0.55)',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Signaler
-              </Text>
-            </Pressable>
+            <BlockReportMenu pseudo={pseudo} />
           ) : null}
         </View>
 
@@ -355,6 +311,91 @@ function NotFound({ pseudo }: { pseudo: string }) {
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/**
+ * Menu d'actions modération sur le bento d'autrui : Signaler + Bloquer
+ * (ou Débloquer si déjà mute). Le block est purement local au device
+ * (AsyncStorage via `useBlocked`), pas notifié au backend.
+ */
+function BlockReportMenu({ pseudo }: { pseudo: string }) {
+  const isBlocked = useBlocked((s) => s.isBlocked(pseudo));
+  const block = useBlocked((s) => s.block);
+  const unblock = useBlocked((s) => s.unblock);
+
+  const onPress = () => {
+    const options: Array<{ text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }> = [
+      {
+        text: 'Signaler ce bento',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            'Signaler ce bento',
+            `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirme-tu ?`,
+            [
+              { text: 'Annuler', style: 'cancel' },
+              {
+                text: 'Signaler',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await submitReport({ targetKind: 'bento', targetPseudo: pseudo });
+                    Alert.alert('Merci', 'Notre équipe va examiner ce bento sous 24h.');
+                  } catch (e) {
+                    Alert.alert('Oups', (e as Error).message);
+                  }
+                },
+              },
+            ],
+          );
+        },
+      },
+    ];
+    if (isBlocked) {
+      options.push({
+        text: `Débloquer @${pseudo}`,
+        onPress: () => unblock(pseudo),
+      });
+    } else {
+      options.push({
+        text: `Bloquer @${pseudo}`,
+        onPress: () =>
+          Alert.alert(
+            'Bloquer cet utilisateur ?',
+            "Tu ne verras plus son bento dans À la une ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.",
+            [
+              { text: 'Annuler', style: 'cancel' },
+              {
+                text: 'Bloquer',
+                style: 'destructive',
+                onPress: () => block(pseudo),
+              },
+            ],
+          ),
+      });
+    }
+    options.push({ text: 'Annuler', style: 'cancel' });
+    Alert.alert(`Options pour @${pseudo}`, undefined, options);
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{ marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6 }}
+    >
+      <Text
+        style={{
+          fontFamily: 'Bungee',
+          fontSize: 10,
+          letterSpacing: 1.5,
+          color: 'rgba(10,10,10,0.55)',
+          textTransform: 'uppercase',
+        }}
+      >
+        Options
+      </Text>
+    </Pressable>
+  );
 }
 
 // Suppress unused import (CATEGORY_META gardé pour cohérence future)
