@@ -21,7 +21,7 @@ import { SHADOWS } from '@/components/primitives/shadow';
 import type { CategoryKey } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
-import { ensureBento, setBentoSlot, upsertItem } from '@/lib/bento-actions';
+import { clearBentoSlot, ensureBento, setBentoSlot, upsertItem } from '@/lib/bento-actions';
 
 /**
  * Modal de recherche d'un item pour une catégorie donnée.
@@ -46,6 +46,9 @@ export default function SearchModal() {
 
   const userId = useSession((s) => s.user?.id);
   const setSlot = useBento((s) => s.setSlot);
+  const clearSlot = useBento((s) => s.clearSlot);
+  const currentSlot = useBento((s) => s.slots[category]);
+  const slotIsFilled = Boolean(currentSlot);
 
   // Debounce 400ms
   useEffect(() => {
@@ -98,6 +101,34 @@ export default function SearchModal() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const onClear = () => {
+    if (!userId || !slotIsFilled) return;
+    Alert.alert(
+      'Vider cette case ?',
+      `Tu peux la remplir à nouveau à tout moment.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Vider',
+          style: 'destructive',
+          onPress: async () => {
+            setSubmitting(true);
+            try {
+              const bentoId = await ensureBento(userId);
+              await clearBentoSlot(bentoId, category);
+              clearSlot(category);
+              router.back();
+            } catch (e) {
+              Alert.alert('Oups', (e as Error).message);
+            } finally {
+              setSubmitting(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -301,12 +332,38 @@ export default function SearchModal() {
         />
       </View>
 
-      {/* Bouton confirmer */}
-      {selected ? (
-        <View style={{ padding: 16, paddingBottom: 24 }}>
-          <StampButton wide disabled={submitting} onPress={onConfirm}>
-            {submitting ? 'Sauvegarde…' : `Choisir ${truncate(selected.title, 24)}`}
-          </StampButton>
+      {/* Boutons d'action bas — confirmer (si sélection) + vider (si slot rempli) */}
+      {selected || slotIsFilled ? (
+        <View style={{ padding: 16, paddingBottom: 24, gap: 8 }}>
+          {selected ? (
+            <StampButton wide disabled={submitting} onPress={onConfirm}>
+              {submitting ? 'Sauvegarde…' : `Choisir ${truncate(selected.title, 24)}`}
+            </StampButton>
+          ) : null}
+          {slotIsFilled ? (
+            <Pressable
+              onPress={onClear}
+              disabled={submitting}
+              style={{
+                alignSelf: 'center',
+                paddingVertical: 8,
+                paddingHorizontal: 14,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: 'Bungee',
+                  fontSize: 12,
+                  letterSpacing: 1,
+                  color: '#e63946',
+                  textTransform: 'uppercase',
+                  textDecorationLine: 'underline',
+                }}
+              >
+                Vider cette case
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </SafeAreaView>

@@ -113,6 +113,22 @@ export async function publishBento(bentoId: string): Promise<void> {
 }
 
 /**
+ * Vide une case du bento : supprime la ligne `bento_items` pour la
+ * catégorie donnée. L'item lui-même reste dans le catalogue mutualisé.
+ */
+export async function clearBentoSlot(
+  bentoId: string,
+  category: CategoryKey,
+): Promise<void> {
+  const { error } = await supabase
+    .from('bento_items')
+    .delete()
+    .eq('bento_id', bentoId)
+    .eq('category_id', CATEGORY_IDS[category]);
+  if (error) throw new Error(`Clear slot failed: ${error.message}`);
+}
+
+/**
  * Charge le bento de l'utilisateur (slots + items joints) pour hydrater le
  * store local au démarrage.
  */
