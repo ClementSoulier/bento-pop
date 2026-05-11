@@ -6,7 +6,6 @@ import { router } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
 import { StampButton, YellowBg } from '@/components/primitives';
-import { SHADOWS } from '@/components/primitives/shadow';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { ensureBento, publishBento } from '@/lib/bento-actions';
@@ -57,27 +56,6 @@ export default function ComposeTab() {
           }}
         >
           <Image source={logo} style={{ height: 24, width: 110 }} resizeMode="contain" />
-          <View
-            style={{ marginLeft: 'auto', flexDirection: 'row', gap: 8, alignItems: 'center' }}
-          >
-            <View
-              style={[
-                {
-                  backgroundColor: '#ffffff',
-                  borderWidth: 2.5,
-                  borderColor: '#0a0a0a',
-                  borderRadius: 999,
-                  width: 36,
-                  height: 36,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-                SHADOWS.stamp,
-              ]}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '800' }}>≡</Text>
-            </View>
-          </View>
         </View>
 
         {/* Header pseudo + titre + progress */}
