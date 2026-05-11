@@ -2,7 +2,7 @@
   "name": "@bento-pop/mobile",
   "version": "0.0.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "./index.js",
   "scripts": {
     "dev": "expo start --dev-client",
     "dev:web": "expo start --web",
