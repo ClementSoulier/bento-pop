@@ -13,6 +13,7 @@
   "dependencies": {
     "@bento-pop/brand": "workspace:*",
     "@bento-pop/supabase": "workspace:*",
+    "@bento-pop/supabase-mobile": "workspace:*",
     "@bento-pop/ui": "workspace:*",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-dialog": "^1.1.4",

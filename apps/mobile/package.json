@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@bento-pop/brand": "workspace:*",
+    "@bento-pop/supabase-mobile": "workspace:*",
     "@expo-google-fonts/bungee": "^0.2.3",
     "@expo-google-fonts/fredoka": "^0.2.3",
     "@expo/metro-runtime": "~4.0.1",

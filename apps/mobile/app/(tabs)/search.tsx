@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { SHADOWS, TopChip, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { supabase } from '@/supabase/client';
 
 type UserHit = {
@@ -23,38 +25,32 @@ type UserHit = {
 /**
  * Tab « Trouver » : recherche live d'un user par pseudo (préfixe).
  * Cf. design Claude Design — `SearchScreen` dans `screens.jsx`.
+ *
+ * Cache : 5 min sur (prefix). Une recherche déjà tapée et retapée plus
+ * tard ne refait pas l'aller-retour Supabase.
  */
 export default function SearchTab() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<UserHit[]>([]);
-  const [loading, setLoading] = useState(false);
+  const debounced = useDebouncedValue(query.trim().toLowerCase(), 300);
 
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 1) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const t = setTimeout(async () => {
+  const { data: results = [], isFetching: loading } = useQuery({
+    queryKey: ['user-search', debounced],
+    enabled: debounced.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<UserHit[]> => {
       const { data } = await supabase
         .from('users')
         .select('id, pseudo, display_name')
-        .ilike('pseudo', `${q}%`)
+        .ilike('pseudo', `${debounced}%`)
         .order('pseudo', { ascending: true })
         .limit(12);
-      setResults(
-        (data ?? []).map((u) => ({
-          id: u.id,
-          pseudo: u.pseudo,
-          displayName: u.display_name,
-        })),
-      );
-      setLoading(false);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [query]);
+      return (data ?? []).map((u) => ({
+        id: u.id,
+        pseudo: u.pseudo,
+        displayName: u.display_name,
+      }));
+    },
+  });
 
   return (
     <YellowBg>

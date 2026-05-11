@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,12 +12,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { searchByCategory } from '@/api/search';
 import type { SearchResult } from '@/api/types';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
 import { StampButton } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
+import { EXTERNAL_SEARCH_STALE_TIME } from '@/lib/query-client';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
@@ -39,8 +42,6 @@ export default function SearchModal() {
   const meta = CATEGORY_META[category];
 
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<SearchResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -50,27 +51,16 @@ export default function SearchModal() {
   const currentSlot = useBento((s) => s.slots[category]);
   const slotIsFilled = Boolean(currentSlot);
 
-  // Debounce 400ms
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        const res = await searchByCategory(category, query);
-        setResults(res);
-      } catch (e) {
-        console.warn('[search]', e);
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [query, category]);
+  // Debounce 400ms : respecte les rate-limits MB / Nominatim (1 req/s) et
+  // évite de spammer TMDb. La query key change uniquement après pause.
+  const debouncedQuery = useDebouncedValue(query.trim(), 400);
+
+  const { data: results = [], isFetching: loading } = useQuery({
+    queryKey: ['search', category, debouncedQuery],
+    queryFn: () => searchByCategory(category, debouncedQuery),
+    enabled: debouncedQuery.length > 0,
+    staleTime: EXTERNAL_SEARCH_STALE_TIME,
+  });
 
   // Choix par défaut d'une palette à la sélection (cycle simple).
   const paletteForResult = useMemo(() => {

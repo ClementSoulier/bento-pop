@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,33 +8,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { MiniBentoCard } from '@/components/bento';
 import { Sticker, TopChip, YellowBg } from '@/components/primitives';
-import { loadFeaturedBentos, type FeaturedBento } from '@/lib/featured';
+import { loadFeaturedBentos } from '@/lib/featured';
 
 /**
  * Tab « À la une » : bentos mis en avant par l'équipe Bento Pop.
  * Cf. design Claude Design — `FeaturedScreen` dans `screens.jsx`.
+ *
+ * Cache : staleTime 60s — un featured ajouté côté BO est visible quasi-
+ * instantanément (au prochain pull-to-refresh ou changement d'écran).
  */
 export default function FeaturedTab() {
-  const [bentos, setBentos] = useState<FeaturedBento[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data: bentos = [], isLoading: loading, isFetching, refetch } = useQuery({
+    queryKey: ['featured-bentos'],
+    queryFn: () => loadFeaturedBentos(12),
+  });
 
-  const fetch = useCallback(async () => {
-    const data = await loadFeaturedBentos(12);
-    setBentos(data);
-  }, []);
-
-  useEffect(() => {
-    fetch().finally(() => setLoading(false));
-  }, [fetch]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetch();
-    setRefreshing(false);
-  }, [fetch]);
+  const refreshing = isFetching && !loading;
 
   // Split : 4 premiers en « équipe », le reste en « coups de cœur »
   const team = bentos.slice(0, 4);
@@ -47,7 +38,7 @@ export default function FeaturedTab() {
         <ScrollView
           contentContainerStyle={{ paddingBottom: 120 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a0a0a" />
+            <RefreshControl refreshing={refreshing} onRefresh={refetch} tintColor="#0a0a0a" />
           }
         >
           <View style={{ paddingTop: 8 }}>
