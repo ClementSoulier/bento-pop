@@ -135,3 +135,36 @@ export async function loadOwnBento(userId: string) {
   if (error) throw new Error(`Bento load failed: ${error.message}`);
   return data;
 }
+
+/**
+ * Charge un bento publié par pseudo (lecture publique via RLS).
+ * Retourne `null` si le pseudo n'existe pas ou si le bento n'est pas publié.
+ */
+export async function loadPublicBentoByPseudo(pseudo: string) {
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, pseudo, display_name, created_at')
+    .ilike('pseudo', pseudo)
+    .maybeSingle();
+  if (!user) return null;
+
+  const { data: bento } = await supabase
+    .from('bentos')
+    .select(
+      `
+      id,
+      published_at,
+      is_featured,
+      bento_items (
+        category_id,
+        items ( id, title, subtitle, year, image_url, external_source, external_id )
+      )
+      `,
+    )
+    .eq('user_id', user.id)
+    .not('published_at', 'is', null)
+    .maybeSingle();
+  if (!bento) return null;
+
+  return { user, bento };
+}
