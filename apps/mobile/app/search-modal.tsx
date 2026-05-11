@@ -55,7 +55,11 @@ export default function SearchModal() {
   // évite de spammer TMDb. La query key change uniquement après pause.
   const debouncedQuery = useDebouncedValue(query.trim(), 400);
 
-  const { data: results = [], isFetching: loading } = useQuery({
+  const {
+    data: results = [],
+    isFetching: loading,
+    error,
+  } = useQuery({
     queryKey: ['search', category, debouncedQuery],
     queryFn: () => searchByCategory(category, debouncedQuery),
     enabled: debouncedQuery.length > 0,
@@ -211,9 +215,30 @@ export default function SearchModal() {
           {results.length > 0
             ? `${results.length} résultats`
             : query.trim()
-            ? 'Aucun résultat'
+            ? error
+              ? 'Erreur API'
+              : loading
+              ? 'Recherche…'
+              : 'Aucun résultat'
             : 'Tape pour chercher'}
         </Text>
+        {error ? (
+          <View
+            style={{
+              marginHorizontal: 4,
+              marginBottom: 10,
+              padding: 12,
+              borderRadius: 10,
+              backgroundColor: 'rgba(230,57,70,0.1)',
+              borderWidth: 1.5,
+              borderColor: '#e63946',
+            }}
+          >
+            <Text style={{ fontSize: 12, color: '#e63946', lineHeight: 17 }}>
+              {(error as Error).message}
+            </Text>
+          </View>
+        ) : null}
         <FlatList
           data={results}
           keyExtractor={(r) => `${r.source}:${r.externalId}`}

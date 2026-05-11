@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Image, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
@@ -27,6 +28,10 @@ export default function ComposeTab() {
   const filled = Object.keys(slots).length;
   const allFilled = filled === 6;
   const [publishing, setPublishing] = useState(false);
+  // La tab bar Expo Router est en overlay au-dessus de notre SafeArea.
+  // On compense sa hauteur dans le padding sticky-bottom pour que le CTA
+  // soit toujours visible au-dessus du tab bar.
+  const tabBarHeight = useBottomTabBarHeight();
 
   const onPublish = async () => {
     if (!userId || !allFilled) return;
@@ -117,13 +122,13 @@ export default function ComposeTab() {
           />
         </View>
 
-        {/* Sticky CTA bottom */}
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+        {/* Sticky CTA bottom — décalé au-dessus du tab bar Expo Router */}
+        <View style={{ position: 'absolute', bottom: tabBarHeight, left: 0, right: 0 }}>
           <LinearGradient
             colors={['rgba(251,191,36,0)', '#fbbf24']}
             style={{ position: 'absolute', inset: 0 }}
           />
-          <View style={{ padding: 16, paddingBottom: 32 }}>
+          <View style={{ padding: 16, paddingBottom: 16 }}>
             <StampButton
               wide
               disabled={filled === 0 || publishing}

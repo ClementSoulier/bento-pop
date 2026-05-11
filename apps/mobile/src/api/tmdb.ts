@@ -18,21 +18,36 @@ const POSTER_SIZE = 'w500';
 
 function token(): string {
   const t = Constants.expoConfig?.extra?.TMDB_TOKEN as string | undefined;
-  if (!t) throw new Error('Missing EXPO_PUBLIC_TMDB_TOKEN (set in apps/mobile/.env)');
+  if (!t) {
+    throw new Error(
+      'Token TMDb manquant. Vérifier EXPO_PUBLIC_TMDB_TOKEN dans EAS env (ou .env local).',
+    );
+  }
   return t;
 }
 
 async function tmdbFetch<T>(path: string, params: Record<string, string>): Promise<T> {
   const url = new URL(`${BASE}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${token()}`,
-      accept: 'application/json',
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${token()}`,
+        accept: 'application/json',
+      },
+    });
+  } catch (e) {
+    throw new Error(`Réseau TMDb : ${(e as Error).message}`);
+  }
   if (!res.ok) {
-    throw new Error(`TMDb ${path} failed: ${res.status}`);
+    if (res.status === 401) {
+      throw new Error('TMDb 401 — token invalide ou révoqué');
+    }
+    if (res.status === 429) {
+      throw new Error('TMDb 429 — limite requêtes atteinte');
+    }
+    throw new Error(`TMDb ${path} → HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
 }

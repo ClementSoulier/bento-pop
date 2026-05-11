@@ -165,22 +165,24 @@ export default function PublicBento() {
                   <View
                     style={{
                       position: 'absolute',
-                      bottom: -2,
-                      right: -8,
+                      bottom: -4,
+                      right: -4,
+                      width: 26,
+                      height: 26,
+                      borderRadius: 13,
                       backgroundColor: '#e63946',
-                      borderWidth: 2,
+                      borderWidth: 2.5,
                       borderColor: '#0a0a0a',
-                      borderRadius: 999,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     <Text
                       style={{
-                        fontFamily: 'Bungee',
-                        fontSize: 9,
-                        letterSpacing: 1,
                         color: '#ffffff',
+                        fontSize: 14,
+                        lineHeight: 16,
+                        fontWeight: '800',
                       }}
                     >
                       ★
