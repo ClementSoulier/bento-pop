@@ -32,7 +32,7 @@ export function GET() {
   return NextResponse.json(body, {
     headers: {
       'content-type': 'application/json',
-      'cache-control': 'public, max-age=300',
+      'cache-control': 'no-store',
     },
   });
 }
