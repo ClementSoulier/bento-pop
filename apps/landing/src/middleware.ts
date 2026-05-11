@@ -22,5 +22,13 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: '/((?!api|_next|.*\\..*).*)',
+  // Routes exclues du middleware (donc pas de Set-Cookie posé) :
+  //   - api      : API routes
+  //   - _next    : assets internes Next.js
+  //   - icon, apple-icon, opengraph-image : routes metadata Next.js servant
+  //     des PNG dynamiques. Inutile d'y poser le cookie de vote — et certains
+  //     crawlers (Bingbot notamment) sont chatouilleux quand un fetch d'image
+  //     retourne un Set-Cookie non sollicité.
+  //   - .*\..*  : fichiers statiques (favicon.ico, manifest.webmanifest, etc.)
+  matcher: '/((?!api|_next|icon|apple-icon|opengraph-image|.*\\..*).*)',
 };
