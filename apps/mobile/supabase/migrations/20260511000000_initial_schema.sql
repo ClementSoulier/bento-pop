@@ -6,6 +6,7 @@
 
 -- ─── 1. Extensions ────────────────────────────────────────────────────
 create extension if not exists "uuid-ossp" with schema extensions;
+create extension if not exists pg_trgm with schema extensions;
 
 -- ─── 2. Trigger générique updated_at ──────────────────────────────────
 create or replace function public.touch_updated_at()
@@ -70,10 +71,11 @@ create table public.items (
 );
 
 create index items_category_idx on public.items (category_id);
-create index items_title_trgm_idx on public.items using gin (title gin_trgm_ops);
-
--- Trigram pour la recherche fuzzy (« inception 2010 » → trouve "Inception (2010)")
-create extension if not exists pg_trgm with schema extensions;
+-- Index trigram pour la recherche fuzzy (« inception 2010 » → trouve "Inception (2010)").
+-- `extensions.gin_trgm_ops` qualifié car `pg_trgm` vit dans le schéma `extensions`
+-- chez Supabase, et le search_path par défaut ne l'inclut pas toujours en
+-- contexte migration.
+create index items_title_trgm_idx on public.items using gin (title extensions.gin_trgm_ops);
 
 comment on table public.items is
   'Catalogue d''items issu des APIs externes (TMDb, MusicBrainz, etc.) ou manuel. Mutualisé : tous les users peuvent référencer un même item.';
