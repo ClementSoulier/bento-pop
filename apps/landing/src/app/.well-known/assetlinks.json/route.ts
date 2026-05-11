@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-static';
+// `force-dynamic` : lit ANDROID_SHA256_FINGERPRINT à chaque requête,
+// pour pouvoir provisionner la var côté hébergeur sans redéployer.
+export const dynamic = 'force-dynamic';
 
 /**
  * Digital Asset Links — Android App Links.

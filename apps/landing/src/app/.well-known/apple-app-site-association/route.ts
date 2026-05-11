@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-static';
+// `force-dynamic` : on lit APPLE_TEAM_ID à chaque requête (pas figé au build),
+// pour pouvoir provisionner la var côté hébergeur sans redéployer la landing.
+export const dynamic = 'force-dynamic';
 
 /**
  * Apple App Site Association (AASA) — Universal Links iOS.
