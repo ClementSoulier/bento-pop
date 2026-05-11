@@ -31,6 +31,13 @@ type SessionState = {
   refreshProfile: () => Promise<void>;
   /** Met à jour le profil local après création / update via UI. */
   setProfile: (profile: Profile | null) => void;
+  /**
+   * Réinitialise complètement : signOut Supabase + reset stores +
+   * relance un anonymous sign-in (nouveau UUID, profil vide).
+   * Utilisé après une suppression de compte → l'utilisateur repart
+   * de zéro comme au 1er lancement.
+   */
+  resetAndReinit: () => Promise<void>;
 };
 
 export const useSession = create<SessionState>((set, get) => ({
@@ -81,6 +88,15 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   setProfile: (profile) => set({ profile }),
+
+  resetAndReinit: async () => {
+    // Sign-out → onAuthStateChange clear session, user, profile
+    await supabase.auth.signOut();
+    useBento.getState().reset();
+    set({ session: null, user: null, profile: null, initialized: false });
+    // Relance un anonymous sign-in propre → nouveau auth.uid
+    await get().init();
+  },
 }));
 
 /**

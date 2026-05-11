@@ -113,6 +113,22 @@ export async function publishBento(bentoId: string): Promise<void> {
 }
 
 /**
+ * Supprime le compte de l'utilisateur (Apple guideline 5.1.1(v)).
+ *
+ * DELETE public.users → cascade automatique vers `bentos` puis
+ * `bento_items` (configurés ON DELETE CASCADE dans la migration initiale).
+ * L'utilisateur n'a plus aucune donnée publique liée.
+ *
+ * Note : `auth.users` reste orphelin (anonymous) mais sans aucune info
+ * perso stockée dessus → conforme Apple. Le caller doit ensuite signOut
+ * et reset les stores locaux pour repartir sur un état propre.
+ */
+export async function deleteOwnAccount(userId: string): Promise<void> {
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+  if (error) throw new Error(`Account deletion failed: ${error.message}`);
+}
+
+/**
  * Vide une case du bento : supprime la ligne `bento_items` pour la
  * catégorie donnée. L'item lui-même reste dans le catalogue mutualisé.
  */

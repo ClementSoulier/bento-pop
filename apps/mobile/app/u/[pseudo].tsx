@@ -14,6 +14,7 @@ import { CATEGORY_META } from '@/components/bento/categories';
 import { SHADOWS, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { shareBentoImage } from '@/lib/share-image';
+import { submitReport } from '@/lib/report';
 import type { CategoryKey } from '@/supabase/types';
 import { loadPublicBentoByPseudo } from '@/lib/bento-actions';
 
@@ -86,8 +87,15 @@ export default function PublicBento() {
   return (
     <YellowBg>
       <SafeAreaView style={{ flex: 1 }}>
-        {/* Top bar : retour seulement */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 8 }}>
+        {/* Top bar : retour + signaler */}
+        <View
+          style={{
+            flexDirection: 'row',
+            paddingHorizontal: 16,
+            paddingTop: 8,
+            alignItems: 'center',
+          }}
+        >
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/compose'))}
             style={[
@@ -106,6 +114,54 @@ export default function PublicBento() {
           >
             <Text style={{ fontSize: 16, fontWeight: '800' }}>‹</Text>
           </Pressable>
+          {state.kind === 'found' ? (
+            <Pressable
+              onPress={() => {
+                Alert.alert(
+                  'Signaler ce bento',
+                  `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirme-tu ?`,
+                  [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                      text: 'Signaler',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await submitReport({
+                            targetKind: 'bento',
+                            targetPseudo: pseudo,
+                          });
+                          Alert.alert(
+                            'Merci',
+                            "Notre équipe va examiner ce bento sous 24h.",
+                          );
+                        } catch (e) {
+                          Alert.alert('Oups', (e as Error).message);
+                        }
+                      },
+                    },
+                  ],
+                );
+              }}
+              style={{
+                marginLeft: 'auto',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: 'Bungee',
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  color: 'rgba(10,10,10,0.55)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Signaler
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {state.kind === 'loading' ? (

@@ -8,6 +8,12 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "backgroundColor": "#fbbf24",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#fbbf24"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.bentopop.mobile"
@@ -15,12 +21,14 @@
     "android": {
       "package": "com.bentopop.mobile",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#fbbf24"
       }
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",

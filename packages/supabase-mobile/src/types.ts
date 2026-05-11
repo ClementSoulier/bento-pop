@@ -149,6 +149,45 @@ export type Database = {
           },
         ];
       };
+      reports: {
+        Row: {
+          id: string;
+          reporter_id: string | null;
+          target_kind: 'bento' | 'pseudo';
+          target_pseudo: string;
+          target_bento_id: string | null;
+          reason: string | null;
+          status: 'pending' | 'reviewed' | 'dismissed';
+          created_at: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+        };
+        Insert: {
+          reporter_id?: string | null;
+          target_kind: 'bento' | 'pseudo';
+          target_pseudo: string;
+          target_bento_id?: string | null;
+          reason?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['reports']['Row']>;
+        Relationships: [];
+      };
+      blocked_pseudo_patterns: {
+        Row: {
+          id: number;
+          pattern: string;
+          label: string;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          pattern: string;
+          label: string;
+          is_active?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['blocked_pseudo_patterns']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: { [_: string]: never };
     Functions: { [_: string]: never };
