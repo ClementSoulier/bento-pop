@@ -23,10 +23,11 @@ export function EmptyTile({ cat, height, rotate = 0, onPress }: EmptyTileProps) 
       style={{
         height,
         width: '100%',
-        backgroundColor: 'rgba(10,10,10,0.04)',
+        // Tint jaune léger pour bien se détacher du cream de la BentoFrame
+        backgroundColor: '#fff4d8',
         borderWidth: 2,
         borderStyle: 'dashed',
-        borderColor: 'rgba(10,10,10,0.28)',
+        borderColor: 'rgba(10,10,10,0.45)',
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
@@ -37,22 +38,24 @@ export function EmptyTile({ cat, height, rotate = 0, onPress }: EmptyTileProps) 
     >
       <View
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: 'rgba(10,10,10,0.08)',
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: '#fbbf24',
+          borderWidth: 2,
+          borderColor: '#0a0a0a',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(10,10,10,0.55)' }}>+</Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: '#0a0a0a', lineHeight: 22 }}>+</Text>
       </View>
       <Text
         style={{
           fontFamily: 'Bungee',
           fontSize: 10,
           letterSpacing: 1.2,
-          color: 'rgba(10,10,10,0.55)',
+          color: '#0a0a0a',
           textTransform: 'uppercase',
         }}
       >

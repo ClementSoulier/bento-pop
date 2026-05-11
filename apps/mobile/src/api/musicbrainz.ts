@@ -11,7 +11,6 @@ import type { SearchResult } from './types';
  */
 
 const BASE = 'https://musicbrainz.org/ws/2';
-const COVER_BASE = 'https://coverartarchive.org';
 const USER_AGENT = 'BentoPop/0.1 (https://bento-pop.com)';
 
 async function mbFetch<T>(path: string, params: Record<string, string>): Promise<T> {
@@ -70,8 +69,13 @@ type MBRecording = {
 
 /**
  * Recherche chanson (recording). MusicBrainz distingue recording / release /
- * release-group. On utilise `recording` (= morceau enregistré). L'image
- * vient du release-group via coverartarchive.org.
+ * release-group. On utilise `recording` (= morceau enregistré).
+ *
+ * Cover art : on NE retourne PAS d'image. CoverArtArchive renvoie 500 pour
+ * la majorité des releases (cover absente) → bruit console massif + UX dégradée
+ * avec un effet « image cassée ». À la place, on tombe sur le fallback
+ * gradient palette (qui est on-brand et plus joli). Ré-investir en P3 si on
+ * fait des cover-art enrichis via release-group ou Spotify/Deezer.
  */
 export async function searchTracks(query: string): Promise<SearchResult[]> {
   if (!query.trim()) return [];
@@ -89,10 +93,7 @@ export async function searchTracks(query: string): Promise<SearchResult[]> {
       title: r.title,
       subtitle: [artist, year].filter(Boolean).join(' · ') || undefined,
       year,
-      // Cover art : on tente release-group du premier release (best effort).
-      // Comme c'est une requête supplémentaire, on l'ajoute paresseusement
-      // côté UI avec un Image fallback en cas de 404.
-      imageUrl: release ? `${COVER_BASE}/release/${release.id}/front-250` : undefined,
+      imageUrl: undefined,
       raw: { type: 'recording', artist, ...r },
     };
   });

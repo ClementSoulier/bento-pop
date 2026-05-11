@@ -1,7 +1,9 @@
 import { View } from 'react-native';
+import type { ViewStyle } from 'react-native';
 import type { CategoryKey } from '@/supabase/types';
 import { EmptyTile } from './EmptyTile';
 import { Tile, type TileData } from './Tile';
+import { SHADOWS } from '@/components/primitives/shadow';
 
 export type BentoItems = Partial<Record<CategoryKey, TileData>>;
 
@@ -22,16 +24,19 @@ type BentoGridProps = {
  *   Row 2 : Série + Artiste (mid)
  *   Row 3 : Chanson + Créateur + Lieu (small)
  *
- * Cf. design Claude Design — `BentoGrid` dans `bento-tiles.jsx`.
- *
- * Largeur dictée par le parent (le composant prend `width: 100%`), seules
- * les hauteurs varient avec `scale`.
+ * Container : fond crème + bordure ink épaisse + 4 rivets noirs dans les
+ * coins, comme le hero de la landing (`BentoFrame`). Les compartiments
+ * restent posés à l'intérieur sans gap noir gênant, et les EmptyTiles sont
+ * visibles sur le fond crème.
  */
 export function BentoGrid({ items, scale = 1, empty = false, onTap }: BentoGridProps) {
   const H_FILM = 220 * scale;
   const H_MID = 134 * scale;
   const H_SM = 100 * scale;
-  const GAP = 8 * scale;
+  const GAP = 10 * scale;
+  const PAD = 14 * scale;
+  const BORDER = Math.max(3, Math.round(5 * scale));
+  const RADIUS = 28 * scale;
 
   const renderTile = (cat: CategoryKey, height: number, size: 'sm' | 'md' | 'lg', rotate: number) => {
     const item = items[cat];
@@ -59,15 +64,25 @@ export function BentoGrid({ items, scale = 1, empty = false, onTap }: BentoGridP
 
   return (
     <View
-      style={{
-        backgroundColor: '#0a0a0a',
-        borderRadius: 24,
-        padding: GAP * 1.5,
-        borderWidth: 2.5 * scale,
-        borderColor: '#0a0a0a',
-        gap: GAP,
-      }}
+      style={[
+        {
+          backgroundColor: '#fbf3de',
+          borderRadius: RADIUS,
+          padding: PAD,
+          borderWidth: BORDER,
+          borderColor: '#0a0a0a',
+          gap: GAP,
+          position: 'relative',
+        },
+        SHADOWS.stampLg,
+      ]}
     >
+      {/* Rivets noirs dans les coins, style « baguettes » de la BentoFrame landing */}
+      <Rivet position="tl" />
+      <Rivet position="tr" />
+      <Rivet position="bl" />
+      <Rivet position="br" />
+
       {/* Row 1 — Film big */}
       <View>{renderTile('film', H_FILM, 'lg', -0.5)}</View>
 
@@ -85,4 +100,22 @@ export function BentoGrid({ items, scale = 1, empty = false, onTap }: BentoGridP
       </View>
     </View>
   );
+}
+
+/** Rivet noir façon « baguette » dans un coin de la frame. */
+function Rivet({ position }: { position: 'tl' | 'tr' | 'bl' | 'br' }) {
+  const SIZE = 8;
+  const OFFSET = 8;
+  const style: ViewStyle = {
+    position: 'absolute',
+    width: SIZE,
+    height: SIZE,
+    borderRadius: SIZE / 2,
+    backgroundColor: '#0a0a0a',
+  };
+  if (position === 'tl') { style.top = OFFSET; style.left = OFFSET; }
+  if (position === 'tr') { style.top = OFFSET; style.right = OFFSET; }
+  if (position === 'bl') { style.bottom = OFFSET; style.left = OFFSET; }
+  if (position === 'br') { style.bottom = OFFSET; style.right = OFFSET; }
+  return <View pointerEvents="none" style={style} />;
 }

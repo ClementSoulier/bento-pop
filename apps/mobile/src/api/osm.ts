@@ -12,6 +12,28 @@ import type { SearchResult } from './types';
 const BASE = 'https://nominatim.openstreetmap.org/search';
 const USER_AGENT = 'BentoPop/0.1 (https://bento-pop.com)';
 
+/**
+ * Types de lieux pertinents pour un « lieu de voyage ». Nominatim renvoie
+ * un `type` granulaire (city, town, village, country, state, region…).
+ * On garde les niveaux pertinents et on ignore les rues, bâtiments, POI.
+ */
+const RELEVANT_TYPES: ReadonlySet<string> = new Set([
+  'country',
+  'state',
+  'region',
+  'province',
+  'county',
+  'city',
+  'town',
+  'village',
+  'hamlet',
+  'island',
+  'municipality',
+  'administrative',
+  'capital',
+  'archipelago',
+]);
+
 type NominatimHit = {
   place_id: number;
   osm_id: number;
@@ -32,9 +54,10 @@ export async function searchPlaces(query: string): Promise<SearchResult[]> {
   url.searchParams.set('q', query.trim());
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('accept-language', 'fr');
-  url.searchParams.set('limit', '12');
-  // On veut surtout des villes / pays / régions, pas des restaurants
-  url.searchParams.set('featuretype', 'city');
+  url.searchParams.set('limit', '20');
+  // Pas de `featuretype=city` : trop restrictif, exclut « Angers »
+  // (matché OSM `place=city` mais pas comme « city » au sens du filtre
+  // Nominatim qui s'attend à un addresstype particulier).
 
   const res = await fetch(url.toString(), {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
@@ -43,7 +66,13 @@ export async function searchPlaces(query: string): Promise<SearchResult[]> {
   const data = (await res.json()) as NominatimHit[];
 
   return data
-    .filter((h) => h.class === 'boundary' || h.class === 'place')
+    .filter((h) => {
+      // On garde si le type OU l'addresstype matche un niveau pertinent.
+      const t = h.type ?? '';
+      const at = h.addresstype ?? '';
+      return RELEVANT_TYPES.has(t) || RELEVANT_TYPES.has(at);
+    })
+    .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0))
     .slice(0, 12)
     .map((h) => {
       const parts = h.display_name.split(',').map((s) => s.trim());
@@ -55,7 +84,7 @@ export async function searchPlaces(query: string): Promise<SearchResult[]> {
         source: 'osm' as const,
         title,
         subtitle,
-        imageUrl: undefined, // OSM n'a pas de photos ; P3 → on tirera depuis Commons via le QID Wikidata si présent
+        imageUrl: undefined,
         raw: h,
       };
     });
