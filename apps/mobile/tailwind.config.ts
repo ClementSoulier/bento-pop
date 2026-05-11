@@ -10,6 +10,11 @@ const config: Config = {
   // NOTE: `presets: [require('nativewind/preset'), tailwindPreset]` —
   // l'ordre compte, nativewind d'abord puis le preset brand par-dessus.
   presets: [require('nativewind/preset'), tailwindPreset as Config],
+  // `class` (au lieu du défaut `media`) : autorise un set manuel du
+  // colorScheme par l'app (expo-system-ui le force à 'light' via
+  // app.json:userInterfaceStyle). Sans ça, NativeWind throw « Cannot
+  // manually set color scheme, as dark mode is type 'media' ».
+  darkMode: 'class',
   content: [
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
