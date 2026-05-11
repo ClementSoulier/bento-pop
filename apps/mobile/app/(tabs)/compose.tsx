@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Image, Text, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -122,13 +122,20 @@ export default function ComposeTab() {
           />
         </View>
 
-        {/* Sticky CTA bottom — décalé au-dessus du tab bar Expo Router */}
-        <View style={{ position: 'absolute', bottom: tabBarHeight, left: 0, right: 0 }}>
+        {/* Sticky CTA bottom — décalé au-dessus du tab bar Expo Router.
+            Gradient en `pointerEvents=none` + bouton en `zIndex: 1` pour
+            garantir que le LinearGradient ne mange jamais les events ni
+            ne se peint au-dessus du CTA. */}
+        <View
+          pointerEvents="box-none"
+          style={{ position: 'absolute', bottom: tabBarHeight, left: 0, right: 0 }}
+        >
           <LinearGradient
+            pointerEvents="none"
             colors={['rgba(251,191,36,0)', '#fbbf24']}
-            style={{ position: 'absolute', inset: 0 }}
+            style={StyleSheet.absoluteFillObject}
           />
-          <View style={{ padding: 16, paddingBottom: 16 }}>
+          <View style={{ padding: 16, paddingBottom: 16, zIndex: 1 }}>
             <StampButton
               wide
               disabled={filled === 0 || publishing}

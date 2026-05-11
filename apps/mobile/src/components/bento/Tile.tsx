@@ -1,4 +1,4 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { CategoryKey } from '@/supabase/types';
@@ -87,11 +87,14 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
 
   const content = (
     <>
-      {/* Background : image en plein cadre OU dégradé palette */}
+      {/* Background : image en plein cadre OU dégradé palette.
+          NB : `inset: 0` n'est pas fiable sur RN 0.76 (l'Image rend à sa
+          taille native en haut-gauche). On utilise `StyleSheet.absoluteFillObject`
+          (top/left/right/bottom: 0) qui force le remplissage du parent. */}
       {hasImage ? (
         <Image
           source={{ uri: data.imageUrl }}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+          style={StyleSheet.absoluteFillObject}
           resizeMode="cover"
         />
       ) : (
@@ -99,7 +102,7 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
           colors={palette.colors}
           start={palette.start}
           end={palette.end}
-          style={{ position: 'absolute', inset: 0 }}
+          style={StyleSheet.absoluteFillObject}
         />
       )}
 
@@ -109,7 +112,7 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
           colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
           start={{ x: 0.5, y: 0.3 }}
           end={{ x: 0.5, y: 1 }}
-          style={{ position: 'absolute', inset: 0 }}
+          style={StyleSheet.absoluteFillObject}
         />
       ) : null}
 

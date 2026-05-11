@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { ReactNode } from 'react';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 
@@ -20,7 +20,7 @@ export function YellowBg({ children }: YellowBgProps) {
       <Svg
         width="100%"
         height="100%"
-        style={{ position: 'absolute', inset: 0 }}
+        style={StyleSheet.absoluteFillObject}
       >
         <Defs>
           <Pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">

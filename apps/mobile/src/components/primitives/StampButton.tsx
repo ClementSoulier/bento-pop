@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { PressableProps } from 'react-native';
 import type { ReactNode } from 'react';
 import { SHADOWS } from './shadow';
@@ -30,7 +30,11 @@ const PALETTES: Record<NonNullable<StampButtonProps['variant']>, { bg: string; f
  * CTA signature Bento Pop : fond coloré, bordure ink épaisse, ombre stamp
  * plate noire. Police Bungee tout-caps + tracking large.
  *
- * Cf. design Claude Design — `StampButton` dans `screens.jsx`.
+ * Structure : `Pressable` extérieur (zone tactile + transform pressed) +
+ * `View` intérieur qui porte le `backgroundColor`. Le wrapper View est
+ * nécessaire car react-native-css-interop (NativeWind 4) intercepte les
+ * `Pressable` et peut écraser certains styles inline ; mettre la couleur
+ * sur un `View` standard garantit le rendu sur iOS / Android.
  */
 export function StampButton({
   children,
@@ -39,44 +43,60 @@ export function StampButton({
   iconLeft,
   iconRight,
   style,
+  disabled,
   ...rest
 }: StampButtonProps) {
   const palette = PALETTES[variant];
   return (
     <Pressable
       {...rest}
+      disabled={disabled}
       style={({ pressed }) => [
-        {
-          backgroundColor: palette.bg,
-          borderWidth: 3,
-          borderColor: '#0a0a0a',
-          borderRadius: 999,
-          paddingVertical: 14,
-          paddingHorizontal: 22,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-          alignSelf: wide ? 'stretch' : 'flex-start',
-          transform: pressed ? [{ translateY: 2 }] : undefined,
-        },
+        styles.outer,
+        { alignSelf: wide ? 'stretch' : 'flex-start' },
         pressed ? null : SHADOWS.stamp,
+        pressed ? { transform: [{ translateY: 2 }] } : null,
+        disabled ? { opacity: 0.5 } : null,
         typeof style === 'function' ? null : style,
       ]}
     >
-      {iconLeft ? <View>{iconLeft}</View> : null}
-      <Text
-        style={{
-          color: palette.fg,
-          fontFamily: 'Bungee',
-          fontSize: 15,
-          letterSpacing: 1,
-          textTransform: 'uppercase',
-        }}
+      <View
+        style={[
+          styles.inner,
+          { backgroundColor: palette.bg },
+        ]}
       >
-        {children}
-      </Text>
-      {iconRight ? <View>{iconRight}</View> : null}
+        {iconLeft ? <View>{iconLeft}</View> : null}
+        <Text
+          style={[styles.label, { color: palette.fg }]}
+        >
+          {children}
+        </Text>
+        {iconRight ? <View>{iconRight}</View> : null}
+      </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  outer: {
+    borderRadius: 999,
+  },
+  inner: {
+    borderWidth: 3,
+    borderColor: '#0a0a0a',
+    borderRadius: 999,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  label: {
+    fontFamily: 'Bungee',
+    fontSize: 15,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+});

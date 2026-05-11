@@ -30,6 +30,11 @@ export function Sticker({
   size = 14,
   style,
 }: StickerProps) {
+  // `lineHeight` explicite ≈ fontSize × 1.15 : Bungee a un ascender/descender
+  // généreux et iOS dessine les glyphes au-delà de la `boundingBox` du Text
+  // sans ça (lettres qui "bavent" hors du carré rouge). On compense aussi le
+  // padding vertical pour que le sticker garde sa hauteur compacte.
+  const lineHeight = Math.round(size * 1.15);
   return (
     <View
       style={[
@@ -39,7 +44,7 @@ export function Sticker({
           borderColor: '#0a0a0a',
           borderRadius: 4,
           paddingHorizontal: 10,
-          paddingVertical: 5,
+          paddingVertical: 6,
           alignSelf: 'flex-start',
           transform: [{ rotate: `${rotation}deg` }],
         },
@@ -52,8 +57,10 @@ export function Sticker({
           color: textColor,
           fontFamily: 'Bungee',
           fontSize: size,
+          lineHeight,
           letterSpacing: 1.5,
           textTransform: 'uppercase',
+          includeFontPadding: false,
         }}
       >
         {children}

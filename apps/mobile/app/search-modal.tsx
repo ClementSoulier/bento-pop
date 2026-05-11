@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
+  StyleSheet,
   Text,
   TextInput,
   View,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -270,7 +271,7 @@ export default function SearchModal() {
                   {item.imageUrl ? (
                     <Image
                       source={{ uri: item.imageUrl }}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                      style={StyleSheet.absoluteFillObject}
                       resizeMode="cover"
                     />
                   ) : (
@@ -278,7 +279,7 @@ export default function SearchModal() {
                       colors={palette.colors}
                       start={palette.start}
                       end={palette.end}
-                      style={{ position: 'absolute', inset: 0 }}
+                      style={StyleSheet.absoluteFillObject}
                     />
                   )}
                   {/* Overlay sombre du bas pour lisibilité titre */}
@@ -286,7 +287,7 @@ export default function SearchModal() {
                     colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
                     start={{ x: 0.5, y: 0.4 }}
                     end={{ x: 0.5, y: 1 }}
-                    style={{ position: 'absolute', inset: 0 }}
+                    style={StyleSheet.absoluteFillObject}
                   />
                   <Text
                     numberOfLines={2}

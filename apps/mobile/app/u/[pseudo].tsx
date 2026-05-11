@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -213,10 +213,14 @@ export default function PublicBento() {
             </View>
 
             {/* Sticky CTAs bottom */}
-            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+            <View
+              pointerEvents="box-none"
+              style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
+            >
               <LinearGradient
+                pointerEvents="none"
                 colors={['rgba(251,191,36,0)', '#fbbf24']}
-                style={{ position: 'absolute', inset: 0 }}
+                style={StyleSheet.absoluteFillObject}
               />
               <View style={{ flexDirection: 'row', padding: 16, paddingBottom: 32, gap: 8 }}>
                 <Pressable
