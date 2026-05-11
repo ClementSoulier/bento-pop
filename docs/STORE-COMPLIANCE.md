@@ -1,8 +1,24 @@
 # Mon Bento Pop — audit compliance Apple App Store / Google Play
 
-État au 11 mai 2026. Ce document liste tout ce qu'il faut avant de pouvoir soumettre l'app dans les stores.
+État au 11 mai 2026, après livraison du **sprint P7 compliance** (commits `07b62d9`, `db1f739`, `db6d0fe`, `182f805`, `6868783`, `a6e0c60`).
 
-**Légende** : ✅ prêt — 🟡 partiel — ❌ bloquant.
+**Légende** : ✅ prêt — 🟡 partiel — ❌ bloquant ou pas commencé.
+
+## 0. Status global
+
+Premier build EAS Preview iOS en cours. La majorité des bloquants Apple ont été levés :
+
+| Bloc | Avant P7 | Après P7 |
+|---|---|---|
+| Assets store (icon, splash, adaptive) | ❌ | ✅ |
+| Privacy + Terms publiés + dans l'app | ❌ | ✅ |
+| Suppression de compte (Apple 5.1.1(v)) | ❌ | ✅ |
+| Modération UGC : report + filtre pseudos (Apple 1.2) | ❌ | ✅ (P7) — manque le BO admin pour traiter |
+| Attributions APIs (TMDb obligatoire) | ❌ | ✅ |
+| Apple Dev account | ❌ | ✅ |
+| EAS Build configuré (projectId, secrets, expo-updates) | ❌ | ✅ |
+
+Il reste essentiellement des actions **non-code** (assets de présentation stores, descriptions, screenshots, devices tests) et 2 chantiers code (BO admin reports + ban en P8, offline banner).
 
 ---
 
@@ -10,108 +26,107 @@
 
 | # | Item | État | Action |
 |---|---|---|---|
-| 1.1 | App icon iOS (1024×1024 PNG sans transparence) | ❌ | Générer depuis Popy + jaune. Placer dans `apps/mobile/assets/icon.png` + référencer dans `app.json` |
-| 1.2 | Android adaptive icon (foreground 1024×1024 transparent + background color) | ❌ | `apps/mobile/assets/adaptive-icon.png`. Le background `#fbbf24` est déjà déclaré |
-| 1.3 | iOS splash (recommandé 2732×2732 centré) | ❌ | `apps/mobile/assets/splash.png` + ajout `splash.image` dans `app.json`. Notre Splash JS animé reste en bonus après le splash natif |
-| 1.4 | Web favicon | 🟡 | Manquant pour l'app web (séparé du favicon landing) — à voir si on déploie une version web |
-| 1.5 | Screenshots App Store (6.5" + 6.7" iPhone, 12.9" iPad si supporté) | ❌ | À capturer après les vrais bentos. Minimum 3 par taille |
-| 1.6 | Screenshots Play Store (phone + tablet, min 2 chacun) | ❌ | Idem |
-| 1.7 | Feature graphic Play Store (1024×500) | ❌ | Une bannière de présentation |
-| 1.8 | Description courte + longue (FR) | ❌ | À rédiger pour les deux stores |
+| 1.1 | App icon iOS (1024×1024 PNG opaque) | ✅ | Généré par `scripts/generate-assets.mjs` (sharp), déclaré dans `app.json:icon` |
+| 1.2 | Android adaptive icon | ✅ | foreground transparent + background `#fbbf24` |
+| 1.3 | iOS / Android splash | ✅ | 2732×2732 + Splash JS animé prend le relais (`Splash.tsx`) |
+| 1.4 | Web favicon | ✅ | 48×48 généré + déclaré dans `app.json:web.favicon` |
+| 1.5 | Screenshots App Store (6.5" + 6.7") | ❌ | À capturer après TestFlight sur device, mini 3 par taille |
+| 1.6 | Screenshots Play Store | ❌ | Phone + tablet, mini 2 chacun |
+| 1.7 | Feature graphic Play Store (1024×500) | ❌ | Bannière promo |
+| 1.8 | Description courte + longue (FR) | ❌ | ~30 min à rédiger pour les deux stores |
 
 ---
 
 ## 2. Légal — Privacy, Terms, Attributions
 
-| # | Item | État | Action |
+| # | Item | État | Détail |
 |---|---|---|---|
-| 2.1 | Privacy policy URL publique | ❌ | À publier sur `bento-pop.com/confidentialite-mobile` (séparée ou unifiée avec celle de la landing). Couvre : UUID anonymous, pseudo, items choisis, dates |
-| 2.2 | Terms of Service URL | ❌ | `bento-pop.com/conditions-mobile`. Couvre : règles d'usage, UGC, modération, droits sur le contenu |
-| 2.3 | Lien Privacy + Terms accessible **dans l'app** | ❌ | Ajouter dans la tab Profil un bloc « Mentions / Confidentialité » qui ouvre le navigateur |
-| 2.4 | Attribution TMDb | ❌ | Mention obligatoire : « This product uses the TMDB API but is not endorsed or certified by TMDB. » + logo TMDb. À placer dans la modal de recherche film/série OU dans la page Crédits |
-| 2.5 | Attribution MusicBrainz | ❌ | « Music metadata from MusicBrainz » (CC-BY-NC-SA 4.0) |
-| 2.6 | Attribution OpenStreetMap | ❌ | « © OpenStreetMap contributors » sur les résultats lieu |
-| 2.7 | Attribution Wikidata | 🟡 | CC0 — pas obligatoire mais cool de mentionner |
-| 2.8 | Page « Crédits » dans l'app | ❌ | Liste les 4 attributions, lien vers le site, version + build, lien legal |
+| 2.1 | Privacy policy URL publique | ✅ | `bento-pop.com/confidentialite` — étendue avec section 2.2 « Application mobile » + 2.3 « Sources externes » + section 6 « Suppression compte mobile » |
+| 2.2 | Terms of Service URL | ✅ | `bento-pop.com/mentions-legales` — section 6 dédiée à l'app : distribution, modération, attributions |
+| 2.3 | Lien Privacy + Terms dans l'app | ✅ | Tab Profil → section À propos → ouvre les pages via `Linking.openURL` |
+| 2.4 | Attribution TMDb | ✅ | Page `/credits` — disclaimer Apple/TMDb exact |
+| 2.5 | Attribution MusicBrainz | ✅ | Page `/credits` (mention CC-BY-NC-SA 4.0) |
+| 2.6 | Attribution OpenStreetMap | ✅ | Page `/credits` (« © OpenStreetMap contributors ») |
+| 2.7 | Attribution Wikidata | ✅ | Page `/credits` (mention CC0) |
+| 2.8 | Page Crédits | ✅ | `/credits.tsx` avec sections Légal / Sources / Polices + version |
 
 ---
 
-## 3. UGC moderation (Apple guideline 1.2 — strict)
+## 3. UGC moderation (Apple 1.2)
 
-Apple **rejette systématiquement** les apps avec UGC sans modération. C'est le poste de risque #1.
-
-| # | Item | État | Action |
+| # | Item | État | Détail |
 |---|---|---|---|
-| 3.1 | Mécanisme de **report** d'un bento ou pseudo | ❌ | Bouton « Signaler » sur la page `/u/<pseudo>` → form ou mailto → enregistre en BDD (table `reports`) |
-| 3.2 | Mécanisme de **block** d'un utilisateur | ❌ | Liste de pseudos bloqués stockée localement (par device) + filtre dans la recherche / featured. Spec MVP : peut être un simple « masquer » |
-| 3.3 | Mécanisme d'**éjection** d'un user par l'admin | 🟡 | BO admin a déjà accès complet via service-role — possible de manuellement update `users.is_banned` ou supprimer la ligne. Ajouter un bouton « Bannir » à `/bentos` |
-| 3.4 | Filtre automatique des **pseudos offensants** | ❌ | Liste de mots interdits côté server à la création du profil. Approche pragmatique : liste FR + EN basique des slurs et termes vulgaires + check regex |
-| 3.5 | Filtre du contenu des items (titres de film, etc.) | ✅ | Les items viennent d'APIs externes curatées (TMDb, MB, OSM) — pas de risque de free-text offensif |
-| 3.6 | Réponse aux reports < 24h | ❌ | Process pas en place. À l'usage : email contact pro + monitoring de la table reports |
+| 3.1 | Mécanisme de **report** | ✅ | Bouton « Signaler » dans la top bar de `/u/[pseudo]` → Alert confirmation → INSERT public.reports |
+| 3.2 | Mécanisme de **block** | ❌ | Hors-scope P7. Faisable simplement en local (liste de pseudos masqués par device) — à faire si Apple le demande au review |
+| 3.3 | **Éjection** d'un user par l'admin | 🟡 | Possible via BO admin (DELETE users via service-role), mais pas de bouton UI dédié. À ajouter en **P8** |
+| 3.4 | Filtre **pseudos offensants** | ✅ | Table `blocked_pseudo_patterns` + trigger SQL en SECURITY DEFINER + 15 patterns seed (slurs FR/EN, vulgarités, usurpation admin) |
+| 3.5 | Filtre contenu items | ✅ | Items viennent d'APIs curatées (TMDb, MB, OSM) — pas de free-text user |
+| 3.6 | Réponse aux reports < 24h | 🟡 | Process organisationnel : abonnez-vous à un email signalements via Supabase webhook OU vérifier la table 1×/jour côté BO. **Le BO admin de modération arrive en P8.** |
 
 ---
 
-## 4. Account management (Apple guideline 5.1.1(v))
+## 4. Account management (Apple 5.1.1(v))
 
-Apple exige depuis 2022 : si l'app permet la création de compte, elle **doit** permettre la suppression.
-
-| # | Item | État | Action |
+| # | Item | État | Détail |
 |---|---|---|---|
-| 4.1 | Création de compte | ✅ | Anonymous sign-in au boot, pseudo à l'onboarding |
-| 4.2 | **Suppression du compte** depuis l'app | ❌ | Tab Profil → « Supprimer mon compte » → confirmation → DELETE users (cascade vers bentos / bento_items). Mandatory pour Apple |
-| 4.3 | Recovery / claim (v2) | 🟡 | Pas dans le MVP — accepté tant que l'utilisateur peut au moins supprimer |
-| 4.4 | Export des données (RGPD) | 🟡 | Pas critique au lancement. À l'usage : bouton « Télécharger mes données » qui dump bento + items au JSON |
+| 4.1 | Création de compte | ✅ | Anonymous sign-in au boot + pseudo à l'onboarding |
+| 4.2 | **Suppression du compte depuis l'app** | ✅ | Tab Profil → bouton rouge « Supprimer mon compte » → Alert destructive → `deleteOwnAccount` (DELETE users → cascade bentos → bento_items) puis `resetAndReinit` (signOut + relance anonymous + reset stores). Migration RLS `users_delete_own` appliquée |
+| 4.3 | Recovery / claim email + password | 🟡 | Hors MVP — accepté par Apple tant que la suppression existe |
+| 4.4 | Export RGPD | 🟡 | À ajouter à la demande utilisateur (email) tant qu'il n'y a pas de bouton in-app |
 
 ---
 
 ## 5. Configuration technique
 
-| # | Item | État | Action |
+| # | Item | État | Détail |
 |---|---|---|---|
-| 5.1 | Bundle ID iOS (`com.bentopop.mobile`) | ✅ | Déclaré dans `app.json` |
-| 5.2 | Package Android (`com.bentopop.mobile`) | ✅ | Idem |
-| 5.3 | Version + buildNumber/versionCode | 🟡 | Version `0.0.1` actuelle. EAS gère le buildNumber auto via `autoIncrement`. OK |
-| 5.4 | Apple Developer account ($99/an) | ❌ | À souscrire pour TestFlight + App Store |
-| 5.5 | Google Play Developer account ($25 one-time) | ❌ | À souscrire pour Play Store |
-| 5.6 | App Store Connect record | ❌ | Créer l'app après account Apple |
-| 5.7 | Play Console record | ❌ | Idem |
-| 5.8 | App Tracking Transparency prompt | ✅ | Non nécessaire (on ne track pas entre apps, pas d'IDFA) |
-| 5.9 | Permissions iOS (Info.plist) | ✅ | Aucune permission sensible demandée |
-| 5.10 | Permissions Android | ✅ | Aucune permission sensible |
-| 5.11 | Universal Links / App Links (`bento-pop.com/u/*` → ouvre l'app) | ❌ | Optionnel mais super UX. Demande un AASA file sur le domaine + intent filter Android. P7 |
-| 5.12 | Deep links via `bentopop://` custom scheme | ✅ | Déjà configuré dans `app.json:scheme` |
+| 5.1 | Bundle ID iOS (`com.bentopop.mobile`) | ✅ | |
+| 5.2 | Package Android (`com.bentopop.mobile`) | ✅ | |
+| 5.3 | Version + buildNumber/versionCode | ✅ | `0.0.1` + EAS `appVersionSource: remote` + `autoIncrement` |
+| 5.4 | **Apple Developer account** ($99/an) | ✅ | |
+| 5.5 | Google Play Developer account ($25 one-time) | ❌ | À souscrire plus tard, Android repoussé |
+| 5.6 | App Store Connect record | 🟡 | Sera créé automatiquement au 1er `eas submit`, mais le record manuel (description, screenshots, age rating) reste à remplir |
+| 5.7 | Play Console record | ❌ | Idem, suit P5.5 |
+| 5.8 | App Tracking Transparency prompt | ✅ | Non nécessaire (aucun tracking, pas d'IDFA) |
+| 5.9 | Permissions iOS (Info.plist) | ✅ | Aucune sensible. `ITSAppUsesNonExemptEncryption: false` déclaré (US export compliance) |
+| 5.10 | Permissions Android | ✅ | Aucune sensible |
+| 5.11 | Universal Links / App Links | ❌ | `bento-pop.com/u/*` ouvre encore le navigateur si app installée. AASA file + intent filter Android = ~2h dev. À faire en **P8** ou plus tard |
+| 5.12 | Deep links `bentopop://` | ✅ | Configuré dans `app.json:scheme` |
+| 5.13 | EAS projectId | ✅ | `eecbef8a-0943-4bec-b592-59e4b5016e5f` |
+| 5.14 | EAS Build env secrets | ✅ | `EXPO_PUBLIC_SUPABASE_URL/ANON_KEY/TMDB_TOKEN` via `eas env:create` |
+| 5.15 | `expo-updates` + `runtimeVersion` | ✅ | Installé + `runtimeVersion.policy: appVersion` |
 
 ---
 
 ## 6. Data safety / Privacy labels
 
-À déclarer dans App Store Connect (App Privacy) et Play Console (Data Safety).
+À déclarer dans App Store Connect (App Privacy) et Play Console (Data Safety) au moment du record manuel.
 
-| Donnée collectée | Linkée à user | Utilisée pour tracking | Optionnelle |
+| Donnée collectée | Linkée à user | Tracking | Optionnelle |
 |---|---|---|---|
-| Pseudo | Oui | Non | Non (obligatoire) |
-| Display name (optionnel) | Oui | Non | Oui |
+| Pseudo | Oui | Non | Non |
+| Display name | Oui | Non | Oui |
 | UUID device (`auth.users.id`) | Oui | Non | Non |
-| Items composés (film, série…) | Oui | Non | Non |
-| Email (v2 claim) | Oui | Non | Oui |
+| Items composés | Oui | Non | Non |
+| Signalements (table reports) | Oui (reporter) | Non | Oui (action user) |
 | Adresse IP | Oui | Non | Non (technique seulement) |
 
-**Aucune analytics tierce ni tracking publicitaire** = excellent positionnement Apple Privacy.
+**Aucune analytics tierce, aucun tracker publicitaire, pas d'IDFA / GAID** = excellent positionnement App Privacy.
 
 ---
 
 ## 7. UX / robustesse
 
-| # | Item | État | Action |
+| # | Item | État | Détail |
 |---|---|---|---|
-| 7.1 | Loading states partout | ✅ | ActivityIndicator sur onboarding/pseudo, search, featured, public bento |
-| 7.2 | Error states gérés | 🟡 | Featured + Search tabs n'ont pas d'UI d'erreur (juste « pas de résultat »). À ajouter |
-| 7.3 | Offline → message clair | ❌ | Actuellement l'app reste figée sur l'écran courant si réseau down. Détecter via `@react-native-community/netinfo` + afficher banner |
-| 7.4 | Pas de dead-end screens | ✅ | Retour systématique disponible |
-| 7.5 | Boutons inutilisables désactivés | ✅ | StampButton + VoteOption gèrent disabled |
-| 7.6 | Cold start sans crash | ✅ | Testé via expo export |
-| 7.7 | Données chargées en arrière-plan pendant le splash | ✅ | Session anonymous + profile pré-chargés avant écran principal |
-| 7.8 | Logout / clear data | 🟡 | Pas exposé. À combiner avec « Supprimer mon compte » |
+| 7.1 | Loading states partout | ✅ | |
+| 7.2 | Error states | 🟡 | Featured + Search tabs montrent un état vide mais pas d'UI dédiée à un fail API. Polish P8 |
+| 7.3 | Offline → message clair | ❌ | `@react-native-community/netinfo` + banner. ~1h dev. À faire en **P8** |
+| 7.4 | Pas de dead-end screens | ✅ | |
+| 7.5 | Boutons inutilisables désactivés | ✅ | |
+| 7.6 | Cold start sans crash | ✅ | Vérifié via expo export web + iOS (smoke tests) |
+| 7.7 | Données chargées pendant le splash | ✅ | Splash custom Bento + session pré-chargée |
+| 7.8 | Logout / clear data | ✅ | Couvert par « Supprimer mon compte » |
 
 ---
 
@@ -119,82 +134,72 @@ Apple exige depuis 2022 : si l'app permet la création de compte, elle **doit** 
 
 | # | Quoi | État |
 |---|---|---|
-| 8.1 | Test sur iPhone réel (TestFlight build) | ❌ |
-| 8.2 | Test sur Android réel | ❌ |
+| 8.1 | Test sur iPhone réel (TestFlight build) | 🟡 — en cours, build EAS preview lancé |
+| 8.2 | Test sur Android réel | ❌ — repoussé, account Play à venir |
 | 8.3 | Test orientation portrait verrouillée | ✅ |
-| 8.4 | Test darkMode système (l'app force `light`) | 🟡 — vérifier qu'aucune zone n'est noire/illisible |
+| 8.4 | Test darkMode système (l'app force `light`) | ✅ après fix NativeWind `darkMode: class` |
 | 8.5 | Test petite taille écran (iPhone SE 4.7") | ❌ |
 | 8.6 | Test grand écran (iPhone 16 Pro Max 6.9") | ❌ |
-| 8.7 | Test accessibility VoiceOver / TalkBack | ❌ |
-| 8.8 | Test scroll long avec beaucoup de bentos | ❌ |
+| 8.7 | Test accessibility VoiceOver / TalkBack | ❌ — chantier à part |
+| 8.8 | Test scroll long avec beaucoup de bentos | ❌ — peu de data en BDD pour l'instant |
 
 ---
 
-## 9. Priorisation pour passer en TestFlight / Beta Play
+## 9. Restant pour TestFlight
 
-### Doit absolument être fait **avant le 1er build** :
-1. **Assets** : icon iOS 1024×1024, adaptive icon Android, splash (1.1, 1.2, 1.3)
-2. **Privacy policy + Terms publiés** sur bento-pop.com (2.1, 2.2)
-3. **Lien Privacy + Crédits APIs dans l'app** (2.3, 2.4, 2.5, 2.6, 2.8)
-4. **Suppression de compte depuis l'app** (4.2) — Apple ne pardonne pas
-5. **Mécanisme de report** + **Filtre pseudos offensants** (3.1, 3.4)
-6. **Apple Developer + Google Play accounts** (5.4, 5.5)
+L'app est techniquement prête pour un build interne. Le 1er TestFlight peut partir une fois que :
 
-### Peut attendre la version 1.0 publique :
-- Block user UI (3.2)
-- BO admin « Bannir » (3.3)
-- Universal Links (5.11)
-- Offline banner (7.3)
-- Screenshots et page store (1.5 → 1.8)
-- Export RGPD (4.4)
+1. **Build EAS preview** termine sans erreur ✅ (en cours)
+2. **Test du `.ipa` sur ton iPhone** via TestFlight Internal Testing (tu peux y inviter jusqu'à 100 Apple IDs sans review Apple)
+3. **Le BO admin reports** est en place (P8) — au minimum un dump SQL régulier sinon Apple peut tiquer
 
-### Peut attendre v1.1+ :
-- Claim de compte v2 (4.3)
-- Accessibility audit (8.7)
+Pour la **review Apple publique** (App Store), il faut en plus :
+- Screenshots, description, age rating, App Privacy labels remplis
+- Block UI côté mobile (3.2) — fortement recommandé si UGC visible publiquement
+- Pré-modération de la table `blocked_pseudo_patterns` enrichie au-delà des 15 patterns seed
 
 ---
 
-## 10. Effort estimé
+## 10. Suivi : P8 priorisé
+
+Sprint suivant si on continue :
+
+| Ordre | Tâche | Effort | Pourquoi |
+|---|---|---|---|
+| 1 | **BO admin reports + bannir** (page `/reports`, bouton Bannir sur `/bentos`) | 3h | Apple peut demander des preuves de modération réactive |
+| 2 | **Offline banner** (`netinfo` + UI haut d'écran) | 1h | UX, pas de crash si réseau down |
+| 3 | **Block user côté mobile** (liste locale par device) | 2h | Apple guideline 1.2 — recommandé pas obligatoire |
+| 4 | **Universal Links** `bento-pop.com/u/*` | 2-3h | UX premium au partage |
+| 5 | **Export RGPD** in-app (JSON download) | 2h | Conformité européenne renforcée |
+| 6 | **Error states** Featured + Search | 1h | Polish |
+
+**Total P8** : ~12h dev. Permet de viser une review App Store sereine.
+
+---
+
+## 11. Effort restant estimé
 
 | Bloc | Effort dev | Effort manuel (toi) |
 |---|---|---|
-| Assets (icon + splash) | 2h | Aucun si je génère depuis Popy |
-| Privacy/Terms texte + lien dans app | 1h dev | 2h rédaction |
-| Account deletion | 3h dev | Aucun |
-| Report + filtre pseudos | 4h dev | Aucun |
-| Page Crédits + attributions | 1h dev | Aucun |
-| Souscriptions stores | 0h | 30 min + $124 |
-| Screenshots + descriptions | 0h | 2-3h |
-
-**Total estimé : ~11h dev + ~5h toi + souscriptions.** Pour un MVP store-ready réaliste : compter une semaine focus + souscriptions stores.
+| **Sprint P8** (voir section 10) | 12h | aucun |
+| Screenshots + descriptions stores | 0h | 2-3h après TestFlight |
+| Souscription Google Play | 0h | $25 + 1-2 jours validation |
+| App Store Connect record (App Privacy labels, age rating, etc.) | 0h | 2h |
+| Tests sur devices réels | 0h | 2-3h en cumul |
 
 ---
 
-## 11. Risques de rejet identifiés
+## 12. Risques de rejet — réévaluation
 
-1. **Apple guideline 1.2 (UGC)** : risque très élevé sans report + filtre + suppression de compte. Quasi-certain rejet sans ces 3.
-2. **Apple guideline 5.1.1(v) (account deletion)** : rejet automatique si pas implémenté.
-3. **Attribution TMDb** : TMDb fait des scans des apps utilisant leur API. Une app non attribuée peut perdre l'accès API (pas Apple-level, mais notre clé serait révoquée).
-4. **Spam pseudos** : si un user créé `@motoffensif` au premier launch, Apple reviewer le voit, fail.
-5. **Crash anonymous sign-in** : si Supabase down au moment du review, l'app est inutilisable → reject.
-
-Mitigations :
-- (1, 2) Implémenter les 3 features listées dans la priorisation
-- (3) Page Crédits avec attribution TMDb visible
-- (4) Filtre côté server + table de mots interdits
-- (5) Fallback gracieux : si Supabase fail au sign-in, montrer un écran « réessayer » plutôt qu'un crash
+1. ~~**Apple guideline 1.2 (UGC)**~~ → résolu côté code (report + filtre pseudos + suppression compte). Reste à démontrer un process de réponse aux reports < 24h — un screenshot du BO ou un email type peut suffire en review.
+2. ~~**Apple 5.1.1(v) account deletion**~~ → résolu.
+3. **Attribution TMDb** → résolu (page Crédits + disclaimer Apple exact). À surveiller : ne pas afficher de logo TMDb modifié.
+4. **Pseudos offensants** → 15 patterns en seed, à enrichir avec le BO admin. Si Apple reviewer trouve un pseudo offensant pendant le review (probabilité faible en interne), il faudra remettre la patch et resoumettre.
+5. **Crash anonymous sign-in** si Supabase down au review → Probabilité très faible mais à mitiger en P8 (catch erreur init → écran « réessayer » au lieu du splash infini).
 
 ---
 
-## 12. Quand on attaque ?
+## 13. Changelog
 
-Recommandation : prochaine itération dédiée « Store Compliance Sprint ». Tu vois quand entre P5 et P7 c'est le bon timing.
-
-Si tu veux qu'on fasse **bloc par bloc** ensuite, je peux prendre :
-1. **Assets** (icon + adaptive + splash native) → 1 commit
-2. **Account deletion** → 1 commit (UI + edge function ou cascade)
-3. **Page Crédits + attributions** → 1 commit
-4. **Report bento + filtre pseudos** → 1 commit
-5. **Liens Privacy / Terms dans la tab Profil** → 1 commit
-
-Dis-moi.
+- **11/05/2026 P7** — Sprint compliance livré : assets, account deletion, page Crédits, report UGC + filtre pseudos, liens Privacy/Terms dans l'app. Pages légales étendues à l'app. EAS configuré (projectId, secrets, expo-updates, runtimeVersion).
+- **11/05/2026 audit P6** — Création initiale du document.
