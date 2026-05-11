@@ -43,7 +43,16 @@ export default function RootLayout() {
               headerShown: false,
               contentStyle: { backgroundColor: '#fbbf24' },
             }}
-          />
+          >
+            <Stack.Screen
+              name="search-modal"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                contentStyle: { backgroundColor: '#fbf3de' },
+              }}
+            />
+          </Stack>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

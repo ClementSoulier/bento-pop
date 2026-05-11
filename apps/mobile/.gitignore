@@ -30,8 +30,16 @@ node_modules/
 .DS_Store
 *.log
 
-# Env
-.env*.local
+# Env — Expo lit `.env` directement (contrairement à Next qui ne lit que
+# .env*.local). On ignore TOUS les .env locaux. Seul .env.example est commité.
+.env
+.env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
 
 # IDE
 .vscode/
