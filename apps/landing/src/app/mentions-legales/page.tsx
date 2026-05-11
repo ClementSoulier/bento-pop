@@ -13,12 +13,13 @@ export default function MentionsLegalesPage() {
     <LegalPage
       eyebrow="Information légale"
       title="Mentions légales"
-      updatedAt="10/05/2026"
+      updatedAt="11/05/2026"
     >
       <section>
-        <h2>1. Éditeur du site</h2>
+        <h2>1. Éditeur du site et de l&apos;application</h2>
         <p>
-          Le site <strong>bento-pop.com</strong> est édité par&nbsp;:
+          Le site <strong>bento-pop.com</strong> et l&apos;application mobile{' '}
+          <strong>Mon Bento Pop</strong> (iOS / Android) sont édités par&nbsp;:
         </p>
         <ul>
           <li>
@@ -92,18 +93,55 @@ export default function MentionsLegalesPage() {
       <section>
         <h2>5. Liens externes</h2>
         <p>
-          Le site peut contenir des liens vers des sites tiers (YouTube, Spotify,
-          TikTok, Instagram…). Liventure SAS n&apos;exerce aucun
-          contrôle sur ces sites et décline toute responsabilité quant à leur
-          contenu, leur disponibilité ou leur politique de confidentialité.
+          Le site et l&apos;application peuvent contenir des liens vers des
+          sites tiers (YouTube, Spotify, TikTok, Instagram…). Liventure SAS
+          n&apos;exerce aucun contrôle sur ces sites et décline toute
+          responsabilité quant à leur contenu, leur disponibilité ou leur
+          politique de confidentialité.
         </p>
       </section>
 
       <section>
-        <h2>6. Contact</h2>
+        <h2>6. Application mobile « Mon Bento Pop »</h2>
         <p>
-          Pour toute question relative au site ou à ses contenus, vous pouvez
-          contacter l&apos;éditeur à l&apos;adresse{' '}
+          L&apos;application est distribuée sur l&apos;App Store (Apple) et le
+          Play Store (Google). Elle est gratuite, sans achat in-app, sans
+          publicité, et conçue à des fins de divertissement culturel.
+        </p>
+        <p>
+          <strong>Modération des contenus utilisateurs</strong> : conformément
+          aux règles des stores, tout pseudonyme ou bento contraire aux bonnes
+          mœurs, aux droits d&apos;autrui ou à l&apos;ordre public peut être
+          signalé via le bouton <em>« Signaler »</em> dans l&apos;application.
+          Notre équipe examine les signalements sous 24 heures.
+        </p>
+        <p>
+          <strong>Sources de données</strong> : films/séries via{' '}
+          <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">
+            The Movie Database (TMDb)
+          </a>{' '}
+          (non endossé par TMDb) ; musique via{' '}
+          <a href="https://musicbrainz.org/" target="_blank" rel="noopener noreferrer">
+            MusicBrainz
+          </a>{' '}
+          (CC-BY-NC-SA) ; lieux via{' '}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+            © OpenStreetMap contributors
+          </a>{' '}
+          ; créateurs via{' '}
+          <a href="https://www.wikidata.org/" target="_blank" rel="noopener noreferrer">
+            Wikidata
+          </a>{' '}
+          (CC0).
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Contact</h2>
+        <p>
+          Pour toute question relative au site, à l&apos;application ou à
+          leurs contenus, vous pouvez contacter l&apos;éditeur à
+          l&apos;adresse{' '}
           <a href="mailto:contact@bento-pop.com">contact@bento-pop.com</a>.
         </p>
       </section>

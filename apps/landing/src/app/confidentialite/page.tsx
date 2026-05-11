@@ -14,7 +14,7 @@ export default function ConfidentialitePage() {
     <LegalPage
       eyebrow="Données personnelles"
       title="Politique de confidentialité"
-      updatedAt="10/05/2026"
+      updatedAt="11/05/2026"
     >
       <section>
         <h2>1. Responsable du traitement</h2>
@@ -34,9 +34,8 @@ export default function ConfidentialitePage() {
 
       <section>
         <h2>2. Données collectées</h2>
-        <p>
-          Le site collecte les données suivantes&nbsp;:
-        </p>
+
+        <h3>2.1 Site web bento-pop.com</h3>
         <ul>
           <li>
             <strong>Vote hebdomadaire</strong> : un identifiant anonyme aléatoire
@@ -56,10 +55,69 @@ export default function ConfidentialitePage() {
             et de diagnostic technique.
           </li>
         </ul>
+
+        <h3>2.2 Application mobile « Mon Bento Pop »</h3>
         <p>
-          Le site <strong>n&apos;utilise pas</strong> d&apos;outil de tracking
-          publicitaire ni d&apos;analytics tiers (Google Analytics, Meta
-          Pixel…).
+          L&apos;application iOS / Android collecte les données suivantes&nbsp;:
+        </p>
+        <ul>
+          <li>
+            <strong>Identifiant anonyme</strong> : un UUID généré automatiquement
+            au premier lancement, persisté dans le stockage sécurisé de
+            l&apos;appareil. Sert de clé pour relier l&apos;utilisateur à son
+            bento. Aucune information personnelle (nom réel, email, téléphone)
+            n&apos;y est associée.
+          </li>
+          <li>
+            <strong>Pseudonyme</strong> : choisi par l&apos;utilisateur à
+            l&apos;onboarding (3 à 20 caractères alphanumériques). Visible
+            publiquement sur le bento partagé.
+          </li>
+          <li>
+            <strong>Nom d&apos;affichage</strong> (facultatif) : si renseigné par
+            l&apos;utilisateur.
+          </li>
+          <li>
+            <strong>Composition du bento</strong> : les films, séries, artistes,
+            chansons, créateurs et lieux que l&apos;utilisateur a choisis dans
+            son bento, ainsi que la date de publication. Visible publiquement.
+          </li>
+          <li>
+            <strong>Signalements</strong> (table <code>reports</code>) : si
+            l&apos;utilisateur signale un bento ou un pseudo, le motif éventuel
+            est conservé pour la modération. Le signalement est lié à
+            l&apos;identifiant anonyme du signaleur (jamais visible
+            publiquement).
+          </li>
+          <li>
+            <strong>Logs Supabase</strong> : adresses IP et user-agent des
+            requêtes API, conservés ~7 jours par Supabase à des fins de sécurité
+            et diagnostic.
+          </li>
+        </ul>
+        <p>
+          L&apos;application <strong>ne collecte ni email, ni téléphone, ni
+          adresse réelle, ni identifiant publicitaire (IDFA / GAID).</strong>
+          Aucun SDK de tracking tiers (Google Analytics, Meta SDK, Firebase
+          Analytics…) n&apos;est intégré.
+        </p>
+
+        <h3>2.3 Sources de données externes</h3>
+        <p>
+          Lorsque l&apos;utilisateur recherche un film, une série, un artiste,
+          un lieu ou un créateur de contenu, l&apos;app interroge en temps réel
+          les APIs publiques de&nbsp;:
+        </p>
+        <ul>
+          <li><strong>The Movie Database (TMDb)</strong> pour les films et séries</li>
+          <li><strong>MusicBrainz</strong> pour les artistes et chansons</li>
+          <li><strong>OpenStreetMap (Nominatim)</strong> pour les lieux de voyage</li>
+          <li><strong>Wikidata</strong> pour les créateurs de contenu</li>
+        </ul>
+        <p>
+          Ces APIs reçoivent uniquement le terme recherché et l&apos;adresse IP
+          publique de l&apos;utilisateur (logs standards), conformément à leurs
+          propres politiques.
         </p>
       </section>
 
@@ -75,8 +133,23 @@ export default function ConfidentialitePage() {
             mise à disposition du backoffice (intérêt légitime).
           </li>
           <li>
-            <strong>Logs serveur</strong> : sécurité du site et diagnostic
-            (intérêt légitime).
+            <strong>Identifiant anonyme app</strong> : authentification
+            technique permettant la persistance du bento (intérêt légitime).
+          </li>
+          <li>
+            <strong>Pseudonyme + composition de bento</strong> : exécution du
+            service de partage culturel (consentement, recueilli à
+            l&apos;onboarding et révocable à tout moment via la suppression de
+            compte).
+          </li>
+          <li>
+            <strong>Signalements</strong> : modération des contenus
+            utilisateurs (intérêt légitime — obligation Apple App Store
+            guideline 1.2).
+          </li>
+          <li>
+            <strong>Logs serveur</strong> : sécurité et diagnostic (intérêt
+            légitime).
           </li>
         </ul>
       </section>
@@ -87,7 +160,21 @@ export default function ConfidentialitePage() {
           <li>Cookie <code>bp_anon_id</code> : 1 an (puis renouvellement).</li>
           <li>Votes anonymes en base : durée de la saison en cours, puis
             anonymisés à la clôture de la semaine concernée.</li>
-          <li>Logs serveur : 30J.</li>
+          <li>
+            <strong>Données utilisateur app mobile</strong> (pseudo, bento,
+            composition) : conservées tant que l&apos;utilisateur n&apos;a pas
+            supprimé son compte depuis l&apos;app. Suppression définitive
+            immédiate (cascade sur l&apos;ensemble des données liées) sur
+            demande via le bouton <em>« Supprimer mon compte »</em> de la tab
+            Profil.
+          </li>
+          <li>
+            <strong>Signalements</strong> : 1 an après traitement par
+            l&apos;équipe modération, puis anonymisation du
+            <code>reporter_id</code>.
+          </li>
+          <li>Logs serveur : 30 jours.</li>
+          <li>Logs Supabase API : 7 jours.</li>
         </ul>
       </section>
 
@@ -102,13 +189,22 @@ export default function ConfidentialitePage() {
             traitement intégralement réalisé en Union européenne.
           </li>
           <li>
-            <strong>Supabase Inc.</strong> (Singapour, instance UE) — base de
-            données PostgreSQL.
+            <strong>Supabase Inc.</strong> (Singapour, instance UE) — bases de
+            données PostgreSQL (deux projets distincts : un pour la landing /
+            BO, un dédié à l&apos;app mobile).
+          </li>
+          <li>
+            <strong>Apple Inc.</strong> et <strong>Google LLC</strong> — pour
+            les utilisateurs ayant téléchargé l&apos;app via App Store ou
+            Play Store, ces plateformes reçoivent les données techniques liées
+            à l&apos;installation (identifiants techniques de leurs propres
+            services, gérés selon leurs CGU respectives).
           </li>
         </ul>
         <p>
           Aucune donnée n&apos;est transmise à des tiers à des fins commerciales
-          ou publicitaires.
+          ou publicitaires. Aucun SDK de tracking ni régie publicitaire
+          n&apos;est intégré dans l&apos;app ou le site.
         </p>
       </section>
 
@@ -128,7 +224,14 @@ export default function ConfidentialitePage() {
           <li>droit à la portabilité.</li>
         </ul>
         <p>
-          Pour exercer ces droits, contactez-nous à{' '}
+          <strong>Pour les utilisateurs de l&apos;app mobile</strong> : le droit
+          à l&apos;effacement est directement accessible depuis la tab Profil
+          → <em>« Supprimer mon compte »</em>. La suppression est immédiate et
+          définitive (cascade automatique sur toutes les données liées :
+          pseudo, bento, composition).
+        </p>
+        <p>
+          Pour exercer les autres droits, contactez-nous à{' '}
           <a href="mailto:contact@bento-pop.com">contact@bento-pop.com</a>. Une
           réponse vous sera apportée dans un délai maximal d&apos;un mois.
         </p>
