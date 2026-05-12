@@ -49,3 +49,11 @@ supabase/.temp/
 # qu'ils soient commités par erreur (mauvais projectId / mauvais bundleId).
 /eas.json
 /app.json
+
+# Artefacts de build mobile (`eas build --local` produit des IPA/TAR.GZ
+# de plusieurs Mo, à NE PAS commiter — passer par EAS / TestFlight / un
+# storage externe pour les distribuer).
+*.ipa
+*.tar.gz
+apps/mobile/ios/
+apps/mobile/android/
