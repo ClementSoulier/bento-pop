@@ -55,19 +55,15 @@ export default function ComposeTab() {
     }
   };
 
-  // Calcul du scale du bento pour que tout tienne sur l'écran.
+  // Calcul du scale du bento. Sur iPhone 15 (852pt) le calcul était trop
+  // serré : 852 - (47 + 46 + 88 + 84 + 100) = 487pt → scale 0.95 → bento
+  // pleine hauteur dispo, spacer flex:1 à 0pt → CTA collé au bento.
   //
-  // Hauteurs « natives » (scale=1) à soustraire de la hauteur écran :
-  //   - top safe area (insets.top)
-  //   - top bar : pt 8 + logo 24 + mb 14 = 46
-  //   - header : pseudo + titre + progress + paddings ≈ 88
-  //   - tab bar (tabBarHeight, déjà inset-aware)
-  //   - CTA + paddings : bouton ~52 + pad 32 + buffer 16 = 100
-  // La grille à scale=1 fait ~512pt. On rétrécit jusqu'à 0.65 max (au-delà
-  // ça devient illisible — l'utilisateur pourra scroller le contenu si on
-  // tombe sur un device exotique).
+  // On ajoute un BREATHING (40pt) à soustraire en plus, garantissant un
+  // gap visible entre bento et CTA quelle que soit la taille d'écran.
   const NATIVE_GRID_H = 512;
-  const overhead = insets.top + 46 + 88 + tabBarHeight + 100;
+  const BREATHING = 40;
+  const overhead = insets.top + 46 + 88 + tabBarHeight + 100 + BREATHING;
   const available = screenHeight - overhead;
   const bentoScale = Math.max(0.65, Math.min(1, available / NATIVE_GRID_H));
 
