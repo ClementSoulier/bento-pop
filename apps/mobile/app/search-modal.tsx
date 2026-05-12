@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { searchByCategory } from '@/api/search';
 import type { SearchResult } from '@/api/types';
 import { fetchWikipediaThumbnail } from '@/api/wikipedia';
+import { cleanTitle } from '@/lib/text';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
 import { StampButton } from '@/components/primitives';
@@ -324,7 +325,7 @@ export default function SearchModal() {
                             textTransform: 'uppercase',
                           }}
                         >
-                          {getInitial(item.title)}
+                          {getInitial(cleanTitle(item.title))}
                         </Text>
                       </View>
                     </>
@@ -352,7 +353,7 @@ export default function SearchModal() {
                       textShadowRadius: 2,
                     }}
                   >
-                    {item.title}
+                    {cleanTitle(item.title)}
                   </Text>
                   {isSelected ? (
                     <View
@@ -400,7 +401,7 @@ export default function SearchModal() {
         <View style={{ padding: 16, paddingBottom: 24, gap: 8 }}>
           {selected ? (
             <StampButton wide disabled={submitting} onPress={onConfirm}>
-              {submitting ? 'Sauvegarde…' : `Choisir ${truncate(selected.title, 24)}`}
+              {submitting ? 'Sauvegarde…' : `Choisir ${cleanTitle(selected.title, 24)}`}
             </StampButton>
           ) : null}
           {slotIsFilled ? (
@@ -431,10 +432,6 @@ export default function SearchModal() {
       ) : null}
     </SafeAreaView>
   );
-}
-
-function truncate(s: string, max: number): string {
-  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
 /** Première lettre du titre — pour le fallback visuel signature. */

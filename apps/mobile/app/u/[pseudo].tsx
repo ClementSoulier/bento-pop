@@ -47,6 +47,7 @@ export default function PublicBento() {
     ownPseudo && pseudo && ownPseudo.toLowerCase() === pseudo.toLowerCase(),
   );
   const shareImageRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'found'; slots: BentoItems; displayName: string | null; publishedAt: string; isFeatured: boolean }
@@ -265,16 +266,23 @@ export default function PublicBento() {
                       textTransform: 'uppercase',
                     }}
                   >
-                    Compose le tien
+                    {isOwnBento ? 'Modifier' : 'Compose le tien'}
                   </Text>
                 </Pressable>
                 <Pressable
+                  disabled={sharing}
                   onPress={async () => {
-                    const outcome = await shareBentoImage(pseudo, shareImageRef);
-                    if (outcome === 'copied') {
-                      Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
-                    } else if (outcome === 'unsupported') {
-                      Alert.alert('Oups', 'Partage non supporté sur ce navigateur.');
+                    if (sharing) return;
+                    setSharing(true);
+                    try {
+                      const outcome = await shareBentoImage(pseudo, shareImageRef);
+                      if (outcome === 'copied') {
+                        Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
+                      } else if (outcome === 'unsupported') {
+                        Alert.alert('Oups', 'Partage non supporté sur ce navigateur.');
+                      }
+                    } finally {
+                      setSharing(false);
                     }
                   }}
                   style={[
@@ -286,21 +294,28 @@ export default function PublicBento() {
                       paddingVertical: 14,
                       paddingHorizontal: 22,
                       alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: 120,
+                      opacity: sharing ? 0.7 : 1,
                     },
                     SHADOWS.stamp,
                   ]}
                 >
-                  <Text
-                    style={{
-                      fontFamily: 'Bungee',
-                      fontSize: 13,
-                      letterSpacing: 1,
-                      color: '#fbbf24',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Partager
-                  </Text>
+                  {sharing ? (
+                    <ActivityIndicator size="small" color="#fbbf24" />
+                  ) : (
+                    <Text
+                      style={{
+                        fontFamily: 'Bungee',
+                        fontSize: 13,
+                        letterSpacing: 1,
+                        color: '#fbbf24',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Partager
+                    </Text>
+                  )}
                 </Pressable>
               </View>
             </View>

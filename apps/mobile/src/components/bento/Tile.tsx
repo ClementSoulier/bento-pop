@@ -5,6 +5,7 @@ import type { CategoryKey } from '@/supabase/types';
 import { CATEGORY_META } from './categories';
 import { PALETTES, type PaletteKey } from './palettes';
 import { SHADOWS } from '@/components/primitives/shadow';
+import { cleanTitle } from '@/lib/text';
 
 export type TileSize = 'sm' | 'md' | 'lg';
 
@@ -197,7 +198,7 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
             textShadowRadius: 0,
           }}
         >
-          {data.title}
+          {cleanTitle(data.title)}
         </Text>
         {data.subtitle ? (
           <Text
