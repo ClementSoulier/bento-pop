@@ -16,6 +16,7 @@ import { popyForPseudo } from '@/lib/popy-avatar';
 import { shareBentoImage } from '@/lib/share-image';
 import { submitReport } from '@/lib/report';
 import { useBlocked } from '@/state/blocked';
+import { useSession } from '@/state/session';
 import type { CategoryKey } from '@/supabase/types';
 import { loadPublicBentoByPseudo } from '@/lib/bento-actions';
 
@@ -38,6 +39,13 @@ const PALETTE_KEYS = Object.keys(PALETTES) as PaletteKey[];
 export default function PublicBento() {
   const { pseudo: rawPseudo } = useLocalSearchParams<{ pseudo: string }>();
   const pseudo = rawPseudo ?? '';
+  const ownPseudo = useSession((s) => s.profile?.pseudo);
+  // Signaler / bloquer ne doit pas apparaître sur son propre bento (n'a
+  // pas de sens et passerait pour un bug). Comparaison case-insensitive
+  // car les URLs peuvent varier.
+  const isOwnBento = Boolean(
+    ownPseudo && pseudo && ownPseudo.toLowerCase() === pseudo.toLowerCase(),
+  );
   const shareImageRef = useRef<View>(null);
   const [state, setState] = useState<
     | { kind: 'loading' }
@@ -115,7 +123,7 @@ export default function PublicBento() {
           >
             <Text style={{ fontSize: 16, fontWeight: '800' }}>‹</Text>
           </Pressable>
-          {state.kind === 'found' ? (
+          {state.kind === 'found' && !isOwnBento ? (
             <BlockReportMenu pseudo={pseudo} />
           ) : null}
         </View>
