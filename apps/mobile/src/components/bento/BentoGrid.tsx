@@ -45,6 +45,7 @@ export function BentoGrid({ items, scale = 1, empty = false, onTap }: BentoGridP
         <EmptyTile
           cat={cat}
           height={height}
+          scale={scale}
           rotate={rotate * 0.5}
           onPress={onTap ? () => onTap(cat) : undefined}
         />
@@ -56,6 +57,7 @@ export function BentoGrid({ items, scale = 1, empty = false, onTap }: BentoGridP
         data={item}
         height={height}
         size={size}
+        scale={scale}
         rotate={rotate}
         onPress={onTap ? () => onTap(cat) : undefined}
       />

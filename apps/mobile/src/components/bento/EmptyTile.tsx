@@ -5,6 +5,8 @@ import { CATEGORY_META } from './categories';
 type EmptyTileProps = {
   cat: CategoryKey;
   height: number;
+  /** Échelle propagée depuis BentoGrid (cf. Tile.scale). */
+  scale?: number;
   rotate?: number;
   onPress?: () => void;
 };
@@ -15,8 +17,12 @@ type EmptyTileProps = {
  *
  * Cf. design Claude Design — `EmptyTile` dans `bento-tiles.jsx`.
  */
-export function EmptyTile({ cat, height, rotate = 0, onPress }: EmptyTileProps) {
+export function EmptyTile({ cat, height, scale = 1, rotate = 0, onPress }: EmptyTileProps) {
   const meta = CATEGORY_META[cat];
+  const s = Math.max(0.7, scale);
+  const circleSize = Math.round(36 * s);
+  const plusSize = Math.round(20 * s);
+  const labelSize = Math.max(8, Math.round(10 * s));
   return (
     <Pressable
       onPress={onPress}
@@ -31,16 +37,16 @@ export function EmptyTile({ cat, height, rotate = 0, onPress }: EmptyTileProps) 
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: 6 * s,
         padding: 8,
         transform: [{ rotate: `${rotate}deg` }],
       }}
     >
       <View
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
+          width: circleSize,
+          height: circleSize,
+          borderRadius: circleSize / 2,
           backgroundColor: '#fbbf24',
           borderWidth: 2,
           borderColor: '#0a0a0a',
@@ -48,12 +54,12 @@ export function EmptyTile({ cat, height, rotate = 0, onPress }: EmptyTileProps) 
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontSize: 20, fontWeight: '800', color: '#0a0a0a', lineHeight: 22 }}>+</Text>
+        <Text style={{ fontSize: plusSize, fontWeight: '800', color: '#0a0a0a', lineHeight: plusSize + 2 }}>+</Text>
       </View>
       <Text
         style={{
           fontFamily: 'Bungee',
-          fontSize: 10,
+          fontSize: labelSize,
           letterSpacing: 1.2,
           color: '#0a0a0a',
           textTransform: 'uppercase',

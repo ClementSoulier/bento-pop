@@ -23,6 +23,10 @@ type TileProps = {
   data: TileData;
   height: number;
   size?: TileSize;
+  /** Échelle propagée depuis BentoGrid. Sert à scaler proportionnellement
+   *  les paddings / stamps / titres pour ne pas avoir une grille qui
+   *  rétrécit mais des stamps qui restent à leur taille absolue. */
+  scale?: number;
   rotate?: number;
   onPress?: () => void;
 };
@@ -69,10 +73,22 @@ const BORDER = 2.5;
  *
  * Cf. design Claude Design — `Tile` dans `bento-tiles.jsx`.
  */
-export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: TileProps) {
+export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, onPress }: TileProps) {
   const meta = CATEGORY_META[cat];
   const palette = PALETTES[data.paletteKey ?? 'neutral'];
-  const conf = SIZE_CONF[size];
+  const baseConf = SIZE_CONF[size];
+  // Applique le scale aux dims qui font la mise en page (paddings, fontSize
+  // du titre/sub/stamp). Le `letterSpacing` reste constant (déjà serré).
+  // Plancher à 0.7 pour ne pas avoir de stamps illisibles sur petit écran.
+  const s = Math.max(0.7, scale);
+  const conf = {
+    title: Math.round(baseConf.title * s),
+    sub: Math.round(baseConf.sub * s),
+    pad: Math.round(baseConf.pad * s),
+    stamp: Math.max(7, Math.round(baseConf.stamp * s)),
+    letterSpacing: baseConf.letterSpacing,
+    initial: Math.round(baseConf.initial * s),
+  };
   const hasImage = Boolean(data.imageUrl);
 
   // Inner : border + radius + overflow:hidden, SANS padding. Le bg est le
@@ -115,22 +131,31 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
             end={palette.end}
             style={StyleSheet.absoluteFillObject}
           />
+          {/* Initiale "stamp" en filigrane décalée vers le haut-droit pour
+              ne pas concurrencer le titre en bas. Légère rotation pour
+              casser la symétrie et donner un feel "tampon" plutôt que
+              "blob centré". Opacité contenue à 0.12. */}
           <View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}
+            style={[
+              StyleSheet.absoluteFillObject,
+              { alignItems: 'flex-end', justifyContent: 'flex-start', padding: conf.pad },
+            ]}
           >
             <Text
               style={{
                 fontFamily: 'Extenda',
                 fontSize: conf.initial,
-                lineHeight: conf.initial * 0.92,
+                lineHeight: conf.initial * 0.85,
                 color: palette.ink,
-                opacity: 0.18,
-                letterSpacing: -3,
+                opacity: 0.12,
+                letterSpacing: -2,
                 textTransform: 'uppercase',
+                transform: [{ rotate: '-6deg' }],
+                marginTop: -conf.initial * 0.15,
               }}
             >
-              {getInitial(data.title)}
+              {getInitial(cleanTitle(data.title))}
             </Text>
           </View>
         </>

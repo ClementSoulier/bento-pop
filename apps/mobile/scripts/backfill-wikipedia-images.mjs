@@ -23,6 +23,10 @@ const USER_AGENT = 'BentoPop-Backfill/0.1 (https://bento-pop.com)';
 const SOURCES_TO_BACKFILL = ['musicbrainz', 'wikidata', 'osm'];
 const RATE_LIMIT_MS = 100; // ~10 req/s, large sous les limites Wikipedia
 
+function upgradeThumb(url, targetPx = 640) {
+  return url.replace(/\/(\d+)px-([^/]+)$/, (_, _w, filename) => `/${targetPx}px-${filename}`);
+}
+
 async function fetchWikipediaThumb(title) {
   for (const lang of ['fr', 'en']) {
     const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.trim())}`;
@@ -33,7 +37,7 @@ async function fetchWikipediaThumb(title) {
       if (!res.ok) continue;
       const data = await res.json();
       if (data.type === 'disambiguation') continue;
-      if (data.thumbnail?.source) return data.thumbnail.source;
+      if (data.thumbnail?.source) return upgradeThumb(data.thumbnail.source, 640);
     } catch (e) {
       // skip, try next lang
     }

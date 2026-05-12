@@ -1,5 +1,6 @@
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,8 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { MiniBentoCard } from '@/components/bento';
-import { Sticker, TopChip, YellowBg } from '@/components/primitives';
+import { Sticker, YellowBg } from '@/components/primitives';
 import { loadFeaturedBentos } from '@/lib/featured';
 import { useBlocked } from '@/state/blocked';
 
@@ -50,8 +52,17 @@ export default function FeaturedTab() {
             <RefreshControl refreshing={refreshing} onRefresh={refetch} tintColor="#0a0a0a" />
           }
         >
-          <View style={{ paddingTop: 8 }}>
-            <TopChip label="À LA UNE" />
+          {/* Top bar logo seul — la tab bar du bas indique déjà la section
+              active, on évite le doublon visuel du chip "À LA UNE". */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingTop: 8,
+            }}
+          >
+            <Image source={logo} style={{ height: 28, width: 130 }} resizeMode="contain" />
           </View>
 
           <View style={{ paddingTop: 14, paddingHorizontal: 20 }}>
@@ -78,51 +89,73 @@ export default function FeaturedTab() {
           ) : isError ? (
             <ErrorState onRetry={() => refetch()} />
           ) : visibleBentos.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 }}>
+            <View style={{ alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 }}>
+              <Sticker color="#0a0a0a" textColor="#fbbf24" rotation={4} size={12}>
+                Bientôt
+              </Sticker>
               <Text
                 style={{
+                  marginTop: 16,
                   fontFamily: 'Extenda',
-                  fontSize: 22,
+                  fontSize: 24,
                   textAlign: 'center',
                   letterSpacing: 1,
+                  textTransform: 'uppercase',
                 }}
               >
-                Pas encore de bento featured
+                {'Pas encore\nde featured'}
               </Text>
               <Text
                 style={{
-                  marginTop: 8,
-                  fontSize: 13,
+                  marginTop: 12,
+                  fontSize: 14,
                   color: 'rgba(10,10,10,0.65)',
                   textAlign: 'center',
-                  lineHeight: 19,
+                  lineHeight: 21,
+                  maxWidth: 280,
                 }}
               >
-                L'équipe Bento Pop mettra bientôt en avant les bentos les plus inspirants. Reviens dans quelques jours !
+                L'équipe Bento Pop met en avant les bentos les plus inspirants chaque semaine. Reviens dans quelques jours !
               </Text>
             </View>
           ) : (
             <>
-              {/* Carrousel équipe */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 }}
-              >
-                {team.map((b, i) => (
+              {/* Carrousel équipe — single card centrée si une seule entrée
+                  (sinon ça flotte à gauche sur un grand écran vide). */}
+              {team.length === 1 && team[0] ? (
+                <View style={{ alignItems: 'center', paddingTop: 16 }}>
                   <Pressable
-                    key={b.bentoId}
-                    onPress={() => router.push(`/u/${b.pseudo}` as const)}
-                    style={{ transform: [{ rotate: `${[-1, 0.6, -0.5, 0.8][i] ?? 0}deg` }] }}
+                    onPress={() => router.push(`/u/${team[0]!.pseudo}` as const)}
+                    style={{ transform: [{ rotate: '-1deg' }] }}
                   >
                     <MiniBentoCard
-                      items={b.slots}
-                      pseudo={b.pseudo}
-                      name={b.displayName ?? undefined}
+                      items={team[0]!.slots}
+                      pseudo={team[0]!.pseudo}
+                      name={team[0]!.displayName ?? undefined}
                     />
                   </Pressable>
-                ))}
-              </ScrollView>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 }}
+                >
+                  {team.map((b, i) => (
+                    <Pressable
+                      key={b.bentoId}
+                      onPress={() => router.push(`/u/${b.pseudo}` as const)}
+                      style={{ transform: [{ rotate: `${[-1, 0.6, -0.5, 0.8][i] ?? 0}deg` }] }}
+                    >
+                      <MiniBentoCard
+                        items={b.slots}
+                        pseudo={b.pseudo}
+                        name={b.displayName ?? undefined}
+                      />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
 
               {/* Coups de cœur */}
               {others.length > 0 ? (
