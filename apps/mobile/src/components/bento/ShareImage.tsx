@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { Image, Text, View } from 'react-native';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
+import popy from '@bento-pop/brand/assets/mascot/popy-content.png';
 import { BentoGrid, type BentoItems } from './BentoGrid';
 
 type ShareImageProps = {
@@ -9,80 +10,63 @@ type ShareImageProps = {
 };
 
 /**
- * Carte 600×800 (proportion story Instagram-friendly) prête à être
- * capturée en PNG par `react-native-view-shot`.
+ * Carte 1080×1920 (format Story Instagram / TikTok / Snapchat — 9:16),
+ * prête à être capturée en PNG par `react-native-view-shot` puis partagée.
  *
- * Rendue dans le viewport avec `opacity: 0` (pas hors-écran) pour que iOS
- * mesure et peint correctement les Text à police custom avant la capture.
- * Le contenu est tout en absolu pour ne pas être influencé par le layout
- * parent.
+ * Trois sections verticales bien séparées (pas d'overlap possible) :
+ *   - Header (top 580pt) : logo Bento Pop · sticker "MON BENTO" · @pseudo
+ *   - Bento grid centré (1100pt)
+ *   - Footer (top 240pt) : bentopop.com · Popy
  *
- * Cf. design Claude Design — `ShareImage` dans `screens.jsx`.
+ * Le rendu doit être ROBUSTE : tout est en flux normal (flexbox), aucun
+ * absolute positioning, pour éviter les surprises de captureRef.
  */
 export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, ref) => {
-  // Garde-fou : si pseudo est vide pour une raison X (rare), on évite un
-  // "@" tout seul qui passerait pour un bug dans l'image partagée.
   const safePseudo = pseudo?.trim() || 'anonyme';
   return (
     <View
       ref={ref}
       collapsable={false}
       style={{
-        width: 600,
-        height: 800,
+        width: 1080,
+        height: 1920,
         backgroundColor: '#fbbf24',
-        position: 'relative',
         overflow: 'hidden',
-        padding: 36,
-        paddingHorizontal: 40,
+        paddingHorizontal: 80,
+        paddingTop: 80,
+        paddingBottom: 60,
       }}
     >
-      {/* Stickers d'angle */}
+      {/* ━━━ HEADER ━━━ */}
       <View
         style={{
-          position: 'absolute',
-          top: 28,
-          right: 36,
-          backgroundColor: '#0a0a0a',
-          borderWidth: 2,
-          borderColor: '#0a0a0a',
-          borderRadius: 4,
-          paddingHorizontal: 10,
-          paddingVertical: 5,
-          transform: [{ rotate: '6deg' }],
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: 40,
         }}
       >
-        <Text
-          style={{
-            color: '#fbbf24',
-            fontFamily: 'Bungee',
-            fontSize: 11,
-            letterSpacing: 1.5,
-            textTransform: 'uppercase',
-          }}
-        >
-          bentopop.com
-        </Text>
+        <Image source={logo} style={{ height: 70, width: 310 }} resizeMode="contain" />
       </View>
 
       <View
         style={{
           alignSelf: 'flex-start',
           backgroundColor: '#e63946',
-          borderWidth: 2,
+          borderWidth: 3,
           borderColor: '#0a0a0a',
-          borderRadius: 4,
-          paddingHorizontal: 10,
-          paddingVertical: 5,
-          transform: [{ rotate: '-3deg' }],
+          borderRadius: 8,
+          paddingHorizontal: 24,
+          paddingVertical: 12,
+          marginBottom: 28,
+          transform: [{ rotate: '-2deg' }],
         }}
       >
         <Text
           style={{
             color: '#ffffff',
             fontFamily: 'Bungee',
-            fontSize: 14,
-            letterSpacing: 1.5,
+            fontSize: 32,
+            letterSpacing: 2,
             textTransform: 'uppercase',
           }}
         >
@@ -93,40 +77,59 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
       <Text
         style={{
           fontFamily: 'Extenda',
-          fontSize: 56,
-          lineHeight: 56 * 0.9,
-          letterSpacing: 1.5,
+          fontSize: 120,
+          lineHeight: 110,
+          letterSpacing: 2,
           color: '#0a0a0a',
-          marginTop: 14,
           textTransform: 'uppercase',
+          marginBottom: 40,
         }}
       >
         @{safePseudo}
       </Text>
 
-      <View style={{ flex: 1, marginTop: 24, justifyContent: 'center' }}>
-        <BentoGrid items={items} scale={1.45} />
+      {/* ━━━ BENTO GRID centré ━━━ */}
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+        }}
+      >
+        <BentoGrid items={items} scale={2.6} />
       </View>
 
+      {/* ━━━ FOOTER ━━━ */}
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          marginTop: 22,
+          gap: 24,
+          marginTop: 32,
         }}
       >
-        <Image source={logo} style={{ height: 36, width: 160 }} resizeMode="contain" />
-        <Text
-          style={{
-            flex: 1,
-            textAlign: 'right',
-            fontSize: 13,
-            fontWeight: '600',
-            color: 'rgba(10,10,10,0.7)',
-          }}
-        >
-          Composé sur Bento Pop · 6/6 casess
-        </Text>
+        <Image source={popy} style={{ width: 96, height: 96 }} resizeMode="contain" />
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontFamily: 'Bungee',
+              fontSize: 28,
+              letterSpacing: 1.5,
+              color: '#0a0a0a',
+              textTransform: 'uppercase',
+            }}
+          >
+            bento-pop.com
+          </Text>
+          <Text
+            style={{
+              fontSize: 22,
+              color: 'rgba(10,10,10,0.7)',
+              marginTop: 4,
+            }}
+          >
+            Compose le tien · 6 cases pop culture
+          </Text>
+        </View>
       </View>
     </View>
   );

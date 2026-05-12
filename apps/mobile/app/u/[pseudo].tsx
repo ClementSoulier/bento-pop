@@ -138,23 +138,23 @@ export default function PublicBento() {
         ) : (
           <View style={{ flex: 1 }}>
             {/*
-              ShareImage rendue dans le viewport mais en `opacity: 0` pour
-              que `react-native-view-shot` la capture proprement. iOS optimise
-              le rendu des vues vraiment offscreen (top: -10000) et le
-              <Text> à police custom (Extenda) peut alors ne pas être mesuré
-              à temps avant la capture → pseudo manquant dans l'image
-              partagée. Avec opacity 0 + pointerEvents=none, c'est invisible
-              pour l'utilisateur mais pleinement rendu pour view-shot.
+              ShareImage rendue HORS de la zone visible via `translateX`,
+              pas via `opacity: 0` (iOS optimise les vues transparentes et
+              skip le rendu des <Text> à police custom — pseudo manquait
+              dans le PNG). Avec un transform, la vue est pleinement
+              rendue, juste positionnée à 3000pt à droite.
+              Dimensions explicites 1080×1920 (format Story).
             */}
             <View
               pointerEvents="none"
+              collapsable={false}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                width: 600,
-                height: 800,
-                opacity: 0,
+                width: 1080,
+                height: 1920,
+                transform: [{ translateX: 3000 }],
               }}
             >
               <ShareImage ref={shareImageRef} items={state.slots} pseudo={pseudo} />
