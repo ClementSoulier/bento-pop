@@ -58,10 +58,13 @@ const BORDER = 2.5;
 /**
  * Tile remplie d'un compartiment bento.
  *
- * Une seule View racine avec border + radius + overflow:hidden — tout le
- * contenu (image, gradient, stamps, texte) est clipped proprement à
- * l'intérieur des coins arrondis. Pas de double View imbriqué qui causait
- * le débordement visible de l'image dans les angles.
+ * Structure en 3 couches DANS la border-box (le inner n'a PAS de padding —
+ * sinon les enfants `position: absolute` s'inscrivent dans la content-box
+ * et laissent paraître un liseré de la palette autour de l'image) :
+ *   1. Background (image OU gradient + initiale) : fill total
+ *   2. Overlay sombre pour lisibilité du texte (si image)
+ *   3. Content (stamp + titre) : positionné en absolute, offset = conf.pad
+ *      depuis chaque bord — simule le padding sans contaminer le background
  *
  * Cf. design Claude Design — `Tile` dans `bento-tiles.jsx`.
  */
@@ -71,7 +74,9 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
   const conf = SIZE_CONF[size];
   const hasImage = Boolean(data.imageUrl);
 
-  // Inner : tout le contenu clippé proprement par border + radius + overflow.
+  // Inner : border + radius + overflow:hidden, SANS padding. Le bg est le
+  // dernier filet de sécurité avant le rendu de l'image (visible en flash
+  // pendant le download), pas un liseré décoratif.
   const innerStyle: ViewStyle = {
     flex: 1,
     borderRadius: RADIUS,
@@ -79,8 +84,6 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
     borderColor: '#0a0a0a',
     backgroundColor: palette.colors[0],
     overflow: 'hidden',
-    justifyContent: 'flex-end',
-    padding: conf.pad,
   };
 
   // Outer : porte la shadow stamp + la rotation. On ne peut PAS combiner
@@ -96,11 +99,7 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
 
   const content = (
     <>
-      {/* Background : image en plein cadre OU dégradé palette + grosse
-          initiale en filigrane (fallback signature quand pas de photo).
-          NB : `inset: 0` n'est pas fiable sur RN 0.76 (l'Image rend à sa
-          taille native en haut-gauche). On utilise `StyleSheet.absoluteFillObject`
-          (top/left/right/bottom: 0) qui force le remplissage du parent. */}
+      {/* COUCHE 1 — Background : image plein cadre OU gradient + initiale */}
       {hasImage ? (
         <Image
           source={{ uri: data.imageUrl }}
@@ -136,18 +135,21 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
         </>
       )}
 
-      {/* Overlay sombre du bas (lisibilité texte sur image) */}
+      {/* COUCHE 2 — Overlay sombre du bas (lisibilité texte si image) */}
       {hasImage ? (
         <LinearGradient
           colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
           start={{ x: 0.5, y: 0.3 }}
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
         />
       ) : null}
 
-      {/* Stamp catégorie haut-gauche */}
+      {/* COUCHE 3 — Content : stamp haut-gauche + titre bas. Offsets =
+          conf.pad pour simuler un padding sans casser la couche background. */}
       <View
+        pointerEvents="none"
         style={{
           position: 'absolute',
           top: conf.pad,
@@ -156,6 +158,7 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
           paddingHorizontal: 6,
           paddingVertical: 2,
           borderRadius: 4,
+          alignSelf: 'flex-start',
         }}
       >
         <Text
@@ -170,8 +173,15 @@ export function Tile({ cat, data, height, size = 'md', rotate = 0, onPress }: Ti
         </Text>
       </View>
 
-      {/* Titre + subtitle */}
-      <View>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          bottom: conf.pad,
+          left: conf.pad,
+          right: conf.pad,
+        }}
+      >
         <Text
           numberOfLines={2}
           style={{

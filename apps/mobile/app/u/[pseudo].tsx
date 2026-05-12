@@ -137,14 +137,24 @@ export default function PublicBento() {
         ) : (
           <View style={{ flex: 1 }}>
             {/*
-              ShareImage offscreen — rendue hors-écran (top: -10000) pour que
-              `react-native-view-shot` puisse la capturer en PNG 600×800
-              déclenché par le bouton Partager. `pointerEvents="none"` pour
-              être sûr qu'elle n'intercepte aucun tap.
+              ShareImage rendue dans le viewport mais en `opacity: 0` pour
+              que `react-native-view-shot` la capture proprement. iOS optimise
+              le rendu des vues vraiment offscreen (top: -10000) et le
+              <Text> à police custom (Extenda) peut alors ne pas être mesuré
+              à temps avant la capture → pseudo manquant dans l'image
+              partagée. Avec opacity 0 + pointerEvents=none, c'est invisible
+              pour l'utilisateur mais pleinement rendu pour view-shot.
             */}
             <View
               pointerEvents="none"
-              style={{ position: 'absolute', top: -10000, left: 0 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: 600,
+                height: 800,
+                opacity: 0,
+              }}
             >
               <ShareImage ref={shareImageRef} items={state.slots} pseudo={pseudo} />
             </View>

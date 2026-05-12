@@ -28,6 +28,11 @@ export async function shareBentoImage(
   }
 
   try {
+    // Petit délai (1 frame ~16ms + marge) pour garantir que la ShareImage
+    // offscreen ait fini son layout/paint avant la capture. Sans ça, on a
+    // observé que les <Text> à police custom (Extenda) sont parfois absents
+    // du PNG capturé sur iOS (cf. fix `top: -10000` → `opacity: 0`).
+    await new Promise((resolve) => setTimeout(resolve, 80));
     const uri = await captureRef(ref, {
       format: 'png',
       quality: 1,

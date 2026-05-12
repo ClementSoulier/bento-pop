@@ -37,12 +37,21 @@ export async function fetchWikipediaThumbnail(title: string): Promise<string | n
           Accept: 'application/json',
         },
       });
-      if (!res.ok) continue; // 404 → next lang
+      if (!res.ok) {
+        if (__DEV__ && res.status !== 404) {
+          console.warn(`[wikipedia] ${lang} HTTP ${res.status} for "${title}"`);
+        }
+        continue; // 404 attendu → next lang
+      }
       const data = (await res.json()) as WikipediaSummary;
-      if (data.type === 'disambiguation') continue; // page ambiguë → next lang
+      if (data.type === 'disambiguation') {
+        if (__DEV__) console.info(`[wikipedia] disambiguation page for "${title}" (${lang})`);
+        continue;
+      }
       if (data.thumbnail?.source) return data.thumbnail.source;
-    } catch {
-      // Erreur réseau / parsing → next lang
+      if (__DEV__) console.info(`[wikipedia] no thumbnail for "${title}" (${lang})`);
+    } catch (e) {
+      if (__DEV__) console.warn(`[wikipedia] fetch error for "${title}" (${lang}):`, (e as Error).message);
     }
   }
   return null;

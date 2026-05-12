@@ -12,13 +12,17 @@ type ShareImageProps = {
  * Carte 600×800 (proportion story Instagram-friendly) prête à être
  * capturée en PNG par `react-native-view-shot`.
  *
- * Rendue OFF-SCREEN (via `collapsable={false}` + positionnement
- * pointer-events:none par le parent). Le contenu est tout en absolu pour
- * ne pas être influencé par le layout parent.
+ * Rendue dans le viewport avec `opacity: 0` (pas hors-écran) pour que iOS
+ * mesure et peint correctement les Text à police custom avant la capture.
+ * Le contenu est tout en absolu pour ne pas être influencé par le layout
+ * parent.
  *
  * Cf. design Claude Design — `ShareImage` dans `screens.jsx`.
  */
 export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, ref) => {
+  // Garde-fou : si pseudo est vide pour une raison X (rare), on évite un
+  // "@" tout seul qui passerait pour un bug dans l'image partagée.
+  const safePseudo = pseudo?.trim() || 'anonyme';
   return (
     <View
       ref={ref}
@@ -97,7 +101,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
           textTransform: 'uppercase',
         }}
       >
-        @{pseudo}
+        @{safePseudo}
       </Text>
 
       <View style={{ flex: 1, marginTop: 24, justifyContent: 'center' }}>
@@ -121,7 +125,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
             color: 'rgba(10,10,10,0.7)',
           }}
         >
-          Composé sur Bento Pop · 6/6 cases
+          Composé sur Bento Pop · 6/6 casess
         </Text>
       </View>
     </View>
