@@ -12,6 +12,7 @@ import { useSession } from '@/state/session';
 import { useBlocked } from '@/state/blocked';
 import { Splash } from '@/components/Splash';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { ToastHost } from '@/components/primitives';
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
@@ -59,6 +60,7 @@ export default function RootLayout() {
             />
           </Stack>
           <OfflineBanner />
+          <ToastHost />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

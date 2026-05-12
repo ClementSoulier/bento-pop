@@ -1,12 +1,10 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ComposeIcon, FeaturedIcon, ProfileIcon, SearchIcon } from '@/components/TabIcons';
 
 /**
  * Bottom tab bar 4 onglets : Compose · À la une · Trouver · Profil.
- * Cf. design Claude Design — section "À la une & Recherche".
- *
- * Style provisoire (Ionicons). La version finale utilisera les SVG
- * custom du design (rectangle 4-cases, étoile, loupe, silhouette).
+ * Icônes SVG custom (cf. `TabIcons`) — bordure 2.5px noir cohérente avec
+ * la signature visuelle Bento Pop. Active = remplie, inactive = outline.
  */
 export default function TabsLayout() {
   return (
@@ -14,7 +12,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#0a0a0a',
-        tabBarInactiveTintColor: 'rgba(10,10,10,0.45)',
+        tabBarInactiveTintColor: 'rgba(10,10,10,0.4)',
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 2.5,
@@ -34,8 +32,8 @@ export default function TabsLayout() {
         name="compose"
         options={{
           title: 'Compose',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="grid-outline" color={color} size={size ?? 22} />
+          tabBarIcon: ({ color, focused }) => (
+            <ComposeIcon size={22} color={color} active={focused} />
           ),
         }}
       />
@@ -43,8 +41,8 @@ export default function TabsLayout() {
         name="featured"
         options={{
           title: 'À la une',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="star-outline" color={color} size={size ?? 22} />
+          tabBarIcon: ({ color, focused }) => (
+            <FeaturedIcon size={22} color={color} active={focused} />
           ),
         }}
       />
@@ -52,17 +50,15 @@ export default function TabsLayout() {
         name="search"
         options={{
           title: 'Trouver',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search-outline" color={color} size={size ?? 22} />
-          ),
+          tabBarIcon: ({ color }) => <SearchIcon size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" color={color} size={size ?? 22} />
+          tabBarIcon: ({ color, focused }) => (
+            <ProfileIcon size={22} color={color} active={focused} />
           ),
         }}
       />

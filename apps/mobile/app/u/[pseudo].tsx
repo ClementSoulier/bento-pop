@@ -275,7 +275,10 @@ export default function PublicBento() {
                     if (sharing) return;
                     setSharing(true);
                     try {
-                      const outcome = await shareBentoImage(pseudo, shareImageRef);
+                      const imageUrls = Object.values(state.slots)
+                        .map((s) => s.imageUrl)
+                        .filter((u): u is string => Boolean(u));
+                      const outcome = await shareBentoImage(pseudo, shareImageRef, imageUrls);
                       if (outcome === 'copied') {
                         Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
                       } else if (outcome === 'unsupported') {

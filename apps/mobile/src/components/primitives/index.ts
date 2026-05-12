@@ -4,4 +4,5 @@ export { YellowBg } from './YellowBg';
 export { PageTitle } from './PageTitle';
 export { TopChip } from './TopChip';
 export { Pagination } from './Pagination';
+export { ToastHost, useToast } from './Toast';
 export { SHADOWS, stampShadow } from './shadow';

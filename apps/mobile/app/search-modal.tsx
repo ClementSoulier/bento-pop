@@ -21,7 +21,7 @@ import { fetchWikipediaThumbnail } from '@/api/wikipedia';
 import { cleanTitle } from '@/lib/text';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
-import { StampButton } from '@/components/primitives';
+import { StampButton, useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { EXTERNAL_SEARCH_STALE_TIME } from '@/lib/query-client';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
@@ -61,6 +61,7 @@ export default function SearchModal() {
   const clearSlot = useBento((s) => s.clearSlot);
   const currentSlot = useBento((s) => s.slots[category]);
   const slotIsFilled = Boolean(currentSlot);
+  const showToast = useToast((s) => s.show);
 
   // Debounce 400ms : respecte les rate-limits MB / Nominatim (1 req/s) et
   // évite de spammer TMDb. La query key change uniquement après pause.
@@ -120,32 +121,41 @@ export default function SearchModal() {
     }
   };
 
-  const onClear = () => {
-    if (!userId || !slotIsFilled) return;
-    Alert.alert(
-      'Vider cette case ?',
-      `Tu peux la remplir à nouveau à tout moment.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Vider',
-          style: 'destructive',
-          onPress: async () => {
-            setSubmitting(true);
-            try {
-              const bentoId = await ensureBento(userId);
-              await clearBentoSlot(bentoId, category);
-              clearSlot(category);
-              router.back();
-            } catch (e) {
-              Alert.alert('Oups', (e as Error).message);
-            } finally {
-              setSubmitting(false);
+  const onClear = async () => {
+    if (!userId || !slotIsFilled || !currentSlot) return;
+    // Suppression immédiate + toast d'annulation 5s. Si l'utilisateur tap
+    // "Annuler", on reset la case avec le même itemId via setBentoSlot
+    // (l'item reste dans le catalogue mutualisé, on ne le supprime jamais).
+    const snapshot = currentSlot;
+    const snapshotItemId = currentSlot.itemId;
+    setSubmitting(true);
+    try {
+      const bentoId = await ensureBento(userId);
+      await clearBentoSlot(bentoId, category);
+      clearSlot(category);
+      router.back();
+      showToast('Case vidée', {
+        variant: 'neutral',
+        durationMs: 5000,
+        action: snapshotItemId
+          ? {
+              label: 'Annuler',
+              onPress: async () => {
+                try {
+                  await setBentoSlot(bentoId, category, snapshotItemId);
+                  setSlot(category, snapshot);
+                } catch {
+                  // Si la restauration échoue, l'user peut re-sélectionner.
+                }
+              },
             }
-          },
-        },
-      ],
-    );
+          : undefined,
+      });
+    } catch (e) {
+      Alert.alert('Oups', (e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

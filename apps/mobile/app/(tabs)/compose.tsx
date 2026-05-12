@@ -5,7 +5,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
-import { StampButton, YellowBg } from '@/components/primitives';
+import { StampButton, useToast, YellowBg } from '@/components/primitives';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { ensureBento, publishBento } from '@/lib/bento-actions';
@@ -33,6 +33,8 @@ export default function ComposeTab() {
   const { height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
+  const showToast = useToast((s) => s.show);
+
   const onPublish = async () => {
     if (!userId || !allFilled) return;
     setPublishing(true);
@@ -40,6 +42,12 @@ export default function ComposeTab() {
       const bentoId = await ensureBento(userId);
       await publishBento(bentoId);
       router.push(`/u/${pseudo}` as const);
+      // Feedback de succès — montré APRÈS le push pour que le toast
+      // s'affiche sur la page publique (où l'utilisateur peut partager).
+      showToast('Bento publié ! Partage-le 🍱', {
+        variant: 'success',
+        durationMs: 3500,
+      });
     } catch (e) {
       Alert.alert('Oups', (e as Error).message);
     } finally {

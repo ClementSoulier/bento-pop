@@ -1,9 +1,31 @@
-import { Platform } from 'react-native';
+import { Image, Platform } from 'react-native';
 import type { RefObject } from 'react';
 import type { View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { shareBento, type ShareOutcome } from './share';
+
+/**
+ * Précharge les URLs distantes pour qu'elles soient présentes dans le
+ * cache RN au moment du captureRef. Sans ça, captureRef peut snapshot
+ * une <Image> avant que le download finisse → case vide dans le PNG.
+ *
+ * On limite le timeout à 3s par image pour ne pas bloquer indéfiniment
+ * si une URL est down (rare mais arrive avec Wikipedia / OSM).
+ */
+async function preloadImages(urls: string[]): Promise<void> {
+  await Promise.all(
+    urls.map((url) =>
+      Promise.race([
+        Image.prefetch(url),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]).catch(() => {
+        // Échec silencieux : on capture quand même, mieux vaut une case
+        // vide qu'un partage qui plante.
+      }),
+    ),
+  );
+}
 
 /**
  * Partage le bento sous forme d'image PNG capturée (story Instagram-friendly).
@@ -22,16 +44,22 @@ import { shareBento, type ShareOutcome } from './share';
 export async function shareBentoImage(
   pseudo: string,
   ref: RefObject<View | null>,
+  imageUrls: string[] = [],
 ): Promise<ShareOutcome> {
   if (Platform.OS === 'web' || !ref.current) {
     return shareBento(pseudo);
   }
 
   try {
-    // Petit délai (1 frame ~16ms + marge) pour garantir que la ShareImage
-    // offscreen ait fini son layout/paint avant la capture. Sans ça, on a
-    // observé que les <Text> à police custom (Extenda) sont parfois absents
-    // du PNG capturé sur iOS (cf. fix `top: -10000` → `opacity: 0`).
+    // 1. Précharger les images distantes pour qu'elles soient présentes
+    //    dans le PNG capturé (sinon race : captureRef peut snapshot avant
+    //    que les Image aient fini leur download).
+    if (imageUrls.length > 0) {
+      await preloadImages(imageUrls);
+    }
+    // 2. Petit délai pour laisser le layout/paint final se faire (police
+    //    Extenda offscreen + nouvelles images chargées). Cf. fix
+    //    `top: -10000` → `opacity: 0` pour ShareImage.
     await new Promise((resolve) => setTimeout(resolve, 80));
     const uri = await captureRef(ref, {
       format: 'png',
