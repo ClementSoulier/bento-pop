@@ -91,15 +91,17 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
   };
   const hasImage = Boolean(data.imageUrl);
 
-  // Inner : border + radius + overflow:hidden, SANS padding. Le bg est le
-  // dernier filet de sécurité avant le rendu de l'image (visible en flash
-  // pendant le download), pas un liseré décoratif.
+  // Inner : border + radius + overflow:hidden, SANS padding. Le bg est noir
+  // (même couleur que la bordure) pour blender avec celle-ci en cas de
+  // gap sub-pixel sur iOS — sinon on voit un liseré clair (palette.colors[0])
+  // entre la bordure et l'image (l'iOS rendering de overflow:hidden+borderRadius
+  // ne s'aligne pas toujours pixel-perfect avec un <Image>).
   const innerStyle: ViewStyle = {
     flex: 1,
     borderRadius: RADIUS,
     borderWidth: BORDER,
     borderColor: '#0a0a0a',
-    backgroundColor: palette.colors[0],
+    backgroundColor: '#0a0a0a',
     overflow: 'hidden',
   };
 
