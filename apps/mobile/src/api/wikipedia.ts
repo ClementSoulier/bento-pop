@@ -18,17 +18,15 @@ type WikipediaSummary = {
 };
 
 /**
- * La REST API Wikipedia renvoie une thumbnail par défaut en ~320px. À
- * scale 1.45 (image de partage 600×800), c'est pixellisé. Les URLs
- * Commons suivent le pattern `.../thumb/.../<W>px-<filename>` — on peut
- * upgrade en remplaçant W par une valeur plus haute (max raisonnable :
- * 640px pour rester sous 200ko par image).
+ * Tentative d'upgrade de la résolution Wikipedia (320 → 640px) RETIRÉE.
  *
- * Si l'URL ne matche pas le pattern (rare), on garde l'originale.
+ * Le pattern `/<W>px-<file>` n'est garanti que pour les fichiers générés
+ * dynamiquement par Wikimedia, et certains assets source sont eux-mêmes
+ * < 640px → la transformation produit une URL 404 et l'<Image> reste
+ * blanche. Plutôt qu'un fallback runtime complexe, on garde le thumbnail
+ * tel quel (320px). À optimiser plus tard via `originalimage` avec un
+ * size cap, OU avec une vérif HEAD côté serveur.
  */
-function upgradeThumbResolution(url: string, targetPx = 640): string {
-  return url.replace(/\/(\d+)px-([^/]+)$/, (_, _w, filename) => `/${targetPx}px-${filename}`);
-}
 
 /**
  * Cherche la vignette Wikipedia d'un titre donné. Essaie fr d'abord, puis en
@@ -61,7 +59,7 @@ export async function fetchWikipediaThumbnail(title: string): Promise<string | n
         if (__DEV__) console.info(`[wikipedia] disambiguation page for "${title}" (${lang})`);
         continue;
       }
-      if (data.thumbnail?.source) return upgradeThumbResolution(data.thumbnail.source, 640);
+      if (data.thumbnail?.source) return data.thumbnail.source;
       if (__DEV__) console.info(`[wikipedia] no thumbnail for "${title}" (${lang})`);
     } catch (e) {
       if (__DEV__) console.warn(`[wikipedia] fetch error for "${title}" (${lang}):`, (e as Error).message);
