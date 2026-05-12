@@ -173,6 +173,8 @@ export default function SearchModal() {
       >
         <Pressable
           onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Fermer la recherche"
           style={[
             {
               backgroundColor: '#ffffff',
@@ -284,6 +286,9 @@ export default function SearchModal() {
             return (
               <Pressable
                 onPress={() => setSelected(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Sélectionner ${cleanTitle(item.title)}${item.subtitle ? `, ${item.subtitle}` : ''}`}
+                accessibilityState={{ selected: isSelected }}
                 style={[
                   {
                     width: TILE_WIDTH,
@@ -418,6 +423,8 @@ export default function SearchModal() {
             <Pressable
               onPress={onClear}
               disabled={submitting}
+              accessibilityRole="button"
+              accessibilityLabel="Vider cette case"
               style={{
                 alignSelf: 'center',
                 paddingVertical: 8,

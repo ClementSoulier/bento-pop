@@ -38,6 +38,8 @@ export default function CreditsPage() {
         <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingTop: 8 }}>
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
             style={[
               {
                 backgroundColor: '#ffffff',
@@ -176,6 +178,8 @@ function CardLink({ label, onPress }: { label: string; onPress?: () => void }) {
     <Pressable
       onPress={onPress}
       disabled={!onPress}
+      accessibilityRole={onPress ? 'link' : 'text'}
+      accessibilityLabel={label}
       style={{
         paddingVertical: 13,
         paddingHorizontal: 16,
@@ -206,6 +210,9 @@ function Attribution({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={`${source} : ${text}`}
+      accessibilityHint="Ouvre le site source dans le navigateur"
       style={{
         backgroundColor: '#ffffff',
         borderWidth: 2,

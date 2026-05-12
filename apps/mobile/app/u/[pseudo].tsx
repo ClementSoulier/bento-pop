@@ -108,6 +108,8 @@ export default function PublicBento() {
         >
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/compose'))}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
             style={[
               {
                 backgroundColor: '#ffffff',
@@ -244,6 +246,8 @@ export default function PublicBento() {
               <View style={{ flexDirection: 'row', padding: 16, paddingBottom: 32, gap: 8 }}>
                 <Pressable
                   onPress={() => router.replace('/(tabs)/compose')}
+                  accessibilityRole="button"
+                  accessibilityLabel={isOwnBento ? 'Modifier mon bento' : 'Compose le tien'}
                   style={[
                     {
                       flex: 1,
@@ -271,6 +275,9 @@ export default function PublicBento() {
                 </Pressable>
                 <Pressable
                   disabled={sharing}
+                  accessibilityRole="button"
+                  accessibilityLabel={sharing ? 'Génération de l\'image en cours' : 'Partager le bento'}
+                  accessibilityState={{ disabled: sharing, busy: sharing }}
                   onPress={async () => {
                     if (sharing) return;
                     setSharing(true);
@@ -423,6 +430,9 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Options pour @${pseudo}`}
+      accessibilityHint="Ouvre les options de signalement et blocage"
       style={{ marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6 }}
     >
       <Text

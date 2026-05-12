@@ -152,6 +152,8 @@ export default function PseudoOnboarding() {
                 <Pressable
                   key={s}
                   onPress={() => setPseudo(s)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Utiliser la suggestion ${s}`}
                   style={[
                     {
                       backgroundColor: '#ffffff',

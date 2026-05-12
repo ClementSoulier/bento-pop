@@ -246,12 +246,21 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
     </>
   );
 
+  const a11yLabel = `${meta.label} : ${cleanTitle(data.title)}${data.subtitle ? `, ${data.subtitle}` : ''}`;
   const inner = onPress ? (
-    <Pressable onPress={onPress} style={innerStyle}>
+    <Pressable
+      onPress={onPress}
+      style={innerStyle}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint="Modifie cette case du bento"
+    >
       {content}
     </Pressable>
   ) : (
-    <View style={innerStyle}>{content}</View>
+    <View style={innerStyle} accessibilityRole="image" accessibilityLabel={a11yLabel}>
+      {content}
+    </View>
   );
 
   return <View style={outerStyle}>{inner}</View>;

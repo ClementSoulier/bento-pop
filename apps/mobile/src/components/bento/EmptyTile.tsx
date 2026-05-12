@@ -26,6 +26,9 @@ export function EmptyTile({ cat, height, scale = 1, rotate = 0, onPress }: Empty
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Ajouter ${meta.label.toLowerCase()}`}
+      accessibilityHint="Ouvre la recherche pour remplir cette case"
       style={{
         height,
         width: '100%',

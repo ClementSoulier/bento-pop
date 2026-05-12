@@ -47,10 +47,17 @@ export function StampButton({
   ...rest
 }: StampButtonProps) {
   const palette = PALETTES[variant];
+  // VoiceOver : si pas d'`accessibilityLabel` explicite, on dérive du label
+  // textuel — quand `children` est une string, on l'utilise directement.
+  const a11yLabel =
+    rest.accessibilityLabel ?? (typeof children === 'string' ? children : undefined);
   return (
     <Pressable
       {...rest}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityState={{ disabled: Boolean(disabled) }}
       style={({ pressed }) => [
         styles.outer,
         { alignSelf: wide ? 'stretch' : 'flex-start' },

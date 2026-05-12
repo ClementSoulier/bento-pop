@@ -104,6 +104,8 @@ export default function ProfileTab() {
             <View style={{ marginTop: 32, width: '100%', gap: 12 }}>
               <Pressable
                 onPress={() => router.push(`/u/${pseudo}` as const)}
+                accessibilityRole="button"
+                accessibilityLabel="Voir mon bento public"
                 style={[
                   {
                     backgroundColor: '#ffffff',
@@ -179,6 +181,10 @@ export default function ProfileTab() {
             <Pressable
               onPress={confirmDelete}
               disabled={deleting}
+              accessibilityRole="button"
+              accessibilityLabel={deleting ? 'Suppression en cours' : 'Supprimer mon compte'}
+              accessibilityHint="Cette action est irréversible"
+              accessibilityState={{ disabled: deleting, busy: deleting }}
               style={{
                 paddingVertical: 14,
                 paddingHorizontal: 18,
@@ -223,6 +229,8 @@ function ProfileLink({ label, onPress }: { label: string; onPress: () => void })
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={label}
       style={{
         paddingVertical: 13,
         paddingHorizontal: 16,

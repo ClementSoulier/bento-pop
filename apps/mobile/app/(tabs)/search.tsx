@@ -139,6 +139,8 @@ export default function SearchTab() {
               </Text>
               <Pressable
                 onPress={() => refetch()}
+                accessibilityRole="button"
+                accessibilityLabel="Réessayer la recherche"
                 style={{
                   marginTop: 12,
                   backgroundColor: '#0a0a0a',
@@ -195,6 +197,8 @@ function Row({ hit, index }: { hit: UserHit; index: number }) {
   return (
     <Pressable
       onPress={() => router.push(`/u/${hit.pseudo}` as const)}
+      accessibilityRole="button"
+      accessibilityLabel={`Voir le bento de @${hit.pseudo}${hit.displayName ? `, ${hit.displayName}` : ''}`}
       style={[
         {
           backgroundColor: '#ffffff',

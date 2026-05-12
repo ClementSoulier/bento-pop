@@ -126,6 +126,8 @@ export default function FeaturedTab() {
                 <View style={{ alignItems: 'center', paddingTop: 16 }}>
                   <Pressable
                     onPress={() => router.push(`/u/${team[0]!.pseudo}` as const)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Voir le bento de @${team[0]!.pseudo}`}
                     style={{ transform: [{ rotate: '-1deg' }] }}
                   >
                     <MiniBentoCard
@@ -145,6 +147,8 @@ export default function FeaturedTab() {
                     <Pressable
                       key={b.bentoId}
                       onPress={() => router.push(`/u/${b.pseudo}` as const)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Voir le bento de @${b.pseudo}`}
                       style={{ transform: [{ rotate: `${[-1, 0.6, -0.5, 0.8][i] ?? 0}deg` }] }}
                     >
                       <MiniBentoCard
@@ -193,6 +197,8 @@ export default function FeaturedTab() {
                       <Pressable
                         key={b.bentoId}
                         onPress={() => router.push(`/u/${b.pseudo}` as const)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Voir le bento de @${b.pseudo}`}
                         style={{ transform: [{ rotate: `${[0.5, -0.7, 0.4, -0.4][i % 4] ?? 0}deg` }] }}
                       >
                         <MiniBentoCard
@@ -239,6 +245,8 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       </Text>
       <Pressable
         onPress={onRetry}
+        accessibilityRole="button"
+        accessibilityLabel="Réessayer le chargement"
         style={{
           marginTop: 16,
           backgroundColor: '#0a0a0a',
