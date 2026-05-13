@@ -373,7 +373,7 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
   const unblock = useBlocked((s) => s.unblock);
 
   const onPress = () => {
-    const options: Array<{ text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }> = [
+    const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
       {
         text: 'Signaler ce bento',
         style: 'destructive',
