@@ -1,4 +1,4 @@
-import { Image, Text, View } from 'react-native';
+import { Image, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
@@ -12,6 +12,17 @@ import { Pagination, Sticker, StampButton, YellowBg } from '@/components/primiti
  * Cf. design Claude Design — `SplashScreen` dans `screens.jsx`.
  */
 export default function SplashOnboarding() {
+  // Adapte le titre et le Popy aux écrans courts (iPad lance l'app en
+  // compat-mode iPhone à 375×667pt — beaucoup moins de hauteur qu'un
+  // iPhone moderne à 852pt — le layout par défaut faisait alors
+  // chevaucher le Popy avec le titre).
+  const { height } = useWindowDimensions();
+  const isShort = height < 720;
+  const titleSize = isShort ? 44 : 56;
+  const titleLineHeight = isShort ? 46 : 58;
+  const popySize = isShort ? 140 : 200;
+  const heroMarginTop = isShort ? 24 : 48;
+
   return (
     <YellowBg>
       <SafeAreaView style={{ flex: 1, paddingHorizontal: 24 }}>
@@ -22,21 +33,23 @@ export default function SplashOnboarding() {
           </View>
 
           {/* Hero typo */}
-          <View style={{ alignItems: 'center', marginTop: 48 }}>
+          <View style={{ alignItems: 'center', marginTop: heroMarginTop }}>
             <Sticker
               color="#0a0a0a"
               textColor="#fbbf24"
               rotation={-3}
               size={13}
-              style={{ marginBottom: 14 }}
+              style={{ marginBottom: 24 }}
             >
               L'APP COMPANION
             </Sticker>
             <Text
               style={{
                 fontFamily: 'Extenda',
-                fontSize: 56,
-                lineHeight: 49,
+                fontSize: titleSize,
+                // Leading >= fontSize : sinon le haut des glyphes de la 1re
+                // ligne « COMPOSE » est crop par le marginBottom du sticker.
+                lineHeight: titleLineHeight,
                 letterSpacing: -1,
                 textAlign: 'center',
                 textTransform: 'uppercase',
@@ -49,16 +62,19 @@ export default function SplashOnboarding() {
           </View>
 
           {/* Popy */}
-          <View style={{ flex: 1, position: 'relative', minHeight: 100 }}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+            }}
+          >
             <Image
               source={popyContent}
               style={{
-                position: 'absolute',
-                bottom: -20,
-                left: '50%',
-                marginLeft: -100,
-                width: 200,
-                height: 200,
+                width: popySize,
+                height: popySize,
+                marginBottom: -20,
                 transform: [{ rotate: '-3deg' }],
               }}
               resizeMode="contain"

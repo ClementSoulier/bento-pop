@@ -4,6 +4,7 @@ import { supabase } from '@/supabase/client';
 import type { CategoryKey, Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
+import { withTimeout } from '@/lib/with-timeout';
 
 type Profile = Database['public']['Tables']['users']['Row'];
 
@@ -18,6 +19,8 @@ const CATEGORY_BY_ID: Record<number, CategoryKey> = {
 
 const PALETTE_KEYS = Object.keys(PALETTES) as PaletteKey[];
 
+const INIT_TIMEOUT_MS = 8000;
+
 type SessionState = {
   session: Session | null;
   user: User | null;
@@ -31,6 +34,8 @@ type SessionState = {
   refreshProfile: () => Promise<void>;
   /** Met à jour le profil local après création / update via UI. */
   setProfile: (profile: Profile | null) => void;
+  /** Force l'état initialized (safety net depuis le root layout). */
+  setInitialized: (value: boolean) => void;
   /**
    * Réinitialise complètement : signOut Supabase + reset stores +
    * relance un anonymous sign-in (nouveau UUID, profil vide).
@@ -47,26 +52,48 @@ export const useSession = create<SessionState>((set, get) => ({
   initialized: false,
 
   init: async () => {
-    // 1. Récupère la session existante (persistée via AsyncStorage)
-    const { data: { session: existing } } = await supabase.auth.getSession();
+    // Garde-fou : `initialized: true` est posé dans le finally pour que
+    // l'utilisateur ne reste JAMAIS bloqué sur le splash, même si le
+    // réseau est filtré ou si Supabase est down. Cf. rejet App Store
+    // 2bf822e0 (review sur iPad Air M3 avec réseau restreint).
+    try {
+      // 1. Récupère la session existante (persistée via AsyncStorage),
+      //    avec timeout pour éviter de hang indéfiniment au boot.
+      const existing = await withTimeout(
+        supabase.auth.getSession().then(({ data }) => data.session),
+        INIT_TIMEOUT_MS,
+        null,
+      );
 
-    let session = existing;
-    if (!session) {
-      // 2. Premier lancement : sign-in anonyme. L'uid devient le pivot
-      //    de toutes les RLS et persistera même après "claim" (v2).
-      const { data, error } = await supabase.auth.signInAnonymously();
-      if (error) throw error;
-      session = data.session;
+      let session = existing;
+      if (!session) {
+        // 2. Premier lancement : sign-in anonyme. L'uid devient le pivot
+        //    de toutes les RLS et persistera même après "claim" (v2).
+        //    Si ça échoue (réseau, anonymous désactivé côté Supabase, etc.)
+        //    on laisse `session: null` et on continue : l'app s'ouvre en
+        //    mode dégradé plutôt que de rester sur le splash.
+        const signIn = supabase.auth.signInAnonymously().then(({ data, error }) => {
+          if (error) throw error;
+          return data.session;
+        });
+        session = await withTimeout(signIn, INIT_TIMEOUT_MS, null);
+      }
+
+      set({ session, user: session?.user ?? null });
+      if (session) {
+        await get().refreshProfile().catch(() => {
+          // refreshProfile non bloquant : profil resté `null`, l'app ouvre
+          // sur l'onboarding ou un state vide.
+        });
+      }
+
+      // 3. Écoute les changements de session (refresh token, logout futur)
+      supabase.auth.onAuthStateChange((_event, newSession) => {
+        set({ session: newSession, user: newSession?.user ?? null });
+      });
+    } finally {
+      set({ initialized: true });
     }
-
-    set({ session, user: session?.user ?? null });
-    await get().refreshProfile();
-    set({ initialized: true });
-
-    // 3. Écoute les changements de session (refresh token, logout futur)
-    supabase.auth.onAuthStateChange((_event, newSession) => {
-      set({ session: newSession, user: newSession?.user ?? null });
-    });
   },
 
   refreshProfile: async () => {
@@ -88,6 +115,8 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   setProfile: (profile) => set({ profile }),
+
+  setInitialized: (value) => set({ initialized: value }),
 
   resetAndReinit: async () => {
     // Sign-out → onAuthStateChange clear session, user, profile
