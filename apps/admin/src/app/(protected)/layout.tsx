@@ -5,11 +5,13 @@ import { Sidebar } from '@/components/AppShell/Sidebar';
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin();
 
-  // Charge les compteurs pour les badges sidebar (à venir / live).
+  // Charge les compteurs pour les badges sidebar (à venir / live / brouillons).
   const supabase = await createServerClient();
-  const [eventsRes, pollsRes] = await Promise.all([
+  const [eventsRes, pollsRes, showDraftsRes, podcastDraftsRes] = await Promise.all([
     supabase.from('landing_events').select('id', { count: 'exact', head: true }).eq('status', 'soon'),
     supabase.from('landing_vote_weeks').select('id', { count: 'exact', head: true }).eq('is_current', true),
+    supabase.from('landing_show_episodes').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+    supabase.from('landing_podcast_episodes').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
   ]);
 
   return (
@@ -19,6 +21,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         badges={{
           events: eventsRes.count ?? 0,
           polls: pollsRes.count ?? 0,
+          emissions: showDraftsRes.count ?? 0,
+          podcasts: podcastDraftsRes.count ?? 0,
         }}
       />
       <div className="flex min-w-0 flex-col">{children}</div>

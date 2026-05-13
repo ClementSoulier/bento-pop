@@ -10,6 +10,8 @@ import {
   EyeIcon,
   LinkIcon,
   LogoutIcon,
+  MicIcon,
+  PlayIcon,
   PollIcon,
   SettingsIcon,
   UsersIcon,
@@ -19,11 +21,13 @@ import { clsx } from '@/lib/clsx';
 
 type SidebarProps = {
   user: { email: string; role: string };
-  badges?: { events?: number; polls?: number };
+  badges?: { events?: number; polls?: number; emissions?: number; podcasts?: number };
 };
 
 const NAV = [
   { id: 'dashboard', href: '/',         label: 'Dashboard',  Icon: DashboardIcon },
+  { id: 'emissions', href: '/emissions',label: 'Émissions',  Icon: PlayIcon },
+  { id: 'podcasts',  href: '/podcasts', label: 'Podcasts',   Icon: MicIcon },
   { id: 'events',    href: '/events',   label: 'Événements', Icon: CalendarIcon },
   { id: 'polls',     href: '/polls',    label: 'Sondages',   Icon: PollIcon },
   { id: 'links',     href: '/links',    label: 'Liens & CTAs', Icon: LinkIcon },
@@ -61,7 +65,16 @@ export function Sidebar({ user, badges }: SidebarProps) {
       <nav className="flex flex-col gap-px">
         {NAV.map((n) => {
           const active = isActive(n.href);
-          const badge = n.id === 'events' ? badges?.events : n.id === 'polls' ? badges?.polls : undefined;
+          const badge =
+            n.id === 'events'
+              ? badges?.events
+              : n.id === 'polls'
+                ? badges?.polls
+                : n.id === 'emissions'
+                  ? badges?.emissions
+                  : n.id === 'podcasts'
+                    ? badges?.podcasts
+                    : undefined;
           return (
             <Link
               key={n.id}
