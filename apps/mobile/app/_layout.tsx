@@ -23,14 +23,27 @@ export default function RootLayout() {
   const init = useSession((s) => s.init);
   const initialized = useSession((s) => s.initialized);
 
+  const setInitialized = useSession((s) => s.setInitialized);
+
   useEffect(() => {
     init().catch((err) => {
-      // TODO P2 : surfacer dans une UI d'erreur. Pour le MVP on log.
+      // Safety net : init() pose déjà initialized=true dans son finally,
+      // mais on garde un fallback ici au cas où une erreur synchrone
+      // remonterait avant l'entrée dans le try.
       console.error('[session.init] failed', err);
+      setInitialized(true);
     });
     // Hydrate la liste locale de pseudos bloqués (mute list device).
     useBlocked.getState().load();
-  }, [init]);
+  }, [init, setInitialized]);
+
+  // Garde-fou ultime : si pour une raison X le splash dure plus de 12 s
+  // (fonts qui ne se chargent jamais, etc.), on force l'entrée dans
+  // l'app. Évite le rejet App Store « stuck on splash ».
+  useEffect(() => {
+    const t = setTimeout(() => setInitialized(true), 12000);
+    return () => clearTimeout(t);
+  }, [setInitialized]);
 
   if (!fontsLoaded || !initialized) {
     // Splash custom (logo + Popy animé) tant que les fonts ne sont pas

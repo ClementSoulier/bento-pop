@@ -20,7 +20,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:bento-pop.com"]
+      "associatedDomains": [
+        "applinks:bento-pop.com"
+      ]
     },
     "android": {
       "package": "com.bentopop.mobile",
@@ -33,9 +35,16 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "bento-pop.com", "pathPrefix": "/u/" }
+            {
+              "scheme": "https",
+              "host": "bento-pop.com",
+              "pathPrefix": "/u/"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
