@@ -113,6 +113,19 @@ export const ChevronRightIcon = (p: SVGProps<SVGSVGElement>) => (
   </Svg>
 );
 
+export const PlayIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <polygon points="6 4 20 12 6 20 6 4" />
+  </Svg>
+);
+
+export const MicIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <rect x="9" y="3" width="6" height="12" rx="3" />
+    <path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8" />
+  </Svg>
+);
+
 export const SettingsIcon = (p: SVGProps<SVGSVGElement>) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="3" />
