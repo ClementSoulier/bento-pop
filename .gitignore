@@ -2,6 +2,10 @@
 node_modules/
 .pnpm-store/
 
+# npm artefacts (le projet est en pnpm — le lockfile est pnpm-lock.yaml)
+package-lock.json
+yarn.lock
+
 # Build outputs
 .next/
 out/
