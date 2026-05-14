@@ -3,12 +3,17 @@ import { createServerClient as createSupabaseServerClient, type CookieOptions } 
 import type { Database } from '@bento-pop/supabase/types';
 
 /**
- * Client Supabase SSR avec cookies (lecture publique anon).
- * À utiliser dans les composants serveur quand on a besoin d'une lecture
- * cohérente avec la session utilisateur (RLS anon).
+ * Client Supabase SSR avec cookies (lecture cohérente avec la session
+ * utilisateur). À utiliser dans les routes/loaders qui dépendent de l'état
+ * d'auth (votes personnalisés, prévisualisation admin, etc.).
  *
- * Renvoie `null` si les variables d'env ne sont pas configurées — l'appelant
- * peut alors basculer sur le contenu fallback (`content/thermometre.ts`).
+ * ⚠️ Cookies = contexte requête uniquement. À NE PAS utiliser depuis :
+ *  - `generateStaticParams`
+ *  - une page avec `export const revalidate` ou en SSG
+ *  - le sitemap, robots, ou tout endpoint pré-rendu
+ * Pour ces cas, utiliser `createAnonServerClient()`.
+ *
+ * Renvoie `null` si les variables d'env ne sont pas configurées.
  */
 export async function createServerClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,10 +38,29 @@ export async function createServerClient() {
       },
     });
   } catch (err) {
-    // URL Supabase malformée, indispo réseau, etc. — on log et on retourne
-    // null pour que les loaders basculent sur leur fallback statique au lieu
-    // de propager un 500 à l'utilisateur.
     console.error('[supabase/server] createServerClient failed:', err);
     return null;
   }
+}
+
+/**
+ * Client Supabase anon sans cookies — sûr en contexte SSG / ISR / build.
+ *
+ * Les politiques RLS pour les contenus publics du landing autorisent la
+ * lecture anon des lignes `status = 'published'`, donc ce client est
+ * suffisant pour rendre les pages publiques (sitemap, hub, slug pages).
+ *
+ * Différence vs `createServerClient()` :
+ * - Ne lit pas les cookies → utilisable depuis `generateStaticParams`,
+ *   pages ISR, sitemap, etc.
+ * - Ne voit jamais les contenus `status = 'draft'`.
+ */
+export function createAnonServerClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+
+  return createSupabaseServerClient<Database>(url, anonKey, {
+    cookies: { getAll: () => [], setAll: () => {} },
+  });
 }

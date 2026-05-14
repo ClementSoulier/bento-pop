@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import type { CtaSlot } from '@bento-pop/supabase/types';
-import { createServerClient } from '@/lib/supabase/server';
+import { createAnonServerClient } from '@/lib/supabase/server';
 
 export type CtaRecord = {
   slot: CtaSlot;
@@ -14,7 +14,7 @@ export type CtaRecord = {
  * Retourne `null` si Supabase est indisponible.
  */
 export const loadCtas = cache(async (): Promise<Record<CtaSlot, CtaRecord> | null> => {
-  const supabase = await createServerClient();
+  const supabase = createAnonServerClient();
   if (!supabase) return null;
   const { data, error } = await supabase
     .from('landing_ctas')

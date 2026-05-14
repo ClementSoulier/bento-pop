@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { createServerClient } from '@/lib/supabase/server';
+import { createAnonServerClient } from '@/lib/supabase/server';
 
 export type EpisodeGuest = {
   name: string;
@@ -180,7 +180,7 @@ function mapPodcastRow(r: DbPodcastRow): PodcastEpisode {
 // ============================================================
 
 export const getShowEpisodes = cache(async (): Promise<ShowEpisode[]> => {
-  const supabase = await createServerClient();
+  const supabase = createAnonServerClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -196,7 +196,7 @@ export const getShowEpisodes = cache(async (): Promise<ShowEpisode[]> => {
 
 export const getShowEpisodeBySlug = cache(
   async (slug: string): Promise<ShowEpisode | null> => {
-    const supabase = await createServerClient();
+    const supabase = createAnonServerClient();
     if (!supabase) return null;
 
     const { data, error } = await supabase
@@ -216,7 +216,7 @@ export const getShowEpisodeBySlug = cache(
 // ============================================================
 
 export const getPodcastEpisodes = cache(async (): Promise<PodcastEpisode[]> => {
-  const supabase = await createServerClient();
+  const supabase = createAnonServerClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
@@ -232,7 +232,7 @@ export const getPodcastEpisodes = cache(async (): Promise<PodcastEpisode[]> => {
 
 export const getPodcastEpisodeBySlug = cache(
   async (slug: string): Promise<PodcastEpisode | null> => {
-    const supabase = await createServerClient();
+    const supabase = createAnonServerClient();
     if (!supabase) return null;
 
     const { data, error } = await supabase
