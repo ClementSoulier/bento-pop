@@ -5,12 +5,18 @@ import { createServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
 import { datetimeLocalToIso } from '@/lib/episodes/format';
 import { showEpisodeSchema, type ShowEpisodePayload } from '@/lib/episodes/schemas';
+import { revalidateLanding } from '@/lib/revalidate-landing';
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
-function revalidate() {
+function revalidateAdmin() {
   revalidatePath('/');
   revalidatePath('/emissions');
+}
+
+/** Purge le cache SSG/ISR de la landing pour les pages impactées. */
+async function revalidateLandingShow(slug: string) {
+  await revalidateLanding([`/emissions/${slug}`, '/sitemap.xml']);
 }
 
 export async function saveShowEpisode(input: ShowEpisodePayload): Promise<ActionResult> {
@@ -79,16 +85,27 @@ export async function saveShowEpisode(input: ShowEpisodePayload): Promise<Action
     if (insErr) return { ok: false, error: insErr.message };
   }
 
-  revalidate();
+  revalidateAdmin();
+  await revalidateLandingShow(data.slug);
   return { ok: true, id: episodeId };
 }
 
 export async function deleteShowEpisode(id: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createServerClient();
+  // Récupère le slug AVANT delete pour pouvoir purger le cache du slug.
+  const { data: row } = await supabase
+    .from('landing_show_episodes')
+    .select('slug')
+    .eq('id', id)
+    .maybeSingle();
+  const slug = (row as { slug?: string } | null)?.slug ?? null;
+
   const { error } = await supabase.from('landing_show_episodes').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidate();
+
+  revalidateAdmin();
+  if (slug) await revalidateLandingShow(slug);
   return { ok: true };
 }
 

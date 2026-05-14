@@ -5,12 +5,17 @@ import { createServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
 import { datetimeLocalToIso } from '@/lib/episodes/format';
 import { podcastEpisodeSchema, type PodcastEpisodePayload } from '@/lib/episodes/schemas';
+import { revalidateLanding } from '@/lib/revalidate-landing';
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
-function revalidate() {
+function revalidateAdmin() {
   revalidatePath('/');
   revalidatePath('/podcasts');
+}
+
+async function revalidateLandingPodcast(slug: string) {
+  await revalidateLanding([`/podcasts/${slug}`, '/sitemap.xml']);
 }
 
 export async function savePodcastEpisode(input: PodcastEpisodePayload): Promise<ActionResult> {
@@ -79,16 +84,26 @@ export async function savePodcastEpisode(input: PodcastEpisodePayload): Promise<
     if (insErr) return { ok: false, error: insErr.message };
   }
 
-  revalidate();
+  revalidateAdmin();
+  await revalidateLandingPodcast(data.slug);
   return { ok: true, id: episodeId };
 }
 
 export async function deletePodcastEpisode(id: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createServerClient();
+  const { data: row } = await supabase
+    .from('landing_podcast_episodes')
+    .select('slug')
+    .eq('id', id)
+    .maybeSingle();
+  const slug = (row as { slug?: string } | null)?.slug ?? null;
+
   const { error } = await supabase.from('landing_podcast_episodes').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidate();
+
+  revalidateAdmin();
+  if (slug) await revalidateLandingPodcast(slug);
   return { ok: true };
 }
 
