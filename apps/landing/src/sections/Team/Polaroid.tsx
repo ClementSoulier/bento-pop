@@ -1,4 +1,6 @@
-import type { TeamMember } from '@/lib/content/schemas';
+import type { IconKey } from '@/components/icons';
+import { iconRegistry } from '@/components/icons';
+import type { TeamMember, TeamMemberSocials } from '@/lib/content/schemas';
 import { clsx } from '@/lib/clsx';
 
 type PolaroidProps = { member: TeamMember };
@@ -18,7 +20,54 @@ export function Polaroid({ member }: PolaroidProps) {
       <h3 className="font-display mt-3.5 mb-1 text-[17px] md:text-[22px]">{member.name}</h3>
       <div className="font-nick mb-1.5 text-[13px] text-bento-red">{member.nick}</div>
       <p className="text-[12px] leading-[1.4] text-bento-ink/70">{member.bio}</p>
+      <SocialRow socials={member.socials} memberName={member.name} />
     </article>
+  );
+}
+
+/** Plateformes affichables, dans l'ordre d'apparition voulu sur le polaroid. */
+const SOCIAL_ORDER: Array<{
+  key: keyof TeamMemberSocials;
+  icon: IconKey;
+  label: string;
+}> = [
+  { key: 'instagram', icon: 'instagram', label: 'Instagram' },
+  { key: 'youtube',   icon: 'youtube',   label: 'YouTube'   },
+  { key: 'twitch',    icon: 'twitch',    label: 'Twitch'    },
+  { key: 'x',         icon: 'x',         label: 'X'         },
+  { key: 'website',   icon: 'globe',     label: 'Site web'  },
+];
+
+function SocialRow({
+  socials,
+  memberName,
+}: {
+  socials: TeamMemberSocials;
+  memberName: string;
+}) {
+  const links = SOCIAL_ORDER.flatMap((s) => {
+    const href = socials[s.key];
+    return href ? [{ ...s, href }] : [];
+  });
+  if (links.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      {links.map((l) => {
+        const Icon = iconRegistry[l.icon];
+        return (
+          <a
+            key={l.key}
+            href={l.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${l.label} · ${memberName}`}
+            className="grid h-7 w-7 place-items-center rounded-full border-[2px] border-bento-ink bg-bento-cream text-bento-ink transition-transform duration-150 hover:-translate-y-0.5 hover:rotate-[-4deg] hover:bg-bento-yellow"
+          >
+            <Icon width={14} height={14} />
+          </a>
+        );
+      })}
+    </div>
   );
 }
 

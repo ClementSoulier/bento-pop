@@ -167,6 +167,16 @@ export type TeamPhoto =
   | { kind: 'gradient'; from: string; to: string; initials: string }
   | { kind: 'image'; url: string; initials: string };
 
+/** Liens sociaux d'un membre de la team. Champs absents (= undefined) ou
+ *  chaîne vide → l'icône n'est pas rendue. Voir Polaroid pour le rendu. */
+export type TeamMemberSocials = {
+  instagram?: string;
+  youtube?: string;
+  twitch?: string;
+  x?: string;
+  website?: string;
+};
+
 export type TeamMember = {
   id: string;
   name: string;
@@ -175,6 +185,7 @@ export type TeamMember = {
   photo: TeamPhoto;
   rotation: number;
   order: number;
+  socials: TeamMemberSocials;
 };
 
 export type TeamContent = {

@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { createServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
 
+const optionalUrl = z.string().trim().max(500).url('URL invalide').or(z.literal('')).optional();
+
 const memberSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1, 'Nom requis').max(80),
@@ -17,6 +19,11 @@ const memberSchema = z.object({
   photo_url: z.string().trim().url('URL invalide').or(z.literal('')).optional(),
   rotation: z.coerce.number().min(-15).max(15).default(0),
   display_order: z.coerce.number().int().min(0).default(0),
+  instagram_url: optionalUrl,
+  youtube_url: optionalUrl,
+  twitch_url: optionalUrl,
+  x_url: optionalUrl,
+  website_url: optionalUrl,
 });
 
 export type MemberFormPayload = z.infer<typeof memberSchema>;
@@ -44,6 +51,11 @@ export async function saveMember(input: MemberFormPayload): Promise<ActionResult
     photo_url: parsed.data.photo_url || null,
     rotation: parsed.data.rotation,
     display_order: parsed.data.display_order,
+    instagram_url: parsed.data.instagram_url || null,
+    youtube_url: parsed.data.youtube_url || null,
+    twitch_url: parsed.data.twitch_url || null,
+    x_url: parsed.data.x_url || null,
+    website_url: parsed.data.website_url || null,
   };
   const { error } = parsed.data.id
     ? await supabase.from('landing_team').update(row as never).eq('id', parsed.data.id)

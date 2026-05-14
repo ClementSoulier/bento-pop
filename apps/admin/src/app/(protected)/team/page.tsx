@@ -8,7 +8,9 @@ export default async function TeamPage() {
   const supabase = await createServerClient();
   const { data, error } = await supabase
     .from('landing_team')
-    .select('id, name, nick, bio, initials, photo_kind, photo_from, photo_to, photo_url, rotation, display_order')
+    .select(
+      'id, name, nick, bio, initials, photo_kind, photo_from, photo_to, photo_url, rotation, display_order, instagram_url, youtube_url, twitch_url, x_url, website_url',
+    )
     .order('display_order', { ascending: true });
 
   const members = (error ? [] : (data ?? [])) as unknown as MemberRow[];
