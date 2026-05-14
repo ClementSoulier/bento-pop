@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Controller,
   useFieldArray,
   type ArrayPath,
   type Control,
@@ -10,6 +11,7 @@ import {
   type UseFormRegister,
 } from 'react-hook-form';
 import { PlusIcon, TrashIcon } from '@/components/icons';
+import { PhotoUploader } from '@/components/PhotoUploader';
 import { MENTION_TYPE_LABELS, type EpisodeFormCommon } from '@/lib/episodes/schemas';
 
 type MentionsFieldProps<T extends FieldValues & EpisodeFormCommon> = {
@@ -53,37 +55,50 @@ export function MentionsField<T extends FieldValues & EpisodeFormCommon>({
           Aucune mention.
         </p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {fields.map((field, i) => (
             <div
               key={field.id}
-              className="grid grid-cols-[120px_1fr_1fr_1fr_auto] gap-2"
+              className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-admin-input border border-admin-border bg-admin-surface-2 p-2"
             >
-              <select
-                className="admin-select"
-                {...register(`mentions.${i}.type` as Path<T>)}
-              >
-                {Object.entries(MENTION_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="admin-input"
-                placeholder="Titre"
-                {...register(`mentions.${i}.title` as Path<T>)}
+              <Controller
+                control={control}
+                name={`mentions.${i}.cover_url` as Path<T>}
+                render={({ field: coverField }) => (
+                  <PhotoUploader
+                    currentUrl={(coverField.value as string) || null}
+                    bucket="episode-media"
+                    pathPrefix="mentions/"
+                    outputFormat="webp"
+                    targetSize={600}
+                    modalLabel="Cover œuvre · cropping carré"
+                    size="sm"
+                    onUploaded={(url) => coverField.onChange(url)}
+                  />
+                )}
               />
-              <input
-                className="admin-input"
-                placeholder="URL (optionnel)"
-                {...register(`mentions.${i}.url` as Path<T>)}
-              />
-              <input
-                className="admin-input"
-                placeholder="URL cover (optionnel)"
-                {...register(`mentions.${i}.cover_url` as Path<T>)}
-              />
+              <div className="grid grid-cols-[120px_1fr_1fr] gap-2">
+                <select
+                  className="admin-select"
+                  {...register(`mentions.${i}.type` as Path<T>)}
+                >
+                  {Object.entries(MENTION_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="admin-input"
+                  placeholder="Titre"
+                  {...register(`mentions.${i}.title` as Path<T>)}
+                />
+                <input
+                  className="admin-input"
+                  placeholder="URL externe (optionnel)"
+                  {...register(`mentions.${i}.url` as Path<T>)}
+                />
+              </div>
               <button
                 type="button"
                 className="admin-btn admin-btn-sm admin-btn-ghost"
