@@ -81,8 +81,13 @@ export function PhotoUploader({
       setError('Choisis une image (jpg, png, webp, …).');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image trop lourde (max 10 Mo).');
+    /* Limite à 30 Mo : c'est le plafond mémoire raisonnable pour charger
+       l'image dans un canvas côté navigateur sans freeze. Au-delà, certains
+       téléphones plantent l'onglet. La photo finale est toujours
+       drastiquement plus légère (cropToBlob_v2 sort ~30-50 KB en WebP 600px),
+       donc cette limite ne protège PAS le bucket — uniquement le navigateur. */
+    if (file.size > 30 * 1024 * 1024) {
+      setError('Image trop lourde pour être traitée par le navigateur (max 30 Mo). Compresse-la côté téléphone avant.');
       return;
     }
     setError(null);
