@@ -125,6 +125,71 @@ type LandingHeroTiktokFields = {
   updated_at: string;
 };
 
+export type EpisodeStatus = 'draft' | 'published';
+
+export type EpisodeGuest = {
+  name: string;
+  role?: string;
+  photo_url?: string;
+};
+
+export type EpisodeMentionType = 'game' | 'movie' | 'series' | 'book' | 'other';
+
+export type EpisodeMention = {
+  type: EpisodeMentionType;
+  title: string;
+  url?: string;
+  cover_url?: string;
+};
+
+export type EpisodeChapter = {
+  label: string;
+  start_seconds: number;
+};
+
+type EpisodeCommonFields = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  thumbnail_url: string | null;
+  duration_seconds: number | null;
+  published_at: string | null;
+  season: number;
+  episode_number: number | null;
+  status: EpisodeStatus;
+  display_order: number;
+  seo_title: string | null;
+  seo_description: string | null;
+  guests: EpisodeGuest[];
+  mentions: EpisodeMention[];
+  chapters: EpisodeChapter[];
+  created_at: string;
+  updated_at: string;
+};
+
+type LandingShowEpisodeFields = EpisodeCommonFields & {
+  youtube_id: string;
+};
+
+type LandingPodcastEpisodeFields = EpisodeCommonFields & {
+  spotify_episode_id: string;
+};
+
+type LandingShowEpisodeHostFields = {
+  episode_id: string;
+  team_member_id: string;
+  display_order: number;
+  created_at: string;
+};
+
+type LandingPodcastEpisodeHostFields = {
+  episode_id: string;
+  team_member_id: string;
+  display_order: number;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -203,6 +268,110 @@ export type Database = {
         Insert: Omit<LandingHeroTiktokFields, 'id' | 'updated_at' | 'enabled' | 'tiktok_url'> &
           Partial<Pick<LandingHeroTiktokFields, 'id' | 'updated_at' | 'enabled' | 'tiktok_url'>>;
         Update: Partial<LandingHeroTiktokFields>;
+        Relationships: [];
+      };
+      landing_show_episodes: {
+        Row: LandingShowEpisodeFields;
+        Insert: Omit<
+          LandingShowEpisodeFields,
+          | 'id'
+          | 'created_at'
+          | 'updated_at'
+          | 'description'
+          | 'thumbnail_url'
+          | 'duration_seconds'
+          | 'published_at'
+          | 'season'
+          | 'episode_number'
+          | 'status'
+          | 'display_order'
+          | 'seo_title'
+          | 'seo_description'
+          | 'guests'
+          | 'mentions'
+          | 'chapters'
+        > &
+          Partial<
+            Pick<
+              LandingShowEpisodeFields,
+              | 'id'
+              | 'created_at'
+              | 'updated_at'
+              | 'description'
+              | 'thumbnail_url'
+              | 'duration_seconds'
+              | 'published_at'
+              | 'season'
+              | 'episode_number'
+              | 'status'
+              | 'display_order'
+              | 'seo_title'
+              | 'seo_description'
+              | 'guests'
+              | 'mentions'
+              | 'chapters'
+            >
+          >;
+        Update: Partial<LandingShowEpisodeFields>;
+        Relationships: [];
+      };
+      landing_podcast_episodes: {
+        Row: LandingPodcastEpisodeFields;
+        Insert: Omit<
+          LandingPodcastEpisodeFields,
+          | 'id'
+          | 'created_at'
+          | 'updated_at'
+          | 'description'
+          | 'thumbnail_url'
+          | 'duration_seconds'
+          | 'published_at'
+          | 'season'
+          | 'episode_number'
+          | 'status'
+          | 'display_order'
+          | 'seo_title'
+          | 'seo_description'
+          | 'guests'
+          | 'mentions'
+          | 'chapters'
+        > &
+          Partial<
+            Pick<
+              LandingPodcastEpisodeFields,
+              | 'id'
+              | 'created_at'
+              | 'updated_at'
+              | 'description'
+              | 'thumbnail_url'
+              | 'duration_seconds'
+              | 'published_at'
+              | 'season'
+              | 'episode_number'
+              | 'status'
+              | 'display_order'
+              | 'seo_title'
+              | 'seo_description'
+              | 'guests'
+              | 'mentions'
+              | 'chapters'
+            >
+          >;
+        Update: Partial<LandingPodcastEpisodeFields>;
+        Relationships: [];
+      };
+      landing_show_episode_hosts: {
+        Row: LandingShowEpisodeHostFields;
+        Insert: Omit<LandingShowEpisodeHostFields, 'created_at' | 'display_order'> &
+          Partial<Pick<LandingShowEpisodeHostFields, 'created_at' | 'display_order'>>;
+        Update: Partial<LandingShowEpisodeHostFields>;
+        Relationships: [];
+      };
+      landing_podcast_episode_hosts: {
+        Row: LandingPodcastEpisodeHostFields;
+        Insert: Omit<LandingPodcastEpisodeHostFields, 'created_at' | 'display_order'> &
+          Partial<Pick<LandingPodcastEpisodeHostFields, 'created_at' | 'display_order'>>;
+        Update: Partial<LandingPodcastEpisodeHostFields>;
         Relationships: [];
       };
     };
