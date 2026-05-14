@@ -4,18 +4,34 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import Cropper, { type Area } from 'react-easy-crop';
 import { createClient } from '@/lib/supabase/browser';
-import { cropToJpegBlob } from '@/lib/image-crop';
+import { cropToBlob_v2, type CropOptions } from '@/lib/image-crop';
 import { clsx } from '@/lib/clsx';
+
+type Size = 'sm' | 'md';
 
 type PhotoUploaderProps = {
   /** URL actuelle (pour l'aperçu) */
   currentUrl: string | null;
   /** Bucket Supabase Storage cible */
   bucket: string;
-  /** Préfixe de chemin (ex: "team/") — peut être vide */
+  /** Préfixe de chemin (ex: "guests/", "team/") — peut être vide */
   pathPrefix?: string;
   /** Callback quand un upload réussit, avec l'URL publique. */
   onUploaded: (url: string) => void;
+  /** Format de sortie. Default 'jpeg' pour préserver le comportement Team
+      historique. Passer 'webp' pour les nouveaux usages (≈ 30 % plus léger). */
+  outputFormat?: 'jpeg' | 'webp';
+  /** Taille du carré final en pixels. Default 600 (webp) ou 800 (jpeg). */
+  targetSize?: number;
+  /** Texte fil d'Ariane affiché dans la modale (default 'Cropping carré'). */
+  modalLabel?: string;
+  /** Tailles 'sm' (compact pour useFieldArray) ou 'md' (default). */
+  size?: Size;
+};
+
+const PREVIEW_CLASSES: Record<Size, string> = {
+  sm: 'h-12 w-12',
+  md: 'h-16 w-16',
 };
 
 /**
@@ -32,6 +48,10 @@ export function PhotoUploader({
   bucket,
   pathPrefix = '',
   onUploaded,
+  outputFormat = 'jpeg',
+  targetSize,
+  modalLabel = 'Photo · cropping carré',
+  size = 'md',
 }: PhotoUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -77,11 +97,17 @@ export function PhotoUploader({
     setPending(true);
     setError(null);
     try {
-      const blob = await cropToJpegBlob(imageSrc, croppedArea);
+      const cropOptions: CropOptions = { format: outputFormat };
+      if (targetSize) cropOptions.targetSize = targetSize;
+      const { blob, extension, contentType } = await cropToBlob_v2(
+        imageSrc,
+        croppedArea,
+        cropOptions,
+      );
       const supabase = createClient();
-      const path = `${pathPrefix}${crypto.randomUUID()}.jpg`;
+      const path = `${pathPrefix}${crypto.randomUUID()}.${extension}`;
       const { error: upErr } = await supabase.storage.from(bucket).upload(path, blob, {
-        contentType: 'image/jpeg',
+        contentType,
         cacheControl: '3600',
         upsert: false,
       });
@@ -116,10 +142,18 @@ export function PhotoUploader({
           <img
             src={currentUrl}
             alt="Aperçu photo"
-            className="h-16 w-16 rounded-admin-input border border-admin-border object-cover"
+            className={clsx(
+              'rounded-admin-input border border-admin-border object-cover',
+              PREVIEW_CLASSES[size],
+            )}
           />
         ) : (
-          <div className="grid h-16 w-16 place-items-center rounded-admin-input border border-dashed border-admin-border bg-admin-surface-2 text-[10px] uppercase tracking-[0.15em] text-admin-muted">
+          <div
+            className={clsx(
+              'grid place-items-center rounded-admin-input border border-dashed border-admin-border bg-admin-surface-2 text-[10px] uppercase tracking-[0.15em] text-admin-muted',
+              PREVIEW_CLASSES[size],
+            )}
+          >
             Aucune
           </div>
         )}
@@ -128,7 +162,7 @@ export function PhotoUploader({
           className="admin-btn admin-btn-sm"
           onClick={() => fileInputRef.current?.click()}
         >
-          {currentUrl ? 'Remplacer la photo' : 'Téléverser une photo'}
+          {currentUrl ? 'Remplacer' : 'Téléverser'}
         </button>
       </div>
       {error && !open ? <p className="mt-2 text-[12px] text-bento-red">{error}</p> : null}
@@ -136,11 +170,14 @@ export function PhotoUploader({
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="admin-modal-overlay" />
-          <Dialog.Content className="admin-modal-content" style={{ width: 'min(640px, calc(100vw - 32px))' }}>
+          <Dialog.Content
+            className="admin-modal-content"
+            style={{ width: 'min(640px, calc(100vw - 32px))' }}
+          >
             <header className="flex items-center gap-3 border-b border-admin-border px-6 py-5">
               <div>
                 <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-admin-muted">
-                  Photo membre · cropping carré
+                  {modalLabel}
                 </div>
                 <Dialog.Title className="font-display text-[22px] leading-none">
                   Recadrer la photo
@@ -200,7 +237,7 @@ export function PhotoUploader({
               </button>
             </div>
             <Dialog.Description className="sr-only">
-              Sélectionne la zone carrée à utiliser comme photo de profil.
+              Sélectionne la zone carrée à utiliser comme photo.
             </Dialog.Description>
           </Dialog.Content>
         </Dialog.Portal>
