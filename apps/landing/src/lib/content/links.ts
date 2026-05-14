@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import type { LinkKind, LinkSurface } from '@bento-pop/supabase/types';
-import { createServerClient } from '@/lib/supabase/server';
+import { createAnonServerClient } from '@/lib/supabase/server';
 
 export type LinkRecord = {
   id: string;
@@ -18,7 +18,7 @@ export type LinkRecord = {
  * basculer sur ses valeurs statiques.
  */
 export const loadEnabledLinks = cache(async (): Promise<LinkRecord[] | null> => {
-  const supabase = await createServerClient();
+  const supabase = createAnonServerClient();
   if (!supabase) return null;
   const { data, error } = await supabase
     .from('landing_links')
