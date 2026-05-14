@@ -16,10 +16,11 @@ const STATIC_NAV_CTA: NavCta = {
  */
 export async function getNav(): Promise<NavLink[]> {
   return [
+    { id: 'emissions',    label: 'Émissions',      href: '/emissions' },
+    { id: 'podcasts',     label: 'Podcasts',       href: '/podcasts' },
     { id: 'agenda',       label: 'Agenda',         href: '/#agenda' },
     { id: 'thermometre',  label: 'Le Thermomètre', href: '/#thermometre' },
     { id: 'univers',      label: 'Les Univers',    href: '/#univers' },
-    { id: 'debriefs',     label: 'Podcast',        href: '/#debriefs' },
     { id: 'team',         label: 'La Team',        href: '/#team' },
   ];
 }
