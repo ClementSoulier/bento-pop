@@ -6,16 +6,21 @@ import { Footer } from '@/sections/Footer/Footer';
 import { Eyebrow } from '@/components/Eyebrow';
 import { HostAvatar } from '@/components/HostAvatar';
 import { JsonLd } from '@/components/JsonLd';
+import { MentionsList } from '@/components/MentionsList';
 import { SpotifyEpisodeEmbed } from '@/components/SpotifyEpisodeEmbed';
 import {
   formatDurationShort,
   formatPublishedDate,
   formatTimecode,
-  MENTION_TYPE_LABELS,
 } from '@/lib/episodes';
 import { getPodcastEpisodeBySlug, getPodcastEpisodes } from '@/content/episodes';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const episodes = await getPodcastEpisodes();
+  return episodes.map((ep) => ({ slug: ep.slug }));
+}
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -142,36 +147,7 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
 
               {ep.mentions.length > 0 ? (
                 <Card title="Œuvres mentionnées">
-                  <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {ep.mentions.map((m, i) => {
-                      const inner = (
-                        <>
-                          <span className="rounded-full border-[2px] border-bento-ink bg-bento-cream px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-bento-ink/70">
-                            {MENTION_TYPE_LABELS[m.type] ?? m.type}
-                          </span>
-                          <span className="flex-1 text-[14px] font-semibold">{m.title}</span>
-                        </>
-                      );
-                      return (
-                        <li key={i}>
-                          {m.url ? (
-                            <a
-                              href={m.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-3 rounded-xl border-[2px] border-bento-ink/15 bg-bento-cream/60 p-3 transition-colors hover:border-bento-ink hover:bg-bento-cream"
-                            >
-                              {inner}
-                            </a>
-                          ) : (
-                            <div className="flex items-center gap-3 rounded-xl border-[2px] border-bento-ink/15 bg-bento-cream/60 p-3">
-                              {inner}
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <MentionsList mentions={ep.mentions} />
                 </Card>
               ) : null}
             </div>
@@ -305,7 +281,7 @@ async function RelatedPodcastEpisodes({ currentSlug }: { currentSlug: string }) 
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={e.thumbnailUrl}
-                  alt=""
+                  alt={e.title}
                   loading="lazy"
                   className="h-full w-full object-cover"
                 />
