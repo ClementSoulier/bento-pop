@@ -23,6 +23,11 @@ export type MemberRow = {
   photo_url: string | null;
   rotation: number;
   display_order: number;
+  instagram_url: string | null;
+  youtube_url: string | null;
+  twitch_url: string | null;
+  x_url: string | null;
+  website_url: string | null;
 };
 
 type Props = { members: MemberRow[] };
@@ -92,6 +97,8 @@ export function TeamClient({ members }: Props) {
   );
 }
 
+const socialUrl = z.string().trim().max(500).url('URL invalide').or(z.literal('')).optional();
+
 const editSchema = z.object({
   name: z.string().trim().min(1),
   nick: z.string().trim().min(1),
@@ -103,6 +110,11 @@ const editSchema = z.object({
   photo_url: z.string().trim().url('URL invalide').or(z.literal('')).optional(),
   rotation: z.coerce.number().min(-15).max(15),
   display_order: z.coerce.number().int().min(0),
+  instagram_url: socialUrl,
+  youtube_url: socialUrl,
+  twitch_url: socialUrl,
+  x_url: socialUrl,
+  website_url: socialUrl,
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -140,6 +152,11 @@ function MemberEditor({
       photo_url: member?.photo_url ?? '',
       rotation: member?.rotation ?? 0,
       display_order: member?.display_order ?? 0,
+      instagram_url: member?.instagram_url ?? '',
+      youtube_url: member?.youtube_url ?? '',
+      twitch_url: member?.twitch_url ?? '',
+      x_url: member?.x_url ?? '',
+      website_url: member?.website_url ?? '',
     },
   });
   const photoKind = watch('photo_kind');
@@ -269,6 +286,21 @@ function MemberEditor({
           </Field>
           <Field label="Ordre" hint="0 = premier" error={errors.display_order?.message}>
             <input className="admin-input" type="number" min={0} {...register('display_order')} />
+          </Field>
+          <Field full label="Instagram" hint="URL complète, vide = pas affiché" error={errors.instagram_url?.message}>
+            <input className="admin-input font-mono text-[12px]" type="url" placeholder="https://instagram.com/…" {...register('instagram_url')} />
+          </Field>
+          <Field full label="YouTube" error={errors.youtube_url?.message}>
+            <input className="admin-input font-mono text-[12px]" type="url" placeholder="https://youtube.com/@…" {...register('youtube_url')} />
+          </Field>
+          <Field full label="Twitch" error={errors.twitch_url?.message}>
+            <input className="admin-input font-mono text-[12px]" type="url" placeholder="https://twitch.tv/…" {...register('twitch_url')} />
+          </Field>
+          <Field full label="X (Twitter)" error={errors.x_url?.message}>
+            <input className="admin-input font-mono text-[12px]" type="url" placeholder="https://x.com/…" {...register('x_url')} />
+          </Field>
+          <Field full label="Site web" error={errors.website_url?.message}>
+            <input className="admin-input font-mono text-[12px]" type="url" placeholder="https://…" {...register('website_url')} />
           </Field>
         </FormGrid>
         {serverError ? (
