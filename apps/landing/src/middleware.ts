@@ -22,13 +22,13 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Routes exclues du middleware (donc pas de Set-Cookie posé) :
-  //   - api      : API routes
-  //   - _next    : assets internes Next.js
-  //   - icon, apple-icon, opengraph-image : routes metadata Next.js servant
-  //     des PNG dynamiques. Inutile d'y poser le cookie de vote — et certains
-  //     crawlers (Bingbot notamment) sont chatouilleux quand un fetch d'image
-  //     retourne un Set-Cookie non sollicité.
-  //   - .*\..*  : fichiers statiques (favicon.ico, manifest.webmanifest, etc.)
-  matcher: '/((?!api|_next|icon|apple-icon|opengraph-image|.*\\..*).*)',
+  // SEO-critique : on limite le middleware à la home `/` uniquement.
+  // Raison : dès qu'un middleware tourne sur une route, Next.js force un
+  // header `Cache-Control: private, no-store` sur la réponse (puisqu'il
+  // peut potentiellement personnaliser par utilisateur). Faire tourner le
+  // middleware sur tout le site plombait le crawl budget Google sur
+  // /emissions, /podcasts, /mentions-legales… alors que SEUL le bloc
+  // Thermomètre (sur la home) a besoin du cookie anti-double-vote.
+  // Les autres pages restent cacheables au bord (Coolify/CDN).
+  matcher: ['/'],
 };

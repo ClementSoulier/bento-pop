@@ -24,9 +24,23 @@ export const metadata: Metadata = {
 
 export default async function PodcastsPage() {
   const episodes = await getPodcastEpisodes();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Podcasts Bento Pop · Les Débriefs',
+    numberOfItems: episodes.length,
+    itemListOrder: 'https://schema.org/ItemListOrderDescending',
+    itemListElement: episodes.map((ep, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `${siteUrl}/podcasts/${ep.slug}`,
+      name: ep.title,
+    })),
+  } as const;
   return (
     <>
-      <JsonLd data={[podcastSeriesSchema()]} />
+      <JsonLd data={[podcastSeriesSchema(), itemListSchema]} />
       <Nav />
       <main id="main" tabIndex={-1} className="min-h-screen bg-bento-yellow px-5 pt-12 pb-20 md:px-7 md:pt-16">
         <div className="mx-auto max-w-[1180px]">
