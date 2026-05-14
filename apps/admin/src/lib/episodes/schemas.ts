@@ -58,7 +58,7 @@ const commonShape = {
   seo_title: z.string().trim().max(200).optional().default(''),
   seo_description: z.string().trim().max(500).optional().default(''),
   guests: z.array(guestSchema).max(20).default([]),
-  mentions: z.array(mentionSchema).max(50).default([]),
+  mentions: z.array(mentionSchema).max(100).default([]),
   chapters: z.array(chapterSchema).max(100).default([]),
   /* IDs de landing_team (animateurs présents). L'ordre du tableau
      pilote display_order dans la table de jointure. */
