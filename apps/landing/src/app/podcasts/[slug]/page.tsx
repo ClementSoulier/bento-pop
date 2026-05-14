@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Nav } from '@/sections/Nav/Nav';
 import { Footer } from '@/sections/Footer/Footer';
 import { Eyebrow } from '@/components/Eyebrow';
+import { HostAvatar } from '@/components/HostAvatar';
 import { JsonLd } from '@/components/JsonLd';
 import { SpotifyEpisodeEmbed } from '@/components/SpotifyEpisodeEmbed';
 import {
@@ -192,9 +193,7 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
                   <ul className="space-y-2.5">
                     {ep.hosts.map((h) => (
                       <li key={h.id} className="flex items-center gap-3">
-                        <span className="grid h-10 w-10 place-items-center rounded-full border-[3px] border-bento-ink bg-bento-yellow font-mono text-[12px] font-bold text-bento-ink">
-                          {h.initials}
-                        </span>
+                        <HostAvatar photo={h.photo} name={h.name} size="md" />
                         <div>
                           <div className="text-[15px] font-semibold leading-tight">{h.name}</div>
                           <div className="font-nick text-[13px] text-bento-ink/65 leading-tight">

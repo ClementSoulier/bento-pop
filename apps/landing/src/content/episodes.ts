@@ -21,11 +21,16 @@ export type EpisodeChapter = {
   start_seconds: number;
 };
 
+export type EpisodeHostPhoto =
+  | { kind: 'image'; url: string; initials: string }
+  | { kind: 'gradient'; from: string; to: string; initials: string };
+
 export type EpisodeHost = {
   id: string;
   name: string;
   nick: string;
   initials: string;
+  photo: EpisodeHostPhoto;
 };
 
 export type ShowEpisode = {
@@ -53,19 +58,27 @@ export type PodcastEpisode = Omit<ShowEpisode, 'youtubeId'> & {
 };
 
 const SHOW_SELECT =
-  'id, slug, title, description, youtube_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_show_episode_hosts(display_order, landing_team(id, name, nick, initials))';
+  'id, slug, title, description, youtube_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_show_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
 
 const PODCAST_SELECT =
-  'id, slug, title, description, spotify_episode_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_podcast_episode_hosts(display_order, landing_team(id, name, nick, initials))';
+  'id, slug, title, description, spotify_episode_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_podcast_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
+
+type DbTeamMember = {
+  id: string;
+  name: string;
+  nick: string;
+  initials: string;
+  photo_kind: 'gradient' | 'image';
+  photo_from: string | null;
+  photo_to: string | null;
+  photo_url: string | null;
+};
 
 type DbHostJoin<K extends string> = Record<
   K,
   Array<{
     display_order: number;
-    landing_team:
-      | { id: string; name: string; nick: string; initials: string }
-      | { id: string; name: string; nick: string; initials: string }[]
-      | null;
+    landing_team: DbTeamMember | DbTeamMember[] | null;
   }>
 >;
 
@@ -92,8 +105,8 @@ type DbPodcastRow = Omit<DbShowRow, 'youtube_id' | 'landing_show_episode_hosts'>
   spotify_episode_id: string;
 } & DbHostJoin<'landing_podcast_episode_hosts'>;
 
-function mapHosts<K extends string>(
-  rows: Array<{ display_order: number; landing_team: DbHostJoin<K>[K][number]['landing_team'] }>,
+function mapHosts(
+  rows: Array<{ display_order: number; landing_team: DbTeamMember | DbTeamMember[] | null }>,
 ): EpisodeHost[] {
   return rows
     .slice()
@@ -103,7 +116,18 @@ function mapHosts<K extends string>(
       if (!t) return [];
       // PostgREST renvoie un objet (FK 1-1) ou un tableau selon le contexte ; on couvre les deux.
       const list = Array.isArray(t) ? t : [t];
-      return list.map((m) => ({ id: m.id, name: m.name, nick: m.nick, initials: m.initials }));
+      return list.map((m): EpisodeHost => {
+        const photo: EpisodeHostPhoto =
+          m.photo_kind === 'image' && m.photo_url
+            ? { kind: 'image', url: m.photo_url, initials: m.initials }
+            : {
+                kind: 'gradient',
+                from: m.photo_from ?? '#2a3142',
+                to: m.photo_to ?? '#4a5266',
+                initials: m.initials,
+              };
+        return { id: m.id, name: m.name, nick: m.nick, initials: m.initials, photo };
+      });
     });
 }
 

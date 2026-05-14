@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { clsx } from '@/lib/clsx';
+import { HostAvatar } from '@/components/HostAvatar';
 import {
   formatDurationShort,
   formatPublishedDate,
@@ -92,13 +93,7 @@ export function EpisodeCard({
           {hosts.length > 0 ? (
             <div className="flex -space-x-1.5">
               {hosts.slice(0, 4).map((h) => (
-                <span
-                  key={h.id}
-                  title={h.name}
-                  className="grid h-7 w-7 place-items-center rounded-full border-[2px] border-bento-ink bg-bento-yellow font-mono text-[10px] font-bold text-bento-ink"
-                >
-                  {h.initials}
-                </span>
+                <HostAvatar key={h.id} photo={h.photo} name={h.name} size="xs" />
               ))}
             </div>
           ) : null}
