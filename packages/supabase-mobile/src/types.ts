@@ -51,6 +51,7 @@ export type Database = {
           id: string;
           pseudo: string;
           display_name: string | null;
+          terms_accepted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -58,6 +59,7 @@ export type Database = {
           id: string;
           pseudo: string;
           display_name?: string | null;
+          terms_accepted_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];

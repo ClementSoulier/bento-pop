@@ -56,7 +56,11 @@ export default function PseudoOnboarding() {
   const onValidate = async () => {
     if (check.status !== 'available' || !userId) return;
     setSubmitting(true);
-    const { error } = await supabase.from('users').insert({ id: userId, pseudo });
+    // `terms_accepted_at` est posé en même temps que l'INSERT — l'utilisateur
+    // ne peut atteindre cet écran qu'après avoir validé l'écran /onboarding/terms.
+    const { error } = await supabase
+      .from('users')
+      .insert({ id: userId, pseudo, terms_accepted_at: new Date().toISOString() });
     setSubmitting(false);
     if (error) {
       Alert.alert('Oups', `Impossible de créer le profil : ${error.message}`);
