@@ -54,6 +54,7 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
 
   const datePublished = ep.publishedAt ? new Date(ep.publishedAt).toISOString() : undefined;
   const spotifyUrl = `https://open.spotify.com/episode/${ep.spotifyEpisodeId}`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
 
   const episodeSchema = {
     '@context': 'https://schema.org',
@@ -77,13 +78,15 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
     image: ep.thumbnailUrl ?? undefined,
   } as const;
 
+  // BreadcrumbList : Google attend des URLs absolues dans `item`.
+  // En relatif, GSC remonte « URL non valide dans le champ id ».
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Accueil', item: '/' },
-      { '@type': 'ListItem', position: 2, name: 'Podcasts', item: '/podcasts' },
-      { '@type': 'ListItem', position: 3, name: ep.title, item: `/podcasts/${ep.slug}` },
+      { '@type': 'ListItem', position: 1, name: 'Accueil', item: `${siteUrl}/` },
+      { '@type': 'ListItem', position: 2, name: 'Podcasts', item: `${siteUrl}/podcasts` },
+      { '@type': 'ListItem', position: 3, name: ep.title, item: `${siteUrl}/podcasts/${ep.slug}` },
     ],
   } as const;
 
