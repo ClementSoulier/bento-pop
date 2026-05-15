@@ -95,7 +95,7 @@ export default function SplashOnboarding() {
             Ton film, ta série, ton artiste, ton lieu de cœur — six cases, une carte de visite culturelle.
           </Text>
 
-          <StampButton wide onPress={() => router.push('/onboarding/pseudo')}>
+          <StampButton wide onPress={() => router.push('/onboarding/terms')}>
             Commencer
           </StampButton>
 
