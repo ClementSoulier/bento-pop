@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { setBentoFeatured } from './actions';
+import { deleteUserAccount, setBentoFeatured } from './actions';
 
 export type BentoRow = {
   id: string;
@@ -42,6 +42,28 @@ export function BentosClient({ rows: initialRows }: BentosClientProps) {
       if (!res.ok) {
         setError(res.error);
         // Rollback
+        setRows(initialRows);
+      } else {
+        setError(null);
+      }
+    });
+  };
+
+  const deleteAccount = (row: BentoRow) => {
+    const ok = window.confirm(
+      `Supprimer définitivement le compte @${row.pseudo} ?\n\n` +
+        `Cette action supprime aussi son bento et toutes ses sélections via cascade. ` +
+        `Irréversible.`,
+    );
+    if (!ok) return;
+
+    // Optimistic remove
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+
+    startTransition(async () => {
+      const res = await deleteUserAccount({ userId: row.userId });
+      if (!res.ok) {
+        setError(res.error);
         setRows(initialRows);
       } else {
         setError(null);
@@ -92,6 +114,7 @@ export function BentosClient({ rows: initialRows }: BentosClientProps) {
             <th className="px-4 py-2.5 text-center">Featured</th>
             <th className="px-4 py-2.5 text-center">Ordre</th>
             <th className="px-4 py-2.5 text-right">Public</th>
+            <th className="px-4 py-2.5 text-right">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -146,6 +169,17 @@ export function BentosClient({ rows: initialRows }: BentosClientProps) {
                 >
                   Voir →
                 </a>
+              </td>
+              <td className="px-4 py-3 text-right">
+                <button
+                  type="button"
+                  onClick={() => deleteAccount(r)}
+                  disabled={pending}
+                  className="rounded-full border-2 border-bento-red px-3 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-bento-red transition-colors hover:bg-bento-red hover:text-bento-cream disabled:opacity-50"
+                  aria-label={`Supprimer le compte ${r.pseudo}`}
+                >
+                  Supprimer
+                </button>
               </td>
             </tr>
           ))}
