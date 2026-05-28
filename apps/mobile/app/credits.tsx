@@ -12,8 +12,11 @@ const SITE_URL = 'https://bento-pop.com';
  * Page Crédits / Légal accessible depuis la tab Profil.
  *
  * Couvre :
- *   - attributions des APIs externes (TMDb, MusicBrainz, OSM, Wikidata) —
- *     obligatoires pour TMDb et MusicBrainz selon leurs CGU
+ *   - attribution Wikimedia/Wikipedia pour les illustrations du catalogue
+ *     maison (CC-BY-SA notamment)
+ *   - attribution legacy des APIs externes (TMDb, MusicBrainz, OSM,
+ *     Wikidata) pour les items historiques créés avant la bascule
+ *     catalogue maison (v1.1+) et toujours référencés dans des bentos
  *   - liens Confidentialité + Conditions d'utilisation (Apple guideline
  *     5.1.1(i) — privacy policy obligatoire pour les apps qui collectent
  *     n'importe quelle donnée user)
@@ -88,23 +91,28 @@ export default function CreditsPage() {
           {/* Sources de données — attributions */}
           <Section title="Sources de données">
             <Attribution
-              source="TMDb"
-              text="Les films et séries proviennent de The Movie Database (TMDb). Ce produit utilise l'API TMDb mais n'est ni endossé ni certifié par TMDb."
+              source="Wikimedia"
+              text="Les illustrations du catalogue proviennent majoritairement de Wikipedia / Wikimedia Commons (CC-BY-SA pour la plupart). Le crédit photo précis est affiché en mini sous chaque visuel."
+              onPress={() => openUrl('https://commons.wikimedia.org/')}
+            />
+            <Attribution
+              source="TMDb (legacy)"
+              text="Certains items historiques provenant de The Movie Database (TMDb) restent référencés. Ce produit n'utilise plus l'API TMDb activement mais conserve les attributions par respect des CGU."
               onPress={() => openUrl('https://www.themoviedb.org/')}
             />
             <Attribution
-              source="MusicBrainz"
-              text="Les artistes et chansons proviennent de MusicBrainz, base de données musicale ouverte (CC-BY-NC-SA 4.0)."
+              source="MusicBrainz (legacy)"
+              text="Certains artistes / chansons historiques proviennent de MusicBrainz (CC-BY-NC-SA 4.0). Plus utilisé en lecture active depuis le passage au catalogue maison."
               onPress={() => openUrl('https://musicbrainz.org/')}
             />
             <Attribution
-              source="OpenStreetMap"
-              text="Les lieux de voyage proviennent de OpenStreetMap. © OpenStreetMap contributors."
+              source="OpenStreetMap (legacy)"
+              text="Certains lieux historiques proviennent d'OpenStreetMap. © OpenStreetMap contributors. Plus utilisé en lecture active."
               onPress={() => openUrl('https://www.openstreetmap.org/copyright')}
             />
             <Attribution
-              source="Wikidata"
-              text="Les créateurs de contenu sont identifiés via Wikidata (licence CC0)."
+              source="Wikidata (legacy)"
+              text="Certains créateurs sont identifiés via Wikidata (licence CC0). Plus utilisé en lecture active."
               onPress={() => openUrl('https://www.wikidata.org/')}
             />
           </Section>
