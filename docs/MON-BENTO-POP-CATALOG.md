@@ -1,5 +1,7 @@
 # Mon Bento Pop — Catalogue maison
 
+> **Statut : implémenté** (mai 2026, mobile v1.1+). Cette spec reste comme document de référence sur les décisions architecturales et le plan de déploiement initial. Voir les PRs #23 → #32 pour l'historique d'implémentation. Le strict `can_publish_bento` SQL reste volontairement non posé tant que la base d'utilisateurs n'est pas majoritairement sur 1.1.0+ ; la gate est appliquée côté UI uniquement.
+
 Spécification du passage d'un catalogue alimenté par APIs externes (TMDb, MusicBrainz, Wikidata, OSM) à un catalogue **maison modéré**, alimenté par les utilisateurs et validé par l'équipe Bento Pop.
 
 ## 1. Objectif
