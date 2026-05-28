@@ -21,7 +21,13 @@ import { clsx } from '@/lib/clsx';
 
 type SidebarProps = {
   user: { email: string; role: string };
-  badges?: { events?: number; polls?: number; emissions?: number; podcasts?: number };
+  badges?: {
+    events?: number;
+    polls?: number;
+    emissions?: number;
+    podcasts?: number;
+    catalogue?: number;
+  };
 };
 
 const NAV = [
@@ -33,6 +39,7 @@ const NAV = [
   { id: 'links',     href: '/links',    label: 'Liens & CTAs', Icon: LinkIcon },
   { id: 'team',      href: '/team',     label: 'Team',       Icon: UsersIcon },
   { id: 'bentos',    href: '/bentos',   label: 'Bentos (mobile)', Icon: DashboardIcon },
+  { id: 'catalogue', href: '/catalogue', label: 'Catalogue (mobile)', Icon: EyeIcon },
   { id: 'reports',   href: '/reports',  label: 'Modération',      Icon: PollIcon },
 ] as const;
 
@@ -74,7 +81,9 @@ export function Sidebar({ user, badges }: SidebarProps) {
                   ? badges?.emissions
                   : n.id === 'podcasts'
                     ? badges?.podcasts
-                    : undefined;
+                    : n.id === 'catalogue'
+                      ? badges?.catalogue
+                      : undefined;
           return (
             <Link
               key={n.id}
