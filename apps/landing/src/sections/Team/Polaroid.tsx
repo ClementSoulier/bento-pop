@@ -17,7 +17,7 @@ export function Polaroid({ member }: PolaroidProps) {
       style={{ transform: `rotate(${member.rotation}deg)` }}
     >
       <PhotoSlot member={member} />
-      <h3 className="font-display mt-3.5 mb-1 text-[17px] md:text-[22px]">{member.name}</h3>
+      <h3 className="font-display-sm mt-3.5 mb-1 text-[17px] md:text-[22px]">{member.name}</h3>
       <div className="font-nick mb-1.5 text-[13px] text-bento-red">{member.nick}</div>
       <p className="text-[12px] leading-[1.4] text-bento-ink/70">{member.bio}</p>
       <SocialRow socials={member.socials} memberName={member.name} />

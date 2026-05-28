@@ -241,7 +241,7 @@ export default async function ShowEpisodeDetailPage({ params }: PageProps) {
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border-[4px] border-bento-ink bg-bento-cream p-5 shadow-stamp">
-      <h2 className="font-display mb-3 text-[20px] text-bento-ink">{title}</h2>
+      <h2 className="font-display-sm mb-3 text-[20px] text-bento-ink">{title}</h2>
       {children}
     </section>
   );
@@ -279,7 +279,7 @@ async function RelatedShowEpisodes({ currentSlug }: { currentSlug: string }) {
   if (others.length === 0) return null;
   return (
     <section className="mt-16">
-      <h2 className="font-display mb-6 text-[28px] text-bento-ink">À voir aussi</h2>
+      <h2 className="font-display-sm mb-6 text-[28px] text-bento-ink">À voir aussi</h2>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {others.map((e) => (
           <Link

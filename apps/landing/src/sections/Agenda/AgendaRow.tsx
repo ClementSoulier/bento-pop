@@ -43,7 +43,7 @@ export function AgendaRow({ event }: AgendaRowProps) {
         <span className="mt-0.5 block text-[10px] font-medium opacity-60">{year}</span>
       </time>
       <div>
-        <h3 className="font-display text-[24px] leading-none mb-1.5">{event.title}</h3>
+        <h3 className="font-display-sm text-[24px] leading-none mb-1.5">{event.title}</h3>
         <div className="flex items-center gap-1.5 text-[13px] font-semibold text-bento-ink/70">
           <PinIcon width={14} height={14} aria-hidden />
           {event.place}

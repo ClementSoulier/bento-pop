@@ -59,7 +59,7 @@ function MentionCover({ coverUrl, title }: { coverUrl: string | undefined; title
           className="h-full w-full object-contain p-1"
         />
       ) : (
-        <span aria-hidden="true" className="font-display text-[26px] leading-none text-bento-ink/40">
+        <span aria-hidden="true" className="font-display-sm text-[26px] leading-none text-bento-ink/40">
           {title.charAt(0).toUpperCase()}
         </span>
       )}

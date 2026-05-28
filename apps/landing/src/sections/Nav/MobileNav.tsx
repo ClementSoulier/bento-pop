@@ -122,7 +122,7 @@ export function MobileNav({ links, cta }: MobileNavProps) {
           )}
         >
           <div className="flex items-center justify-between border-b-[4px] border-bento-ink px-6 py-4">
-            <span className="font-display text-[22px] uppercase">Menu</span>
+            <span className="font-display-sm text-[22px]">Menu</span>
             <button
               type="button"
               aria-label="Fermer le menu"

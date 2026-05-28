@@ -52,7 +52,7 @@ export default async function PodcastsPage() {
           />
           {episodes.length === 0 ? (
             <div className="rounded-3xl border-[4px] border-bento-ink bg-bento-cream px-8 py-16 text-center shadow-stamp">
-              <p className="font-display text-[24px]">Bientôt disponible</p>
+              <p className="font-display-sm text-[24px]">Bientôt disponible</p>
               <p className="mt-3 text-[15px] text-bento-ink/70">
                 Les premiers épisodes audio arrivent très vite. En attendant, retrouve le podcast sur Spotify.
               </p>

@@ -66,8 +66,10 @@ export function UniversCard({ item, featured = false, photoPath }: UniversCardPr
         </div>
         <h3
           className={clsx(
-            'font-display mb-2.5 leading-[0.95] whitespace-pre-line',
-            featured ? 'text-[clamp(40px,5vw,64px)]' : 'text-[clamp(28px,3.5vw,42px)]',
+            'mb-2.5 leading-[0.95] whitespace-pre-line',
+            featured
+              ? 'font-display text-[clamp(40px,5vw,64px)]'
+              : 'font-display-sm text-[clamp(28px,3.5vw,42px)]',
           )}
         >
           {item.title}

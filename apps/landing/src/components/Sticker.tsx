@@ -29,7 +29,7 @@ export function Sticker({
       className={clsx(
         'absolute z-[5] inline-block',
         'border-[3px] border-bento-ink rounded-[14px] shadow-stamp',
-        'font-display text-[16px] leading-none uppercase',
+        'font-display-sm text-[16px] leading-none',
         'px-3.5 pt-2.5 pb-2',
         toneClasses,
         className,
