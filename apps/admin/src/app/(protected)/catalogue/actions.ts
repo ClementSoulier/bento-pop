@@ -46,6 +46,13 @@ export type WikiImageCandidate = {
   licenseCode: string | null;
 };
 
+export type AnyItemMatch = {
+  id: string;
+  title: string;
+  categoryLabel: string;
+  status: 'draft' | 'pending' | 'validated' | 'rejected' | 'merged';
+};
+
 /**
  * Valide un item pending : devient visible en recherche pour tous les
  * utilisateurs (RLS items_read passe sur status='validated'). Le trigger
@@ -231,6 +238,46 @@ export async function suggestImageForItem(input: {
  * affichée + l'image — pas de trace fine de quelle suggestion a été
  * acceptée car le BO reste source de vérité.
  */
+/**
+ * Recherche libre dans le catalogue, tous statuts confondus (sauf merged).
+ * Utilisé par la search bar de la page /catalogue pour retrouver un item
+ * et naviguer vers sa fiche d'édition.
+ */
+export async function searchAnyItems(input: { q: string }): Promise<
+  { ok: true; matches: AnyItemMatch[] } | { ok: false; error: string }
+> {
+  await requireAdmin();
+  const q = input.q.trim();
+  if (q.length < 2) return { ok: true, matches: [] };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const { data, error } = await mobile
+    .from('items')
+    .select('id, title, status, category_id')
+    .neq('status', 'merged')
+    .ilike('title', `%${q}%`)
+    .order('title')
+    .limit(15);
+  if (error) return { ok: false, error: error.message };
+
+  // Fetch categories pour labels
+  const catIds = [...new Set((data ?? []).map((r) => r.category_id))];
+  const { data: cats } = catIds.length
+    ? await mobile.from('bento_categories').select('id, label_fr').in('id', catIds)
+    : { data: [] as { id: number; label_fr: string }[] };
+  const labelById = new Map((cats ?? []).map((c) => [c.id, c.label_fr]));
+
+  const matches: AnyItemMatch[] = (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    categoryLabel: labelById.get(r.category_id) ?? '?',
+    status: r.status as AnyItemMatch['status'],
+  }));
+  return { ok: true, matches };
+}
+
 export async function acceptImageSuggestion(input: {
   itemId: string;
   sourceUrl: string;
