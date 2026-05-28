@@ -1,16 +1,21 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   acceptImageSuggestion,
   getSimilarsForItem,
   mergeItems,
   rejectItem,
+  searchAnyItems,
   suggestImageForItem,
   validateItem,
+  type AnyItemMatch,
   type SimilarCandidate,
   type WikiImageCandidate,
 } from './actions';
+import { createDraftItem } from './[id]/actions';
 
 export type CatalogueItemRow = {
   id: string;
@@ -30,6 +35,8 @@ export function CatalogueClient({ pending, handled }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+      <Toolbar setError={setError} />
+
       {error ? (
         <div className="admin-card border-bento-red bg-bento-red/10 px-4 py-3 text-[13px] text-bento-red">
           {error}
@@ -53,6 +60,162 @@ export function CatalogueClient({ pending, handled }: Props) {
           <HandledRow key={item.id} item={item} />
         ))}
       </Section>
+    </div>
+  );
+}
+
+/* ─── Toolbar : recherche cross-status + bouton Nouvel item ─────────── */
+
+const CATEGORY_OPTIONS: { key: 'film' | 'series' | 'artist' | 'track' | 'creator' | 'place'; label: string }[] = [
+  { key: 'film', label: 'Film' },
+  { key: 'series', label: 'Série' },
+  { key: 'artist', label: 'Artiste' },
+  { key: 'track', label: 'Chanson' },
+  { key: 'creator', label: 'Créateur' },
+  { key: 'place', label: 'Lieu' },
+];
+
+function Toolbar({ setError }: { setError: (e: string | null) => void }) {
+  const [query, setQuery] = useState('');
+  const [matches, setMatches] = useState<AnyItemMatch[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onQueryChange = (q: string) => {
+    setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      if (q.trim().length < 2) {
+        setMatches([]);
+        return;
+      }
+      setSearching(true);
+      const res = await searchAnyItems({ q });
+      setSearching(false);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setMatches(res.matches);
+    }, 250);
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <input
+            className="admin-input w-full"
+            placeholder="Chercher dans le catalogue (titre…)"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+          />
+          {matches.length > 0 ? (
+            <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-72 overflow-auto rounded-md border border-admin-border bg-admin-surface shadow-lg">
+              <ul className="flex flex-col divide-y divide-admin-border">
+                {matches.map((m) => (
+                  <li key={m.id}>
+                    <Link
+                      href={`/catalogue/${m.id}`}
+                      className="flex items-center gap-3 px-3 py-2 text-[12px] hover:bg-admin-bg"
+                      onClick={() => {
+                        setMatches([]);
+                        setQuery('');
+                      }}
+                    >
+                      <span className="rounded border border-admin-border bg-admin-bg px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.12em] text-admin-muted">
+                        {m.status}
+                      </span>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+                        {m.categoryLabel}
+                      </span>
+                      <span className="flex-1 truncate font-semibold">{m.title}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {searching ? (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+              …
+            </span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowNew((s) => !s)}
+          className="admin-btn admin-btn-primary whitespace-nowrap"
+        >
+          {showNew ? 'Annuler' : '+ Nouvel item'}
+        </button>
+      </div>
+      {showNew ? <NewDraftForm setError={setError} onDone={() => setShowNew(false)} /> : null}
+    </div>
+  );
+}
+
+function NewDraftForm({
+  setError,
+  onDone,
+}: {
+  setError: (e: string | null) => void;
+  onDone: () => void;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [title, setTitle] = useState('');
+  const [categoryKey, setCategoryKey] = useState<typeof CATEGORY_OPTIONS[number]['key']>('film');
+
+  const onSubmit = () => {
+    if (title.trim().length < 1) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await createDraftItem({ categoryKey, title: title.trim() });
+        // createDraftItem redirige côté serveur, mais au cas où on revient
+        // ici on force un refresh.
+        router.refresh();
+        onDone();
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    });
+  };
+
+  return (
+    <div className="admin-card flex items-center gap-3 px-4 py-3">
+      <select
+        className="admin-input w-[140px]"
+        value={categoryKey}
+        onChange={(e) => setCategoryKey(e.target.value as typeof categoryKey)}
+      >
+        {CATEGORY_OPTIONS.map((c) => (
+          <option key={c.key} value={c.key}>
+            {c.label}
+          </option>
+        ))}
+      </select>
+      <input
+        className="admin-input flex-1"
+        placeholder="Titre de l'item…"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onSubmit();
+        }}
+        maxLength={200}
+        autoFocus
+      />
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={pending || title.trim().length === 0}
+        className="admin-btn admin-btn-primary"
+      >
+        {pending ? 'Création…' : 'Créer brouillon'}
+      </button>
     </div>
   );
 }
@@ -193,7 +356,12 @@ function PendingRow({
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-admin-muted">
               {item.categoryLabel}
             </span>
-            <span className="text-[14px] font-semibold">{item.title}</span>
+            <Link
+              href={`/catalogue/${item.id}`}
+              className="text-[14px] font-semibold underline-offset-2 hover:underline"
+            >
+              {item.title}
+            </Link>
           </div>
           <div className="mt-1 font-mono text-[10px] text-admin-muted">
             {item.submittedAt
@@ -382,7 +550,9 @@ function HandledRow({ item }: { item: CatalogueItemRow }) {
       <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-admin-muted">
         {item.categoryLabel}
       </span>
-      <span className="font-semibold">{item.title}</span>
+      <Link href={`/catalogue/${item.id}`} className="font-semibold underline-offset-2 hover:underline">
+        {item.title}
+      </Link>
       {item.rejectedReason ? (
         <span className="text-admin-muted">· {item.rejectedReason}</span>
       ) : null}
