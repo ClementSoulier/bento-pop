@@ -140,7 +140,7 @@ async function hydrateBentoFromRemote(userId: string) {
       `id,
        bento_items (
          category_id,
-         items ( id, title, subtitle, image_url, status )
+         items ( id, title, subtitle, image_url, image_credit, status )
        )`,
     )
     .eq('user_id', userId)
@@ -150,13 +150,21 @@ async function hydrateBentoFromRemote(userId: string) {
   data.bento_items.forEach((bi, idx) => {
     const cat = CATEGORY_BY_ID[bi.category_id];
     const item = bi.items as
-      | { id: string; title: string; subtitle: string | null; image_url: string | null; status: string }
+      | {
+          id: string;
+          title: string;
+          subtitle: string | null;
+          image_url: string | null;
+          image_credit: string | null;
+          status: string;
+        }
       | null;
     if (!cat || !item) return;
     slots[cat] = {
       title: item.title,
       subtitle: item.subtitle ?? undefined,
       imageUrl: item.image_url ?? undefined,
+      imageCredit: item.image_credit ?? undefined,
       paletteKey: PALETTE_KEYS[idx % (PALETTE_KEYS.length - 1)] ?? 'neutral',
       itemId: item.id,
       pending: item.status === 'pending',

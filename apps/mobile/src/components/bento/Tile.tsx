@@ -14,6 +14,12 @@ export type TileData = {
   subtitle?: string;
   /** URL d'une vraie image (poster TMDb, cover MusicBrainz…). */
   imageUrl?: string;
+  /**
+   * Texte d'attribution (auteur + licence) à afficher en mini sous le
+   * visuel. Obligatoire pour les images Wikimedia CC-BY-SA. Si null/undef,
+   * pas de crédit affiché.
+   */
+  imageCredit?: string;
   /** Palette de fallback / overlay décoratif. */
   paletteKey?: PaletteKey;
   /**
@@ -277,6 +283,35 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
           </Text>
         ) : null}
       </View>
+
+      {/* Crédit photo : obligation légale pour les images Wikimedia
+          (CC-BY-SA). Tucké en bas à droite, très petit, semi-transparent
+          pour ne pas concurrencer le design. N'apparait que si l'image
+          est présente ET un crédit est posé en BDD. */}
+      {hasImage && data.imageCredit ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            right: 4,
+            bottom: 4,
+            maxWidth: '70%',
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            style={{
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: Math.max(7, conf.stamp - 2),
+              fontFamily: 'Fredoka',
+              letterSpacing: 0.2,
+              textAlign: 'right',
+            }}
+          >
+            {data.imageCredit}
+          </Text>
+        </View>
+      ) : null}
     </>
   );
 

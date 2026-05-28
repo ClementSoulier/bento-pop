@@ -148,7 +148,7 @@ export async function loadPublicBentoByPseudo(pseudo: string) {
       is_featured,
       bento_items (
         category_id,
-        items ( id, title, subtitle, year, image_url, external_source, external_id )
+        items ( id, title, subtitle, year, image_url, image_credit, external_source, external_id )
       )
       `,
     )
