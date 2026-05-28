@@ -19,6 +19,13 @@ const mergeSchema = z.object({
   loserIds: z.array(z.string().uuid()).min(1).max(50),
 });
 
+const acceptImageSchema = z.object({
+  itemId: z.string().uuid(),
+  sourceUrl: z.string().url(),
+  attribution: z.string().trim().max(500).nullable(),
+  licenseCode: z.string().trim().max(50).nullable(),
+});
+
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export type SimilarCandidate = {
@@ -28,6 +35,15 @@ export type SimilarCandidate = {
   year: number | null;
   imageUrl: string | null;
   score: number;
+};
+
+export type WikiImageCandidate = {
+  sourceUrl: string;
+  thumbnailUrl: string;
+  wikipediaPageUrl: string;
+  pageTitle: string;
+  attribution: string | null;
+  licenseCode: string | null;
 };
 
 /**
@@ -171,6 +187,119 @@ export async function mergeItems(input: {
     loser_ids: parsed.data.loserIds,
   });
   if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/catalogue');
+  return { ok: true };
+}
+
+/**
+ * Demande à l'Edge Function `suggest-item-image` 3 candidats Wikipedia
+ * pour l'illustration d'un item. La fonction ne touche pas à la BDD,
+ * c'est `acceptImageSuggestion` qui finalise le choix de l'admin.
+ *
+ * Note : `mobile.functions.invoke` utilise l'URL Supabase mobile +
+ * la service-role key (les Edge Functions valident le JWT, et le
+ * service-role passe).
+ */
+export async function suggestImageForItem(input: {
+  itemId: string;
+}): Promise<{ ok: true; candidates: WikiImageCandidate[] } | { ok: false; error: string }> {
+  await requireAdmin();
+  const parsed = itemIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'itemId invalide' };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const { data, error } = await mobile.functions.invoke<
+    { ok: true; candidates: WikiImageCandidate[] } | { ok: false; error: string }
+  >('suggest-item-image', {
+    body: { itemId: parsed.data.itemId },
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: 'Réponse vide de l\'Edge Function' };
+  return data;
+}
+
+/**
+ * Finalise une suggestion : télécharge l'image depuis Wikipedia, l'upload
+ * dans le bucket Supabase Storage `item-images/{itemId}/main.{ext}`, met
+ * à jour `items.image_url` (URL publique du bucket) + `items.image_credit`.
+ *
+ * Le `licenseCode` est stocké dans la table `item_image_suggestions` à
+ * titre de traçabilité légère. Pour V1 on garde uniquement l'attribution
+ * affichée + l'image — pas de trace fine de quelle suggestion a été
+ * acceptée car le BO reste source de vérité.
+ */
+export async function acceptImageSuggestion(input: {
+  itemId: string;
+  sourceUrl: string;
+  attribution: string | null;
+  licenseCode: string | null;
+}): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = acceptImageSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Inputs invalides' };
+  }
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  // 1. Télécharge l'image depuis Wikimedia côté serveur. User-agent custom
+  //    pour respecter les règles d'usage Wikimedia (sinon 403 sur certains
+  //    fichiers).
+  let imageResponse: Response;
+  try {
+    imageResponse = await fetch(parsed.data.sourceUrl, {
+      headers: {
+        'user-agent': 'BentoPopAdmin/1.0 (https://bento-pop.com; contact@keremaprod.com)',
+      },
+    });
+  } catch (e) {
+    return { ok: false, error: `Téléchargement échoué : ${(e as Error).message}` };
+  }
+  if (!imageResponse.ok) {
+    return { ok: false, error: `Wikimedia ${imageResponse.status}` };
+  }
+  const contentType = imageResponse.headers.get('content-type') ?? 'image/jpeg';
+  const ext = contentType.includes('png')
+    ? 'png'
+    : contentType.includes('webp')
+      ? 'webp'
+      : contentType.includes('gif')
+        ? 'gif'
+        : 'jpg';
+  const arrayBuf = await imageResponse.arrayBuffer();
+
+  // 2. Upload Storage. `upsert: true` pour écraser une image existante
+  //    si l'admin change d'avis (path stable = pas de cache à purger).
+  const path = `${parsed.data.itemId}/main.${ext}`;
+  const { error: uploadErr } = await mobile.storage
+    .from('item-images')
+    .upload(path, arrayBuf, {
+      contentType,
+      upsert: true,
+    });
+  if (uploadErr) return { ok: false, error: `Storage : ${uploadErr.message}` };
+
+  // 3. URL publique (bucket public)
+  const { data: urlData } = mobile.storage.from('item-images').getPublicUrl(path);
+  if (!urlData?.publicUrl) {
+    return { ok: false, error: 'Impossible de générer l\'URL publique' };
+  }
+
+  // 4. Met à jour l'item. On ajoute `?v={ts}` à l'URL pour bust les caches
+  //    aval (CDN, React Native Image cache) quand l'admin remplace l'image.
+  const bustedUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+  const { error: updateErr } = await mobile
+    .from('items')
+    .update({
+      image_url: bustedUrl,
+      image_credit: parsed.data.attribution,
+    })
+    .eq('id', parsed.data.itemId);
+  if (updateErr) return { ok: false, error: `Update item : ${updateErr.message}` };
 
   revalidatePath('/catalogue');
   return { ok: true };

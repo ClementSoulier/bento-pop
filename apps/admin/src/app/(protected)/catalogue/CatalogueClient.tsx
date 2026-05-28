@@ -2,11 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import {
+  acceptImageSuggestion,
   getSimilarsForItem,
   mergeItems,
   rejectItem,
+  suggestImageForItem,
   validateItem,
   type SimilarCandidate,
+  type WikiImageCandidate,
 } from './actions';
 
 export type CatalogueItemRow = {
@@ -89,6 +92,9 @@ function PendingRow({
   const [showMerge, setShowMerge] = useState(false);
   const [candidates, setCandidates] = useState<SimilarCandidate[] | null>(null);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [showImages, setShowImages] = useState(false);
+  const [imageCandidates, setImageCandidates] = useState<WikiImageCandidate[] | null>(null);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   const onValidate = () => {
     startTransition(async () => {
@@ -150,6 +156,35 @@ function PendingRow({
     });
   };
 
+  const onToggleImages = async () => {
+    const next = !showImages;
+    setShowImages(next);
+    if (next && imageCandidates === null) {
+      setLoadingImages(true);
+      const res = await suggestImageForItem({ itemId: item.id });
+      setLoadingImages(false);
+      if (!res.ok) {
+        setError(res.error);
+        setImageCandidates([]);
+        return;
+      }
+      setImageCandidates(res.candidates);
+    }
+  };
+
+  const onAcceptImage = (candidate: WikiImageCandidate) => {
+    startTransition(async () => {
+      const res = await acceptImageSuggestion({
+        itemId: item.id,
+        sourceUrl: candidate.sourceUrl,
+        attribution: candidate.attribution,
+        licenseCode: candidate.licenseCode,
+      });
+      if (!res.ok) setError(res.error);
+      else setError(null);
+    });
+  };
+
   return (
     <div className="flex flex-col px-4 py-3.5">
       <div className="flex items-start gap-4">
@@ -180,6 +215,14 @@ function PendingRow({
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
+            onClick={onToggleImages}
+            disabled={pending}
+            className="rounded-md border border-admin-border bg-admin-bg px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] hover:bg-admin-ink hover:text-bento-cream disabled:opacity-50"
+          >
+            {showImages ? 'Fermer' : 'Image'}
+          </button>
+          <button
+            type="button"
             onClick={onToggleMerge}
             disabled={pending}
             className="rounded-md border border-admin-border bg-admin-bg px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] hover:bg-admin-ink hover:text-bento-cream disabled:opacity-50"
@@ -204,6 +247,71 @@ function PendingRow({
           </button>
         </div>
       </div>
+
+      {showImages ? (
+        <div className="mt-3 rounded-md border border-admin-border bg-admin-bg/40 px-3 py-2.5">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.15em] text-admin-muted">
+            Illustration depuis Wikipedia
+          </div>
+          {loadingImages ? (
+            <div className="py-3 text-center text-[12px] text-admin-muted">
+              Recherche Wikipedia (FR puis EN)…
+            </div>
+          ) : imageCandidates && imageCandidates.length > 0 ? (
+            <ul className="grid grid-cols-3 gap-3">
+              {imageCandidates.map((c) => (
+                <li
+                  key={c.sourceUrl}
+                  className="flex flex-col overflow-hidden rounded-md border border-admin-border bg-white"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- on récupère
+                      une URL Wikimedia arbitraire, next/image ne sait pas l'optimiser
+                      sans config remotePatterns, et c'est juste un thumbnail admin */}
+                  <img
+                    src={c.thumbnailUrl}
+                    alt={c.pageTitle}
+                    className="aspect-[3/4] w-full object-cover"
+                    loading="lazy"
+                  />
+                  <div className="flex flex-col gap-1.5 p-2 text-[11px]">
+                    <a
+                      href={c.wikipediaPageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="line-clamp-1 underline"
+                      title={c.pageTitle}
+                    >
+                      {c.pageTitle} ↗
+                    </a>
+                    {c.attribution ? (
+                      <span className="line-clamp-2 text-admin-muted">
+                        {c.attribution}
+                      </span>
+                    ) : (
+                      <span className="italic text-admin-muted">
+                        (pas d&apos;attribution disponible)
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onAcceptImage(c)}
+                      disabled={pending}
+                      className="mt-1 rounded-md border-2 border-bento-ink bg-bento-cream px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] hover:-translate-y-0.5 disabled:opacity-50"
+                    >
+                      Utiliser
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="py-2 text-[12px] text-admin-muted">
+              Aucune illustration trouvée. Tu peux uploader manuellement via
+              la fiche item (à venir) ou valider sans image.
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {showMerge ? (
         <div className="mt-3 rounded-md border border-admin-border bg-admin-bg/40 px-3 py-2.5">

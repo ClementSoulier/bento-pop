@@ -40,4 +40,7 @@ enable_signup = true
 enable_confirmations = false  # MVP : pas d'email à valider
 
 [storage]
-enabled = false  # MVP : pas de stockage media côté nous, on consomme les CDN externes
+# Activé pour héberger les illustrations du catalogue maison
+# (`item-images/{itemId}/main.{ext}`). Sourcing depuis Wikipedia +
+# upload manuel admin via le BO. Cf. migration `20260531000000_item_images_storage.sql`.
+enabled = true
