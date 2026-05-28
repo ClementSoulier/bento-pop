@@ -100,6 +100,7 @@ export default function SearchModal() {
         title: item.title,
         subtitle: item.subtitle ?? undefined,
         imageUrl: item.imageUrl ?? undefined,
+        imageCredit: item.imageCredit ?? undefined,
         paletteKey: paletteForResult(idx >= 0 ? idx : 0),
         itemId: item.id,
         pending: false,

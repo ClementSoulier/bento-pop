@@ -30,5 +30,5 @@
     "nativewind-env.d.ts",
     "images.d.ts"
   ],
-  "exclude": ["node_modules", ".expo", "ios", "android"]
+  "exclude": ["node_modules", ".expo", "ios", "android", "supabase/functions"]
 }

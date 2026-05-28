@@ -67,13 +67,20 @@ export default function PublicBento() {
       result.bento.bento_items.forEach((bi, idx) => {
         const cat = CATEGORY_BY_ID[bi.category_id];
         const item = bi.items as
-          | { id: string; title: string; subtitle: string | null; image_url: string | null }
+          | {
+              id: string;
+              title: string;
+              subtitle: string | null;
+              image_url: string | null;
+              image_credit: string | null;
+            }
           | null;
         if (!cat || !item) return;
         slots[cat] = {
           title: item.title,
           subtitle: item.subtitle ?? undefined,
           imageUrl: item.image_url ?? undefined,
+          imageCredit: item.image_credit ?? undefined,
           paletteKey: PALETTE_KEYS[idx % (PALETTE_KEYS.length - 1)] ?? 'neutral',
         };
       });
