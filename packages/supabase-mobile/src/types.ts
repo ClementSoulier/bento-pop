@@ -190,6 +190,31 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['blocked_pseudo_patterns']['Insert']>;
         Relationships: [];
       };
+      app_config: {
+        Row: {
+          id: number;
+          maintenance_mode: boolean;
+          maintenance_title: string;
+          maintenance_message: string;
+          ios_min_version: string;
+          ios_latest_version: string;
+          android_min_version: string | null;
+          android_latest_version: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          maintenance_mode?: boolean;
+          maintenance_title?: string;
+          maintenance_message?: string;
+          ios_min_version?: string;
+          ios_latest_version?: string;
+          android_min_version?: string | null;
+          android_latest_version?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: { [_: string]: never };
     Functions: { [_: string]: never };

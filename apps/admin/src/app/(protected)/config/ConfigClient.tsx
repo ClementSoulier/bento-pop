@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { clsx } from '@/lib/clsx';
 import { updateSettings } from './actions';
 
@@ -91,6 +92,24 @@ export function ConfigClient({ settings }: Props) {
           </div>
         </div>
         {error ? <p className="mt-2 text-[12px] text-bento-red">{error}</p> : null}
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-admin-muted">
+          App mobile
+        </h2>
+        <Link
+          href="/config/mobile"
+          className="admin-card block px-6 py-5 text-[13px] transition-colors hover:bg-admin-surface-2"
+        >
+          <div className="font-display text-[16px] leading-none text-admin-ink">
+            Maintenance &amp; versions
+          </div>
+          <p className="mt-1.5 text-admin-muted">
+            Activer le mode maintenance et imposer une version minimum supportée
+            (force update).
+          </p>
+        </Link>
       </section>
 
       <section>
