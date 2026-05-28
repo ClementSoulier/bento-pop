@@ -344,6 +344,13 @@ export type Database = {
           score: number;
         }>;
       };
+      admin_merge_items: {
+        Args: {
+          canonical_id: string;
+          loser_ids: string[];
+        };
+        Returns: void;
+      };
     };
     Enums: { [_: string]: never };
     CompositeTypes: { [_: string]: never };
