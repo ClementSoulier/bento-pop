@@ -6,11 +6,6 @@ import { QueryClient } from '@tanstack/react-query';
  * - gcTime étendu (30 min) : on garde les caches en mémoire même quand
  *   l'utilisateur change d'écran, pour des retours instantanés
  * - retry désactivé pour les erreurs 4xx (auth, validation, not found)
- *
- * Les recherches externes (TMDb, MusicBrainz, Wikidata, OSM) overrident
- * `staleTime` à 10 min via leurs `useQuery` dédiés — un poster TMDb ne
- * change pas en 10 min, donc on évite les ré-appels (et on respecte les
- * rate limits MB / Nominatim de 1 req/seconde).
  */
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +20,3 @@ export const queryClient = new QueryClient({
     },
   },
 });
-
-/** staleTime utilisé pour les recherches externes (TMDb, MB, Wikidata, OSM). */
-export const EXTERNAL_SEARCH_STALE_TIME = 10 * 60 * 1000;

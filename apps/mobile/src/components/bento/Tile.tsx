@@ -16,6 +16,13 @@ export type TileData = {
   imageUrl?: string;
   /** Palette de fallback / overlay décoratif. */
   paletteKey?: PaletteKey;
+  /**
+   * `true` si l'item référencé est `status='pending'` (proposé par
+   * l'utilisateur, en attente de modération admin). Affiche un badge et
+   * empêche la publication du bento tant qu'au moins un slot est dans
+   * cet état.
+   */
+  pending?: boolean;
 };
 
 type TileProps = {
@@ -200,6 +207,33 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
           {meta.stamp}
         </Text>
       </View>
+
+      {data.pending ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: conf.pad,
+            right: conf.pad,
+            backgroundColor: '#e63946',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 4,
+            transform: [{ rotate: '4deg' }],
+          }}
+        >
+          <Text
+            style={{
+              color: '#ffffff',
+              fontFamily: 'Bungee',
+              fontSize: conf.stamp,
+              letterSpacing: 1,
+            }}
+          >
+            En attente
+          </Text>
+        </View>
+      ) : null}
 
       <View
         pointerEvents="none"
