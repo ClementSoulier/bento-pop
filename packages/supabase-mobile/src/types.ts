@@ -315,7 +315,36 @@ export type Database = {
       };
     };
     Views: { [_: string]: never };
-    Functions: { [_: string]: never };
+    Functions: {
+      search_items: {
+        Args: { q: string; category_key: CategoryKey; lim?: number };
+        Returns: Array<{
+          id: string;
+          title: string;
+          subtitle: string | null;
+          year: number | null;
+          image_url: string | null;
+          image_credit: string | null;
+          score: number;
+        }>;
+      };
+      find_similar_items: {
+        Args: {
+          q: string;
+          category_key: CategoryKey;
+          threshold?: number;
+          lim?: number;
+        };
+        Returns: Array<{
+          id: string;
+          title: string;
+          subtitle: string | null;
+          year: number | null;
+          image_url: string | null;
+          score: number;
+        }>;
+      };
+    };
     Enums: { [_: string]: never };
     CompositeTypes: { [_: string]: never };
   };

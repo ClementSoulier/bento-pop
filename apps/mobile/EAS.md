@@ -11,15 +11,16 @@ Guide rapide pour produire les premiers binaires iOS / Android via EAS.
 
 ## Configuration des secrets EAS (une fois)
 
-Plutôt que de mettre les credentials Supabase/TMDb en clair dans `eas.json`, on les stocke dans EAS Secrets (chiffrés côté Expo, jamais commités). Depuis `apps/mobile/` :
+Plutôt que de mettre les credentials Supabase en clair dans `eas.json`, on les stocke dans EAS Secrets (chiffrés côté Expo, jamais commités). Depuis `apps/mobile/` :
 
 ```bash
 eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value "https://<ref>.supabase.co"
 eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<anon-key>"
-eas secret:create --scope project --name EXPO_PUBLIC_TMDB_TOKEN --value "<jwt>"
 ```
 
 Vérifier : `eas secret:list`.
+
+> Note : le secret `EXPO_PUBLIC_TMDB_TOKEN` ne sert plus depuis le passage au catalogue maison (v1.1+). Il peut être supprimé d'EAS Secrets (`eas secret:delete --name EXPO_PUBLIC_TMDB_TOKEN`) une fois que la version 1.0.x n'est plus utilisée par personne.
 
 ## Lancer le 1er build (preview, iOS simulator)
 

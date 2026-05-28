@@ -28,6 +28,10 @@ export default function ComposeTab() {
   const userId = useSession((s) => s.user?.id);
   const filled = Object.keys(slots).length;
   const allFilled = filled === 6;
+  // Bloqué tant qu'au moins un slot référence un item en attente de
+  // modération. La règle est gardée côté UI uniquement pour l'instant
+  // (le SQL strict `can_publish_bento` arrive plus tard, cf. spec §7.1).
+  const hasPending = Object.values(slots).some((s) => s?.pending);
   const [publishing, setPublishing] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
   const { height: screenHeight } = useWindowDimensions();
@@ -37,6 +41,13 @@ export default function ComposeTab() {
 
   const onPublish = async () => {
     if (!userId || !allFilled) return;
+    if (hasPending) {
+      Alert.alert(
+        'En attente de validation',
+        'Une ou plusieurs cases attendent la validation de l\'équipe. Tu pourras publier dès qu\'elles seront acceptées.',
+      );
+      return;
+    }
     setPublishing(true);
     try {
       const bentoId = await ensureBento(userId);
@@ -156,13 +167,15 @@ export default function ComposeTab() {
         >
           <StampButton
             wide
-            disabled={filled === 0 || publishing}
+            disabled={filled === 0 || publishing || (allFilled && hasPending)}
             onPress={onPublish}
           >
             {publishing
               ? 'Publication…'
               : allFilled
-              ? 'Publier mon bento'
+              ? hasPending
+                ? 'En attente de validation'
+                : 'Publier mon bento'
               : `Compléter (${6 - filled} restant${6 - filled > 1 ? 's' : ''})`}
           </StampButton>
         </View>

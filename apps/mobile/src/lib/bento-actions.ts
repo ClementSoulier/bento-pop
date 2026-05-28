@@ -1,6 +1,5 @@
 import { supabase } from '@/supabase/client';
 import type { CategoryKey } from '@/supabase/types';
-import type { SearchResult } from '@/api/types';
 
 /**
  * Mapping `CategoryKey` → ID dans `bento_categories` (smallint).
@@ -15,59 +14,6 @@ const CATEGORY_IDS: Record<CategoryKey, number> = {
   creator: 5,
   place: 6,
 };
-
-/**
- * Trouve un item existant correspondant à un résultat de recherche, ou le
- * crée. Le catalogue `items` est mutualisé : si Alice a déjà choisi « Dune »
- * sur TMDb, Bob réutilise la même ligne (dedup via UNIQUE (source, external_id)).
- *
- * Si l'item existe déjà SANS image et que la nouvelle recherche en a une
- * (typiquement : Wikipedia enrichi lazy à la sélection, alors que l'item
- * avait été créé avant cette source d'image), on hydrate la ligne — tous
- * les bentos qui pointent dessus bénéficient rétroactivement de la photo.
- */
-export async function upsertItem(
-  result: SearchResult,
-  category: CategoryKey,
-): Promise<string> {
-  // 1. Lookup
-  const { data: existing } = await supabase
-    .from('items')
-    .select('id, image_url')
-    .eq('external_source', result.source)
-    .eq('external_id', result.externalId)
-    .maybeSingle();
-  if (existing) {
-    if (!existing.image_url && result.imageUrl) {
-      await supabase
-        .from('items')
-        .update({ image_url: result.imageUrl })
-        .eq('id', existing.id);
-    }
-    return existing.id;
-  }
-
-  // 2. Insertion
-  const { data: inserted, error } = await supabase
-    .from('items')
-    .insert({
-      category_id: CATEGORY_IDS[category],
-      external_source: result.source,
-      external_id: result.externalId,
-      title: result.title,
-      subtitle: result.subtitle ?? null,
-      year: result.year ?? null,
-      image_url: result.imageUrl ?? null,
-      metadata: (result.raw ?? {}) as Record<string, unknown>,
-    })
-    .select('id')
-    .single();
-
-  if (error || !inserted) {
-    throw new Error(`Item insert failed: ${error?.message ?? 'unknown'}`);
-  }
-  return inserted.id;
-}
 
 /**
  * S'assure que l'utilisateur a un bento (en crée un vide sinon).
