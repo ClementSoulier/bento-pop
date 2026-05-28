@@ -21,7 +21,18 @@ export type ExternalSource =
   | 'wikidata'
   | 'osm'
   | 'igdb'
-  | 'manual';
+  | 'manual'
+  | 'user'    // soumis par un utilisateur via le nouveau flow (1.1.0+)
+  | 'admin';  // créé directement par l'équipe via le BO
+
+export type ItemStatus =
+  | 'draft'
+  | 'pending'
+  | 'validated'
+  | 'rejected'
+  | 'merged';
+
+export type ImageSuggestionStatus = 'pending' | 'accepted' | 'dismissed';
 
 export type Database = {
   public: {
@@ -76,6 +87,16 @@ export type Database = {
           image_url: string | null;
           metadata: Record<string, unknown>;
           created_at: string;
+          status: ItemStatus;
+          submitted_by: string | null;
+          submitted_at: string | null;
+          validated_by: string | null;
+          validated_at: string | null;
+          rejected_by: string | null;
+          rejected_at: string | null;
+          rejected_reason: string | null;
+          merged_into_id: string | null;
+          image_credit: string | null;
         };
         Insert: {
           category_id: number;
@@ -86,6 +107,19 @@ export type Database = {
           year?: number | null;
           image_url?: string | null;
           metadata?: Record<string, unknown>;
+          // Tous les champs lifecycle sont remplis par triggers, mais on
+          // les expose en Insert pour permettre à l'admin (service-role)
+          // de bypasser quand il crée un draft ou valide à la main.
+          status?: ItemStatus;
+          submitted_by?: string | null;
+          submitted_at?: string | null;
+          validated_by?: string | null;
+          validated_at?: string | null;
+          rejected_by?: string | null;
+          rejected_at?: string | null;
+          rejected_reason?: string | null;
+          merged_into_id?: string | null;
+          image_credit?: string | null;
         };
         Update: Partial<Database['public']['Tables']['items']['Insert']>;
         Relationships: [
@@ -93,6 +127,70 @@ export type Database = {
             foreignKeyName: 'items_category_id_fkey';
             columns: ['category_id'];
             referencedRelation: 'bento_categories';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'items_submitted_by_fkey';
+            columns: ['submitted_by'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'items_merged_into_id_fkey';
+            columns: ['merged_into_id'];
+            referencedRelation: 'items';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      item_aliases: {
+        Row: {
+          id: string;
+          item_id: string;
+          alias: string;
+          created_at: string;
+        };
+        Insert: {
+          item_id: string;
+          alias: string;
+        };
+        Update: Partial<Database['public']['Tables']['item_aliases']['Insert']>;
+        Relationships: [
+          {
+            foreignKeyName: 'item_aliases_item_id_fkey';
+            columns: ['item_id'];
+            referencedRelation: 'items';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      item_image_suggestions: {
+        Row: {
+          id: string;
+          item_id: string;
+          source_url: string;
+          thumbnail_url: string | null;
+          attribution: string | null;
+          license_code: string | null;
+          wikipedia_page_url: string | null;
+          fetched_at: string;
+          status: ImageSuggestionStatus;
+        };
+        Insert: {
+          item_id: string;
+          source_url: string;
+          thumbnail_url?: string | null;
+          attribution?: string | null;
+          license_code?: string | null;
+          wikipedia_page_url?: string | null;
+          status?: ImageSuggestionStatus;
+        };
+        Update: Partial<Database['public']['Tables']['item_image_suggestions']['Insert']>;
+        Relationships: [
+          {
+            foreignKeyName: 'item_image_suggestions_item_id_fkey';
+            columns: ['item_id'];
+            referencedRelation: 'items';
             referencedColumns: ['id'];
           },
         ];
