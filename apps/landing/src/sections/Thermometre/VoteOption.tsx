@@ -63,11 +63,11 @@ export function VoteOption({
           {option.label}
         </span>
         {hasVoted ? (
-          <span className="font-display min-w-[60px] text-right text-[22px] text-bento-ink">
+          <span className="font-display-sm min-w-[60px] text-right text-[22px] text-bento-ink">
             {pct.toFixed(0)}%
           </span>
         ) : (
-          <span className="font-display min-w-[60px] text-right text-[14px] text-bento-ink/30">
+          <span className="font-display-sm min-w-[60px] text-right text-[14px] text-bento-ink/30">
             VOTER
           </span>
         )}

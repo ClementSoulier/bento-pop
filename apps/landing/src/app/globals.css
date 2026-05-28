@@ -65,6 +65,17 @@ button {
   text-transform: uppercase;
 }
 
+/* Variante pour les petites tailles (< 32px) : Yotta devient illisible en
+ * dessous de ce seuil. On garde l'uppercase et le tracking pour préserver
+ * la rythmique display, mais on bascule sur Fredoka heavy pour la lisibilité.
+ */
+.font-display-sm {
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 /* ---------- Animations partagées ---------- */
 @keyframes bp-bob {
   0%,
@@ -119,10 +130,12 @@ button {
   margin-bottom: 36px;
 }
 .legal-prose h2 {
-  font-family: var(--font-extenda), var(--font-bungee), sans-serif;
+  /* 22px : trop petit pour Yotta, bascule sur Fredoka heavy. */
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-weight: 700;
   font-size: 22px;
   text-transform: uppercase;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   margin-bottom: 14px;
   color: var(--bento-ink);
 }

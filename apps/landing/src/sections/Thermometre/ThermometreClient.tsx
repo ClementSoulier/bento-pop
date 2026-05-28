@@ -68,7 +68,7 @@ export function ThermometreClient({ week, initialCounts, closingNote }: Props) {
       <span className="mb-4 inline-flex items-center gap-2 rounded-full border-[3px] border-bento-ink bg-bento-red px-3 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-bento-cream shadow-stamp">
         ● {week.weekTag}
       </span>
-      <h3 id="thermometre-question" className="font-display mb-7 text-[clamp(24px,3vw,32px)] leading-[1.05]">
+      <h3 id="thermometre-question" className="font-display-sm mb-7 text-[clamp(24px,3vw,32px)] leading-[1.05]">
         {week.question}
       </h3>
       {/*

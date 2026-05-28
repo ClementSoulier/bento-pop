@@ -79,7 +79,7 @@ export function EpisodeCard({
         ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <h3 className="font-display text-[18px] leading-[1.15] text-bento-ink line-clamp-3">
+        <h3 className="font-display-sm text-[18px] leading-[1.15] text-bento-ink line-clamp-3">
           {title}
         </h3>
         <div className="mt-auto flex items-center justify-between gap-2">
