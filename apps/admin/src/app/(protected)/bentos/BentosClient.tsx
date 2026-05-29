@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { deleteUserAccount, setBentoFeatured } from './actions';
 
 export type BentoRow = {
@@ -120,7 +121,11 @@ export function BentosClient({ rows: initialRows }: BentosClientProps) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.id} className="border-b border-admin-border last:border-b-0 hover:bg-admin-bg/40">
-              <td className="px-4 py-3 font-semibold">@{r.pseudo}</td>
+              <td className="px-4 py-3 font-semibold">
+                <Link href={`/bentos/${r.id}`} className="underline-offset-2 hover:underline">
+                  @{r.pseudo}
+                </Link>
+              </td>
               <td className="px-4 py-3 text-admin-muted">{r.displayName ?? '—'}</td>
               <td className="px-4 py-3 font-mono text-[11px] text-admin-muted">
                 {new Date(r.publishedAt).toLocaleDateString('fr-FR', {

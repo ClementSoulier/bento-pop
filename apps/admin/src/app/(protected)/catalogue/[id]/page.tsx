@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { ItemEditClient, type ItemDetail } from './ItemEditClient';
@@ -71,12 +72,76 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
     aliases: (aliases ?? []).map((a) => ({ id: a.id, alias: a.alias })),
   };
 
+  // Bentos contenant cet item (toutes publications confondues). Audit admin
+  // via service-role : pas de filtre published_at. Trois requêtes séparées
+  // (bento_items → bentos → users), cohérent avec le reste du BO qui évite
+  // les jointures cross-schema.
+  const { data: usageRows } = await mobile
+    .from('bento_items')
+    .select('bento_id')
+    .eq('item_id', id);
+  const usageBentoIds = [...new Set((usageRows ?? []).map((r) => r.bento_id))];
+  const { data: usageBentos } = usageBentoIds.length
+    ? await mobile.from('bentos').select('id, user_id, published_at').in('id', usageBentoIds)
+    : { data: [] as { id: string; user_id: string; published_at: string | null }[] };
+  const usageUserIds = [...new Set((usageBentos ?? []).map((b) => b.user_id))];
+  const { data: usageUsers } = usageUserIds.length
+    ? await mobile.from('users').select('id, pseudo').in('id', usageUserIds)
+    : { data: [] as { id: string; pseudo: string }[] };
+  const usagePseudoById = new Map((usageUsers ?? []).map((u) => [u.id, u.pseudo]));
+  const usage: BentoUsage[] = (usageBentos ?? [])
+    .map((b) => ({
+      bentoId: b.id,
+      pseudo: usagePseudoById.get(b.user_id) ?? '(supprimé)',
+      published: Boolean(b.published_at),
+    }))
+    .sort((a, b) => a.pseudo.localeCompare(b.pseudo, 'fr'));
+
   return (
     <PageShell
       crumbs={`Catalogue · ${detail.categoryLabel} · ${detail.status}`}
       title={detail.title}
     >
       <ItemEditClient item={detail} />
+      <BentoUsageCard usage={usage} />
     </PageShell>
+  );
+}
+
+type BentoUsage = { bentoId: string; pseudo: string; published: boolean };
+
+/** Liste des bentos où l'item apparaît, avec lien vers la vue admin du bento. */
+function BentoUsageCard({ usage }: { usage: BentoUsage[] }) {
+  return (
+    <section className="admin-card mt-6 overflow-hidden">
+      <header className="border-b border-admin-border bg-admin-bg/60 px-4 py-3 text-[13px] font-semibold">
+        Présent dans {usage.length} bento{usage.length > 1 ? 's' : ''}
+      </header>
+      {usage.length === 0 ? (
+        <div className="px-4 py-6 text-center text-[12px] text-admin-muted">
+          Cet item n&apos;est encore dans aucun bento.
+        </div>
+      ) : (
+        <ul className="flex flex-col divide-y divide-admin-border">
+          {usage.map((u) => (
+            <li key={u.bentoId} className="flex items-center gap-3 px-4 py-2.5 text-[13px]">
+              <Link
+                href={`/bentos/${u.bentoId}`}
+                className="font-semibold underline-offset-2 hover:underline"
+              >
+                @{u.pseudo}
+              </Link>
+              <span
+                className={`rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.12em] ${
+                  u.published ? 'bg-bento-yellow text-bento-ink' : 'bg-admin-bg text-admin-muted'
+                }`}
+              >
+                {u.published ? 'publié' : 'brouillon'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

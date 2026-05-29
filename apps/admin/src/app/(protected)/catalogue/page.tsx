@@ -55,6 +55,14 @@ export default async function CataloguePage() {
     .order('created_at', { ascending: false, nullsFirst: false })
     .limit(2000);
 
+  // 3b. Nombre de bentos contenant chaque item (toutes publications confondues).
+  //     On agrège côté serveur : une ligne bento_items = un item dans un bento.
+  const { data: allBentoItems } = await mobile.from('bento_items').select('item_id');
+  const bentoCountByItem = new Map<string, number>();
+  (allBentoItems ?? []).forEach((bi) => {
+    bentoCountByItem.set(bi.item_id, (bentoCountByItem.get(bi.item_id) ?? 0) + 1);
+  });
+
   // 4. Auteurs (par submitted_by)
   const authorIds = [
     ...new Set(
@@ -87,6 +95,7 @@ export default async function CataloguePage() {
     categoryLabel: catById.get(i.category_id)?.label_fr ?? '?',
     categoryKey: catById.get(i.category_id)?.key ?? null,
     status: i.status as CatalogueFullRow['status'],
+    bentoCount: bentoCountByItem.get(i.id) ?? 0,
   }));
 
   return (
