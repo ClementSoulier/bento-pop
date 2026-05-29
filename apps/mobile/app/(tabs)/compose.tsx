@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert, Image, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
 import { StampButton, useToast, YellowBg } from '@/components/primitives';
@@ -26,6 +26,7 @@ export default function ComposeTab() {
   const slots = useBento((s) => s.slots);
   const pseudo = useSession((s) => s.profile?.pseudo);
   const userId = useSession((s) => s.user?.id);
+  const refreshProfile = useSession((s) => s.refreshProfile);
   const filled = Object.keys(slots).length;
   const allFilled = filled === 6;
   // Bloqué tant qu'au moins un slot référence un item en attente de
@@ -38,6 +39,18 @@ export default function ComposeTab() {
   const insets = useSafeAreaInsets();
 
   const showToast = useToast((s) => s.show);
+
+  // Re-synchronise le bento depuis Supabase à chaque retour sur l'onglet.
+  // Sans ça, un item validé (ou refusé) par l'équipe pendant que l'app est
+  // ouverte garde son badge « En attente » jusqu'au prochain cold start :
+  // le composer lit le store Zustand, jamais re-fetché en cours de session.
+  // `refreshProfile` → `hydrateBentoFromRemote` relit `items.status` ; les
+  // slots étant déjà persistés en base, re-hydrater ne perd aucune saisie.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfile();
+    }, [refreshProfile]),
+  );
 
   const onPublish = async () => {
     if (!userId || !allFilled) return;
