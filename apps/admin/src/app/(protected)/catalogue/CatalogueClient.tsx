@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -40,6 +40,7 @@ export type CatalogueFullRow = {
   categoryLabel: string;
   categoryKey: string | null;
   status: ItemStatus;
+  bentoCount: number;
 };
 
 type Props = { pending: CatalogueItemRow[]; allItems: CatalogueFullRow[] };
@@ -66,7 +67,7 @@ export function CatalogueClient({ pending, allItems }: Props) {
         ))}
       </Section>
 
-      <CatalogueTable items={allItems} />
+      <CatalogueTable items={allItems} setError={setError} />
     </div>
   );
 }
@@ -263,8 +264,6 @@ function PendingRow({
   const [candidates, setCandidates] = useState<SimilarCandidate[] | null>(null);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [showImages, setShowImages] = useState(false);
-  const [imageCandidates, setImageCandidates] = useState<WikiImageCandidate[] | null>(null);
-  const [loadingImages, setLoadingImages] = useState(false);
 
   const onValidate = () => {
     startTransition(async () => {
@@ -326,35 +325,6 @@ function PendingRow({
     });
   };
 
-  const onToggleImages = async () => {
-    const next = !showImages;
-    setShowImages(next);
-    if (next && imageCandidates === null) {
-      setLoadingImages(true);
-      const res = await suggestImageForItem({ itemId: item.id });
-      setLoadingImages(false);
-      if (!res.ok) {
-        setError(res.error);
-        setImageCandidates([]);
-        return;
-      }
-      setImageCandidates(res.candidates);
-    }
-  };
-
-  const onAcceptImage = (candidate: WikiImageCandidate) => {
-    startTransition(async () => {
-      const res = await acceptImageSuggestion({
-        itemId: item.id,
-        sourceUrl: candidate.sourceUrl,
-        attribution: candidate.attribution,
-        licenseCode: candidate.licenseCode,
-      });
-      if (!res.ok) setError(res.error);
-      else setError(null);
-    });
-  };
-
   return (
     <div className="flex flex-col px-4 py-3.5">
       <div className="flex items-start gap-4">
@@ -390,7 +360,7 @@ function PendingRow({
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
-            onClick={onToggleImages}
+            onClick={() => setShowImages((s) => !s)}
             disabled={pending}
             className="rounded-md border border-admin-border bg-admin-bg px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] hover:bg-admin-ink hover:text-bento-cream disabled:opacity-50"
           >
@@ -424,67 +394,8 @@ function PendingRow({
       </div>
 
       {showImages ? (
-        <div className="mt-3 rounded-md border border-admin-border bg-admin-bg/40 px-3 py-2.5">
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.15em] text-admin-muted">
-            Illustration depuis Wikipedia
-          </div>
-          {loadingImages ? (
-            <div className="py-3 text-center text-[12px] text-admin-muted">
-              Recherche Wikipedia (FR puis EN)…
-            </div>
-          ) : imageCandidates && imageCandidates.length > 0 ? (
-            <ul className="grid grid-cols-3 gap-3">
-              {imageCandidates.map((c) => (
-                <li
-                  key={c.sourceUrl}
-                  className="flex flex-col overflow-hidden rounded-md border border-admin-border bg-white"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- on récupère
-                      une URL Wikimedia arbitraire, next/image ne sait pas l'optimiser
-                      sans config remotePatterns, et c'est juste un thumbnail admin */}
-                  <img
-                    src={c.thumbnailUrl}
-                    alt={c.pageTitle}
-                    className="aspect-[3/4] w-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="flex flex-col gap-1.5 p-2 text-[11px]">
-                    <a
-                      href={c.wikipediaPageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="line-clamp-1 underline"
-                      title={c.pageTitle}
-                    >
-                      {c.pageTitle} ↗
-                    </a>
-                    {c.attribution ? (
-                      <span className="line-clamp-2 text-admin-muted">
-                        {c.attribution}
-                      </span>
-                    ) : (
-                      <span className="italic text-admin-muted">
-                        (pas d&apos;attribution disponible)
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onAcceptImage(c)}
-                      disabled={pending}
-                      className="mt-1 rounded-md border-2 border-bento-ink bg-bento-cream px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] hover:-translate-y-0.5 disabled:opacity-50"
-                    >
-                      Utiliser
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="py-2 text-[12px] text-admin-muted">
-              Aucune illustration trouvée. Tu peux uploader manuellement via
-              la fiche item (à venir) ou valider sans image.
-            </div>
-          )}
+        <div className="mt-3">
+          <ImageSuggestionPanel itemId={item.id} setError={setError} />
         </div>
       ) : null}
 
@@ -589,10 +500,195 @@ function ImageIcon({ present }: { present: boolean }) {
   );
 }
 
-function CatalogueTable({ items }: { items: CatalogueFullRow[] }) {
+/**
+ * Panneau de matching d'illustration Wikipedia, réutilisable sur n'importe
+ * quel item (file de modération ET tableau complet). Lance la recherche au
+ * montage et expose un bouton « Relancer » pour relancer le matching à la
+ * demande (ex. après avoir corrigé le titre de l'item).
+ */
+function ImageSuggestionPanel({
+  itemId,
+  setError,
+}: {
+  itemId: string;
+  setError: (e: string | null) => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [candidates, setCandidates] = useState<WikiImageCandidate[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const runSearch = useCallback(() => {
+    setLoading(true);
+    suggestImageForItem({ itemId }).then((res) => {
+      setLoading(false);
+      if (!res.ok) {
+        setError(res.error);
+        setCandidates([]);
+        return;
+      }
+      setError(null);
+      setCandidates(res.candidates);
+    });
+  }, [itemId, setError]);
+
+  useEffect(() => {
+    runSearch();
+  }, [runSearch]);
+
+  const onAccept = (candidate: WikiImageCandidate) => {
+    startTransition(async () => {
+      const res = await acceptImageSuggestion({
+        itemId,
+        sourceUrl: candidate.sourceUrl,
+        attribution: candidate.attribution,
+        licenseCode: candidate.licenseCode,
+      });
+      if (!res.ok) setError(res.error);
+      else setError(null);
+    });
+  };
+
+  return (
+    <div className="rounded-md border border-admin-border bg-admin-bg/40 px-3 py-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-admin-muted">
+          Illustration depuis Wikipedia
+        </span>
+        <button
+          type="button"
+          onClick={runSearch}
+          disabled={loading || pending}
+          className="rounded-md border border-admin-border bg-admin-bg px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] hover:bg-admin-ink hover:text-bento-cream disabled:opacity-50"
+        >
+          {loading ? 'Recherche…' : '↻ Relancer'}
+        </button>
+      </div>
+      {loading ? (
+        <div className="py-3 text-center text-[12px] text-admin-muted">
+          Recherche Wikipedia (FR puis EN)…
+        </div>
+      ) : candidates && candidates.length > 0 ? (
+        <ul className="grid grid-cols-3 gap-3">
+          {candidates.map((c) => (
+            <li
+              key={c.sourceUrl}
+              className="flex flex-col overflow-hidden rounded-md border border-admin-border bg-white"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- on récupère
+                  une URL Wikimedia arbitraire, next/image ne sait pas l'optimiser
+                  sans config remotePatterns, et c'est juste un thumbnail admin */}
+              <img
+                src={c.thumbnailUrl}
+                alt={c.pageTitle}
+                className="aspect-[3/4] w-full object-cover"
+                loading="lazy"
+              />
+              <div className="flex flex-col gap-1.5 p-2 text-[11px]">
+                <a
+                  href={c.wikipediaPageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="line-clamp-1 underline"
+                  title={c.pageTitle}
+                >
+                  {c.pageTitle} ↗
+                </a>
+                {c.attribution ? (
+                  <span className="line-clamp-2 text-admin-muted">{c.attribution}</span>
+                ) : (
+                  <span className="italic text-admin-muted">
+                    (pas d&apos;attribution disponible)
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onAccept(c)}
+                  disabled={pending}
+                  className="mt-1 rounded-md border-2 border-bento-ink bg-bento-cream px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  Utiliser
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="py-2 text-[12px] text-admin-muted">
+          Aucune illustration trouvée. Tu peux uploader manuellement via la fiche
+          item ou laisser sans image.
+        </div>
+      )}
+    </div>
+  );
+}
+
+type SortKey = 'type' | 'title' | 'subtitle' | 'date' | 'img' | 'status' | 'bentos';
+type SortState = { key: SortKey; dir: 'asc' | 'desc' };
+
+function sortValue(it: CatalogueFullRow, key: SortKey): string | number {
+  switch (key) {
+    case 'type':
+      return it.categoryLabel.toLowerCase();
+    case 'title':
+      return it.title.toLowerCase();
+    case 'subtitle':
+      return (it.subtitle ?? '').toLowerCase();
+    case 'date':
+      return it.year ?? 0;
+    case 'img':
+      return it.hasImage ? 1 : 0;
+    case 'status':
+      return it.status;
+    case 'bentos':
+      return it.bentoCount;
+  }
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = sort.key === sortKey;
+  return (
+    <th className={`px-2 py-2 font-medium ${className ?? ''}`}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1 uppercase tracking-[0.15em] hover:text-bento-ink"
+      >
+        {label}
+        <span className={active ? 'text-bento-ink' : 'opacity-30'}>
+          {active ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
+}
+
+function CatalogueTable({
+  items,
+  setError,
+}: {
+  items: CatalogueFullRow[];
+  setError: (e: string | null) => void;
+}) {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<ItemStatus | 'all'>('all');
   const [q, setQ] = useState('');
+  const [sort, setSort] = useState<SortState>({ key: 'title', dir: 'asc' });
+  const [openImageId, setOpenImageId] = useState<string | null>(null);
+
+  const onSort = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
 
   const query = q.trim().toLowerCase();
   const filtered = items.filter((it) => {
@@ -606,6 +702,16 @@ function CatalogueTable({ items }: { items: CatalogueFullRow[] }) {
       return false;
     }
     return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    const va = sortValue(a, sort.key);
+    const vb = sortValue(b, sort.key);
+    const r =
+      typeof va === 'number' && typeof vb === 'number'
+        ? va - vb
+        : String(va).localeCompare(String(vb), 'fr');
+    return sort.dir === 'asc' ? r : -r;
   });
 
   return (
@@ -660,50 +766,78 @@ function CatalogueTable({ items }: { items: CatalogueFullRow[] }) {
           <table className="w-full border-collapse text-[12px]">
             <thead>
               <tr className="border-b border-admin-border text-left font-mono text-[9px] uppercase tracking-[0.15em] text-admin-muted">
-                <th className="px-4 py-2 font-medium">Type</th>
-                <th className="px-2 py-2 font-medium">Titre</th>
-                <th className="px-2 py-2 font-medium">Sous-titre</th>
-                <th className="px-2 py-2 font-medium">Date</th>
-                <th className="px-2 py-2 text-center font-medium">Img</th>
-                <th className="px-4 py-2 font-medium">Statut</th>
+                <SortHeader label="Type" sortKey="type" sort={sort} onSort={onSort} className="px-4" />
+                <SortHeader label="Titre" sortKey="title" sort={sort} onSort={onSort} />
+                <SortHeader label="Sous-titre" sortKey="subtitle" sort={sort} onSort={onSort} />
+                <SortHeader label="Date" sortKey="date" sort={sort} onSort={onSort} />
+                <SortHeader label="Img" sortKey="img" sort={sort} onSort={onSort} className="text-center" />
+                <SortHeader label="Statut" sortKey="status" sort={sort} onSort={onSort} />
+                <SortHeader label="Bentos" sortKey="bentos" sort={sort} onSort={onSort} className="text-center" />
+                <th className="px-4 py-2 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-border">
-              {filtered.map((it) => {
+              {sorted.map((it) => {
                 const meta = STATUS_META[it.status];
+                const open = openImageId === it.id;
                 return (
-                  <tr key={it.id} className="hover:bg-admin-bg/50">
-                    <td className="px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
-                      {it.categoryLabel}
-                    </td>
-                    <td className="max-w-[260px] px-2 py-2">
-                      <Link
-                        href={`/catalogue/${it.id}`}
-                        className="block truncate font-semibold underline-offset-2 hover:underline"
-                        title={it.title}
-                      >
-                        {it.title}
-                      </Link>
-                    </td>
-                    <td className="max-w-[200px] truncate px-2 py-2 text-admin-muted" title={it.subtitle ?? ''}>
-                      {it.subtitle ?? '—'}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 font-mono text-[11px] text-admin-muted">
-                      {it.year ?? '—'}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex justify-center">
-                        <ImageIcon present={it.hasImage} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`inline-block rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.12em] ${meta.cls}`}
-                      >
-                        {meta.label}
-                      </span>
-                    </td>
-                  </tr>
+                  <Fragment key={it.id}>
+                    <tr className="hover:bg-admin-bg/50">
+                      <td className="px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+                        {it.categoryLabel}
+                      </td>
+                      <td className="max-w-[260px] px-2 py-2">
+                        <Link
+                          href={`/catalogue/${it.id}`}
+                          className="block truncate font-semibold underline-offset-2 hover:underline"
+                          title={it.title}
+                        >
+                          {it.title}
+                        </Link>
+                      </td>
+                      <td className="max-w-[200px] truncate px-2 py-2 text-admin-muted" title={it.subtitle ?? ''}>
+                        {it.subtitle ?? '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 font-mono text-[11px] text-admin-muted">
+                        {it.year ?? '—'}
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex justify-center">
+                          <ImageIcon present={it.hasImage} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`inline-block rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.12em] ${meta.cls}`}
+                        >
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 text-center font-mono text-[11px]">
+                        {it.bentoCount > 0 ? (
+                          <span className="font-semibold text-bento-ink">{it.bentoCount}</span>
+                        ) : (
+                          <span className="text-admin-muted opacity-50">0</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setOpenImageId((cur) => (cur === it.id ? null : it.id))}
+                          className="rounded-md border border-admin-border bg-admin-bg px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] hover:bg-admin-ink hover:text-bento-cream"
+                        >
+                          {open ? 'Fermer' : 'Image'}
+                        </button>
+                      </td>
+                    </tr>
+                    {open ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 pb-3">
+                          <ImageSuggestionPanel itemId={it.id} setError={setError} />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 );
               })}
             </tbody>
