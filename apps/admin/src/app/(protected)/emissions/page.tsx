@@ -14,7 +14,8 @@ export default async function EmissionsPage() {
       .select(
         'id, slug, title, description, youtube_id, thumbnail_url, duration_seconds, published_at, season, episode_number, status, display_order, seo_title, seo_description, guests, mentions, chapters',
       )
-      .order('display_order', { ascending: false })
+      .order('season', { ascending: false })
+      .order('episode_number', { ascending: false, nullsFirst: false })
       .order('published_at', { ascending: false, nullsFirst: false }),
     supabase
       .from('landing_show_episode_hosts')

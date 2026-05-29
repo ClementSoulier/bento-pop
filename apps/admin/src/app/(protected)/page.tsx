@@ -29,13 +29,15 @@ export default async function DashboardPage() {
       supabase
         .from('landing_show_episodes')
         .select('id, slug, title, season, episode_number, status, published_at')
-        .order('display_order', { ascending: false })
+        .order('season', { ascending: false })
+        .order('episode_number', { ascending: false, nullsFirst: false })
         .order('published_at', { ascending: false, nullsFirst: false })
         .limit(5),
       supabase
         .from('landing_podcast_episodes')
         .select('id, slug, title, season, episode_number, status, published_at')
-        .order('display_order', { ascending: false })
+        .order('season', { ascending: false })
+        .order('episode_number', { ascending: false, nullsFirst: false })
         .order('published_at', { ascending: false, nullsFirst: false })
         .limit(5),
     ]);
