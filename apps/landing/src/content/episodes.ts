@@ -187,7 +187,8 @@ export const getShowEpisodes = cache(async (): Promise<ShowEpisode[]> => {
     .from('landing_show_episodes')
     .select(SHOW_SELECT)
     .eq('status', 'published')
-    .order('display_order', { ascending: false })
+    .order('season', { ascending: false })
+    .order('episode_number', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false, nullsFirst: false });
 
   if (error || !data) return [];
@@ -223,7 +224,8 @@ export const getPodcastEpisodes = cache(async (): Promise<PodcastEpisode[]> => {
     .from('landing_podcast_episodes')
     .select(PODCAST_SELECT)
     .eq('status', 'published')
-    .order('display_order', { ascending: false })
+    .order('season', { ascending: false })
+    .order('episode_number', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false, nullsFirst: false });
 
   if (error || !data) return [];

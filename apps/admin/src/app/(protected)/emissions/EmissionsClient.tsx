@@ -382,13 +382,6 @@ function ShowEpisodeEditor({
               {...register('thumbnail_url')}
             />
           </Field>
-          <Field label="Ordre d'affichage" hint="Plus haut = en premier" error={errors.display_order?.message}>
-            <input
-              className="admin-input"
-              type="number"
-              {...register('display_order', { valueAsNumber: true })}
-            />
-          </Field>
         </FormGrid>
 
         <SectionTitle>Description</SectionTitle>
