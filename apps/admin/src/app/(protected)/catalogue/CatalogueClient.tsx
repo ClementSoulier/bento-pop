@@ -28,9 +28,23 @@ export type CatalogueItemRow = {
   rejectedReason?: string | null;
 };
 
-type Props = { pending: CatalogueItemRow[]; handled: CatalogueItemRow[] };
+export type ItemStatus = 'draft' | 'pending' | 'validated' | 'rejected' | 'merged';
 
-export function CatalogueClient({ pending, handled }: Props) {
+/** Ligne du tableau « tout le catalogue » (vue d'ensemble filtrable). */
+export type CatalogueFullRow = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  year: number | null;
+  hasImage: boolean;
+  categoryLabel: string;
+  categoryKey: string | null;
+  status: ItemStatus;
+};
+
+type Props = { pending: CatalogueItemRow[]; allItems: CatalogueFullRow[] };
+
+export function CatalogueClient({ pending, allItems }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -52,14 +66,7 @@ export function CatalogueClient({ pending, handled }: Props) {
         ))}
       </Section>
 
-      <Section
-        title={`Récemment traités (${handled.length})`}
-        empty="Aucun item modéré récemment."
-      >
-        {handled.slice(0, 20).map((item) => (
-          <HandledRow key={item.id} item={item} />
-        ))}
-      </Section>
+      <CatalogueTable items={allItems} />
     </div>
   );
 }
@@ -535,35 +542,198 @@ function PendingRow({
   );
 }
 
-function HandledRow({ item }: { item: CatalogueItemRow }) {
+/* ─── Tableau « tout le catalogue » ────────────────────────────────────
+   Vue d'ensemble de TOUS les items, quel que soit leur statut (y compris
+   les validés historiques sans `validated_at`). Filtres : type (catégorie)
+   + statut, plus une recherche locale sur titre/sous-titre. */
+
+const STATUS_META: Record<ItemStatus, { label: string; cls: string }> = {
+  validated: { label: 'validé', cls: 'bg-bento-yellow text-bento-ink' },
+  pending: { label: 'en attente', cls: 'bg-bento-red/15 text-bento-red' },
+  draft: { label: 'brouillon', cls: 'bg-admin-bg text-admin-muted' },
+  rejected: { label: 'rejeté', cls: 'bg-admin-bg text-admin-muted line-through' },
+  merged: { label: 'fusionné', cls: 'bg-admin-bg text-admin-muted' },
+};
+
+const STATUS_FILTERS: { key: ItemStatus | 'all'; label: string }[] = [
+  { key: 'all', label: 'Tous statuts' },
+  { key: 'validated', label: 'Validés' },
+  { key: 'pending', label: 'En attente' },
+  { key: 'draft', label: 'Brouillons' },
+  { key: 'rejected', label: 'Rejetés' },
+  { key: 'merged', label: 'Fusionnés' },
+];
+
+function ImageIcon({ present }: { present: boolean }) {
+  // Petit pictogramme « image » : plein/jaune si l'item a une illustration,
+  // contour gris barré sinon. Permet de repérer d'un coup d'œil les items
+  // sans visuel à compléter.
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 text-[12px]">
-      <span
-        className={`rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.15em] ${
-          item.status === 'validated'
-            ? 'bg-bento-yellow text-bento-ink'
-            : 'bg-admin-bg text-admin-muted'
-        }`}
+    <span title={present ? 'Image présente' : 'Pas d’image'} aria-label={present ? 'Image présente' : 'Pas d’image'}>
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={present ? '#0a0a0a' : 'currentColor'}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={present ? 'text-bento-ink' : 'text-admin-muted opacity-50'}
       >
-        {item.status === 'validated' ? 'validé' : 'rejeté'}
-      </span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-admin-muted">
-        {item.categoryLabel}
-      </span>
-      <Link href={`/catalogue/${item.id}`} className="font-semibold underline-offset-2 hover:underline">
-        {item.title}
-      </Link>
-      {item.rejectedReason ? (
-        <span className="text-admin-muted">· {item.rejectedReason}</span>
-      ) : null}
-      <span className="ml-auto font-mono text-[10px] text-admin-muted">
-        {item.submittedAt
-          ? new Date(item.submittedAt).toLocaleDateString('fr-FR', {
-              day: 'numeric',
-              month: 'short',
-            })
-          : '—'}
-      </span>
-    </div>
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill={present ? '#fbbf24' : 'none'} />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="M21 15l-5-5L5 21" />
+      </svg>
+    </span>
+  );
+}
+
+function CatalogueTable({ items }: { items: CatalogueFullRow[] }) {
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<ItemStatus | 'all'>('all');
+  const [q, setQ] = useState('');
+
+  const query = q.trim().toLowerCase();
+  const filtered = items.filter((it) => {
+    if (typeFilter !== 'all' && it.categoryKey !== typeFilter) return false;
+    if (statusFilter !== 'all' && it.status !== statusFilter) return false;
+    if (
+      query &&
+      !it.title.toLowerCase().includes(query) &&
+      !(it.subtitle ?? '').toLowerCase().includes(query)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  return (
+    <section className="admin-card overflow-hidden">
+      <header className="flex flex-col gap-3 border-b border-admin-border bg-admin-bg/60 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px] font-semibold">
+            Tout le catalogue ({filtered.length}
+            {filtered.length !== items.length ? ` / ${items.length}` : ''})
+          </span>
+          <input
+            className="admin-input w-[200px] text-[12px]"
+            placeholder="Filtrer (titre, sous-titre…)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <FilterChip active={typeFilter === 'all'} onClick={() => setTypeFilter('all')}>
+            Tous types
+          </FilterChip>
+          {CATEGORY_OPTIONS.map((c) => (
+            <FilterChip
+              key={c.key}
+              active={typeFilter === c.key}
+              onClick={() => setTypeFilter(c.key)}
+            >
+              {c.label}
+            </FilterChip>
+          ))}
+          <span className="mx-1 h-4 w-px bg-admin-border" />
+          <select
+            className="admin-input h-[28px] w-[150px] py-0 text-[11px]"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ItemStatus | 'all')}
+          >
+            {STATUS_FILTERS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </header>
+
+      {filtered.length === 0 ? (
+        <div className="px-4 py-6 text-center text-[12px] text-admin-muted">
+          Aucun item pour ces filtres.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[12px]">
+            <thead>
+              <tr className="border-b border-admin-border text-left font-mono text-[9px] uppercase tracking-[0.15em] text-admin-muted">
+                <th className="px-4 py-2 font-medium">Type</th>
+                <th className="px-2 py-2 font-medium">Titre</th>
+                <th className="px-2 py-2 font-medium">Sous-titre</th>
+                <th className="px-2 py-2 font-medium">Date</th>
+                <th className="px-2 py-2 text-center font-medium">Img</th>
+                <th className="px-4 py-2 font-medium">Statut</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-admin-border">
+              {filtered.map((it) => {
+                const meta = STATUS_META[it.status];
+                return (
+                  <tr key={it.id} className="hover:bg-admin-bg/50">
+                    <td className="px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+                      {it.categoryLabel}
+                    </td>
+                    <td className="max-w-[260px] px-2 py-2">
+                      <Link
+                        href={`/catalogue/${it.id}`}
+                        className="block truncate font-semibold underline-offset-2 hover:underline"
+                        title={it.title}
+                      >
+                        {it.title}
+                      </Link>
+                    </td>
+                    <td className="max-w-[200px] truncate px-2 py-2 text-admin-muted" title={it.subtitle ?? ''}>
+                      {it.subtitle ?? '—'}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2 font-mono text-[11px] text-admin-muted">
+                      {it.year ?? '—'}
+                    </td>
+                    <td className="px-2 py-2">
+                      <div className="flex justify-center">
+                        <ImageIcon present={it.hasImage} />
+                      </div>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-block rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.12em] ${meta.cls}`}
+                      >
+                        {meta.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition ${
+        active
+          ? 'border-bento-ink bg-bento-ink text-bento-cream'
+          : 'border-admin-border bg-admin-bg text-admin-muted hover:border-bento-ink hover:text-bento-ink'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
