@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Field, FormGrid, Modal } from '@/components/Modal';
+import { PhotoUploader } from '@/components/PhotoUploader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PencilIcon, PlusIcon, TrashIcon } from '@/components/icons';
 import { ChaptersField } from '@/components/episodes/ChaptersField';
@@ -381,11 +382,45 @@ function PodcastEpisodeEditor({
             onChange={(s) => setValue('duration_seconds', s, { shouldValidate: true })}
             error={errors.duration_seconds?.message}
           />
-          <Field full label="URL miniature (optionnel)" error={errors.thumbnail_url?.message}>
-            <input
-              className="admin-input"
-              placeholder="Vide → la cover Spotify par défaut sera utilisée"
-              {...register('thumbnail_url')}
+          <Field
+            full
+            label="Miniature (optionnel)"
+            hint="Vide → la cover Spotify par défaut sera utilisée"
+            error={errors.thumbnail_url?.message}
+          >
+            <Controller
+              control={control}
+              name="thumbnail_url"
+              render={({ field }) => (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    <PhotoUploader
+                      currentUrl={field.value || null}
+                      bucket="episode-media"
+                      pathPrefix="podcast-thumbnails/"
+                      outputFormat="webp"
+                      targetSize={600}
+                      modalLabel="Miniature podcast · cropping carré"
+                      onUploaded={(url) => field.onChange(url)}
+                    />
+                    {field.value ? (
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn-sm admin-btn-ghost"
+                        onClick={() => field.onChange('')}
+                      >
+                        Retirer
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    className="admin-input"
+                    placeholder="… ou colle une URL d'image"
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(e.target.value)}
+                  />
+                </div>
+              )}
             />
           </Field>
         </FormGrid>
