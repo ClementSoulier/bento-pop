@@ -175,6 +175,18 @@ function mapPodcastRow(r: DbPodcastRow): PodcastEpisode {
   };
 }
 
+/**
+ * Filtre PostgREST `.or(...)` de visibilité publique : un épisode `published`
+ * n'apparaît que si sa date de publication est absente ou déjà passée. Régler
+ * `published_at` dans le futur revient donc à programmer la mise en ligne.
+ *
+ * Calculé à l'appel : les pages listes sont `force-dynamic` (réévalué à chaque
+ * requête) ; les pages détail sont en ISR (réévalué à chaque revalidation).
+ */
+function publicVisibilityFilter(): string {
+  return `published_at.is.null,published_at.lte.${new Date().toISOString()}`;
+}
+
 // ============================================================
 // Loaders : émissions YouTube
 // ============================================================
@@ -187,6 +199,7 @@ export const getShowEpisodes = cache(async (): Promise<ShowEpisode[]> => {
     .from('landing_show_episodes')
     .select(SHOW_SELECT)
     .eq('status', 'published')
+    .or(publicVisibilityFilter())
     .order('season', { ascending: false })
     .order('episode_number', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false, nullsFirst: false });
@@ -204,6 +217,7 @@ export const getShowEpisodeBySlug = cache(
       .from('landing_show_episodes')
       .select(SHOW_SELECT)
       .eq('status', 'published')
+      .or(publicVisibilityFilter())
       .eq('slug', slug)
       .maybeSingle();
 
@@ -224,6 +238,7 @@ export const getPodcastEpisodes = cache(async (): Promise<PodcastEpisode[]> => {
     .from('landing_podcast_episodes')
     .select(PODCAST_SELECT)
     .eq('status', 'published')
+    .or(publicVisibilityFilter())
     .order('season', { ascending: false })
     .order('episode_number', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false, nullsFirst: false });
@@ -241,6 +256,7 @@ export const getPodcastEpisodeBySlug = cache(
       .from('landing_podcast_episodes')
       .select(PODCAST_SELECT)
       .eq('status', 'published')
+      .or(publicVisibilityFilter())
       .eq('slug', slug)
       .maybeSingle();
 
