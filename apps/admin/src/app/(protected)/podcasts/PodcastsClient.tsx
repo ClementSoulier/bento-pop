@@ -399,8 +399,9 @@ function PodcastEpisodeEditor({
                       bucket="episode-media"
                       pathPrefix="podcast-thumbnails/"
                       outputFormat="webp"
-                      targetSize={600}
-                      modalLabel="Miniature podcast · cropping carré"
+                      targetSize={1280}
+                      aspect={16 / 9}
+                      modalLabel="Miniature podcast · cropping 16:9"
                       onUploaded={(url) => field.onChange(url)}
                     />
                     {field.value ? (

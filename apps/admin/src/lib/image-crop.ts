@@ -33,14 +33,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 async function cropToBlob(
   imageSrc: string,
   pixelCrop: PixelCrop,
-  targetSize: number,
+  outWidth: number,
+  outHeight: number,
   mime: 'image/jpeg' | 'image/webp',
   quality: number,
 ): Promise<Blob> {
   const image = await loadImage(imageSrc);
   const canvas = document.createElement('canvas');
-  canvas.width = targetSize;
-  canvas.height = targetSize;
+  canvas.width = outWidth;
+  canvas.height = outHeight;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context indisponible');
   ctx.imageSmoothingQuality = 'high';
@@ -52,8 +53,8 @@ async function cropToBlob(
     pixelCrop.height,
     0,
     0,
-    targetSize,
-    targetSize,
+    outWidth,
+    outHeight,
   );
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -66,9 +67,12 @@ async function cropToBlob(
 
 export type CropOptions = {
   format?: 'jpeg' | 'webp';
-  /* Taille du carré final en pixels. Default 800 pour JPEG (legacy team),
-     conseillé 600 pour WebP (assez pour avatars/covers, ~30 KB par image). */
+  /* Plus grande dimension finale en pixels (= largeur). Default 800 pour JPEG
+     (legacy team), conseillé 600 pour WebP (assez pour avatars/covers). */
   targetSize?: number;
+  /* Ratio largeur/hauteur du rendu. Default 1 (carré). Ex: 16/9 pour une
+     miniature paysage. La hauteur finale = round(targetSize / aspect). */
+  aspect?: number;
   /* 0..1. Default 0.9 pour JPEG, 0.82 pour WebP (équivalent visuel ≈ JPEG 0.92
      mais plus léger). */
   quality?: number;
@@ -85,9 +89,11 @@ export async function cropToBlob_v2(
 ): Promise<CropOutput> {
   const format = options.format ?? 'webp';
   const targetSize = options.targetSize ?? (format === 'webp' ? 600 : 800);
+  const aspect = options.aspect ?? 1;
   const quality = options.quality ?? (format === 'webp' ? 0.82 : 0.9);
   const mime = format === 'webp' ? 'image/webp' : 'image/jpeg';
-  const blob = await cropToBlob(imageSrc, pixelCrop, targetSize, mime, quality);
+  const outHeight = Math.round(targetSize / aspect);
+  const blob = await cropToBlob(imageSrc, pixelCrop, targetSize, outHeight, mime, quality);
   return {
     blob,
     extension: format === 'webp' ? 'webp' : 'jpg',
@@ -105,5 +111,5 @@ export async function cropToJpegBlob(
   targetSize = 800,
   quality = 0.9,
 ): Promise<Blob> {
-  return cropToBlob(imageSrc, pixelCrop, targetSize, 'image/jpeg', quality);
+  return cropToBlob(imageSrc, pixelCrop, targetSize, targetSize, 'image/jpeg', quality);
 }
