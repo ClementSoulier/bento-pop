@@ -21,17 +21,20 @@ type PhotoUploaderProps = {
   /** Format de sortie. Default 'jpeg' pour préserver le comportement Team
       historique. Passer 'webp' pour les nouveaux usages (≈ 30 % plus léger). */
   outputFormat?: 'jpeg' | 'webp';
-  /** Taille du carré final en pixels. Default 600 (webp) ou 800 (jpeg). */
+  /** Plus grande dimension finale en pixels. Default 600 (webp) ou 800 (jpeg). */
   targetSize?: number;
+  /** Ratio largeur/hauteur du crop. Default 1 (carré). Ex: 16/9 pour paysage. */
+  aspect?: number;
   /** Texte fil d'Ariane affiché dans la modale (default 'Cropping carré'). */
   modalLabel?: string;
   /** Tailles 'sm' (compact pour useFieldArray) ou 'md' (default). */
   size?: Size;
 };
 
-const PREVIEW_CLASSES: Record<Size, string> = {
-  sm: 'h-12 w-12',
-  md: 'h-16 w-16',
+/** Hauteur de l'aperçu en px ; la largeur s'adapte au ratio. */
+const PREVIEW_HEIGHT: Record<Size, number> = {
+  sm: 48,
+  md: 64,
 };
 
 /**
@@ -50,9 +53,12 @@ export function PhotoUploader({
   onUploaded,
   outputFormat = 'jpeg',
   targetSize,
+  aspect = 1,
   modalLabel = 'Photo · cropping carré',
   size = 'md',
 }: PhotoUploaderProps) {
+  const previewHeight = PREVIEW_HEIGHT[size];
+  const previewStyle = { height: previewHeight, width: Math.round(previewHeight * aspect) };
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -102,7 +108,7 @@ export function PhotoUploader({
     setPending(true);
     setError(null);
     try {
-      const cropOptions: CropOptions = { format: outputFormat };
+      const cropOptions: CropOptions = { format: outputFormat, aspect };
       if (targetSize) cropOptions.targetSize = targetSize;
       const { blob, extension, contentType } = await cropToBlob_v2(
         imageSrc,
@@ -147,17 +153,13 @@ export function PhotoUploader({
           <img
             src={currentUrl}
             alt="Aperçu photo"
-            className={clsx(
-              'rounded-admin-input border border-admin-border object-cover',
-              PREVIEW_CLASSES[size],
-            )}
+            style={previewStyle}
+            className="rounded-admin-input border border-admin-border object-cover"
           />
         ) : (
           <div
-            className={clsx(
-              'grid place-items-center rounded-admin-input border border-dashed border-admin-border bg-admin-surface-2 text-[10px] uppercase tracking-[0.15em] text-admin-muted',
-              PREVIEW_CLASSES[size],
-            )}
+            style={previewStyle}
+            className="grid place-items-center rounded-admin-input border border-dashed border-admin-border bg-admin-surface-2 text-[10px] uppercase tracking-[0.15em] text-admin-muted"
           >
             Aucune
           </div>
@@ -196,7 +198,7 @@ export function PhotoUploader({
                   image={imageSrc}
                   crop={crop}
                   zoom={zoom}
-                  aspect={1}
+                  aspect={aspect}
                   cropShape="rect"
                   showGrid
                   onCropChange={setCrop}
