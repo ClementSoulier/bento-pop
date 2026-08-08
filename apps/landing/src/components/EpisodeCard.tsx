@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { clsx } from '@/lib/clsx';
 import { HostAvatar } from '@/components/HostAvatar';
+import { SmartImage } from '@/components/SmartImage';
 import {
   formatDurationShort,
   formatPublishedDate,
@@ -56,11 +57,11 @@ export function EpisodeCard({
         )}
       >
         {thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SmartImage
             src={thumb}
             alt=""
-            loading="lazy"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (

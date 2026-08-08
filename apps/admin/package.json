@@ -8,7 +8,8 @@
     "start": "next start --port 3100",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .next .turbo"
+    "clean": "rm -rf .next .turbo",
+    "backfill:storage-cache": "node scripts/backfill-storage-cache.mjs"
   },
   "dependencies": {
     "@bento-pop/brand": "workspace:*",

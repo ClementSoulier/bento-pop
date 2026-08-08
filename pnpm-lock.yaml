@@ -124,6 +124,9 @@ importers:
       react-dom:
         specifier: ^19.2.6
         version: 19.2.6(react@19.2.6)
+      sharp:
+        specifier: ^0.33.5
+        version: 0.33.5
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -9570,8 +9573,7 @@ snapshots:
 
   detect-libc@1.0.3: {}
 
-  detect-libc@2.1.2:
-    optional: true
+  detect-libc@2.1.2: {}
 
   detect-node-es@1.1.0: {}
 
@@ -12360,7 +12362,6 @@ snapshots:
       '@img/sharp-wasm32': 0.33.5
       '@img/sharp-win32-ia32': 0.33.5
       '@img/sharp-win32-x64': 0.33.5
-    optional: true
 
   sharp@0.34.5:
     dependencies:

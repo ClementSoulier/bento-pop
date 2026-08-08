@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import Cropper, { type Area } from 'react-easy-crop';
 import { createClient } from '@/lib/supabase/browser';
 import { cropToBlob_v2, type CropOptions } from '@/lib/image-crop';
+import { STORAGE_CACHE_CONTROL } from '@/lib/storage';
 import { clsx } from '@/lib/clsx';
 
 type Size = 'sm' | 'md';
@@ -119,7 +120,7 @@ export function PhotoUploader({
       const path = `${pathPrefix}${crypto.randomUUID()}.${extension}`;
       const { error: upErr } = await supabase.storage.from(bucket).upload(path, blob, {
         contentType,
-        cacheControl: '3600',
+        cacheControl: STORAGE_CACHE_CONTROL,
         upsert: false,
       });
       if (upErr) throw upErr;

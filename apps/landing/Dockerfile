@@ -65,6 +65,13 @@ RUN apk add --no-cache curl \
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/.next/static     ./apps/landing/.next/static
 
+# Cache des images optimisées par next/image. À monter en volume persistant
+# dans Coolify (Storages → path /repo/apps/landing/.next/cache/images), sinon
+# il repart à zéro à chaque déploiement et tout le trafic image retombe sur
+# Supabase le temps qu'il se reconstitue.
+RUN mkdir -p /repo/apps/landing/.next/cache/images \
+ && chown -R nextjs:nodejs /repo/apps/landing/.next
+
 # public/ optionnel : copié seulement s'il existe
 # (Le test ci-dessus se fait au build du Dockerfile via une instruction shell.)
 # Si tu ajoutes un dossier apps/landing/public/, décommente la ligne suivante :

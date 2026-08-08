@@ -1,5 +1,6 @@
 import type { IconKey } from '@/components/icons';
 import { iconRegistry } from '@/components/icons';
+import { SmartImage } from '@/components/SmartImage';
 import type { TeamMember, TeamMemberSocials } from '@/lib/content/schemas';
 import { clsx } from '@/lib/clsx';
 
@@ -85,8 +86,13 @@ function PhotoSlot({ member }: { member: TeamMember }) {
       {photo.kind === 'image' ? (
         // alt vide : le nom du membre est déjà annoncé par le <h3> juste après —
         // un alt redondant ferait lire le nom deux fois aux lecteurs d'écran.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo.url} alt="" className="h-full w-full object-cover" />
+        <SmartImage
+          src={photo.url}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+          className="h-full w-full object-cover"
+        />
       ) : (
         <span
           className="font-display text-[64px] leading-none text-bento-cream/95"

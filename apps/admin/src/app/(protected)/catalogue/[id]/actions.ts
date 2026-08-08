@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createMobileClient } from '@/lib/supabase/mobile';
+import { STORAGE_CACHE_CONTROL } from '@/lib/storage';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -157,7 +158,11 @@ export async function uploadItemImage(itemId: string, formData: FormData): Promi
   const arrayBuf = await file.arrayBuffer();
   const { error: uploadErr } = await mobile.storage
     .from('item-images')
-    .upload(path, arrayBuf, { contentType: file.type, upsert: true });
+    .upload(path, arrayBuf, {
+      contentType: file.type,
+      cacheControl: STORAGE_CACHE_CONTROL,
+      upsert: true,
+    });
   if (uploadErr) return { ok: false, error: `Storage : ${uploadErr.message}` };
 
   const { data: urlData } = mobile.storage.from('item-images').getPublicUrl(path);
