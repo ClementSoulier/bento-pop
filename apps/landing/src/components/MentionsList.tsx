@@ -1,5 +1,6 @@
 import type { EpisodeMention } from '@/content/episodes';
 import { MENTION_TYPE_LABELS } from '@/lib/episodes';
+import { SmartImage } from '@/components/SmartImage';
 
 type MentionsListProps = { mentions: EpisodeMention[] };
 
@@ -51,11 +52,13 @@ function MentionCover({ coverUrl, title }: { coverUrl: string | undefined; title
   return (
     <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-lg border-[2px] border-bento-ink bg-bento-yellow">
       {coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        /* `cover_url` est un champ libre du BO : l'URL peut pointer vers
+           n'importe quel hôte, `SmartImage` retombe alors sur un <img>. */
+        <SmartImage
           src={coverUrl}
           alt={title}
-          loading="lazy"
+          width={64}
+          height={64}
           className="h-full w-full object-contain p-1"
         />
       ) : (

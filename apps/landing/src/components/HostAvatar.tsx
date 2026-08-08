@@ -1,4 +1,5 @@
 import { clsx } from '@/lib/clsx';
+import { SmartImage } from '@/components/SmartImage';
 import type { EpisodeHostPhoto } from '@/content/episodes';
 
 type Size = 'xs' | 'sm' | 'md';
@@ -7,6 +8,13 @@ const SIZE_CLASSES: Record<Size, string> = {
   xs: 'h-7 w-7 border-[2px] text-[10px]',
   sm: 'h-9 w-9 border-[2px] text-[11px]',
   md: 'h-10 w-10 border-[3px] text-[12px]',
+};
+
+/** Côté rendu en px, aligné sur `SIZE_CLASSES` (h-7 = 28px, etc.). */
+const SIZE_PX: Record<Size, number> = {
+  xs: 28,
+  sm: 36,
+  md: 40,
 };
 
 type HostAvatarProps = {
@@ -31,8 +39,13 @@ export function HostAvatar({ photo, name, size = 'md', className }: HostAvatarPr
   if (photo.kind === 'image') {
     return (
       <span className={base} title={name}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+        <SmartImage
+          src={photo.url}
+          alt=""
+          width={SIZE_PX[size]}
+          height={SIZE_PX[size]}
+          className="h-full w-full object-cover"
+        />
       </span>
     );
   }

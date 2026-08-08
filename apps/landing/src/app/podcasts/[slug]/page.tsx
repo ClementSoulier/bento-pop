@@ -7,6 +7,7 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { HostAvatar } from '@/components/HostAvatar';
 import { JsonLd } from '@/components/JsonLd';
 import { MentionsList } from '@/components/MentionsList';
+import { SmartImage } from '@/components/SmartImage';
 import { SpotifyEpisodeEmbed } from '@/components/SpotifyEpisodeEmbed';
 import {
   formatDurationShort,
@@ -191,10 +192,11 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
                     {ep.guests.map((g, i) => (
                       <li key={i} className="flex items-center gap-3">
                         {g.photo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <SmartImage
                             src={g.photo_url}
                             alt=""
+                            width={40}
+                            height={40}
                             className="h-10 w-10 rounded-full border-[3px] border-bento-ink object-cover"
                           />
                         ) : (
@@ -279,13 +281,13 @@ async function RelatedPodcastEpisodes({ currentSlug }: { currentSlug: string }) 
             href={`/podcasts/${e.slug}`}
             className="group flex gap-3 rounded-xl border-[3px] border-bento-ink bg-bento-cream p-3 shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg"
           >
-            <div className="aspect-video w-32 shrink-0 overflow-hidden rounded-md border-[2px] border-bento-ink bg-[#1ed760]">
+            <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-md border-[2px] border-bento-ink bg-[#1ed760]">
               {e.thumbnailUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <SmartImage
                   src={e.thumbnailUrl}
                   alt={e.title}
-                  loading="lazy"
+                  fill
+                  sizes="128px"
                   className="h-full w-full object-cover"
                 />
               ) : (

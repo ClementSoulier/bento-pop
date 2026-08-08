@@ -7,6 +7,7 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { HostAvatar } from '@/components/HostAvatar';
 import { JsonLd } from '@/components/JsonLd';
 import { MentionsList } from '@/components/MentionsList';
+import { SmartImage } from '@/components/SmartImage';
 import { YouTubeEmbed } from '@/components/YouTubeEmbed';
 import {
   formatDurationShort,
@@ -199,10 +200,11 @@ export default async function ShowEpisodeDetailPage({ params }: PageProps) {
                     {ep.guests.map((g, i) => (
                       <li key={i} className="flex items-center gap-3">
                         {g.photo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <SmartImage
                             src={g.photo_url}
                             alt=""
+                            width={40}
+                            height={40}
                             className="h-10 w-10 rounded-full border-[3px] border-bento-ink object-cover"
                           />
                         ) : (
@@ -287,12 +289,12 @@ async function RelatedShowEpisodes({ currentSlug }: { currentSlug: string }) {
             href={`/emissions/${e.slug}`}
             className="group flex gap-3 rounded-xl border-[3px] border-bento-ink bg-bento-cream p-3 shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg"
           >
-            <div className="aspect-video w-32 shrink-0 overflow-hidden rounded-md border-[2px] border-bento-ink bg-bento-ink">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+            <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-md border-[2px] border-bento-ink bg-bento-ink">
+              <SmartImage
                 src={e.thumbnailUrl ?? youtubeThumbnail(e.youtubeId, 'hq')}
                 alt={e.title}
-                loading="lazy"
+                fill
+                sizes="128px"
                 className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
               />
             </div>

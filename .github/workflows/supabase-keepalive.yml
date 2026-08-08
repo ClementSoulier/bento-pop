@@ -1,0 +1,80 @@
+# Supabase met en pause tout projet du plan gratuit resté plus de 7 jours
+# sans « activité suffisante ». Le projet mobile (Mon Bento Pop) est le plus
+# exposé : tant que l'app n'est pas publiée, il peut passer une semaine
+# entière sans la moindre requête. Une fois en pause, on a 90 jours pour le
+# réactiver à la main, au-delà les données ne sont plus que téléchargeables.
+#
+# Ce workflow envoie une requête REST minimale à chaque projet tous les 2
+# jours, ce qui laisse 3 exécutions ratées de marge avant le seuil des 7
+# jours. Le coût en egress est négligeable (une ligne, ~15 fois par mois).
+#
+# ⚠️ Deux limites à connaître :
+#   1. GitHub désactive les workflows planifiés d'un dépôt sans activité
+#      depuis 60 jours (un mail d'avertissement est envoyé avant).
+#   2. Les crons GitHub peuvent être décalés de plusieurs heures aux heures
+#      de pointe. D'où la fréquence de 2 jours plutôt que 6.
+# Pour une redondance totale, doubler ce ping par une tâche planifiée
+# Coolify sur le VPS, qui lui tourne en permanence.
+#
+# Secrets à créer (Settings → Secrets and variables → Actions) :
+#   SUPABASE_URL                  ex. https://<ref-landing>.supabase.co
+#   SUPABASE_ANON_KEY
+#   MOBILE_SUPABASE_URL           ex. https://<ref-mobile>.supabase.co
+#   MOBILE_SUPABASE_ANON_KEY
+# Les clés anon sont publiques par nature (elles vivent déjà dans le bundle
+# de la landing et de l'app) : les mettre en secrets sert surtout à ne pas
+# exposer les refs de projet dans l'historique du dépôt.
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '23 5 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping les projets Supabase
+        env:
+          LANDING_URL: ${{ secrets.SUPABASE_URL }}
+          LANDING_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          MOBILE_URL: ${{ secrets.MOBILE_SUPABASE_URL }}
+          MOBILE_KEY: ${{ secrets.MOBILE_SUPABASE_ANON_KEY }}
+        run: |
+          set -uo pipefail
+          failed=0
+
+          # $1 libellé · $2 URL projet · $3 clé anon · $4 table lisible en anon
+          ping_project() {
+            label="$1"; base="$2"; key="$3"; table="$4"
+
+            if [ -z "$base" ] || [ -z "$key" ]; then
+              echo "::error::$label : secrets manquants (URL ou clé anon)"
+              failed=1
+              return
+            fi
+
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              --max-time 30 --retry 3 --retry-delay 10 --retry-connrefused \
+              -H "apikey: $key" \
+              -H "Authorization: Bearer $key" \
+              "${base%/}/rest/v1/${table}?select=*&limit=1")
+
+            if [ "$code" = "200" ]; then
+              echo "✅ $label : HTTP 200, projet actif"
+            else
+              echo "::error::$label : HTTP $code (projet en pause ou secrets invalides ?)"
+              failed=1
+            fi
+          }
+
+          # Tables choisies pour leur policy de lecture anon (`using (true)`) :
+          # cf. supabase/migrations/20260510140000_landing_settings.sql et
+          # apps/mobile/supabase/migrations/20260528000000_app_config.sql
+          ping_project "landing/admin" "$LANDING_URL" "$LANDING_KEY" "landing_settings"
+          ping_project "mobile"        "$MOBILE_URL"  "$MOBILE_KEY"  "app_config"
+
+          exit $failed

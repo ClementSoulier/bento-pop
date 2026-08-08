@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createMobileClient } from '@/lib/supabase/mobile';
+import { STORAGE_CACHE_CONTROL } from '@/lib/storage';
 
 const itemIdSchema = z.object({
   itemId: z.string().uuid(),
@@ -326,6 +327,7 @@ export async function acceptImageSuggestion(input: {
     .from('item-images')
     .upload(path, arrayBuf, {
       contentType,
+      cacheControl: STORAGE_CACHE_CONTROL,
       upsert: true,
     });
   if (uploadErr) return { ok: false, error: `Storage : ${uploadErr.message}` };
