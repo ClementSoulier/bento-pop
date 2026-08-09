@@ -8,6 +8,12 @@
 # jours, ce qui laisse 3 exécutions ratées de marge avant le seuil des 7
 # jours. Le coût en egress est négligeable (une ligne, ~15 fois par mois).
 #
+# Codes de retour : 200 = actif. 402 = joignable mais restreint pour quota,
+# donc pas en pause : on avertit sans échouer. Tout le reste échoue.
+# Réserve : on ne sait pas si Supabase comptabilise comme « activité » une
+# requête rejetée en 402. Si le projet reste restreint plus d'une semaine,
+# la protection anti-pause n'est peut-être plus assurée.
+#
 # ⚠️ Deux limites à connaître :
 #   1. GitHub désactive les workflows planifiés d'un dépôt sans activité
 #      depuis 60 jours (un mail d'avertissement est envoyé avant).
@@ -63,12 +69,27 @@ jobs:
               -H "Authorization: Bearer $key" \
               "${base%/}/rest/v1/${table}?select=*&limit=1")
 
-            if [ "$code" = "200" ]; then
-              echo "✅ $label : HTTP 200, projet actif"
-            else
-              echo "::error::$label : HTTP $code (projet en pause ou secrets invalides ?)"
-              failed=1
-            fi
+            case "$code" in
+              200)
+                echo "✅ $label : HTTP 200, projet actif"
+                ;;
+              402)
+                # Le projet a répondu, donc il n'est pas en pause : l'objectif
+                # du keep-alive est atteint. Le 402 signale un dépassement de
+                # quota, qui est un autre problème et se règle ailleurs. On
+                # avertit sans faire échouer le job, sinon le workflow reste
+                # rouge en permanence et on cesse de le regarder.
+                echo "::warning::$label : HTTP 402, projet joignable mais restreint (quota dépassé)"
+                ;;
+              401|403)
+                echo "::error::$label : HTTP $code, clé anon invalide ou refusée"
+                failed=1
+                ;;
+              *)
+                echo "::error::$label : HTTP $code (projet en pause ou injoignable ?)"
+                failed=1
+                ;;
+            esac
           }
 
           # Tables choisies pour leur policy de lecture anon (`using (true)`) :
