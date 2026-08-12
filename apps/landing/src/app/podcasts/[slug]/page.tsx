@@ -8,7 +8,8 @@ import { HostAvatar } from '@/components/HostAvatar';
 import { JsonLd } from '@/components/JsonLd';
 import { MentionsList } from '@/components/MentionsList';
 import { SmartImage } from '@/components/SmartImage';
-import { SpotifyEpisodeEmbed } from '@/components/SpotifyEpisodeEmbed';
+import { PodcastEpisodeEmbed } from '@/components/PodcastEpisodeEmbed';
+import { resolveAudioPlatform } from '@/lib/podcast-platform';
 import {
   formatDurationShort,
   formatPublishedDate,
@@ -54,7 +55,11 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
   if (!ep) notFound();
 
   const datePublished = ep.publishedAt ? new Date(ep.publishedAt).toISOString() : undefined;
-  const spotifyUrl = `https://open.spotify.com/episode/${ep.spotifyEpisodeId}`;
+  const platform = resolveAudioPlatform({
+    platform: ep.audioPlatform,
+    episodeId: ep.audioEpisodeId,
+    showId: ep.audioShowId,
+  });
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
 
   const episodeSchema = {
@@ -73,7 +78,7 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
     duration: ep.durationSeconds ? `PT${ep.durationSeconds}S` : undefined,
     associatedMedia: {
       '@type': 'MediaObject',
-      contentUrl: spotifyUrl,
+      contentUrl: platform.pageUrl,
     },
     actor: ep.hosts.map((h) => ({ '@type': 'Person', name: h.name })),
     image: ep.thumbnailUrl ?? undefined,
@@ -122,7 +127,7 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
             </div>
           </header>
 
-          <SpotifyEpisodeEmbed spotifyEpisodeId={ep.spotifyEpisodeId} title={ep.title} />
+          <PodcastEpisodeEmbed platform={platform} title={ep.title} />
 
           <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[2fr_1fr]">
             <div className="space-y-10">
@@ -159,12 +164,13 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
             <aside className="space-y-6">
               <Card title="Écouter">
                 <a
-                  href={spotifyUrl}
+                  href={platform.pageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border-[3px] border-bento-ink bg-[#1ed760] px-4 pt-2 pb-1.5 font-bold uppercase tracking-[0.08em] text-[13px] text-bento-ink shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg"
+                  style={{ backgroundColor: platform.brandColor }}
+                  className="inline-flex items-center gap-2 rounded-full border-[3px] border-bento-ink px-4 pt-2 pb-1.5 font-bold uppercase tracking-[0.08em] text-[13px] text-bento-ink shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg"
                 >
-                  Ouvrir sur Spotify
+                  Ouvrir sur {platform.label}
                 </a>
               </Card>
 

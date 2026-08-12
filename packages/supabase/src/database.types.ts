@@ -178,7 +178,11 @@ type LandingShowEpisodeFields = EpisodeCommonFields & {
 };
 
 type LandingPodcastEpisodeFields = EpisodeCommonFields & {
+  /** Identifiant de l'épisode sur `audio_platform`. */
   spotify_episode_id: string;
+  audio_platform: 'spotify' | 'deezer' | 'apple';
+  /** Requis uniquement pour Apple Podcasts. */
+  audio_show_id: string;
 };
 
 type LandingShowEpisodeHostFields = {

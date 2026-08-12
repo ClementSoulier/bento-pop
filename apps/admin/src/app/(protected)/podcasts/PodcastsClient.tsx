@@ -31,6 +31,8 @@ export type PodcastEpisodeRow = {
   title: string;
   description: string;
   spotify_episode_id: string;
+  audio_platform: 'spotify' | 'deezer' | 'apple' | null;
+  audio_show_id: string | null;
   thumbnail_url: string | null;
   duration_seconds: number | null;
   published_at: string | null;
@@ -229,6 +231,8 @@ function PodcastEpisodeEditor({
       title: episode?.title ?? '',
       description: episode?.description ?? '',
       spotify_episode_id: episode?.spotify_episode_id ?? '',
+      audio_platform: episode?.audio_platform ?? 'spotify',
+      audio_show_id: episode?.audio_show_id ?? '',
       thumbnail_url: episode?.thumbnail_url ?? '',
       duration_seconds: episode?.duration_seconds ?? null,
       published_at: isoToDatetimeLocal(episode?.published_at),
@@ -249,6 +253,7 @@ function PodcastEpisodeEditor({
   const [autoSlug, setAutoSlug] = useState(isNew);
   const lastAutoRef = useRef<string>(episode?.slug ?? '');
   const title = watch('title');
+  const audioPlatform = watch('audio_platform');
   const slugRegister = register('slug', {
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.value !== lastAutoRef.current) setAutoSlug(false);
@@ -340,8 +345,19 @@ function PodcastEpisodeEditor({
             error={errors.slug?.message}
           />
           <Field
-            label="Spotify episode ID"
-            hint="22 caractères alphanumériques, dans l'URL de l'épisode"
+            label="Plateforme d'écoute"
+            hint="Deezer ou Apple si l'épisode n'est pas sur Spotify"
+            error={errors.audio_platform?.message}
+          >
+            <select className="admin-select" {...register('audio_platform')}>
+              <option value="spotify">Spotify</option>
+              <option value="deezer">Deezer</option>
+              <option value="apple">Apple Podcasts</option>
+            </select>
+          </Field>
+          <Field
+            label="ID de l'épisode"
+            hint="L'identifiant dans l'URL de l'épisode sur la plateforme choisie"
             error={errors.spotify_episode_id?.message}
           >
             <input
@@ -349,6 +365,18 @@ function PodcastEpisodeEditor({
               {...register('spotify_episode_id')}
             />
           </Field>
+          {audioPlatform === 'apple' ? (
+            <Field
+              label="ID de l'émission (Apple)"
+              hint="Le nombre après « id » dans l'URL Apple Podcasts"
+              error={errors.audio_show_id?.message}
+            >
+              <input
+                className="admin-input font-mono text-[12px]"
+                {...register('audio_show_id')}
+              />
+            </Field>
+          ) : null}
           <Field label="Statut" error={errors.status?.message}>
             <select className="admin-select" {...register('status')}>
               <option value="draft">Brouillon</option>

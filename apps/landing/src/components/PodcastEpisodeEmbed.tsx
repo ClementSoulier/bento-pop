@@ -1,14 +1,16 @@
-type SpotifyEpisodeEmbedProps = {
-  spotifyEpisodeId: string;
+import type { ResolvedPlatform } from '@/lib/podcast-platform';
+
+type PodcastEpisodeEmbedProps = {
+  platform: ResolvedPlatform;
   title: string;
 };
 
-export function SpotifyEpisodeEmbed({ spotifyEpisodeId, title }: SpotifyEpisodeEmbedProps) {
+export function PodcastEpisodeEmbed({ platform, title }: PodcastEpisodeEmbedProps) {
   return (
     <div className="overflow-hidden rounded-2xl border-[5px] border-bento-ink bg-[#121212] shadow-[0_8px_0_var(--bento-ink),0_16px_30px_rgba(0,0,0,0.15)]">
       <iframe
-        src={`https://open.spotify.com/embed/episode/${spotifyEpisodeId}?utm_source=generator&theme=0`}
-        height={232}
+        src={platform.embedUrl}
+        height={platform.embedHeight}
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
         loading="lazy"
         title={title}

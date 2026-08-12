@@ -32,6 +32,8 @@ export async function savePodcastEpisode(input: PodcastEpisodePayload): Promise<
     title: data.title,
     description: data.description ?? '',
     spotify_episode_id: data.spotify_episode_id,
+    audio_platform: data.audio_platform,
+    audio_show_id: data.audio_show_id,
     thumbnail_url: data.thumbnail_url || null,
     duration_seconds: data.duration_seconds ?? null,
     published_at: datetimeLocalToIso(data.published_at ?? ''),
