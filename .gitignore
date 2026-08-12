@@ -17,7 +17,11 @@ build/
 .env
 .env.local
 .env.*.local
+.env.bak*
 !.env.example
+
+# Config MCP locale (pointe vers un projet Supabase personnel)
+.mcp.json
 
 # Logs
 *.log

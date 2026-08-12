@@ -12,7 +12,7 @@ export default async function PodcastsPage() {
     supabase
       .from('landing_podcast_episodes')
       .select(
-        'id, slug, title, description, spotify_episode_id, thumbnail_url, duration_seconds, published_at, season, episode_number, status, display_order, seo_title, seo_description, guests, mentions, chapters',
+        'id, slug, title, description, spotify_episode_id, audio_platform, audio_show_id, thumbnail_url, duration_seconds, published_at, season, episode_number, status, display_order, seo_title, seo_description, guests, mentions, chapters',
       )
       .order('season', { ascending: false })
       .order('episode_number', { ascending: false, nullsFirst: false })
@@ -48,7 +48,7 @@ export default async function PodcastsPage() {
   return (
     <PageShell
       crumbs={`Podcasts · ${episodes.length} fiche${episodes.length > 1 ? 's' : ''}`}
-      title="Podcasts Spotify"
+      title="Podcasts"
     >
       <PodcastsClient episodes={episodes} team={team} />
     </PageShell>

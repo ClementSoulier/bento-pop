@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { createAnonServerClient } from '@/lib/supabase/server';
+import { isAudioPlatform, type AudioPlatform } from '@/lib/podcast-platform';
 
 export type EpisodeGuest = {
   name: string;
@@ -54,14 +55,18 @@ export type ShowEpisode = {
 };
 
 export type PodcastEpisode = Omit<ShowEpisode, 'youtubeId'> & {
-  spotifyEpisodeId: string;
+  /** Identifiant de l'épisode sur `audioPlatform`. */
+  audioEpisodeId: string;
+  audioPlatform: AudioPlatform;
+  /** Id de l'émission — seul Apple Podcasts en a besoin. */
+  audioShowId: string;
 };
 
 const SHOW_SELECT =
   'id, slug, title, description, youtube_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_show_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
 
 const PODCAST_SELECT =
-  'id, slug, title, description, spotify_episode_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_podcast_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
+  'id, slug, title, description, spotify_episode_id, audio_platform, audio_show_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_podcast_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
 
 type DbTeamMember = {
   id: string;
@@ -103,6 +108,8 @@ type DbShowRow = {
 
 type DbPodcastRow = Omit<DbShowRow, 'youtube_id' | 'landing_show_episode_hosts'> & {
   spotify_episode_id: string;
+  audio_platform: string | null;
+  audio_show_id: string | null;
 } & DbHostJoin<'landing_podcast_episode_hosts'>;
 
 function mapHosts(
@@ -159,7 +166,9 @@ function mapPodcastRow(r: DbPodcastRow): PodcastEpisode {
     slug: r.slug,
     title: r.title,
     description: r.description ?? '',
-    spotifyEpisodeId: r.spotify_episode_id,
+    audioEpisodeId: r.spotify_episode_id,
+    audioPlatform: isAudioPlatform(r.audio_platform) ? r.audio_platform : 'spotify',
+    audioShowId: r.audio_show_id ?? '',
     thumbnailUrl: r.thumbnail_url,
     durationSeconds: r.duration_seconds,
     publishedAt: r.published_at,
@@ -227,7 +236,7 @@ export const getShowEpisodeBySlug = cache(
 );
 
 // ============================================================
-// Loaders : podcasts Spotify
+// Loaders : podcasts (Spotify / Deezer / Apple Podcasts)
 // ============================================================
 
 export const getPodcastEpisodes = cache(async (): Promise<PodcastEpisode[]> => {

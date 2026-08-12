@@ -70,10 +70,20 @@ export const showEpisodeSchema = z.object({
   youtube_id: z.string().trim().min(1, 'YouTube ID requis').max(40),
 });
 
-export const podcastEpisodeSchema = z.object({
-  ...commonShape,
-  spotify_episode_id: z.string().trim().min(1, 'Spotify ID requis').max(40),
-});
+export const audioPlatformEnum = z.enum(['spotify', 'deezer', 'apple']);
+
+export const podcastEpisodeSchema = z
+  .object({
+    ...commonShape,
+    spotify_episode_id: z.string().trim().min(1, "ID d'épisode requis").max(64),
+    audio_platform: audioPlatformEnum.default('spotify'),
+    audio_show_id: z.string().trim().max(64).optional().default(''),
+  })
+  // L'embed Apple Podcasts a besoin de l'id de l'émission en plus de l'épisode.
+  .refine((v) => v.audio_platform !== 'apple' || v.audio_show_id.length > 0, {
+    message: "ID de l'émission requis pour Apple Podcasts",
+    path: ['audio_show_id'],
+  });
 
 export type ShowEpisodePayload = z.infer<typeof showEpisodeSchema>;
 export type PodcastEpisodePayload = z.infer<typeof podcastEpisodeSchema>;
