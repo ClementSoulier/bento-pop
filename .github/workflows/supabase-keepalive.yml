@@ -1,12 +1,16 @@
 # Supabase met en pause tout projet du plan gratuit resté plus de 7 jours
-# sans « activité suffisante ». Le projet mobile (Mon Bento Pop) est le plus
-# exposé : tant que l'app n'est pas publiée, il peut passer une semaine
+# sans « activité suffisante ». Seul le projet mobile (Mon Bento Pop) est
+# concerné : tant que l'app n'est pas publiée, il peut passer une semaine
 # entière sans la moindre requête. Une fois en pause, on a 90 jours pour le
 # réactiver à la main, au-delà les données ne sont plus que téléchargeables.
 #
-# Ce workflow envoie une requête REST minimale à chaque projet tous les 2
-# jours, ce qui laisse 3 exécutions ratées de marge avant le seuil des 7
-# jours. Le coût en egress est négligeable (une ligne, ~15 fois par mois).
+# La landing et l'admin ne sont plus concernées : depuis août 2026 elles
+# tournent sur un Supabase auto-hébergé sur Coolify (supabase.bento-pop.com),
+# qui est un conteneur permanent et ne se met donc jamais en pause.
+#
+# Ce workflow envoie une requête REST minimale tous les 2 jours, ce qui laisse
+# 3 exécutions ratées de marge avant le seuil des 7 jours. Le coût en egress
+# est négligeable (une ligne, ~15 fois par mois).
 #
 # Codes de retour : 200 = actif. 402 = joignable mais restreint pour quota,
 # donc pas en pause : on avertit sans échouer. Tout le reste échoue.
@@ -23,13 +27,11 @@
 # Coolify sur le VPS, qui lui tourne en permanence.
 #
 # Secrets à créer (Settings → Secrets and variables → Actions) :
-#   SUPABASE_URL                  ex. https://<ref-landing>.supabase.co
-#   SUPABASE_ANON_KEY
 #   MOBILE_SUPABASE_URL           ex. https://<ref-mobile>.supabase.co
 #   MOBILE_SUPABASE_ANON_KEY
-# Les clés anon sont publiques par nature (elles vivent déjà dans le bundle
-# de la landing et de l'app) : les mettre en secrets sert surtout à ne pas
-# exposer les refs de projet dans l'historique du dépôt.
+# La clé anon est publique par nature (elle vit déjà dans le bundle de l'app) :
+# la mettre en secret sert surtout à ne pas exposer la ref de projet dans
+# l'historique du dépôt.
 
 name: Supabase keep-alive
 
@@ -43,10 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Ping les projets Supabase
+      - name: Ping le projet Supabase mobile
         env:
-          LANDING_URL: ${{ secrets.SUPABASE_URL }}
-          LANDING_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           MOBILE_URL: ${{ secrets.MOBILE_SUPABASE_URL }}
           MOBILE_KEY: ${{ secrets.MOBILE_SUPABASE_ANON_KEY }}
         run: |
@@ -92,10 +92,8 @@ jobs:
             esac
           }
 
-          # Tables choisies pour leur policy de lecture anon (`using (true)`) :
-          # cf. supabase/migrations/20260510140000_landing_settings.sql et
-          # apps/mobile/supabase/migrations/20260528000000_app_config.sql
-          ping_project "landing/admin" "$LANDING_URL" "$LANDING_KEY" "landing_settings"
-          ping_project "mobile"        "$MOBILE_URL"  "$MOBILE_KEY"  "app_config"
+          # Table choisie pour sa policy de lecture anon (`using (true)`) :
+          # cf. apps/mobile/supabase/migrations/20260528000000_app_config.sql
+          ping_project "mobile" "$MOBILE_URL" "$MOBILE_KEY" "app_config"
 
           exit $failed
