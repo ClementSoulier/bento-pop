@@ -123,6 +123,17 @@ suffit pas à lever l'avertissement) et attendre la notification de Google.
 - **Build qui ne démarre pas** : check `eas.json` syntaxe + `eas build:configure` réinitialise
 - **Secrets pas pris en compte** : `eas secret:list` puis `eas secret:delete` + recreate
 - **Bundle JS plante au cold start** : revenir au commit précédent + `eas build --clear-cache --profile preview`
+- **Build release qui se fige ou `lintVitalAnalyzeRelease FAILED`** : le
+  `gradle.properties` généré par le prebuild fixe `org.gradle.jvmargs=-Xmx2048m`.
+  Avec `org.gradle.parallel=true` et la trentaine de modules natifs du projet,
+  le lint release peut saturer le heap : les workers meurent et Gradle reste
+  bloqué sans rien logger. Reproduit en local, corrigé en relançant avec
+  `-Dorg.gradle.jvmargs="-Xmx6144m -XX:MaxMetaspaceSize=1536m"`. Si ça arrive
+  sur EAS, passer le heap via `expo-build-properties`
+  (`android.gradleProperties`) plutôt qu'en éditant le natif généré.
+- **`java.io.EOFException: End of input` sur une tâche `configureCMake...`** :
+  métadonnées CMake corrompues par un build interrompu. Purger les `.cxx` :
+  `rm -rf android/app/.cxx` et les `.cxx` des modules dans `node_modules/.pnpm`.
 - **Version / build number conflict** : `autoIncrement: true` dans `eas.json:build.production` gère, mais en cas de souci `eas build --auto-submit` clean
 
 ## Logs / monitoring après publication
