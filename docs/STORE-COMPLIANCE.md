@@ -89,7 +89,7 @@ Il reste essentiellement des actions **non-code** (assets de présentation store
 | 5.7 | Play Console record | ❌ | Idem, suit P5.5 |
 | 5.8 | App Tracking Transparency prompt | ✅ | Non nécessaire (aucun tracking, pas d'IDFA) |
 | 5.9 | Permissions iOS (Info.plist) | ✅ | Aucune sensible. `ITSAppUsesNonExemptEncryption: false` déclaré (US export compliance) |
-| 5.10 | Permissions Android | ✅ | Aucune sensible |
+| 5.10 | Permissions Android | ✅ | Aucune sensible. `expo-media-library` retiré (inutilisé) : sa présence injectait les `READ_MEDIA_*` et déclenchait la déclaration Play « accès aux photos et vidéos » |
 | 5.11 | Universal Links / App Links | ❌ | `bento-pop.com/u/*` ouvre encore le navigateur si app installée. AASA file + intent filter Android = ~2h dev. À faire en **P8** ou plus tard |
 | 5.12 | Deep links `bentopop://` | ✅ | Configuré dans `app.json:scheme` |
 | 5.13 | EAS projectId | ✅ | `eecbef8a-0943-4bec-b592-59e4b5016e5f` |
