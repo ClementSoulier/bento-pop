@@ -244,6 +244,8 @@ Wikidata (P18) en backup V2 si la couverture FR/EN ne suffit pas pour les artist
 
 ### 6.2 Déclenchement
 
+> **Périmé (septembre 2026)** : le Database Webhook n'a jamais été posé, et l'Edge Function a été supprimée au profit de `apps/admin/src/lib/wikimedia.ts`. Voir §10.3.
+
 Edge Function Supabase `suggest-item-image`, déclenchée par un **Database Webhook** sur `items` INSERT où `status = 'pending' OR status = 'draft'`.
 
 La fonction :
@@ -320,6 +322,127 @@ Ordre proposé, chaque étape mergeable indépendamment :
 - Notifications utilisateur (push Expo) sur validation/refus.
 - Auto-rejet des items pending non-référencés dans un bento depuis > 7 jours.
 - Quotas anti-abus automatiques (combien d'items pending par user).
-- Wikidata P18 + P31 sanity check comme deuxième source d'illustration.
-- Suggestion de merge automatique côté admin via similarity > 0.7 + même catégorie.
+- ~~Wikidata P18 + P31 sanity check comme deuxième source d'illustration.~~ → fait autrement, cf. §10 (description Wikidata comme contrôle de type).
+- ~~Suggestion de merge automatique côté admin via similarity > 0.7 + même catégorie.~~ → fait, cf. §10.
+- ~~Source d'images dédiée pour `film` / `series` (TMDb), là où Wikimedia n'a structurellement rien de réutilisable.~~ → fait, cf. §10.2.
 - Possibilité pour l'admin de "promouvoir" un alias en titre principal (utile si l'admin change d'avis sur le canonique).
+
+## 10. Automatisation du catalogue (septembre 2026)
+
+Trois scripts Node dans `apps/admin/scripts/`, plus un écran de revue en BO.
+Ils tapent le projet Supabase mobile en REST avec la service-role
+(`MOBILE_SUPABASE_URL` / `MOBILE_SUPABASE_SERVICE_ROLE_KEY` dans
+`apps/admin/.env`). Tous sont en dry-run par défaut : sans `--apply`, rien
+n'est écrit.
+
+```bash
+pnpm --filter @bento-pop/admin catalog:audit               # état des lieux, lecture seule
+pnpm --filter @bento-pop/admin catalog:merge               # doublons : ce qui serait fusionné
+pnpm --filter @bento-pop/admin catalog:merge -- --apply
+pnpm --filter @bento-pop/admin catalog:merge -- --same-image --apply
+pnpm --filter @bento-pop/admin catalog:images -- --limit 10
+pnpm --filter @bento-pop/admin catalog:images -- --apply --category place
+pnpm --filter @bento-pop/admin catalog:images -- --rehost --apply   # mise en règle du stock
+```
+
+Le mode `--rehost` ne cherche rien : il rapatrie dans notre bucket les
+images qui pointaient encore sur `upload.wikimedia.org` (héritage des APIs
+externes) et leur pose enfin leur crédit. Wikimedia demande de ne pas être
+hotlinké par une app, et une image CC BY-SA affichée sans attribution n'est
+pas en règle. Les fichiers servis depuis un wiki local (`/wikipedia/en/`)
+ne sont pas sur Commons : ce sont des fichiers en fair use, le script les
+signale et n'y touche pas.
+
+### 10.1 Dédoublonnage : deux niveaux de confiance
+
+La similarité trigramme seule ne suffit pas à décider : `Rocky 2` et
+`Rocky 3` sont à 0.86 l'un de l'autre. Le script sépare donc :
+
+- **Fusion automatique** (`catalog:merge --apply`) : uniquement les titres
+  identiques une fois neutralisés casse, accents, ponctuation et année entre
+  parenthèses (`joueur du grenier` = `Joueur du Grenier`). Aucune perte
+  possible, c'est le doublon d'import ou de saisie.
+- **Même illustration** (`catalog:merge --same-image`) : deux items d'une
+  même catégorie qui portent la même image sont le même item. Signal gratuit
+  depuis que les affiches sont posées automatiquement, et il rattrape ce que
+  la similarité de titre rate (« V pour Vendetta » et « V for Vendetta » sont
+  à 0.53, sous le seuil). Hors défaut parce qu'il dépend d'un état du
+  catalogue plutôt que du seul contenu des items.
+- **Suggestion** (rapport `catalog:audit`) : score ≥ 0.55 sans être
+  identique. Listé pour arbitrage humain, jamais appliqué.
+
+Garde-fous communs, qui bloquent la fusion dans les deux cas : catégories
+différentes, numérotation de franchise différente (chiffres arabes ou
+romains), années renseignées et contradictoires, sous-titres renseignés et
+contradictoires.
+
+Le canonique est choisi dans cet ordre : le plus référencé dans les bentos,
+puis illustré, puis complet, puis le plus ancien. Il hérite ensuite de ce
+qui lui manque (image + crédit, année, sous-titre) et des alias de ses
+perdants, et prend la meilleure graphie du groupe comme titre affiché
+(`joueur du grenier` → `Joueur du Grenier`), l'ancienne devenant un alias.
+
+L'héritage est aussi implémenté côté SQL par la migration
+`20260907000000_admin_merge_items_enrichment.sql`, pour que le bouton
+« fusionner » du BO se comporte comme le script.
+
+### 10.2 Illustrations : Commons uniquement
+
+`catalog:images` traite les items sans `image_url`, les plus utilisés dans
+les bentos d'abord :
+
+1. recherche Wikipedia FR puis EN, avec un indice de catégorie dans la
+   requête (`Seven film`) ;
+2. typage du candidat par sa **description Wikidata** (« film de Christopher
+   Nolan », « vidéaste web française », « commune de France »), comparée à un
+   motif par catégorie. C'est ce qui écarte les homonymes ;
+3. **le fichier doit être hébergé sur Wikimedia Commons**. Commons n'accepte
+   que du réutilisable ; en.wikipedia héberge en local les affiches et
+   pochettes sous fair use, qu'on n'a pas le droit de republier. Un fichier
+   absent de Commons est écarté ;
+4. si titre (similarité ≥ 0.75), type, année et sous-titre concordent :
+   téléchargement du rendu 800px, upload dans `item-images/{id}/main.ext`,
+   `image_url` + `image_credit` posés sur l'item ;
+5. sinon les candidats partent dans `item_image_suggestions` (`pending`).
+
+**`film` et `series` ne passent pas par Wikimedia mais par TMDb.** L'affiche
+n'étant jamais libre, ce que Commons propose pour ces pages est une image de
+substitution, et 2 acceptations sur 3 étaient fausses (« Braveheart »
+renvoyait le film de 1925 tombé dans le domaine public, « Iron Man » une
+photo de cosplay).
+
+Le chemin TMDb est plus simple et plus sûr : on interroge `/search/movie` ou
+`/search/tv`, donc le type est garanti, et l'année sert à départager
+homonymes et remakes (une année d'écart tolérée, TMDb datant la sortie
+salle). Auto-acceptation si la similarité de titre est ≥ 0.75 et que l'année
+concorde. **L'affiche reste servie par le CDN TMDb** plutôt que copiée dans
+notre bucket : c'est ce que font déjà les items historiques, c'est prévu
+pour par TMDb, et ça évite de payer l'egress Supabase sur des images qui ne
+nous appartiennent pas. Crédit posé : `Affiche : The Movie Database (TMDb)`,
+la mention complète exigée par leurs CGU vivant dans l'écran Crédits de
+l'app.
+
+Le token est le `EXPO_PUBLIC_TMDB_TOKEN` de `apps/mobile/.env` (token de
+lecture v4), lu directement par le script pour ne pas le dupliquer. Il peut
+être surchargé par `TMDB_READ_TOKEN` dans l'env du BO. Sans token, les deux
+catégories retombent sur Wikimedia en suggestions uniquement.
+
+### 10.3 Revue en BO
+
+`/catalogue/illustrations` liste les items qui ont des suggestions
+`pending`, triés par nombre de bentos. Une carte par item, ses candidats
+avec vignette, description Wikidata, crédit et lien vers l'article : un clic
+pour retenir une image (copiée dans le bucket, créditée), un clic pour tout
+écarter. Un item illustré entre-temps sort de la file automatiquement.
+
+La recherche live depuis la file de modération applique le même filtre
+Commons et affiche la description Wikidata. Elle vit dans
+`apps/admin/src/lib/wikimedia.ts` et non plus dans l'Edge Function
+`suggest-item-image`, qui a été supprimée : elle n'avait besoin ni de secret
+ni d'accès base, donc la garder imposait un artefact à déployer à part sur
+Supabase, avec un compte qui n'est pas forcément celui du poste de travail.
+Côté BO, le correctif part avec le déploiement Coolify habituel.
+
+L'instance déployée sur le projet mobile n'appelle plus rien et n'écrit
+rien ; elle peut être supprimée depuis le dashboard (Edge Functions →
+suggest-item-image → Delete) quand l'occasion se présente.

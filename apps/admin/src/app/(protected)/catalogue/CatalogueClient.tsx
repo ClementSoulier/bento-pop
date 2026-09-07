@@ -593,6 +593,9 @@ function ImageSuggestionPanel({
                 >
                   {c.pageTitle} ↗
                 </a>
+                {c.description ? (
+                  <span className="line-clamp-2 text-admin-muted">{c.description}</span>
+                ) : null}
                 {c.attribution ? (
                   <span className="line-clamp-2 text-admin-muted">{c.attribution}</span>
                 ) : (

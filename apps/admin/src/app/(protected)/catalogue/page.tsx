@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import {
@@ -98,11 +99,32 @@ export default async function CataloguePage() {
     bentoCount: bentoCountByItem.get(i.id) ?? 0,
   }));
 
+  // 5. Illustrations proposées par le script `catalog-images` et pas encore
+  //    tranchées : on affiche l'entrée seulement s'il y a du travail.
+  const { count: suggestionCount } = await mobile
+    .from('item_image_suggestions')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending');
+
   return (
     <PageShell
       crumbs={`Catalogue · ${pending.length} en attente · ${allItems.length} items`}
       title="Catalogue"
     >
+      {suggestionCount ? (
+        <Link
+          href="/catalogue/illustrations"
+          className="admin-card mb-4 flex items-center justify-between gap-3 px-4 py-3 text-[13px] hover:bg-admin-bg/60"
+        >
+          <span>
+            <strong>{suggestionCount}</strong> proposition
+            {suggestionCount > 1 ? 's' : ''} d&apos;illustration à trancher
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+            Ouvrir →
+          </span>
+        </Link>
+      ) : null}
       <CatalogueClient pending={pending} allItems={allItems} />
     </PageShell>
   );

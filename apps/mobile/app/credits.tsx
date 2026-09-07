@@ -14,7 +14,9 @@ const SITE_URL = 'https://bento-pop.com';
  * Couvre :
  *   - attribution Wikimedia/Wikipedia pour les illustrations du catalogue
  *     maison (CC-BY-SA notamment)
- *   - attribution legacy des APIs externes (TMDb, MusicBrainz, OSM,
+ *   - attribution TMDb, source active des affiches de films et de séries :
+ *     Wikimedia Commons n'en héberge aucune de réutilisable
+ *   - attribution legacy des autres APIs externes (MusicBrainz, OSM,
  *     Wikidata) pour les items historiques créés avant la bascule
  *     catalogue maison (v1.1+) et toujours référencés dans des bentos
  *   - liens Confidentialité + Conditions d'utilisation (Apple guideline
@@ -96,8 +98,8 @@ export default function CreditsPage() {
               onPress={() => openUrl('https://commons.wikimedia.org/')}
             />
             <Attribution
-              source="TMDb (legacy)"
-              text="Certains items historiques provenant de The Movie Database (TMDb) restent référencés. Ce produit n'utilise plus l'API TMDb activement mais conserve les attributions par respect des CGU."
+              source="TMDb"
+              text="Les affiches de films et de séries proviennent de The Movie Database (TMDb). Ce produit utilise l'API TMDb mais n'est ni approuvé ni certifié par TMDb."
               onPress={() => openUrl('https://www.themoviedb.org/')}
             />
             <Attribution
