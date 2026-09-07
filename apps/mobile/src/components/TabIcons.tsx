@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { View, type ColorValue } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 /**
@@ -12,7 +12,10 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 type IconProps = {
   size?: number;
-  color?: string;
+  // `ColorValue` et pas `string` : la tab bar d'expo-router type ses
+  // callbacks `tabBarIcon` avec ColorValue (string | OpaqueColorValue,
+  // ce dernier couvrant PlatformColor / DynamicColorIOS).
+  color?: ColorValue;
   active?: boolean;
 };
 

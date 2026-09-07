@@ -135,7 +135,7 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
       {hasImage ? (
         <Image
           source={{ uri: data.imageUrl }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
       ) : (
@@ -144,7 +144,7 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
             colors={palette.colors}
             start={palette.start}
             end={palette.end}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           {/* Initiale "stamp" en filigrane décalée vers le haut-droit pour
               ne pas concurrencer le titre en bas. Légère rotation pour
@@ -153,7 +153,7 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
           <View
             pointerEvents="none"
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               { alignItems: 'flex-end', justifyContent: 'flex-start', padding: conf.pad },
             ]}
           >
@@ -182,7 +182,7 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
           colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
           start={{ x: 0.5, y: 0.3 }}
           end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
       ) : null}

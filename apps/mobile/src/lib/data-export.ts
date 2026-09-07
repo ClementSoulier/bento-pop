@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { supabase } from '@/supabase/client';
@@ -59,15 +59,21 @@ export async function exportUserData(userId: string): Promise<void> {
     return;
   }
 
-  // Native : écrit en cache puis Sharing.shareAsync
-  const tmpUri = `${FileSystem.cacheDirectory}${fileName}`;
-  await FileSystem.writeAsStringAsync(tmpUri, json, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  // Native : écrit en cache puis Sharing.shareAsync.
+  //
+  // Expo SDK 54+ : `FileSystem.cacheDirectory` + `writeAsStringAsync` ont
+  // disparu de l'API principale au profit de l'API objet `File` / `Paths`
+  // (l'ancienne survit sous `expo-file-system/legacy`, mais elle est en
+  // sursis, autant écrire la nouvelle tout de suite). `write` est
+  // synchrone dans cette API.
+  const file = new File(Paths.cache, fileName);
+  file.create({ overwrite: true });
+  file.write(json);
+
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Partage non disponible sur ce device');
   }
-  await Sharing.shareAsync(tmpUri, {
+  await Sharing.shareAsync(file.uri, {
     mimeType: 'application/json',
     UTI: 'public.json',
     dialogTitle: 'Exporter mes données Bento Pop',

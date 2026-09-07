@@ -20,7 +20,7 @@ export function YellowBg({ children }: YellowBgProps) {
       <Svg
         width="100%"
         height="100%"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       >
         <Defs>
           <Pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">

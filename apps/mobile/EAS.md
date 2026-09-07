@@ -73,6 +73,51 @@ Avant ça, finir les actions manuelles **store-side** :
 - App Privacy → labels nutritionnels (cf. `STORE-COMPLIANCE.md` section 6)
 - Tester sur device réel via TestFlight d'abord
 
+## Niveau d'API cible Android (conformité Play)
+
+Google Play impose que toute nouvelle version cible un niveau d'API sorti
+depuis moins d'un an. Concrètement : **une app qui ne cible pas assez haut
+ne peut plus être mise à jour du tout** (le Play Console bloque l'upload),
+et un mail « Conformité aux règles » arrive quelques mois avant l'échéance.
+
+On ne pin pas `targetSdkVersion` à la main : il vient du SDK Expo installé,
+via le version catalog de React Native
+(`node_modules/react-native/gradle/libs.versions.toml`). La façon de rester
+conforme est donc **de monter de SDK Expo**, pas de bricoler le Gradle.
+
+| Expo SDK | React Native | `targetSdk` |
+| -------- | ------------ | ----------- |
+| 52       | 0.76         | 35          |
+| 54 → 57  | 0.81 → 0.86  | 36          |
+
+Vérifier la valeur réellement produite, sans lancer de build :
+
+```bash
+cd apps/mobile
+pnpm exec expo prebuild --platform android --no-install --clean
+grep targetSdk ../../node_modules/react-native/gradle/libs.versions.toml
+rm -rf android            # les dirs natifs sont gitignorés (CNG)
+```
+
+Après l'upgrade, il faut **republier en production** (un build interne ne
+suffit pas à lever l'avertissement) et attendre la notification de Google.
+
+### Points de vigilance à chaque montée de SDK
+
+- **`expo.version` (app.json)** : à bumper *avant* le build. `runtimeVersion`
+  est en policy `appVersion`, donc réutiliser la même version ferait
+  cohabiter l'ancien et le nouveau binaire sur le même runtime OTA, et un
+  `eas update` servirait alors un bundle incompatible au parc déjà installé.
+  Cette version alimente aussi le force-update (`src/lib/app-config.ts`).
+- **Résolution Metro** : `metro.config.js` verrouille `nodeModulesPaths`
+  (cf. le commentaire là-bas), donc Metro ne voit *que* `apps/mobile/node_modules`
+  et la racine. Une dep transitive non hoistée casse le bundling, comme
+  `semver` (requis par reanimated 4, hoisté en v6 par Babel), déclaré
+  en dep directe pour cette raison. Symptôme : `Unable to resolve module X`
+  au `expo export`.
+- **Test bundling avant de brûler un build EAS** :
+  `pnpm exec expo export --platform android` (puis `ios`).
+
 ## En cas d'incident
 
 - **Build qui ne démarre pas** : check `eas.json` syntaxe + `eas build:configure` réinitialise

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Alert, Image, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { router, useFocusEffect } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';

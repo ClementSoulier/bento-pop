@@ -1,4 +1,8 @@
-import { Tabs } from 'expo-router';
+// SDK 57 : `Tabs` depuis 'expo-router' est déprécié au profit du subpath
+// 'expo-router/js-tabs' (les tabs JS classiques, look inchangé). L'autre
+// option, 'expo-router/unstable-native-tabs', rendrait des tabs natives
+// et casserait la DA Bento Pop (bordure 2.5px, police Bungee).
+import { Tabs } from 'expo-router/js-tabs';
 import { ComposeIcon, FeaturedIcon, ProfileIcon, SearchIcon } from '@/components/TabIcons';
 
 /**
