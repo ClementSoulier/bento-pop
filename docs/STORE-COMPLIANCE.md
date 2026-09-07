@@ -82,19 +82,20 @@ Il reste essentiellement des actions **non-code** (assets de présentation store
 |---|---|---|---|
 | 5.1 | Bundle ID iOS (`com.bentopop.mobile`) | ✅ | |
 | 5.2 | Package Android (`com.bentopop.mobile`) | ✅ | |
-| 5.3 | Version + buildNumber/versionCode | ✅ | `0.0.1` + EAS `appVersionSource: remote` + `autoIncrement` |
+| 5.3 | Version + buildNumber/versionCode | ✅ | `0.1.0` + EAS `appVersionSource: remote` + `autoIncrement` |
 | 5.4 | **Apple Developer account** ($99/an) | ✅ | |
 | 5.5 | Google Play Developer account ($25 one-time) | ❌ | À souscrire plus tard, Android repoussé |
 | 5.6 | App Store Connect record | 🟡 | Sera créé automatiquement au 1er `eas submit`, mais le record manuel (description, screenshots, age rating) reste à remplir |
 | 5.7 | Play Console record | ❌ | Idem, suit P5.5 |
 | 5.8 | App Tracking Transparency prompt | ✅ | Non nécessaire (aucun tracking, pas d'IDFA) |
 | 5.9 | Permissions iOS (Info.plist) | ✅ | Aucune sensible. `ITSAppUsesNonExemptEncryption: false` déclaré (US export compliance) |
-| 5.10 | Permissions Android | ✅ | Aucune sensible |
+| 5.10 | Permissions Android | ✅ | Aucune sensible. `expo-media-library` retiré (inutilisé) : sa présence injectait les `READ_MEDIA_*` et déclenchait la déclaration Play « accès aux photos et vidéos » |
 | 5.11 | Universal Links / App Links | ❌ | `bento-pop.com/u/*` ouvre encore le navigateur si app installée. AASA file + intent filter Android = ~2h dev. À faire en **P8** ou plus tard |
 | 5.12 | Deep links `bentopop://` | ✅ | Configuré dans `app.json:scheme` |
 | 5.13 | EAS projectId | ✅ | `eecbef8a-0943-4bec-b592-59e4b5016e5f` |
 | 5.14 | EAS Build env secrets | ✅ | `EXPO_PUBLIC_SUPABASE_URL/ANON_KEY/TMDB_TOKEN` via `eas env:create` |
 | 5.15 | `expo-updates` + `runtimeVersion` | ✅ | Installé + `runtimeVersion.policy: appVersion` |
+| 5.16 | Niveau d'API cible Android | ✅ | `targetSdk 36` (Android 16) via Expo SDK 57. Exigence Play : cibler un niveau d'API de moins d'un an, sinon plus aucune mise à jour possible. Procédure dans `apps/mobile/EAS.md` |
 
 ---
 
@@ -201,5 +202,6 @@ Sprint suivant si on continue :
 
 ## 13. Changelog
 
+- **07/09/2026 conformité Play** : upgrade Expo SDK 52 vers 57 (RN 0.86, React 19) pour passer en `targetSdk 36`, exigé par Google Play sous peine de blocage des mises à jour. Version bumpée en `0.1.0` (obligatoire : `runtimeVersion` suit `appVersion`).
 - **11/05/2026 P7** — Sprint compliance livré : assets, account deletion, page Crédits, report UGC + filtre pseudos, liens Privacy/Terms dans l'app. Pages légales étendues à l'app. EAS configuré (projectId, secrets, expo-updates, runtimeVersion).
 - **11/05/2026 audit P6** — Création initiale du document.

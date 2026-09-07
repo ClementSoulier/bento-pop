@@ -4,8 +4,8 @@ App companion Bento Pop : compose ton bento culturel (film, série, artiste, cha
 
 ## Stack
 
-- **Expo SDK 52** (managed) + **Expo Router v4** (file-based routing)
-- **React Native 0.76** + **react-native-web** (build web aussi)
+- **Expo SDK 57** (managed, CNG) + **Expo Router v57** (file-based routing)
+- **React Native 0.86** + **React 19** + **react-native-web** (build web aussi)
 - **NativeWind v4** consommant `@bento-pop/brand` (tokens partagés avec la landing)
 - **Supabase** (projet dédié `supabase-mobile/`) avec **anonymous sign-in**
 - **React Query** (data fetching) + **Zustand** (état UI)

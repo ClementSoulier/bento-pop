@@ -248,7 +248,7 @@ export default function PublicBento() {
               <LinearGradient
                 pointerEvents="none"
                 colors={['rgba(251,191,36,0)', '#fbbf24']}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
               />
               <View style={{ flexDirection: 'row', padding: 16, paddingBottom: 32, gap: 8 }}>
                 <Pressable

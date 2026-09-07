@@ -335,7 +335,7 @@ export default function SearchModal() {
                   {item.imageUrl ? (
                     <Image
                       source={{ uri: item.imageUrl }}
-                      style={StyleSheet.absoluteFillObject}
+                      style={StyleSheet.absoluteFill}
                       resizeMode="cover"
                     />
                   ) : (
@@ -344,12 +344,12 @@ export default function SearchModal() {
                         colors={palette.colors}
                         start={palette.start}
                         end={palette.end}
-                        style={StyleSheet.absoluteFillObject}
+                        style={StyleSheet.absoluteFill}
                       />
                       <View
                         pointerEvents="none"
                         style={[
-                          StyleSheet.absoluteFillObject,
+                          StyleSheet.absoluteFill,
                           {
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -372,7 +372,7 @@ export default function SearchModal() {
                     colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
                     start={{ x: 0.5, y: 0.4 }}
                     end={{ x: 0.5, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
+                    style={StyleSheet.absoluteFill}
                   />
                   <Text numberOfLines={2} style={styles.tileTitle}>
                     {cleanTitle(item.title)}
