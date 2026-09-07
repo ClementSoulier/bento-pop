@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { STORAGE_CACHE_CONTROL } from '@/lib/storage';
+import { findWikimediaImages } from '@/lib/wikimedia';
 
 const itemIdSchema = z.object({
   itemId: z.string().uuid(),
@@ -18,6 +19,10 @@ const rejectSchema = z.object({
 const mergeSchema = z.object({
   canonicalId: z.string().uuid(),
   loserIds: z.array(z.string().uuid()).min(1).max(50),
+});
+
+const suggestionIdSchema = z.object({
+  suggestionId: z.string().uuid(),
 });
 
 const acceptImageSchema = z.object({
@@ -43,6 +48,10 @@ export type WikiImageCandidate = {
   thumbnailUrl: string;
   wikipediaPageUrl: string;
   pageTitle: string;
+  // Description Wikidata (« film de Christopher Nolan », « commune de
+  // France »). Optionnelle : les Edge Functions déployées avant septembre
+  // 2026 ne la renvoient pas.
+  description?: string | null;
   attribution: string | null;
   licenseCode: string | null;
 };
@@ -201,13 +210,16 @@ export async function mergeItems(input: {
 }
 
 /**
- * Demande à l'Edge Function `suggest-item-image` 3 candidats Wikipedia
- * pour l'illustration d'un item. La fonction ne touche pas à la BDD,
- * c'est `acceptImageSuggestion` qui finalise le choix de l'admin.
+ * Cherche jusqu'à 3 illustrations réutilisables pour un item, sur
+ * Wikipedia / Wikimedia Commons. Ne touche pas à la BDD : c'est
+ * `acceptImageSuggestion` qui finalise le choix de l'admin.
  *
- * Note : `mobile.functions.invoke` utilise l'URL Supabase mobile +
- * la service-role key (les Edge Functions valident le JWT, et le
- * service-role passe).
+ * La recherche tournait auparavant dans l'Edge Function Supabase
+ * `suggest-item-image`. Elle est revenue ici parce qu'elle n'a besoin
+ * d'aucun secret ni d'aucun accès base : la garder côté Next évite un
+ * artefact à déployer séparément, et le correctif de licence (filtre
+ * Commons) part avec le déploiement du BO au lieu d'attendre un
+ * `supabase functions deploy`.
  */
 export async function suggestImageForItem(input: {
   itemId: string;
@@ -219,26 +231,29 @@ export async function suggestImageForItem(input: {
   const mobile = createMobileClient();
   if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
 
-  const { data, error } = await mobile.functions.invoke<
-    { ok: true; candidates: WikiImageCandidate[] } | { ok: false; error: string }
-  >('suggest-item-image', {
-    body: { itemId: parsed.data.itemId },
-  });
-  if (error) return { ok: false, error: error.message };
-  if (!data) return { ok: false, error: 'Réponse vide de l\'Edge Function' };
-  return data;
+  const { data: item, error } = await mobile
+    .from('items')
+    .select('title, category_id')
+    .eq('id', parsed.data.itemId)
+    .maybeSingle();
+  if (error || !item) return { ok: false, error: error?.message ?? 'Item introuvable' };
+
+  // La catégorie sert d'indice de recherche (« Seven film ») : c'est ce
+  // qui écarte les homonymes dès la requête.
+  const { data: category } = await mobile
+    .from('bento_categories')
+    .select('key')
+    .eq('id', item.category_id)
+    .maybeSingle();
+
+  try {
+    const candidates = await findWikimediaImages(item.title, category?.key ?? null);
+    return { ok: true, candidates };
+  } catch (e) {
+    return { ok: false, error: `Recherche Wikimedia : ${(e as Error).message}` };
+  }
 }
 
-/**
- * Finalise une suggestion : télécharge l'image depuis Wikipedia, l'upload
- * dans le bucket Supabase Storage `item-images/{itemId}/main.{ext}`, met
- * à jour `items.image_url` (URL publique du bucket) + `items.image_credit`.
- *
- * Le `licenseCode` est stocké dans la table `item_image_suggestions` à
- * titre de traçabilité légère. Pour V1 on garde uniquement l'attribution
- * affichée + l'image — pas de trace fine de quelle suggestion a été
- * acceptée car le BO reste source de vérité.
- */
 /**
  * Recherche libre dans le catalogue, tous statuts confondus (sauf merged).
  * Utilisé par la search bar de la page /catalogue pour retrouver un item
@@ -279,27 +294,24 @@ export async function searchAnyItems(input: { q: string }): Promise<
   return { ok: true, matches };
 }
 
-export async function acceptImageSuggestion(input: {
-  itemId: string;
-  sourceUrl: string;
-  attribution: string | null;
-  licenseCode: string | null;
-}): Promise<ActionResult> {
-  await requireAdmin();
-  const parsed = acceptImageSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Inputs invalides' };
-  }
-
-  const mobile = createMobileClient();
-  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
-
+/**
+ * Cœur du « je retiens cette image » : télécharge depuis Wikimedia, pousse
+ * dans `item-images/{itemId}/main.{ext}` et met à jour l'item. Partagé par
+ * l'acceptation à la volée (`acceptImageSuggestion`, recherche live depuis
+ * la file de modération) et par la revue des suggestions déjà stockées
+ * (`acceptStoredSuggestion`), pour qu'une image arrive toujours dans le
+ * bucket de la même façon.
+ */
+async function storeImageFromWikimedia(
+  mobile: NonNullable<ReturnType<typeof createMobileClient>>,
+  input: { itemId: string; sourceUrl: string; attribution: string | null },
+): Promise<ActionResult> {
   // 1. Télécharge l'image depuis Wikimedia côté serveur. User-agent custom
   //    pour respecter les règles d'usage Wikimedia (sinon 403 sur certains
   //    fichiers).
   let imageResponse: Response;
   try {
-    imageResponse = await fetch(parsed.data.sourceUrl, {
+    imageResponse = await fetch(input.sourceUrl, {
       headers: {
         'user-agent': 'BentoPopAdmin/1.0 (https://bento-pop.com; contact@keremaprod.com)',
       },
@@ -322,7 +334,7 @@ export async function acceptImageSuggestion(input: {
 
   // 2. Upload Storage. `upsert: true` pour écraser une image existante
   //    si l'admin change d'avis (path stable = pas de cache à purger).
-  const path = `${parsed.data.itemId}/main.${ext}`;
+  const path = `${input.itemId}/main.${ext}`;
   const { error: uploadErr } = await mobile.storage
     .from('item-images')
     .upload(path, arrayBuf, {
@@ -335,7 +347,7 @@ export async function acceptImageSuggestion(input: {
   // 3. URL publique (bucket public)
   const { data: urlData } = mobile.storage.from('item-images').getPublicUrl(path);
   if (!urlData?.publicUrl) {
-    return { ok: false, error: 'Impossible de générer l\'URL publique' };
+    return { ok: false, error: "Impossible de générer l'URL publique" };
   }
 
   // 4. Met à jour l'item. On ajoute `?v={ts}` à l'URL pour bust les caches
@@ -345,11 +357,115 @@ export async function acceptImageSuggestion(input: {
     .from('items')
     .update({
       image_url: bustedUrl,
-      image_credit: parsed.data.attribution,
+      image_credit: input.attribution,
     })
-    .eq('id', parsed.data.itemId);
+    .eq('id', input.itemId);
   if (updateErr) return { ok: false, error: `Update item : ${updateErr.message}` };
 
+  return { ok: true };
+}
+
+/**
+ * Acceptation d'un candidat trouvé en direct (panneau Wikipedia de la file
+ * de modération) : stocke l'image et repose l'attribution sur l'item. Rien
+ * n'est écrit dans `item_image_suggestions`, ce chemin ne passe pas par la
+ * file de revue.
+ */
+export async function acceptImageSuggestion(input: {
+  itemId: string;
+  sourceUrl: string;
+  attribution: string | null;
+  licenseCode: string | null;
+}): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = acceptImageSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Inputs invalides' };
+  }
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const stored = await storeImageFromWikimedia(mobile, {
+    itemId: parsed.data.itemId,
+    sourceUrl: parsed.data.sourceUrl,
+    attribution: parsed.data.attribution,
+  });
+  if (!stored.ok) return stored;
+
   revalidatePath('/catalogue');
+  return { ok: true };
+}
+
+/**
+ * Accepte une suggestion déjà en base (produite par le script
+ * `catalog-images.mjs`). Même effet que l'acceptation live, plus la mise à
+ * jour du cycle de vie de la suggestion : celle retenue passe `accepted`,
+ * les autres candidates du même item passent `dismissed` pour sortir de la
+ * file de revue.
+ */
+export async function acceptStoredSuggestion(input: {
+  suggestionId: string;
+}): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = suggestionIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'suggestionId invalide' };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const { data: suggestion, error: readErr } = await mobile
+    .from('item_image_suggestions')
+    .select('id, item_id, source_url, attribution')
+    .eq('id', parsed.data.suggestionId)
+    .maybeSingle();
+  if (readErr || !suggestion) {
+    return { ok: false, error: readErr?.message ?? 'Suggestion introuvable' };
+  }
+
+  const stored = await storeImageFromWikimedia(mobile, {
+    itemId: suggestion.item_id,
+    sourceUrl: suggestion.source_url,
+    attribution: suggestion.attribution,
+  });
+  if (!stored.ok) return stored;
+
+  await mobile
+    .from('item_image_suggestions')
+    .update({ status: 'dismissed' })
+    .eq('item_id', suggestion.item_id)
+    .eq('status', 'pending');
+  const { error: markErr } = await mobile
+    .from('item_image_suggestions')
+    .update({ status: 'accepted' })
+    .eq('id', suggestion.id);
+  if (markErr) return { ok: false, error: markErr.message };
+
+  revalidatePath('/catalogue/illustrations');
+  revalidatePath('/catalogue');
+  return { ok: true };
+}
+
+/**
+ * Écarte toutes les suggestions en attente d'un item : aucune ne convenait.
+ * L'item reste sans image, l'admin pourra en uploader une à la main depuis
+ * sa fiche.
+ */
+export async function dismissItemSuggestions(input: { itemId: string }): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = itemIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'itemId invalide' };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const { error } = await mobile
+    .from('item_image_suggestions')
+    .update({ status: 'dismissed' })
+    .eq('item_id', parsed.data.itemId)
+    .eq('status', 'pending');
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/catalogue/illustrations');
   return { ok: true };
 }

@@ -9,7 +9,10 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next .turbo",
-    "backfill:storage-cache": "node scripts/backfill-storage-cache.mjs"
+    "backfill:storage-cache": "node scripts/backfill-storage-cache.mjs",
+    "catalog:audit": "node scripts/catalog-audit.mjs",
+    "catalog:merge": "node scripts/catalog-merge.mjs",
+    "catalog:images": "node scripts/catalog-images.mjs"
   },
   "dependencies": {
     "@bento-pop/brand": "workspace:*",
