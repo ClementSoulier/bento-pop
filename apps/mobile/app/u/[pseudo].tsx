@@ -403,7 +403,7 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
         onPress: () =>
           Alert.alert(
             'Bloquer cet utilisateur ?',
-            "Tu ne verras plus son bento dans À la une ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.",
+            "Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.",
             [
               { text: 'Annuler', style: 'cancel' },
               {

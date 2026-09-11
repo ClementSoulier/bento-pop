@@ -7,7 +7,7 @@ import NetInfo from '@react-native-community/netinfo';
  * Banner rouge en haut d'écran quand le device est offline.
  *
  * Posé en absolute par-dessus la SafeArea pour rester visible quel que
- * soit l'écran courant (composer, featured, search…). S'auto-cache quand
+ * soit l'écran courant (composer, la table, recherche…). S'auto-cache quand
  * la connexion revient.
  *
  * NetInfo écoute les changements réseau natifs (`Reachability` sur iOS,

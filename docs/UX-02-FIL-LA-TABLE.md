@@ -483,6 +483,12 @@ que Supabase est tombé. La nouvelle fonction lève, et React Query distingue
 `isError` de la liste vide. L'écran a déjà les deux rendus, seule la couche
 de données les empêchait d'être atteints.
 
+Vérifié en bout de chaîne au lot 4, en faisant échouer la seule requête du
+fil : l'écran passe bien en erreur. Il montre d'abord le squelette pendant
+environ trois secondes, le temps des deux tentatives de React Query, ce qui
+est le comportement voulu (une coupure passagère se rattrape sans que
+l'utilisateur voie quoi que ce soit).
+
 ---
 
 ## 7. Migration `expo-image`
@@ -805,8 +811,13 @@ faire tomber le test.
 - `_layout.tsx` : `name="table"`, titre « La table ».
 - `useInfiniteQuery`, `onEndReached`, pieds de liste, les six états de §5.8.
 - Filtre de blocage, échelle calculée, en-tête de liste.
+- Suppression de `src/lib/featured.ts` et de `MiniBentoCard`, repoussées
+  depuis le lot 2 pour garder un arbre qui compile entre chaque lot.
 
-**Vérification** : captures sur trois tailles d'écran, partagées.
+**Vérification** : captures sur l'écran réel, alimenté par les données de
+production à travers un proxy local en lecture seule (`/auth/*`
+court-circuité, seuls les GET relayés), donc sans créer de compte anonyme ni
+rien écrire. États nominal, chargement et erreur capturés.
 
 ### Lot 5 · Performance et QA
 

@@ -6,7 +6,7 @@ import { Tabs } from 'expo-router/js-tabs';
 import { ComposeIcon, FeaturedIcon, ProfileIcon, SearchIcon } from '@/components/TabIcons';
 
 /**
- * Bottom tab bar 4 onglets : Compose · À la une · Trouver · Profil.
+ * Bottom tab bar 4 onglets : Compose · La table · Trouver · Profil.
  * Icônes SVG custom (cf. `TabIcons`) — bordure 2.5px noir cohérente avec
  * la signature visuelle Bento Pop. Active = remplie, inactive = outline.
  */
@@ -42,9 +42,9 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="featured"
+        name="table"
         options={{
-          title: 'À la une',
+          title: 'La table',
           tabBarIcon: ({ color, focused }) => (
             <FeaturedIcon size={22} color={color} active={focused} />
           ),

@@ -1,6 +1,6 @@
 /**
  * Helpers de traitement de texte affiché — centralisés pour rester cohérents
- * entre Tile / MiniBentoCard / search-modal / ShareImage.
+ * entre Tile / search-modal / ShareImage.
  */
 
 /**
