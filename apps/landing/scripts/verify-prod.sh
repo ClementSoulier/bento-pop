@@ -34,8 +34,12 @@ else ko "/u/$PSEUDO répond $CODE (branche non déployée ?)"; fi
   [ "$n" = "1" ] && ok "un seul <h1>" || ko "$n <h1> dans le document"
   grep -q '/_next/image' <<<"$HTML" && ok "images servies par l'optimiseur" \
     || note "aucune image optimisée (bento sans illustration ?)"
-  grep -qE 'https://[a-z0-9]+\.supabase\.co/storage' <<<"$HTML" \
-    && ko "URL Supabase brute dans le HTML : egress non maîtrisé" \
+  # On ne cherche pas l'URL n'importe où : elle apparaît légitimement,
+  # en clair, dans la charge utile RSC (les props sérialisées du composant
+  # Image). Ce qui compte est qu'aucune balise réellement chargée par le
+  # navigateur ne pointe en direct sur Supabase.
+  grep -qE '<(img|link|source)[^>]+(src|href|srcSet)="https://[a-z0-9]+\.supabase\.co' <<<"$HTML" \
+    && ko "une balise charge Supabase en direct : egress non maîtrisé" \
     || ok "aucune image chargée en direct depuis Supabase"
 }
 
@@ -74,7 +78,9 @@ if [ -n "$OG" ]; then
   [ "$c" = "200" ] && ok "image servie ($c, $t)" || ko "image → $c"
   kb=$((s/1024))
   [ "$s" -lt 307200 ] && ok "poids ${kb} Ko (budget WhatsApp 300 Ko)" || ko "poids ${kb} Ko, au-dessus du budget"
-  head -c3 /tmp/_og.bin | od -An -tx1 | grep -q "ff d8 ff" && ok "JPEG valide" || note "pas un JPEG"
+  # `tr -s` : od espace ses octets différemment selon la plateforme.
+  head -c3 /tmp/_og.bin | od -An -tx1 | tr -s ' ' | grep -q "ff d8 ff" \
+    && ok "JPEG valide" || note "pas un JPEG (en-tête inattendu)"
 else ko "pas d'og:image à tester"; fi
 fi
 
