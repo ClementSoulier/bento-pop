@@ -1,4 +1,5 @@
 import { supabase } from '@/supabase/client';
+import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
 import type { CategoryKey } from '@/supabase/types';
 
 /**
@@ -29,14 +30,6 @@ export type SimilarItem = {
   score: number;
 };
 
-const CATEGORY_IDS: Record<CategoryKey, number> = {
-  film: 1,
-  series: 2,
-  artist: 3,
-  track: 4,
-  creator: 5,
-  place: 6,
-};
 
 /**
  * Recherche fuzzy dans le catalogue validé. Retour vide si query trop

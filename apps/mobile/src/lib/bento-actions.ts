@@ -1,19 +1,8 @@
 import { supabase } from '@/supabase/client';
+import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
+import { findUserByPseudo } from '@/lib/pseudo';
 import type { CategoryKey } from '@/supabase/types';
 
-/**
- * Mapping `CategoryKey` → ID dans `bento_categories` (smallint).
- * En MVP on hardcode (5 IDs après le seed initial), à charger depuis BDD
- * si on rend les catégories vraiment évolutives en runtime.
- */
-const CATEGORY_IDS: Record<CategoryKey, number> = {
-  film: 1,
-  series: 2,
-  artist: 3,
-  track: 4,
-  creator: 5,
-  place: 6,
-};
 
 /**
  * S'assure que l'utilisateur a un bento (en crée un vide sinon).
@@ -132,11 +121,12 @@ export async function loadOwnBento(userId: string) {
  * Retourne `null` si le pseudo n'existe pas ou si le bento n'est pas publié.
  */
 export async function loadPublicBentoByPseudo(pseudo: string) {
-  const { data: user } = await supabase
-    .from('users')
-    .select('id, pseudo, display_name, created_at')
-    .ilike('pseudo', pseudo)
-    .maybeSingle();
+  // Correspondance exacte, cf. `findUserByPseudo` : `_` est un joker
+  // `ilike` autorisé par la contrainte SQL, donc un lien profond
+  // `bentopop://u/buyt_k` affichait le bento de `buyt.k`.
+  const user = (await findUserByPseudo('id, pseudo, display_name, created_at', pseudo)) as
+    | { id: string; pseudo: string; display_name: string | null; created_at: string }
+    | null;
   if (!user) return null;
 
   const { data: bento } = await supabase

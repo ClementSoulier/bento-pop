@@ -157,17 +157,15 @@ describe('popyKeyForPseudo', () => {
   });
 
   /**
-   * Parité avec l'app mobile, vérifiée contre un oracle plutôt que contre
-   * des valeurs figées.
+   * Non-régression historique.
    *
    * `MOBILE_POPYS` et `mobileHash` sont la transcription littérale de
-   * `apps/mobile/src/lib/popy-avatar.ts`, qui ne peut pas être importé ici
-   * (il charge des PNG via le bundler Metro). Tant que l'app n'aura pas
-   * migré vers le module partagé — suivi du chantier 4 — c'est ce test qui
-   * garantit qu'un même pseudo affiche le même Popy dans l'app, sur la page
-   * web et dans l'image de partage.
+   * l'implémentation que l'app mobile portait avant de migrer vers ce
+   * module partagé. Elle sert désormais d'oracle figé : elle prouve que
+   * la mise en commun n'a réattribué son avatar à personne, y compris sur
+   * les bentos déjà partagés.
    */
-  it("attribue le même Popy que l'implémentation de l'app mobile", () => {
+  it('conserve le comportement de l’implémentation historique', () => {
     const MOBILE_POPYS = ['content', 'intello', 'fille', 'gene', 'nani', 'diable'] as const;
     const mobileHash = (s: string): number => {
       let h = 5381;

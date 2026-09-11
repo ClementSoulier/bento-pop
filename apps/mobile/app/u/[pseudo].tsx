@@ -3,13 +3,8 @@ import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import {
-  BentoGrid,
-  type BentoItems,
-  PALETTES,
-  type PaletteKey,
-  ShareImage,
-} from '@/components/bento';
+import { BentoGrid, type BentoItems, ShareImage } from '@/components/bento';
+import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { SHADOWS, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
@@ -17,18 +12,8 @@ import { shareBentoImage } from '@/lib/share-image';
 import { submitReport } from '@/lib/report';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
-import type { CategoryKey } from '@/supabase/types';
 import { loadPublicBentoByPseudo } from '@/lib/bento-actions';
 
-const CATEGORY_BY_ID: Record<number, CategoryKey> = {
-  1: 'film',
-  2: 'series',
-  3: 'artist',
-  4: 'track',
-  5: 'creator',
-  6: 'place',
-};
-const PALETTE_KEYS = Object.keys(PALETTES) as PaletteKey[];
 
 /**
  * Bento public à l'adresse `/u/<pseudo>` — cible des liens de partage et
@@ -81,7 +66,7 @@ export default function PublicBento() {
           subtitle: item.subtitle ?? undefined,
           imageUrl: item.image_url ?? undefined,
           imageCredit: item.image_credit ?? undefined,
-          paletteKey: PALETTE_KEYS[idx % (PALETTE_KEYS.length - 1)] ?? 'neutral',
+          paletteKey: paletteKeyForItem(item.id),
         };
       });
       setState({

@@ -669,8 +669,33 @@ Arbitrées le 11 septembre 2026.
 
 ## 15. Suivis générés par ce chantier
 
-À reporter dans la roadmap au moment du merge :
+Les trois suivis ont été traités le 11 septembre 2026, avant de passer au chantier 2.
 
-- Aligner l'app mobile sur la palette déterministe (§5.5), sinon l'app et le web afficheront des couleurs différentes pour le même bento.
-- Corriger `loadPublicBentoByPseudo` côté mobile, qui passe une entrée non validée à `.ilike` (§5.1).
-- Câbler un webhook Supabase vers `POST /api/revalidate` à la publication d'un bento, pour supprimer la fenêtre de 5 minutes (§9.2).
+### ✅ Palette déterministe dans l'app mobile
+
+`apps/mobile` importe désormais `@bento-pop/supabase-mobile/bento` : palettes, catégories, hash, sélecteurs. Les quatre endroits qui dérivaient la palette de l'index de ligne (`featured.ts`, `session.ts`, `u/[pseudo].tsx`, `search-modal.tsx`) utilisent `paletteKeyForItem(item.id)`, et les deux copies de `CATEGORY_IDS` ont disparu. Un même bento a donc les mêmes couleurs dans l'app, sur le web et dans l'aperçu d'un lien.
+
+**Point de risque, vérifié.** C'était le premier import de code **exécutable** depuis un package workspace dans l'app mobile : jusqu'ici elle n'en tirait que des assets PNG et des types, effacés à la compilation. Avec `disableHierarchicalLookup: true` et les liens symboliques de pnpm, la mémoire du projet documente un crash de démarrage causé par une double copie de module. Vérifié par un `expo export` de production sur iOS et Android : les deux bundles se construisent, le code partagé y est, et la couleur `#c89968` (unique à la palette `duneSand`) n'y apparaît **qu'une seule fois**.
+
+En prime, la grille de résultats de recherche affiche maintenant la palette que la case aura une fois choisie.
+
+### ✅ Correspondance exacte du pseudo côté mobile
+
+`loadPublicBentoByPseudo` passait l'entrée brute à `.ilike`. Corrigé sur le même principe que le web : `pickExactPseudo` re-filtre le lot ramené.
+
+**Le même défaut touchait deux autres endroits**, trouvés en traitant celui-ci :
+
+- `checkPseudoAvailability` : un pseudo libre contenant `_` était annoncé « pris » dès qu'un voisin existait. `dark_hifus` refusé parce que `darkahifus` existe. Bug produit visible à l'inscription, sur un caractère très courant.
+- La recherche par préfixe de l'onglet « Trouver » : taper `dark_` remontait aussi `darka…`.
+
+La logique pure vit dans `src/lib/pseudo-match.ts`, testée (10 assertions). Le script de test du mobile découvre maintenant tous les fichiers `*.test.ts` au lieu d'en lister un seul.
+
+### ✅ Revalidation à la publication
+
+Migration `20260911000000_revalidate_landing_on_publish.sql` : déclencheur sur `bentos` qui appelle `POST /api/revalidate` via `pg_net` à la publication, la dépublication ou un changement de mise en avant. Asynchrone, silencieux en cas d'échec, et sans effet tant que les secrets ne sont pas posés — la revalidation périodique de 5 minutes reste le filet.
+
+**À faire côté Supabase, cf. le runbook en fin de migration** : appliquer le SQL dans l'éditeur du projet mobile, puis créer deux secrets Vault (`landing_base_url` et `landing_revalidate_token`, ce dernier identique au `REVALIDATE_TOKEN` de Coolify).
+
+### Reporté
+
+`initialOf` diffère encore : l'app utilise `[A-Za-zÀ-ÿ0-9]` et affiche `?` sur les six titres japonais, là où le web rend le caractère. Corriger demande de trancher l'usage des échappements de propriété Unicode sous Hermes. Rattaché au chantier 11 (accessibilité et polish), auquel il appartient.

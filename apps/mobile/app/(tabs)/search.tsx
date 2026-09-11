@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { SHADOWS, TopChip, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
+import { keepPrefixMatches } from '@/lib/pseudo-match';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useBlocked } from '@/state/blocked';
 import { supabase } from '@/supabase/client';
@@ -46,7 +47,9 @@ export default function SearchTab() {
         .ilike('pseudo', `${debounced}%`)
         .order('pseudo', { ascending: true })
         .limit(12);
-      return (data ?? []).map((u) => ({
+      // `_` est un joker `ilike` autorisé dans un pseudo : sans ce
+      // second filtre, taper « dark_ » remonterait aussi « darka… ».
+      return keepPrefixMatches(data ?? [], debounced).map((u) => ({
         id: u.id,
         pseudo: u.pseudo,
         displayName: u.display_name,

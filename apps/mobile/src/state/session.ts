@@ -1,23 +1,13 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/supabase/client';
-import type { CategoryKey, Database } from '@/supabase/types';
+import type { Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
-import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
+import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
 import { withTimeout } from '@/lib/with-timeout';
 
 type Profile = Database['public']['Tables']['users']['Row'];
 
-const CATEGORY_BY_ID: Record<number, CategoryKey> = {
-  1: 'film',
-  2: 'series',
-  3: 'artist',
-  4: 'track',
-  5: 'creator',
-  6: 'place',
-};
-
-const PALETTE_KEYS = Object.keys(PALETTES) as PaletteKey[];
 
 const INIT_TIMEOUT_MS = 8000;
 
@@ -165,7 +155,7 @@ async function hydrateBentoFromRemote(userId: string) {
       subtitle: item.subtitle ?? undefined,
       imageUrl: item.image_url ?? undefined,
       imageCredit: item.image_credit ?? undefined,
-      paletteKey: PALETTE_KEYS[idx % (PALETTE_KEYS.length - 1)] ?? 'neutral',
+      paletteKey: paletteKeyForItem(item.id),
       itemId: item.id,
       pending: item.status === 'pending',
     };
