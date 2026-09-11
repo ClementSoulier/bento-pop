@@ -507,6 +507,10 @@ Cas couverts :
 
 À dérouler avant merge, résultats consignés dans la PR.
 
+**Automatisé — `bash apps/landing/scripts/verify-prod.sh <pseudo>`**
+
+Lecture seule, rejouable. Couvre en une commande : codes de statut, canonicalisation, métadonnées de partage, poids et format de l'image OG, liens universels des deux plateformes, et état de `REVALIDATE_TOKEN`. À lancer juste après chaque déploiement, avant la checklist manuelle ci-dessous.
+
 **Rendu**
 - [ ] iPhone SE (375 px) : la grille tient entièrement, aucun débordement, le CTA ne recouvre rien
 - [ ] iPhone 15 Pro Max, Pixel 8, iPad, desktop 1440 px
