@@ -1,23 +1,36 @@
-import { Image, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import type { RefObject } from 'react';
 import type { View } from 'react-native';
+import { Image } from 'expo-image';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { shareBento, type ShareOutcome } from './share';
 
 /**
- * Précharge les URLs distantes pour qu'elles soient présentes dans le
- * cache RN au moment du captureRef. Sans ça, captureRef peut snapshot
- * une <Image> avant que le download finisse → case vide dans le PNG.
+ * Précharge les URLs distantes pour qu'elles soient présentes au moment du
+ * `captureRef`. Sans ça, la capture peut snapshot une image avant la fin de
+ * son téléchargement → case vide dans le PNG partagé.
  *
- * On limite le timeout à 3s par image pour ne pas bloquer indéfiniment
- * si une URL est down (rare mais arrive avec Wikipedia / OSM).
+ * **Le `prefetch` doit venir d'`expo-image`, pas de React Native.** Depuis
+ * que `Tile` rend ses visuels avec `expo-image`, les deux bibliothèques ont
+ * des caches distincts : `Image.prefetch` de RN remplirait un cache que le
+ * composant ne lit jamais, et la fonction ne préchargerait plus rien tout
+ * en continuant à réussir silencieusement.
+ *
+ * `cachePolicy` explicite pour coller à celle du composant (le défaut de
+ * `prefetch` est `'disk'`, celui de `Tile` est `'memory-disk'`).
+ *
+ * Un `prefetch` par URL plutôt qu'un seul appel sur le tableau : la forme
+ * tableau résout `false` dès le premier échec, sans attendre les autres, ce
+ * qui ferait capturer trop tôt à cause d'une seule URL morte. Timeout de 3s
+ * par image pour ne pas bloquer le partage si une source est down (rare,
+ * mais arrive avec Wikipedia et OSM).
  */
 async function preloadImages(urls: string[]): Promise<void> {
   await Promise.all(
     urls.map((url) =>
       Promise.race([
-        Image.prefetch(url),
+        Image.prefetch(url, 'memory-disk'),
         new Promise((resolve) => setTimeout(resolve, 3000)),
       ]).catch(() => {
         // Échec silencieux : on capture quand même, mieux vaut une case
