@@ -46,6 +46,14 @@ describe('cleanTitle', () => {
     assert.ok(out.endsWith('…'));
   });
 
+  it('ne laisse pas de séparateur avant l’ellipsis', () => {
+    // Sous-titre réel du catalogue. Sans nettoyage, la coupe donnait
+    // « FR · Person ·… », qui se lit comme une erreur d'affichage.
+    const out = cleanTitle('FR · Person · French rapper', 18);
+    assert.ok(out.endsWith('…'), out);
+    assert.ok(!/[·,;:\s-]…$/.test(out), out);
+  });
+
   /** Le titre le plus long du catalogue en production, 70 caractères. */
   it('gère le pire cas réel du catalogue', () => {
     const longest =

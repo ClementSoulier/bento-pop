@@ -5,7 +5,7 @@ import { SmartImage } from '@/components/SmartImage';
 import type { BentoTile } from '@/lib/bento/map';
 import { paletteGradient } from '@/lib/bento/gradient';
 import { cleanTitle, initialOf } from '@/lib/bento/text';
-import { TILE, TILE_SIZES, TILE_TYPO, type TileSize } from './layout';
+import { TILE, TILE_SCRIM, TILE_SIZES, TILE_TYPO, type TileSize } from './layout';
 
 /** `u` = unité de design, cf. `layout.ts`. */
 const u = (n: number) => `calc(${n} * var(--u))`;
@@ -101,10 +101,7 @@ export function PublicBentoTile({
           <span
             aria-hidden
             className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.72) 100%)',
-            }}
+            style={{ background: TILE_SCRIM }}
           />
         ) : null}
 

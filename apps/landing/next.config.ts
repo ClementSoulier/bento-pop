@@ -65,6 +65,16 @@ const nextConfig: NextConfig = {
   // packages workspace (@bento-pop/*) soient inclus dans le bundle de Vercel.
   outputFileTracingRoot: path.join(process.cwd(), '../..'),
 
+  // La police Extenda est lue au runtime par l'image Open Graph de
+  // `/u/[pseudo]` : satori a besoin du tampon, et on lit sa table `cmap`
+  // pour savoir quels glyphes elle couvre. Un `readFile` n'est pas
+  // détectable par le traceur de fichiers, il faut donc la déclarer, sinon
+  // elle manque à l'exécution dans la sortie standalone.
+  outputFileTracingIncludes: {
+    '/u/[pseudo]/opengraph-image': ['../../packages/brand/assets/fonts/*.otf'],
+    '/u/[pseudo]/twitter-image': ['../../packages/brand/assets/fonts/*.otf'],
+  },
+
   // Bundle minimal pour Docker / Coolify : génère .next/standalone avec
   // uniquement les deps réellement utilisées (server.js + node_modules pruné).
   output: 'standalone',

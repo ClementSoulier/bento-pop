@@ -590,11 +590,19 @@ Un lot égale un commit. L'ordre est contraint : chaque lot doit laisser la bran
 - **Build** : les 3 bentos featured sont pré-rendus, revalidation 5 min
 - **Vert** : 16,6 Ko de HTML gzippé, 113 ko de JS au premier chargement, captures des 5 états dans `.context/screenshots/`
 
-### Lot 5 · Open Graph
+### Lot 5 · Open Graph ✅
 - `src/app/u/[pseudo]/opengraph-image.tsx` et `twitter-image.tsx`
-- Police Extenda inlinée, après vérification de couverture de glyphes
-- Timeouts, `allSettled`, `try/catch` avec repli de marque
-- **Vert quand** : l'image est générée, sous 300 Ko, et validée par les débogueurs sociaux
+- `src/lib/og/` : `glyphs.ts` (pur, testé), `fonts.ts` (chargement et repli), `images.ts` (pré-chargement), `encode.ts` (JPEG)
+- `generateImageMetadata` pour un texte alternatif par pseudo
+- Extenda lue au runtime, déclarée dans `outputFileTracingIncludes` : vérifié présente dans la sortie standalone
+- Timeouts de 2 s, `allSettled`, `try/catch` avec repli de marque
+- **Vert** : 68 Ko en production standalone, budget 300. Repli japonais vérifié sur un bento réel, plus aucun carré vide. Les deux balises `og:image` et `twitter:image` présentes, en URL absolue.
+
+**Trois écarts avec la spec initiale, tous mesurés :**
+
+1. **JPEG et non PNG.** Le PNG mesuré fait 377 Ko, au-dessus du seuil WhatsApp. Le repli prévu au §7.1 est donc activé d'emblée : la sortie d'`ImageResponse` passe dans `sharp` (déjà une dépendance), qualité 82. Résultat 68 Ko, soit un cinquième du budget.
+2. **Satori n'implémente pas le raccourci `inset`.** La couche de voile posée en `inset: 0` s'effondrait à zéro, et le titre blanc devenait invisible sur une pochette claire. Décalages explicites désormais.
+3. **Le voile était trop faible**, y compris sur le web. Une pochette quasi blanche laissait le titre illisible. Le dégradé démarre plus haut et descend à 88 %, et il est désormais partagé (`TILE_SCRIM` dans `layout.ts`) pour que la vérification vaille des deux côtés.
 
 ### Lot 6 · SEO
 - `sitemap.ts` : URL featured

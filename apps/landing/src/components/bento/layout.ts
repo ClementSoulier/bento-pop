@@ -48,6 +48,22 @@ export const TILE = {
   radius: 18,
 } as const;
 
+/**
+ * Voile de lisibilité posé sur les compartiments illustrés.
+ *
+ * Le titre est en blanc dès qu'il y a une photo, et rien ne garantit que
+ * la photo soit sombre : le catalogue contient des pochettes quasi
+ * blanches (« Suteki da ne », fond blanc) sur lesquelles un dégradé
+ * s'arrêtant à 72 % laissait le texte illisible. Le voile démarre donc
+ * plus haut et descend plus bas, ce qui garantit un fond sombre derrière
+ * la zone de texte quelle que soit l'illustration.
+ *
+ * Partagé entre le rendu web et le rendu satori de l'image Open Graph,
+ * pour que la vérification de contraste ne vaille pas que d'un côté.
+ */
+export const TILE_SCRIM =
+  'linear-gradient(to bottom, rgba(0,0,0,0) 18%, rgba(0,0,0,0.5) 58%, rgba(0,0,0,0.88) 100%)';
+
 /** Tailles typographiques par gabarit de compartiment. */
 export const TILE_TYPO = {
   lg: { title: 28, subtitle: 13, padding: 16, stamp: 9, tracking: 1.2, initial: 140 },

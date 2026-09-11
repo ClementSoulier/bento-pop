@@ -32,7 +32,18 @@ export function cleanTitle(raw: string, maxLen?: number): string {
   const sliced = s.slice(0, maxLen - 1);
   const lastSpace = sliced.lastIndexOf(' ');
   const cut = lastSpace > maxLen * 0.5 ? sliced.slice(0, lastSpace) : sliced;
-  return `${cut.trimEnd()}…`;
+  return `${trimTrailingSeparators(cut)}…`;
+}
+
+/**
+ * Retire les séparateurs de fin avant d'ajouter l'ellipsis.
+ *
+ * Sans ça, « FR · Person · French rapper » tronqué donne
+ * « FR · Person ·… », qui se lit comme une erreur. Les sous-titres du
+ * catalogue sont souvent des énumérations séparées par des points médians.
+ */
+function trimTrailingSeparators(text: string): string {
+  return text.replace(/[\s·,;:/|·–—-]+$/u, '');
 }
 
 /**
@@ -65,7 +76,7 @@ export function truncateAtWord(text: string, maxLen: number): string {
   const sliced = s.slice(0, maxLen - 1);
   const lastSpace = sliced.lastIndexOf(' ');
   const cut = lastSpace > maxLen * 0.5 ? sliced.slice(0, lastSpace) : sliced;
-  return `${cut.trimEnd()}…`;
+  return `${trimTrailingSeparators(cut)}…`;
 }
 
 /**
