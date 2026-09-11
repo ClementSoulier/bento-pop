@@ -365,10 +365,10 @@ Données structurées : `ProfilePage` schema.org avec `mainEntity: Person`, uniq
 
 ### 9.1 Budget
 
-| Métrique | Budget | Vérifié par |
-|---|---|---|
-| JS client ajouté par la page | **0 Ko** | inspection du build, aucun `'use client'` dans le segment |
-| HTML gzip | < 60 Ko | test de fumée |
+| Métrique | Budget | Mesuré au lot 4 | Vérifié par |
+|---|---|---|---|
+| JS client ajouté par la page | aucun composant client propre au segment | **113 ko** de premier chargement, contre 114 ko pour une fiche épisode et 103 ko de socle | sortie de `next build`, zéro `'use client'` dans le segment |
+| HTML gzip | < 60 Ko | **16,6 Ko** | test de fumée |
 | LCP mobile Slow 4G | < 1,8 s | Lighthouse manuel |
 | CLS | 0 | Lighthouse manuel |
 | TTFB en cache ISR chaud | < 100 ms | test de fumée |
@@ -579,11 +579,16 @@ Un lot égale un commit. L'ordre est contraint : chaque lot doit laisser la bran
 - `minmax(0, 1fr)` et non `1fr`, pour qu'un titre d'un seul mot très long ne puisse pas élargir la boîte au-delà de son conteneur.
 - **Vert** : 81 tests. Rendu vérifié en capture à 280, 320, 360 et 420 px de conteneur, sur données de production, plus les cas sans illustration, partiel et vide.
 
-### Lot 4 · Page
+### Lot 4 · Page ✅
 - `src/app/u/[pseudo]/page.tsx`, `not-found.tsx`
-- `generateMetadata`, `generateStaticParams`, `revalidate`, redirection canonique
-- Bloc conversion, bannière Smart App, deep link, lien de signalement
-- **Vert quand** : la page s'affiche en local sur des données réelles
+- `src/components/bento/` : `BentoPageShell.tsx` (habillage, appel à l'action, signalement), `BentoIdentity.tsx`
+- `src/lib/bento/stores.ts` : liens magasins, lien profond, bannière Smart App
+- `generateMetadata`, `generateStaticParams`, `revalidate = 300`, redirection canonique 308
+- `cache()` de React autour du chargement : sans lui, `generateMetadata` et la page interrogeraient Supabase deux fois par rendu, la déduplication de Next ne couvrant que `fetch()`
+- **Codes de statut vérifiés en local** : publié 200, inconnu 404, casse différente 308, joker `_` 404, pseudo malformé 404, non publié 200
+- **Métadonnées vérifiées** : `index, follow` sur un bento featured, `noindex, follow` sinon, canonique absolue, bannière Smart App, description énumérant les six choix
+- **Build** : les 3 bentos featured sont pré-rendus, revalidation 5 min
+- **Vert** : 16,6 Ko de HTML gzippé, 113 ko de JS au premier chargement, captures des 5 états dans `.context/screenshots/`
 
 ### Lot 5 · Open Graph
 - `src/app/u/[pseudo]/opengraph-image.tsx` et `twitter-image.tsx`

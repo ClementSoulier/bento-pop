@@ -33,7 +33,7 @@ export function BentoAttributions({ slots }: { slots: BentoSlots }) {
   return (
     <section
       aria-labelledby="bento-attributions"
-      className="mx-auto mt-8 w-full max-w-[420px]"
+      className="mx-auto mt-8 w-full max-w-[420px] lg:max-w-[940px]"
     >
       <h2
         id="bento-attributions"
