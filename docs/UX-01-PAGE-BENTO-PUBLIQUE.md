@@ -241,7 +241,7 @@ Desktop à partir de `lg` : deux colonnes, bento à gauche (max 520 px), identit
 - **Barre haute compacte** plutôt que `<Nav />` : logo cliquable vers la home plus un lien discret. Réutiliser `Nav` ferait perdre environ 80 px sur mobile et introduirait un menu client-side inutile ici.
 - **Footer standard** conservé : obligations légales et cohérence de site.
 - **Signalement.** La page publie du contenu utilisateur sur le domaine de la marque. Il faut un chemin de signalement accessible sans compte : lien `mailto:contact@bento-pop.com` pré-rempli avec le pseudo en objet, dans le footer de la page. C'est le minimum en hébergement d'UGC, et c'est cohérent avec le `submitReport` de l'app.
-- **Crédit image** obligatoire sous chaque visuel qui en porte un (`items.image_credit`), obligation CC-BY-SA. Contrairement à l'app (`Tile.tsx:283`, contraste insuffisant à `rgba(255,255,255,0.5)`), la version web respecte un ratio de contraste d'au moins 4,5:1.
+- **Crédits images regroupés sous la boîte**, pas sur le compartiment comme dans l'app. Décidé au lot 3 après vérification à l'écran : un crédit fait 46 caractères en médiane et jusqu'à 167 sur les 199 items illustrés, alors qu'un compartiment de la troisième rangée fait environ 101 points de large. La pastille recouvrait le titre et le texte se réduisait à « Affi… », ce qui ne remplit ni l'obligation CC-BY-SA, ni les conditions TMDb, ni aucun besoin du lecteur. Regroupés sous la boîte, ils sont réellement lisibles et le contraste est respecté sans artifice.
 - **Pas de compteur, pas de bouton de partage, pas de like.** Hors périmètre, et chaque élément ajouté dilue le CTA unique.
 
 ### 6.4 Conversion
@@ -571,11 +571,13 @@ Un lot égale un commit. L'ordre est contraint : chaque lot doit laisser la bran
 - `transpilePackages` étendu à `@bento-pop/supabase-mobile`, puisqu'on en importe désormais des valeurs et plus seulement des types.
 - **Vert** : 73 tests, plus les 6 du mobile. Lint, typecheck, test et build passent.
 
-### Lot 3 · Composants de rendu
-- `src/components/bento/PublicBentoGrid.tsx`, `PublicBentoTile.tsx`, `PublicBentoEmptyTile.tsx`
-- Serveur uniquement, aucun `'use client'`
-- Proportions et palettes strictement alignées sur l'app
-- **Vert quand** : rendu conforme au visuel de l'app, vérifié côte à côte
+### Lot 3 · Composants de rendu ✅
+- `src/components/bento/` : `layout.ts` (géométrie partagée avec l'OG), `PublicBentoGrid.tsx`, `PublicBentoTile.tsx`, `PublicBentoEmptyTile.tsx`, `BentoAttributions.tsx`
+- Serveur uniquement, aucun `'use client'` : vérifié sur le HTML rendu
+- **Mise à l'échelle par unités de conteneur.** `--u = 100cqw / 361` fait qu'un `calc(220 * var(--u))` rend exactement 220 points de design à n'importe quelle largeur. Pas de requête média, pas de point de rupture, et pas le débordement de `app/u/[pseudo].tsx` dont l'échelle est figée. Repli `@supports` en `vw` pour les moteurs sans requêtes de conteneur.
+- **Grille à six colonnes** plutôt que trois rangées imbriquées : 6 est le PPCM de 1, 2 et 3, les compartiments se placent par `span`, et le DOM reste une liste plate de six `<li>`. Un test vérifie que les largeurs obtenues sont identiques à celles d'une disposition en rangées.
+- `minmax(0, 1fr)` et non `1fr`, pour qu'un titre d'un seul mot très long ne puisse pas élargir la boîte au-delà de son conteneur.
+- **Vert** : 81 tests. Rendu vérifié en capture à 280, 320, 360 et 420 px de conteneur, sur données de production, plus les cas sans illustration, partiel et vide.
 
 ### Lot 4 · Page
 - `src/app/u/[pseudo]/page.tsx`, `not-found.tsx`
