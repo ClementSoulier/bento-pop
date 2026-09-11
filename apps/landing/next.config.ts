@@ -54,7 +54,12 @@ const imageHosts = [
 const nextConfig: NextConfig = {
   // Permet à Next d'importer les modules TS et les assets statiques (PNG/JPG)
   // depuis les packages workspace `@bento-pop/*`.
-  transpilePackages: ['@bento-pop/brand', '@bento-pop/ui'],
+  //
+  // `supabase-mobile` y figure depuis qu'on en importe des *valeurs* et plus
+  // seulement des types (palettes, catégories, hash partagés avec l'app, cf.
+  // `@bento-pop/supabase-mobile/bento`) : le package expose du TypeScript
+  // brut, que Next doit compiler.
+  transpilePackages: ['@bento-pop/brand', '@bento-pop/ui', '@bento-pop/supabase-mobile'],
 
   // En monorepo Turborepo, on remonte le tracing au root pour que les
   // packages workspace (@bento-pop/*) soient inclus dans le bundle de Vercel.

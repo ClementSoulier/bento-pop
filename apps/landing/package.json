@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test $(find src -name '*.test.ts' | sort)",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
@@ -33,6 +34,7 @@
     "eslint": "^8.57.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.3"
   }
 }

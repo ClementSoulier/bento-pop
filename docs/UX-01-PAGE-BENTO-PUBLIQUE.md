@@ -126,6 +126,10 @@ constraint pseudo_format check (pseudo ~ '^[A-Za-z0-9_.]{3,20}$')
 
 Toute valeur qui ne matche pas : `notFound()` immédiat, zéro requête.
 
+**Le `_` reste un joker malgré la validation, et la menace est confirmée.** La contrainte SQL autorise `_`, qui est aussi le joker « un caractère » de `ILIKE`. Vérifié sur la base de production : `ilike('pseudo', 'buyt_k')` retourne l'utilisateur `buyt.k`. Sans traitement, l'URL `/u/buyt_k` servirait donc le bento de `buyt.k`, avec une URL fausse, du contenu dupliqué et un lien de partage trompeur.
+
+La validation regex ne peut pas résoudre ça, puisque le caractère est légitime. **C'est la vérification d'égalité exacte, après la requête, qui fait autorité** : on ramène jusqu'à 5 lignes et on ne retient que celle dont le `pseudo` correspond exactement, à la casse près. L'index unique sur `lower(pseudo)` garantit au plus une vraie correspondance. `maybeSingle()` est écarté : il échoue dès que le joker ramène deux lignes.
+
 ### 5.2 Canonicalisation de la casse
 
 L'unicité est posée sur `lower(pseudo)` (`users_pseudo_lower_idx`), donc `/u/Keremasan` et `/u/keremasan` désignent le même utilisateur. Sans traitement, c'est du contenu dupliqué et deux entrées de cache distinctes.
@@ -144,7 +148,14 @@ users
   .maybeSingle()
 ```
 
-La forme exacte est à valider contre PostgREST au moment du dev ; le point non négociable est **une seule requête** et le filtre `published_at is not null` appliqué côté serveur, pas en JavaScript.
+**Forme retenue et validée contre la base de production** (lot 2) :
+
+- Pas de `!inner` sur `bentos` : un profil sans bento publié doit quand même remonter, pour rendre l'écran « pas encore terminé » du §6.5.1.
+- Pas de filtre `published_at` en SQL non plus : la policy `bentos_read_published` le fait déjà, et la relation revient simplement à `null`. Le test `published_at` côté application est une ceinture, pas la garantie.
+- `bentos` revient comme un **objet**, pas un tableau (relation « to-one »). Le code normalise les deux formes, les versions de PostgREST ayant varié sur ce point.
+- Une seule requête, `.limit(5)` pour absorber le joker `_`, puis égalité exacte.
+
+Les types sont posés via `overrideTypes<…, { merge: false }>()` plutôt que laissés à l'inférence : le `Database` du projet mobile est écrit à la main et sa table `users` déclare `Relationships: []`, donc supabase-js ne peut pas déduire la jointure et produirait un `SelectQueryError`. À retirer le jour où les types seront régénérés par `supabase gen types`.
 
 ### 5.4 Mapping et cas limites
 
@@ -169,11 +180,15 @@ paletteKey: PALETTE_KEYS[idx % (PALETTE_KEYS.length - 1)]
 
 PostgreSQL ne garantit aucun ordre de lignes sans `ORDER BY`. Le même bento peut donc changer de couleurs entre deux chargements, et n'aura aucune raison d'être identique entre l'app, la page web et l'image OG.
 
-**Décision : la palette est dérivée d'un hash stable de `item.id`.** On réutilise `hashString` (djb2) déjà présent dans `apps/mobile/src/lib/popy-avatar.ts:29`, extrait dans un module partageable.
+**Décision : la palette est dérivée d'un hash stable de `item.id`.** On réutilise `hashString` (djb2) déjà présent dans `apps/mobile/src/lib/popy-avatar.ts:29`.
 
-Conséquence : la page web et l'OG seront cohérents entre eux dès le lot 2. L'alignement de l'app mobile sur la même règle est un **suivi**, à traiter avec le chantier 4 pour ne pas déclencher une release mobile isolée. À noter dans la roadmap.
+**Où vit ce code (décidé au lot 2).** Plutôt que d'ajouter une quatrième copie, le domaine commun est extrait dans `packages/supabase-mobile/src/bento.ts`, exposé en sous-chemin `@bento-pop/supabase-mobile/bento` : identifiants et libellés de catégories, palettes, hash stable, sélecteurs de palette et de Popy. Uniquement des données et des fonctions pures, aucun import d'asset, aucune dépendance à React Native ni à Next. Chaque app mappe ensuite les clés vers ses propres fichiers d'images.
 
-Même logique pour l'avatar : `popyForPseudo` doit être porté à l'identique côté web pour que l'avatar soit le même que dans l'app.
+Le motif : le défaut décrit ici existe **précisément parce que** la logique de palette est copiée-collée à trois endroits de l'app mobile (`featured.ts:51`, `session.ts:172`, `u/[pseudo].tsx:88`). Ajouter une quatrième copie dans la landing serait répéter la cause.
+
+Conséquence : la page web et l'OG sont cohérents entre eux dès le lot 2. L'alignement de l'app mobile est un **suivi** du chantier 4, et se réduira à remplacer trois copies par un import.
+
+Même logique pour l'avatar : `popyKeyForPseudo` est partagé, et un test compare son résultat à une transcription littérale de l'implémentation mobile sur 5 000 pseudos, pour garantir la parité tant que l'app n'a pas migré.
 
 ---
 
@@ -549,10 +564,12 @@ Un lot égale un commit. L'ordre est contraint : chaque lot doit laisser la bran
 - `.env.example`
 - **Vert quand** : `pnpm build` passe avec et sans les variables définies
 
-### Lot 2 · Couche domaine
-- `src/lib/bento/pseudo.ts`, `palette.ts`, `popy.ts`, `map.ts`, `queries.ts`
-- Tests unitaires du §11.2
-- **Vert quand** : tous les tests unitaires passent, couverture complète des cas limites du §5.4
+### Lot 2 · Couche domaine ✅
+- `packages/supabase-mobile/src/bento.ts` : domaine partagé (catégories, palettes, hash, sélecteurs), sous-chemin `./bento`
+- `apps/landing/src/lib/bento/` : `pseudo.ts`, `map.ts`, `text.ts`, `gradient.ts`, `metadata.ts`, `popy.ts`, `queries.ts`
+- Script `test` de la landing. Node 20 ne découvre pas les fichiers `.ts` quand on lui passe un dossier (sa découverte ne couvre que `.js`, `.cjs`, `.mjs`), d'où l'expansion explicite : `tsx --test $(find src -name '*.test.ts' | sort)`.
+- `transpilePackages` étendu à `@bento-pop/supabase-mobile`, puisqu'on en importe désormais des valeurs et plus seulement des types.
+- **Vert** : 73 tests, plus les 6 du mobile. Lint, typecheck, test et build passent.
 
 ### Lot 3 · Composants de rendu
 - `src/components/bento/PublicBentoGrid.tsx`, `PublicBentoTile.tsx`, `PublicBentoEmptyTile.tsx`
