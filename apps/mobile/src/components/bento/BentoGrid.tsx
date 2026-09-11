@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import type { CategoryKey } from '@/supabase/types';
 import { EmptyTile } from './EmptyTile';
+import { GRID_GEOMETRY } from './geometry';
 import { Tile, type TileData } from './Tile';
 import { SHADOWS } from '@/components/primitives/shadow';
 
@@ -16,6 +17,21 @@ type BentoGridProps = {
   empty?: boolean;
   /** Callback quand l'utilisateur tape une case. */
   onTap?: (cat: CategoryKey) => void;
+  /**
+   * Grille de consultation : les cases vides deviennent de simples
+   * emplacements neutres au lieu du « + Ajoute ton film » du composer.
+   *
+   * Sans ça, le bento d'autrui invite à remplir une case qui n'est pas la
+   * sienne, sur un bouton qui ne fait rien. Le cas n'apparaît que si un item
+   * est masqué par la RLS (item en attente de modération), mais le fil, qui
+   * affiche des bentos entiers, le rend visible pour de bon.
+   */
+  readOnly?: boolean;
+  /**
+   * Épaisseur du cadre, avant mise à l'échelle. Le fil monte à 7 pour
+   * distinguer un coup de cœur sans changer de composant.
+   */
+  frameBorderWidth?: number;
 };
 
 /**
@@ -29,14 +45,21 @@ type BentoGridProps = {
  * restent posés à l'intérieur sans gap noir gênant, et les EmptyTiles sont
  * visibles sur le fond crème.
  */
-export function BentoGrid({ items, scale = 1, empty = false, onTap }: BentoGridProps) {
-  const H_FILM = 220 * scale;
-  const H_MID = 134 * scale;
-  const H_SM = 100 * scale;
-  const GAP = 10 * scale;
-  const PAD = 14 * scale;
-  const BORDER = Math.max(3, Math.round(5 * scale));
-  const RADIUS = 28 * scale;
+export function BentoGrid({
+  items,
+  scale = 1,
+  empty = false,
+  onTap,
+  readOnly = false,
+  frameBorderWidth = GRID_GEOMETRY.BORDER,
+}: BentoGridProps) {
+  const H_FILM = GRID_GEOMETRY.H_FILM * scale;
+  const H_MID = GRID_GEOMETRY.H_MID * scale;
+  const H_SM = GRID_GEOMETRY.H_SM * scale;
+  const GAP = GRID_GEOMETRY.GAP * scale;
+  const PAD = GRID_GEOMETRY.PAD * scale;
+  const BORDER = Math.max(3, Math.round(frameBorderWidth * scale));
+  const RADIUS = GRID_GEOMETRY.RADIUS * scale;
 
   const renderTile = (cat: CategoryKey, height: number, size: 'sm' | 'md' | 'lg', rotate: number) => {
     const item = items[cat];
@@ -47,6 +70,7 @@ export function BentoGrid({ items, scale = 1, empty = false, onTap }: BentoGridP
           height={height}
           scale={scale}
           rotate={rotate * 0.5}
+          readOnly={readOnly}
           onPress={onTap ? () => onTap(cat) : undefined}
         />
       );

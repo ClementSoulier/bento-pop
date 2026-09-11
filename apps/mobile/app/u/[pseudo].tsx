@@ -222,7 +222,7 @@ export default function PublicBento() {
 
             {/* Grille bento read-only (pas de onTap) */}
             <View style={{ paddingHorizontal: 16, flex: 1 }}>
-              <BentoGrid items={state.slots} scale={0.94} />
+              <BentoGrid items={state.slots} scale={0.94} readOnly />
             </View>
 
             {/* Sticky CTAs bottom */}

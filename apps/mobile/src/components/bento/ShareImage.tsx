@@ -119,7 +119,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
           justifyContent: 'center',
         }}
       >
-        <BentoGrid items={items} scale={2.5} />
+        <BentoGrid items={items} scale={2.5} readOnly />
       </View>
 
       {/* ━━━ FOOTER ━━━ */}
