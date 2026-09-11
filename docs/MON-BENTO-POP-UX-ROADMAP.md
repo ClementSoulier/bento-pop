@@ -5,6 +5,7 @@
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
 **Légende effort** : S = moins d'une journée · M = 1 à 3 jours · L = plus de 3 jours ou arbitrage produit nécessaire.
+**Légende statut** : ⬜ à faire · 🟡 en cours · ✅ livré et vérifié.
 
 ---
 
@@ -12,7 +13,7 @@
 
 | # | Chantier | Impact | Effort | Dépend de | Statut |
 |---|---|---|---|---|---|
-| 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ⬜ [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
+| 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | 🟡 lots 0 à 7 livrés · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | Flux « Derniers bentos » dans À la une | Rétention | S | rien | ⬜ |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | ⬜ |
 | 4 | `expo-image` partout | Perf + egress | S | rien | ⬜ |
