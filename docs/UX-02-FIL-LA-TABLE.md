@@ -658,14 +658,30 @@ Assertions :
 4. Le curseur envoyé est identique, caractère pour caractère, au
    `published_at` renvoyé à la page précédente.
 5. Une réponse 500 produit un rejet, pas un tableau vide silencieux.
-6. `publishBento` émet bien `published_at=is.null`. Le correctif du lot 0 est
-   une ligne dont l'utilité n'est visible qu'à la lecture du commentaire :
-   sans test, le prochain lecteur la prendra pour une redondance et la
-   retirera, et le fil recommencera à trier sur les taps.
+**Le client Supabase est un paramètre de `loadFeedPage`, pas un import.** Le
+reste de l'app importe le singleton de `@/supabase/client`, lequel tire au
+chargement `react-native-url-polyfill`, AsyncStorage et `expo-constants`, et
+jette si les variables d'environnement manquent. Un module qui l'importe est
+inchargeable dans node, donc intestable ailleurs que sur un appareil. Le
+paramètre rend cette propriété explicite plutôt qu'accidentelle. Aucun
+branchement de test dans le code de production.
 
-`loadFeedPage` et `publishBento` acceptent pour cela un client injecté en
-dernier paramètre, avec le singleton en valeur par défaut. Aucun branchement
-de test dans le code de production.
+**Contrainte de plateforme.** `supabase-js` instancie un `RealtimeClient` dès
+`createClient`, et `realtime-js` réclame un WebSocket natif, absent de Node 20
+(arrivé en 22) alors que le dépôt est en 20. Le bouchon exporte donc des
+options de client passant un `transport` factice, qui court-circuite la
+détection sans jamais être instancié. Plus léger qu'ajouter `ws` en dépendance
+pour une fonctionnalité que l'app n'utilise nulle part.
+
+**Ce qui n'est pas couvert, et pourquoi.** Le `.is('published_at', null)` du
+lot 0 devait faire l'objet d'une sixième assertion. Ce n'est pas faisable en
+l'état : `publishBento` vit dans `bento-actions.ts`, qui importe le singleton
+au niveau module et dépend de `pseudo.ts`, lequel l'importe aussi. Rendre ce
+graphe chargeable dans node signifie convertir sept fonctions et quatre écrans
+appelants, ce qui est le périmètre du chantier 5, qui réécrit de toute façon
+le flux de publication. En attendant, le correctif est gardé par son
+commentaire et par l'item de §10.4 « retaper Publier ne remonte pas le
+bento ». À reprendre au chantier 5.
 
 ### 10.4 QA manuelle, checklist bloquante
 
@@ -752,22 +768,32 @@ partage sur les deux plateformes.
 
 ### Lot 2 · Couche de données
 
-- `src/lib/feed.ts` : `FeedBento`, `Cursor`, `PAGE_SIZE`, `mapFeedRow`,
-  `cursorOf`, `loadFeedPage`, `feedAccessibilityLabel`.
-- Suppression de `src/lib/featured.ts`.
-- `publishBento` accepte un client injecté, pour l'assertion 6 de §10.3.
+- `src/lib/feed.ts` : `FeedBento`, `FeedCursor`, `PAGE_SIZE`, `mapFeedRow`,
+  `cursorOf`, `loadFeedPage`, `feedAccessibilityLabel`. Client Supabase en
+  premier paramètre.
+- `src/lib/relative-date.ts` et ses tests, **remontés du lot 3** :
+  `feedAccessibilityLabel` en dépend, et c'est du pur, donc sa place est avec
+  la couche de données plutôt qu'avec les composants.
+- `src/test/postgrest-stub.ts` : bouchon HTTP réutilisable.
 - Remontée d'erreur au lieu du tableau vide.
-- Tests unitaires (§10.2) et bouchon d'intégration (§10.3).
+- Tests unitaires (§10.2) et d'intégration (§10.3).
+
+**La suppression de `src/lib/featured.ts` est repoussée au lot 4**, où l'écran
+est réécrit. La retirer maintenant casserait la compilation de `featured.tsx`,
+et un arbre qui ne compile pas entre deux lots vaut moins qu'une frontière de
+lot bien nette.
 
 **Vérification** : `pnpm --filter @bento-pop/mobile test` au vert, plus un tir
-manuel de la requête page 2 contre la production.
+manuel de la requête page 2 contre la production. Les assertions les plus
+subtiles (curseur repris mot pour mot, curseur pris sur la ligne brute) sont
+elles-mêmes vérifiées par mutation : introduire le défaut correspondant doit
+faire tomber le test.
 
 ### Lot 3 · Composants du post
 
 - `src/components/feed/FeedPost.tsx`, `FeedPostHeader.tsx`,
   `FeedPostSkeleton.tsx`, plus un `layout.ts` portant les constantes de §5.3
   et `ACTIONS_HEIGHT = 0`.
-- `src/lib/relative-date.ts` et ses tests.
 - Prop `ribbon` plutôt que `isFeatured`.
 - Suppression de `MiniBentoCard`.
 
