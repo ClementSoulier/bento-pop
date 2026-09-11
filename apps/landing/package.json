@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test $(find src -name '*.test.ts' | sort)",
-    "clean": "rm -rf .next .turbo"
+    "test:e2e": "tsx --test e2e/smoke.test.ts",
+    "clean": "rm -rf .next .next-e2e .turbo"
   },
   "dependencies": {
     "@bento-pop/brand": "workspace:*",

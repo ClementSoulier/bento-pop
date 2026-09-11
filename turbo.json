@@ -32,6 +32,14 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
+    // Tests d'intégration HTTP : construisent et démarrent eux-mêmes un
+    // serveur sur des ports fixes. Non mis en cache — un résultat resservi
+    // masquerait une régression dépendante de l'environnement, et deux
+    // exécutions simultanées se disputeraient les ports.
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "clean": {
       "cache": false
     }

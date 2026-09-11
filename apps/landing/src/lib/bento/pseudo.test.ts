@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isValidPseudo, needsCanonicalRedirect } from './pseudo';
+import { canonicalPseudo, isValidPseudo, needsCanonicalRedirect } from './pseudo';
 
 describe('isValidPseudo', () => {
   it('accepte les formes valides aux bornes de la contrainte SQL', () => {
@@ -75,13 +75,39 @@ describe('isValidPseudo', () => {
   });
 });
 
-describe('needsCanonicalRedirect', () => {
-  it('ne redirige pas quand la casse correspond', () => {
-    assert.equal(needsCanonicalRedirect('Keremasan', 'Keremasan'), false);
+describe('canonicalPseudo', () => {
+  it('normalise en minuscules', () => {
+    assert.equal(canonicalPseudo('Keremasan'), 'keremasan');
+    assert.equal(canonicalPseudo('BUYT.K'), 'buyt.k');
+    assert.equal(canonicalPseudo('deja_bas'), 'deja_bas');
   });
 
-  it('redirige vers la casse stockée en base', () => {
-    assert.equal(needsCanonicalRedirect('keremasan', 'Keremasan'), true);
-    assert.equal(needsCanonicalRedirect('KEREMASAN', 'Keremasan'), true);
+  it('est idempotente', () => {
+    assert.equal(canonicalPseudo(canonicalPseudo('MiXtE')), canonicalPseudo('MiXtE'));
+  });
+});
+
+describe('needsCanonicalRedirect', () => {
+  it('ne redirige pas une URL déjà canonique', () => {
+    assert.equal(needsCanonicalRedirect('keremasan'), false);
+    assert.equal(needsCanonicalRedirect('buyt.k'), false);
+    assert.equal(needsCanonicalRedirect('a_b.9'), false);
+  });
+
+  it('redirige dès qu’une majuscule apparaît', () => {
+    assert.equal(needsCanonicalRedirect('Keremasan'), true);
+    assert.equal(needsCanonicalRedirect('KEREMASAN'), true);
+    assert.equal(needsCanonicalRedirect('kEremasan'), true);
+  });
+
+  /**
+   * L'enjeu n'est pas cosmétique. Sur une URL publique, chaque variante de
+   * casse serait sinon une entrée de cache ISR et une requête Supabase
+   * distinctes : un pseudo de vingt caractères en offre plus d'un million.
+   * La décision étant purement lexicale, aucune de ces variantes ne touche
+   * la base.
+   */
+  it('décide sans connaître la casse stockée', () => {
+    assert.equal(needsCanonicalRedirect.length, 1, 'ne doit dépendre que de l’URL');
   });
 });

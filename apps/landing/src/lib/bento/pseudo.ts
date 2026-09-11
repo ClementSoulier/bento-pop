@@ -40,15 +40,31 @@ export function isValidPseudo(value: unknown): value is string {
 }
 
 /**
- * `true` si l'URL demandée n'est pas la forme canonique du pseudo.
+ * Forme canonique d'un pseudo **dans une URL** : en minuscules.
  *
  * L'unicité est posée sur `lower(pseudo)` (`users_pseudo_lower_idx`), donc
- * `/u/Keremasan` et `/u/keremasan` désignent la même personne. Sans
- * redirection, c'est du contenu dupliqué pour les moteurs et deux entrées
- * de cache distinctes pour un seul contenu. La forme canonique est celle
- * **stockée en base**, pas la minuscule : c'est la casse que l'utilisateur
- * a choisie et qu'il verra dans ses partages.
+ * `/u/Keremasan` et `/u/keremasan` désignent la même personne.
+ *
+ * On aurait pu retenir la casse stockée en base comme forme canonique,
+ * plus fidèle à ce que l'utilisateur a choisi. C'est écarté pour deux
+ * raisons, la seconde étant décisive :
+ *
+ * 1. Décider la redirection demanderait de connaître la casse stockée,
+ *    donc d'interroger la base **avant** de pouvoir rediriger.
+ * 2. Surtout, chaque variante de casse deviendrait une entrée de cache et
+ *    une requête distinctes. Sur une URL publique, n'importe qui peut
+ *    demander `/u/KeremasaN`, `/u/kEremasan`… et générer autant d'entrées
+ *    ISR et d'allers-retours Supabase qu'il y a de combinaisons. En
+ *    minuscules, tout cela redirige lexicalement, sans toucher la base.
+ *
+ * La casse choisie par l'utilisateur reste affichée dans la page ; seule
+ * l'adresse est normalisée.
  */
-export function needsCanonicalRedirect(requested: string, stored: string): boolean {
-  return requested !== stored;
+export function canonicalPseudo(pseudo: string): string {
+  return pseudo.toLowerCase();
+}
+
+/** `true` si l'URL demandée n'est pas déjà sous sa forme canonique. */
+export function needsCanonicalRedirect(requested: string): boolean {
+  return requested !== canonicalPseudo(requested);
 }

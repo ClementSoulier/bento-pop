@@ -10,13 +10,8 @@ import {
   BentoReportLink,
 } from '@/components/bento/BentoPageShell';
 import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
-import {
-  bentoDescription,
-  bentoPath,
-  bentoRobots,
-  bentoTitle,
-} from '@/lib/bento/metadata';
-import { needsCanonicalRedirect } from '@/lib/bento/pseudo';
+import { bentoDescription, bentoPath, bentoRobots, bentoTitle } from '@/lib/bento/metadata';
+import { canonicalPseudo, needsCanonicalRedirect } from '@/lib/bento/pseudo';
 import { listFeaturedPseudos, lookupPublicBento } from '@/lib/bento/queries';
 import { smartAppBanner } from '@/lib/bento/stores';
 
@@ -56,20 +51,27 @@ const getBento = cache(lookupPublicBento);
  */
 export async function generateStaticParams() {
   const pseudos = await listFeaturedPseudos();
-  return pseudos.map((pseudo) => ({ pseudo }));
+  // En minuscules : c'est la forme canonique des URL, donc la seule
+  // qu'il serve à pré-rendre.
+  return pseudos.map((pseudo) => ({ pseudo: canonicalPseudo(pseudo) }));
 }
 
 type PageProps = { params: Promise<{ pseudo: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { pseudo: requested } = await params;
+
+  // La page redirigera ; inutile de composer des métadonnées, et surtout
+  // inutile d'interroger la base pour une URL qu'on va abandonner.
+  if (needsCanonicalRedirect(requested)) return {};
+
   const lookup = await getBento(requested);
 
   if (lookup.kind === 'not-found') {
     return { title: 'Bento introuvable', robots: { index: false, follow: true } };
   }
 
-  const canonicalPath = bentoPath(lookup.kind === 'published' ? lookup.bento.pseudo : lookup.pseudo);
+  const canonicalPath = bentoPath(requested);
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
   // La bannière Smart App de Safari : gratuite, native, et elle gère seule
   // « Ouvrir » ou « Obtenir » selon que l'app est installée.
@@ -110,21 +112,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicBentoPage({ params }: PageProps) {
   const { pseudo: requested } = await params;
+
+  // Avant toute entrée-sortie : la casse se normalise lexicalement, donc
+  // une URL non canonique ne doit coûter ni requête Supabase ni entrée de
+  // cache. Cf. `canonicalPseudo` pour le raisonnement.
+  if (needsCanonicalRedirect(requested)) {
+    permanentRedirect(bentoPath(canonicalPseudo(requested)));
+  }
+
   const lookup = await getBento(requested);
 
   if (lookup.kind === 'not-found') notFound();
-
-  const canonicalPseudo =
-    lookup.kind === 'published' ? lookup.bento.pseudo : lookup.pseudo;
-
-  // `lower(pseudo)` est unique en base : `/u/Keremasan` et `/u/keremasan`
-  // désignent la même personne. Sans redirection, ce serait du contenu
-  // dupliqué et deux entrées de cache pour un seul contenu. La forme
-  // canonique est celle stockée, pas la minuscule : c'est la casse que
-  // l'utilisateur a choisie et qui apparaît dans ses partages.
-  if (needsCanonicalRedirect(requested, canonicalPseudo)) {
-    permanentRedirect(bentoPath(canonicalPseudo));
-  }
 
   if (lookup.kind === 'unpublished') {
     return (
@@ -152,8 +150,8 @@ export default async function PublicBentoPage({ params }: PageProps) {
                 Ce bento n&apos;est pas encore terminé !
               </span>
               <span className="mt-2 block">
-                @{lookup.pseudo} n&apos;a pas fini de garnir sa boîte. Repasse dans
-                quelques jours, elle apparaîtra ici.
+                @{lookup.pseudo} n&apos;a pas fini de garnir sa boîte. Repasse dans quelques jours,
+                elle apparaîtra ici.
               </span>
             </p>
             <BentoCallToAction
@@ -167,7 +165,7 @@ export default async function PublicBentoPage({ params }: PageProps) {
   }
 
   const { bento } = lookup;
-  const canonicalUrl = `${SITE_URL}${bentoPath(bento.pseudo)}`;
+  const canonicalUrl = `${SITE_URL}${bentoPath(requested)}`;
 
   return (
     <BentoPageShell pseudo={bento.pseudo}>
@@ -191,42 +189,37 @@ export default async function PublicBentoPage({ params }: PageProps) {
         />
       ) : null}
 
-      {/* Deux colonnes de largeur bornée et centrées, plutôt qu'une colonne
-          en `1fr` : laissée libre, la colonne de droite s'étirait sur
-          800px et l'appel à l'action flottait au milieu du vide. */}
-      <div className="mx-auto grid max-w-[940px] items-start gap-10 lg:grid-cols-[420px_minmax(0,460px)] lg:justify-center lg:gap-16">
-        <div>
-          <div className="lg:hidden">
-            <BentoIdentity
-              pseudo={bento.pseudo}
-              displayName={bento.displayName}
-              publishedAt={bento.publishedAt}
-              isFeatured={bento.isFeatured}
-            />
-          </div>
-          <div className="mt-6 lg:mt-0">
-            <PublicBentoGrid
-              slots={bento.slots}
-              label={`Les six choix de @${bento.pseudo}`}
-            />
-          </div>
+      {/*
+        Trois éléments de grille, et **un seul** bloc d'identité.
+        La première version le rendait deux fois, masqué par `lg:hidden`
+        d'un côté et `hidden lg:block` de l'autre : deux `<h1>` dans le
+        document, tous deux annoncés par un lecteur d'écran. Le placement
+        explicite donne la même mise en page sans duplication.
+
+        Mobile : identité, boîte, appel à l'action, dans l'ordre du DOM.
+        Desktop : boîte à gauche sur deux rangées, identité puis appel à
+        l'action empilés à droite. Colonnes bornées et centrées, sinon la
+        colonne de droite s'étire et le bouton flotte au milieu du vide.
+      */}
+      <div className="mx-auto grid max-w-[940px] items-start gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,460px)] lg:grid-rows-[auto_1fr] lg:justify-center lg:gap-x-16 lg:gap-y-8">
+        <div className="lg:col-start-2 lg:row-start-1">
+          <BentoIdentity
+            pseudo={bento.pseudo}
+            displayName={bento.displayName}
+            publishedAt={bento.publishedAt}
+            isFeatured={bento.isFeatured}
+          />
         </div>
 
-        <div className="lg:sticky lg:top-10">
-          <div className="hidden lg:block">
-            <BentoIdentity
-              pseudo={bento.pseudo}
-              displayName={bento.displayName}
-              publishedAt={bento.publishedAt}
-              isFeatured={bento.isFeatured}
-            />
-          </div>
-          <div className="lg:mt-8">
-            <BentoCallToAction
-              heading="Compose le tien"
-              blurb="Six cases, six choix : ton film, ta série, ton artiste, ta chanson, ton créateur et ton lieu. Gratuit, sans compte à créer."
-            />
-          </div>
+        <div className="lg:col-start-1 lg:row-span-2 lg:row-start-1">
+          <PublicBentoGrid slots={bento.slots} label={`Les six choix de @${bento.pseudo}`} />
+        </div>
+
+        <div className="lg:col-start-2 lg:row-start-2">
+          <BentoCallToAction
+            heading="Compose le tien"
+            blurb="Six cases, six choix : ton film, ta série, ton artiste, ta chanson, ton créateur et ton lieu. Gratuit, sans compte à créer."
+          />
         </div>
       </div>
 

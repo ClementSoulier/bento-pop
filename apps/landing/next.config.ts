@@ -79,6 +79,11 @@ const nextConfig: NextConfig = {
   // uniquement les deps réellement utilisées (server.js + node_modules pruné).
   output: 'standalone',
 
+  // Le harnais de tests d'intégration (`e2e/`) doit construire l'app avec
+  // ses propres variables d'environnement, sans écraser le `.next` du
+  // développeur ni celui de l'étape de build de la CI.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+
   reactStrictMode: true,
 
   /**

@@ -1,7 +1,7 @@
 # UX-01 · Page bento publique `/u/[pseudo]` + image Open Graph
 
 > Chantier 1 de [`MON-BENTO-POP-UX-ROADMAP.md`](./MON-BENTO-POP-UX-ROADMAP.md).
-> **Statut : spécifié, pas encore développé.** Rédigé le 11 septembre 2026.
+> **Statut : lots 0 à 7 livrés, checklist QA manuelle à dérouler.** Rédigé et implémenté le 11 septembre 2026.
 >
 > Ce document est la référence d'implémentation. Toute divergence pendant le dev se règle en modifiant ce document, pas en silence.
 
@@ -32,8 +32,8 @@ Transformer un lien partagé en page d'atterrissage qui affiche le bento immédi
 1. `GET /u/<pseudo publié>` renvoie 200 et le HTML contient les 6 cases du bento.
 2. `GET /u/<pseudo inconnu>` renvoie **404** (pas 200 avec un message).
 3. Le HTML contient `og:image`, `og:title`, `og:description`, `twitter:card`, en URLs absolues.
-4. L'image OG renvoie un PNG 1200×630 valide, **inférieur à 300 Ko** (contrainte WhatsApp).
-5. La page n'ajoute **aucun kilo-octet de JavaScript client** par rapport au layout racine.
+4. L'image OG renvoie une image 1200×630 valide, **inférieure à 300 Ko** (contrainte WhatsApp). *JPEG et non PNG, cf. lot 5.*
+5. La page n'ajoute **aucun composant client propre au segment**. *Formulation corrigée au lot 4 : `next/image` et `next/link` sont des composants clients, le premier chargement mesure 113 ko contre 114 ko pour une fiche épisode.*
 6. LCP mobile inférieur à 1,8 s et CLS égal à 0, mesurés en local sur profil « Slow 4G ».
 7. Lighthouse mobile : Performance ≥ 95, Accessibilité = 100, SEO ≥ 95, Bonnes pratiques ≥ 95.
 
@@ -132,9 +132,18 @@ La validation regex ne peut pas résoudre ça, puisque le caractère est légiti
 
 ### 5.2 Canonicalisation de la casse
 
-L'unicité est posée sur `lower(pseudo)` (`users_pseudo_lower_idx`), donc `/u/Keremasan` et `/u/keremasan` désignent le même utilisateur. Sans traitement, c'est du contenu dupliqué et deux entrées de cache distinctes.
+L'unicité est posée sur `lower(pseudo)` (`users_pseudo_lower_idx`), donc `/u/Keremasan` et `/u/keremasan` désignent la même personne.
 
-**Règle :** la casse canonique est celle **stockée en base**. Si le segment d'URL en diffère, `permanentRedirect()` (308) vers l'URL canonique. Le `alternates.canonical` des métadonnées pointe toujours sur cette forme.
+**Règle retenue au lot 7 : la forme canonique de l'URL est en minuscules**, et la redirection 308 est décidée lexicalement, avant toute requête.
+
+La spec prévoyait initialement de canoniser sur la casse **stockée en base**, plus fidèle au choix de l'utilisateur. Écarté pour deux raisons, la seconde étant décisive :
+
+1. Décider la redirection exigerait de connaître la casse stockée, donc d'interroger Supabase avant de pouvoir rediriger.
+2. Surtout, chaque variante de casse deviendrait une entrée de cache ISR et une requête distinctes. Sur une URL publique, n'importe qui peut demander `/u/KeremasaN`, `/u/kEremasan`… Un pseudo de vingt caractères en offre plus d'un million. En minuscules, toutes redirigent lexicalement, sans jamais toucher la base.
+
+La casse choisie par l'utilisateur reste **affichée** dans la page ; seule l'adresse est normalisée.
+
+**Suivi** : `shareBento()` côté mobile partage la casse stockée, ce qui provoque une redirection supplémentaire sur les pseudos comportant une majuscule. À corriger avec le lot 8.
 
 ### 5.3 Requête
 
@@ -604,16 +613,28 @@ Un lot égale un commit. L'ordre est contraint : chaque lot doit laisser la bran
 2. **Satori n'implémente pas le raccourci `inset`.** La couche de voile posée en `inset: 0` s'effondrait à zéro, et le titre blanc devenait invisible sur une pochette claire. Décalages explicites désormais.
 3. **Le voile était trop faible**, y compris sur le web. Une pochette quasi blanche laissait le titre illisible. Le dégradé démarre plus haut et descend à 88 %, et il est désormais partagé (`TILE_SCRIM` dans `layout.ts`) pour que la vérification vaille des deux côtés.
 
-### Lot 6 · SEO
-- `sitemap.ts` : URL featured
-- Données structurées `ProfilePage`
-- **Vert quand** : le sitemap contient les featured et rien d'autre
+### Lot 6 · SEO ✅
+- `sitemap.ts` : URL des seuls bentos featured, en minuscules, priorité 0.5
+- Données structurées `ProfilePage` livrées au lot 4, posées uniquement sur les pages indexables
+- **Vert** : le sitemap ne contient que les featured. Lister des pages en `noindex` enverrait un signal contradictoire aux moteurs.
 
-### Lot 7 · Tests d'intégration et QA
-- Stub PostgREST, harnais `next build` plus `next start`
-- Tous les cas du §11.3
-- Checklist du §11.4 déroulée et consignée
-- **Vert quand** : la CI est verte et la checklist est complète
+### Lot 7 · Tests d'intégration et QA ✅ (automatisé) · ⬜ (checklist manuelle)
+- `e2e/stub.mjs` : bouchon PostgREST, reproduisant la sémantique d'`ILIKE` jokers compris
+- `e2e/smoke.test.ts` : 21 assertions sur un vrai `next build` plus `next start`
+- `test:e2e` dans `turbo.json` et dans la CI, non mis en cache
+- `distDir` configurable par `NEXT_DIST_DIR`, pour ne pas écraser le `.next` du développeur ni celui de l'étape de build
+- **Vert** : 21 tests d'intégration, 104 tests unitaires
+- **Reste** : la checklist manuelle du §11.4, en particulier la validation des aperçus sur WhatsApp, iMessage et Discord avec de vrais liens, qui ne peut se faire qu'après déploiement.
+
+**Trois défauts trouvés par le harnais, invisibles à la relecture :**
+
+1. **Deux `<h1>` dans le document.** Le bloc d'identité était rendu deux fois, masqué par `lg:hidden` d'un côté et `hidden lg:block` de l'autre. Un lecteur d'écran annonçait les deux. Corrigé par un placement explicite en grille : un seul bloc, même rendu visuel.
+2. **Une erreur de typage** dans le nouveau `jpeg.ts`, que le `typecheck` n'avait pas encore vue au moment où elle a été introduite.
+3. **Le budget de poids n'était pas garanti**, seulement constaté. Sur du bruit pur, la qualité 82 produit 425 Ko. L'encodeur descend désormais d'un palier tant que le budget n'est pas tenu, ce qui en fait une invariante du code plutôt qu'un espoir. Une image réelle reste au premier palier, vérifié par un test.
+
+**Limite assumée du harnais.** Les illustrations des fixtures sont nulles : la liste d'hôtes autorisés de `prefetchImages` n'accepte que HTTPS sur des domaines connus, et un bouchon local en clair ne peut pas y figurer sans affaiblir le code de production. Le chemin « avec photos » est donc couvert autrement : le test unitaire d'encodage sur du bruit, plus les mesures sur données réelles (68 Ko).
+
+**Note macOS.** Le cache ISR de Next écrit un fichier par chemin. Sur un système de fichiers insensible à la casse, `/u/REJETE` et `/u/rejete` se disputent la même entrée, ce qui rend les tests de casse dépendants de l'ordre. Les fixtures de redirection sont donc réservées à ce seul test. Sous Linux, en CI comme en production, le problème n'existe pas.
 
 ### Lot 8 · URL sur l'image de partage mobile
 - `apps/mobile/src/components/bento/ShareImage.tsx` : ajout de `bento-pop.com/u/<pseudo>`

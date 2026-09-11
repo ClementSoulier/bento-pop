@@ -1,11 +1,31 @@
 import type { MetadataRoute } from 'next';
 import { getPodcastEpisodes, getShowEpisodes } from '@/content/episodes';
+import { listFeaturedPseudos } from '@/lib/bento/queries';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
   const now = new Date();
 
-  const [shows, podcasts] = await Promise.all([getShowEpisodes(), getPodcastEpisodes()]);
+  const [shows, podcasts, featuredPseudos] = await Promise.all([
+    getShowEpisodes(),
+    getPodcastEpisodes(),
+    listFeaturedPseudos(),
+  ]);
+
+  /**
+   * Seuls les bentos mis en avant par l'équipe entrent au sitemap.
+   *
+   * Les autres sont servis en `noindex` (cf. spec §8) : les lister ici
+   * enverrait un signal contradictoire aux moteurs, qui les exploreraient
+   * pour découvrir qu'ils ne doivent pas les indexer. Priorité modérée :
+   * ce sont des pages de partage, pas le cœur éditorial du site.
+   */
+  const bentoUrls: MetadataRoute.Sitemap = featuredPseudos.map((pseudo) => ({
+    url: `${base}/u/${pseudo}`,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.5,
+  }));
 
   const showUrls: MetadataRoute.Sitemap = shows.map((e) => ({
     url: `${base}/emissions/${e.slug}`,
@@ -42,6 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     ...showUrls,
     ...podcastUrls,
+    ...bentoUrls,
     {
       url: `${base}/mentions-legales`,
       lastModified: now,
