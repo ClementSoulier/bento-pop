@@ -14,7 +14,7 @@
 | # | Chantier | Impact | Effort | Dépend de | Statut |
 |---|---|---|---|---|---|
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
-| 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 spécifié, prêt à développer · [spec](./UX-02-FIL-LA-TABLE.md) |
+| 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 développé, recette simulateur iOS faite · reste device et Android · [spec](./UX-02-FIL-LA-TABLE.md) |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | ⬜ |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
@@ -207,7 +207,7 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 
 - La loupe est un **emoji** 🔍 (`search-modal.tsx:238`, `search.tsx:106`) alors que `react-native-svg` et `@expo/vector-icons` sont installés : rendu différent iOS et Android, et lu à voix haute par VoiceOver.
 - Plusieurs titres ont un `lineHeight` inférieur au `fontSize` (`fontSize: 28, lineHeight: 26` dans compose, featured, search) : avec la taille de police système augmentée, les glyphes Extenda se font rogner. Aucun `allowFontScaling={false}` ni `maxFontSizeMultiplier` nulle part dans l'app.
-- Le crédit image en `rgba(255,255,255,0.5)` sur photo (`Tile.tsx:283`) est sous le seuil de contraste, alors que c'est une obligation légale CC-BY-SA.
+- Le crédit image en `rgba(255,255,255,0.5)` sur photo (`Tile.tsx:283`) est sous le seuil de contraste, alors que c'est une obligation légale CC-BY-SA. **Pire que le contraste : il se superpose au sous-titre**, les deux étant positionnés dans la même bande basse de la tuile. Constaté en recette du chantier 2, qui l'affiche sur chaque case de chaque post. À traiter avant le chantier 11.
 - Faute dans le menu de signalement : « Confirme-tu ? » (`u/[pseudo].tsx:427`).
 - Les états de chargement sont des `ActivityIndicator` centrés : les remplacer par des squelettes de tuiles sur featured et bento public. *Traité pour « La table » par le chantier 2 ; reste la page bento public.*
 

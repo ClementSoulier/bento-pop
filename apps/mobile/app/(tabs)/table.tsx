@@ -81,12 +81,19 @@ export default function TableTab() {
 
   return (
     <YellowBg>
-      <SafeAreaView style={{ flex: 1 }}>
+      {/* `edges={['top']}` : la barre d'onglets occupe déjà la zone sûre du
+          bas. Sans cette restriction, la marge de sécurité s'ajoute par
+          dessus et laisse une bande jaune morte entre le dernier post et la
+          barre. Même réglage que le composer. */}
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <FlatList
           data={bentos}
           keyExtractor={(bento) => bento.bentoId}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          // La barre d'onglets est un frère de l'écran, pas un calque
+          // par-dessus : la liste s'arrête déjà au-dessus d'elle. Il ne reste
+          // à réserver que de quoi ne pas coller le pied de liste au bord.
+          contentContainerStyle={{ paddingBottom: 32 }}
           ListHeaderComponent={<Header />}
           ListEmptyComponent={
             isLoading ? (

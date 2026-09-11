@@ -9,7 +9,7 @@ import { shareBento, type ShareOutcome } from './share';
 /**
  * Précharge les URLs distantes pour qu'elles soient présentes au moment du
  * `captureRef`. Sans ça, la capture peut snapshot une image avant la fin de
- * son téléchargement → case vide dans le PNG partagé.
+ * son téléchargement, ce qui donne une case vide dans l'image partagée.
  *
  * **Le `prefetch` doit venir d'`expo-image`, pas de React Native.** Depuis
  * que `Tile` rend ses visuels avec `expo-image`, les deux bibliothèques ont
@@ -41,9 +41,9 @@ async function preloadImages(urls: string[]): Promise<void> {
 }
 
 /**
- * Partage le bento sous forme d'image PNG capturée (story Instagram-friendly).
+ * Partage le bento sous forme d'image capturée (story Instagram-friendly).
  *
- * - **Native** : `captureRef` rend la View en PNG dans un fichier temporaire,
+ * - **Native** : `captureRef` rend la View en JPEG dans un fichier temporaire,
  *   puis `expo-sharing.shareAsync(uri)` ouvre le sheet de partage natif
  *   (Photos, Instagram, Messages, etc.).
  * - **Web** : on reste sur le partage URL classique (`shareBento`) — la
@@ -65,7 +65,7 @@ export async function shareBentoImage(
 
   try {
     // 1. Précharger les images distantes pour qu'elles soient présentes
-    //    dans le PNG capturé (sinon race : captureRef peut snapshot avant
+    //    dans l'image capturée (sinon race : captureRef peut snapshot avant
     //    que les Image aient fini leur download).
     if (imageUrls.length > 0) {
       await preloadImages(imageUrls);
@@ -74,16 +74,32 @@ export async function shareBentoImage(
     //    Extenda offscreen + nouvelles images chargées). Cf. fix
     //    `top: -10000` → `opacity: 0` pour ShareImage.
     await new Promise((resolve) => setTimeout(resolve, 80));
+    // JPEG et non PNG. `captureRef` rastérise à la densité de l'écran :
+    // `ShareImage` mesure 1080 × 1920 points, donc 3240 × 5760 pixels sur un
+    // appareil @3x. En PNG cela donne un fichier de 27 Mo, mesuré sur
+    // simulateur, que l'utilisateur envoie tel quel dans une messagerie.
+    //
+    // Les options `width` et `height` de `captureRef` seraient la réponse
+    // évidente, mais elles ne servent à rien ici : elles sont documentées
+    // dans les types et l'implémentation iOS de `react-native-view-shot`
+    // 5.1 ne les lit jamais. Vérifié en les passant, le fichier faisait
+    // toujours 3240 × 5760.
+    //
+    // Le même rendu en JPEG q95 pèse 2,2 Mo, soit douze fois moins, à
+    // résolution inchangée. Contrôlé à la loupe sur les bords noirs sur
+    // jaune et le texte blanc sur rouge, là où le JPEG salit d'habitude :
+    // aucun artefact visible. Descendre la résolution demanderait de
+    // repenser `ShareImage`, qui est composé en points et non en pixels.
     const uri = await captureRef(ref, {
-      format: 'png',
-      quality: 1,
+      format: 'jpg',
+      quality: 0.95,
       result: 'tmpfile',
     });
 
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
-        mimeType: 'image/png',
-        UTI: 'public.png',
+        mimeType: 'image/jpeg',
+        UTI: 'public.jpeg',
         dialogTitle: `@${pseudo} · Bento Pop`,
       });
       return 'shared';

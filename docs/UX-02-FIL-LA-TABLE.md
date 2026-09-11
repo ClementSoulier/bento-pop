@@ -252,11 +252,23 @@ La grille mesure exactement **361 × 512 pt** à l'échelle 1, et 361 vaut
 
 ```ts
 const DESIGN_WIDTH = 361;
-const H_PADDING = 16;
+const H_PADDING = 24;
 const MAX_WIDTH = 420;   // au-delà, sur tablette, la boîte s'étale
 const boxWidth = Math.min(width - H_PADDING * 2, MAX_WIDTH);
 const scale = boxWidth / DESIGN_WIDTH;
 ```
+
+**La marge est passée de 16 à 24 après recette.** À 16, la boîte tombait pile
+à l'échelle 1 sur un iPhone 15 (361 = 393 - 32), coïncidence élégante mais qui
+donnait des posts collés aux bords : dans un fil, la boîte doit flotter sur le
+jaune, pas le remplir. Effet de bord bienvenu, la boîte légèrement réduite
+tient désormais entièrement à l'écran sur un iPhone 17, ce qui n'était pas le
+cas à 16.
+
+**L'écart entre deux posts est passé de 28 à 44.** L'ombre stamp de la boîte
+descend déjà de 8 pt et l'étiquette du post suivant porte la sienne, donc
+l'écart perçu valait une vingtaine de points et le pseudo semblait collé au
+bento du dessus.
 
 L'échelle se calcule sur la **largeur**, parce qu'un fil défile
 verticalement : la largeur est la seule contrainte. C'est l'inverse du
@@ -691,20 +703,37 @@ bento ». À reprendre au chantier 5.
 
 ### 10.4 QA manuelle, checklist bloquante
 
+**Recette faite sur simulateur iOS au lot 5** (iPhone 17 et iPhone SE 3,
+Xcode 26.4, build natif complet), avec les données de production servies par
+un proxy local en lecture seule. Les cases cochées ci-dessous l'ont été là.
+Ce que le simulateur ne peut pas donner reste à faire sur device réel :
+fluidité réelle, Android, VoiceOver, et tout ce qui demande une écriture en
+base (publier, republier, bloquer).
+
+Résultats notables de cette recette :
+
+| Vérification | Résultat |
+|---|---|
+| Cache disque d'`expo-image` après un défilement complet | **106 fichiers, 17 Mo** sur disque, ce qui confirme le lot 1 : la seconde visite ne retélécharge rien. |
+| Pagination sur les 26 bentos | 4 requêtes, aucun doublon, pied de liste affiché. |
+| Capture de l'image de partage sur iOS | Fonctionne, six cases pleines, aucune case blanche. Risque du lot 1 levé. |
+| Poids de l'image de partage | **27,1 Mo** en PNG, ramené à **2,5 Mo** en JPEG q95 (voir §14). |
+| État d'erreur du fil | Atteint après environ 3 s de squelette, le temps des deux tentatives de React Query. |
+
 À la charge de Clément, sur device réel.
 
 **Le fil**
 
-- [ ] iPhone SE (375 pt) : la boîte tient en largeur, aucun débordement.
-- [ ] iPhone 15 : un post par écran, le suivant apparaît sur environ 95 pt.
+- [x] iPhone SE (375 pt) : la boîte tient en largeur, aucun débordement. *(simulateur)*
+- [x] iPhone 15 : un post par écran, le suivant apparaît sur environ 95 pt. *(vérifié sur iPhone 17, 402 pt)*
 - [ ] Tablette Android : la boîte est plafonnée à 420 pt, centrée, pas étirée.
-- [ ] Défilement des 26 posts : aucun doublon, aucun trou, pied de liste
-      affiché.
+- [x] Défilement des 26 posts : aucun doublon, aucun trou, pied de liste
+      affiché. *(simulateur)*
 - [ ] Un post featured est reconnaissable sans lire l'étiquette.
 - [ ] L'étiquette « COUP DE CŒUR » n'est pas rognée en haut d'écran ni en
       cellule recyclée.
-- [ ] Tap sur un post : arrivée sur `/u/[pseudo]`, retour, position de
-      défilement conservée.
+- [x] Tap sur un post : arrivée sur `/u/[pseudo]`, retour, position de
+      défilement conservée. *(simulateur)*
 
 **Les données**
 
@@ -713,19 +742,20 @@ bento ». À reprendre au chantier 5.
 - [ ] Retaper « Publier mon bento » sur un bento déjà publié : il **ne**
       remonte **pas**. Vérifie le lot 0.
 - [ ] Bloquer un pseudo, revenir : son post a disparu.
-- [ ] Mode avion à l'ouverture : `ErrorState`, bouton Réessayer fonctionnel.
+- [x] Requête du fil en échec : `ErrorState`, bouton Réessayer présent. *(simulateur, panne simulée par le proxy)*
 - [ ] Mode avion en cours de défilement : échec propre, pas d'écran blanc, la
       liste déjà chargée reste affichée.
 
 **Les images**
 
-- [ ] Premier défilement complet, puis retour sur l'onglet : **aucune requête
-      image** au second passage (compteur réseau du dev menu, ou proxy).
+- [x] Premier défilement complet, puis retour sur l'onglet : **aucune requête
+      image** au second passage. *(simulateur : 106 fichiers, 17 Mo dans le cache disque SDWebImage)*
 - [ ] Cache vide : les cases affichent leur dégradé de palette avant l'image,
       jamais un rectangle gris.
-- [ ] Image de partage générée sur **iOS** et sur **Android**, bento à six
-      visuels, cache vide puis cache chaud. Aucun visuel manquant ni blanc.
-- [ ] Les crédits d'image sont présents sur chaque case qui en porte un.
+- [x] Image de partage générée sur **iOS**, bento à six visuels. Aucun
+      visuel manquant ni blanc. *(simulateur)* · [ ] reste **Android**.
+- [x] Les crédits d'image sont présents sur chaque case qui en porte un.
+      *(mais ils se superposent au sous-titre, cf. §14)*
 
 **Confort et accessibilité**
 
@@ -880,6 +910,40 @@ fil le rend beaucoup plus visible.
 
 `search-modal`, `search`, `profile`, `u/[pseudo]`. Le chantier 4 s'en trouve
 réduit à ces quatre écrans.
+
+### Superposition des crédits d'image
+
+Le crédit est en `position: absolute; bottom: 4` et le bloc titre en
+`bottom: conf.pad` : ils occupent la même bande, donc le crédit recouvre le
+sous-titre. « 2011 » et « Affiche : The Movie Database » se chevauchent, tout
+comme « vidéaste web… » et « Photo : Mickaël Schauli ». Le défaut est ancien
+et vit dans `Tile`, mais le fil l'affiche sur chaque case de chaque post.
+
+Ce n'est donc plus le simple problème de contraste listé au chantier 11.
+Corriger touche le composer, la page publique et l'image de partage, chacun
+demandant une vérification visuelle : environ une demi-journée.
+
+### Poids de l'image de partage, réglé au lot 5
+
+Mesuré sur simulateur : 27,1 Mo en PNG. `captureRef` rastérise à la densité
+de l'écran, or `ShareImage` mesure 1080 × 1920 points, soit 3240 × 5760 pixels
+sur un appareil @3x.
+
+Les options `width` et `height` de `captureRef` seraient la réponse évidente,
+mais **l'implémentation iOS de `react-native-view-shot` 5.1 ne les lit
+jamais**, bien qu'elles soient documentées dans les types. Vérifié en les
+passant : le fichier faisait toujours 3240 × 5760.
+
+Passage en JPEG q95 : **2,5 Mo**, à résolution inchangée, sans artefact
+visible sur les bords noirs sur jaune ni sur le texte blanc sur rouge.
+
+### Le boot reste bloqué quand tout le backend est injoignable
+
+Le garde-fou de 12 s du root layout ne remet que `initialized`, pas
+`appStatusLoading`, donc l'écran de démarrage ne part jamais si `app_config`
+n'aboutit pas. Constaté en coupant le proxy en entier. Sans rapport avec ce
+chantier, mais à regarder : c'est exactement le scénario du rejet App Store
+« stuck on splash » déjà rencontré.
 
 ### Nettoyage des `featured_order` en doublon
 

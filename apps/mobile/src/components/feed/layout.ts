@@ -16,8 +16,15 @@ export const DESIGN_WIDTH = GRID_WIDTH;
 /** Hauteur de la boîte à l'échelle 1, 512 pt. */
 export const DESIGN_HEIGHT = GRID_HEIGHT;
 
-/** Marge latérale de l'écran, de chaque côté. */
-export const H_PADDING = 16;
+/**
+ * Marge latérale de l'écran, de chaque côté.
+ *
+ * 24 et non 16. À 16, la boîte tombait pile à l'échelle 1 sur un iPhone 15
+ * (361 = 393 - 32), coïncidence élégante mais qui donnait des posts collés
+ * aux bords : dans un fil, la boîte doit flotter sur le jaune, pas le
+ * remplir. On perd la coïncidence, on gagne de l'air.
+ */
+export const H_PADDING = 24;
 
 /**
  * Au-delà, sur tablette, la boîte s'étalerait jusqu'à des cases plus grandes
@@ -35,8 +42,14 @@ export const MIN_BOX_WIDTH = 240;
 /** Écart entre l'étiquette d'identité et la boîte. */
 export const HEADER_GAP = 10;
 
-/** Écart entre deux posts. */
-export const POST_GAP = 28;
+/**
+ * Écart entre deux posts.
+ *
+ * 44 et non 28 : l'ombre stamp de la boîte descend déjà de 8 pt et
+ * l'étiquette du post suivant porte la sienne, donc l'écart perçu valait une
+ * vingtaine de points et le pseudo semblait collé au bento du dessus.
+ */
+export const POST_GAP = 44;
 
 /**
  * Débordement de l'étiquette « coup de cœur » sur le coin supérieur droit de

@@ -5,8 +5,10 @@ import {
   DESIGN_HEIGHT,
   DESIGN_WIDTH,
   H_PADDING,
+  HEADER_GAP,
   MAX_BOX_WIDTH,
   MIN_BOX_WIDTH,
+  POST_GAP,
   feedBoxWidth,
   feedScale,
 } from './layout';
@@ -39,12 +41,20 @@ describe('géométrie de la boîte bento', () => {
   });
 
   /**
-   * 361 = 393 - 2 × 16. C'est ce qui fait que la boîte tombe pile à l'échelle
-   * 1 sur un iPhone 15, sans rien forcer.
+   * La marge latérale était à 16, ce qui faisait tomber la boîte pile à
+   * l'échelle 1 sur un iPhone 15 (361 = 393 - 32). Coïncidence élégante, mais
+   * les posts touchaient les bords. Elle est passée à 24, et la boîte est
+   * donc désormais légèrement réduite sur un téléphone plutôt qu'à taille
+   * exacte : c'est voulu, et ce test le dit pour qu'on ne « rétablisse » pas
+   * l'ancienne valeur en croyant corriger une dérive.
    */
-  it('a une largeur de référence qui vaut exactement la largeur utile d’un iPhone 15', () => {
+  it('laisse la boîte respirer plutôt que de la caler sur la largeur exacte', () => {
     assert.equal(GRID_WIDTH, 361);
-    assert.equal(IPHONE_15 - H_PADDING * 2, GRID_WIDTH);
+    assert.equal(H_PADDING, 24);
+    assert.ok(
+      IPHONE_15 - H_PADDING * 2 < GRID_WIDTH,
+      'la boîte devrait être réduite, pas pleine largeur',
+    );
   });
 
   it('est reprise telle quelle par le fil', () => {
@@ -55,9 +65,9 @@ describe('géométrie de la boîte bento', () => {
 
 describe('feedBoxWidth', () => {
   it('remplit la largeur utile sur un téléphone', () => {
-    assert.equal(feedBoxWidth(SE), SE - 32);
-    assert.equal(feedBoxWidth(IPHONE_15), IPHONE_15 - 32);
-    assert.equal(feedBoxWidth(PRO_MAX), PRO_MAX - 32);
+    assert.equal(feedBoxWidth(SE), SE - H_PADDING * 2);
+    assert.equal(feedBoxWidth(IPHONE_15), IPHONE_15 - H_PADDING * 2);
+    assert.equal(feedBoxWidth(PRO_MAX), PRO_MAX - H_PADDING * 2);
   });
 
   it('plafonne sur tablette', () => {
@@ -86,8 +96,10 @@ describe('feedBoxWidth', () => {
 });
 
 describe('feedScale', () => {
-  it('vaut exactement 1 sur un iPhone 15', () => {
-    assert.equal(feedScale(IPHONE_15), 1);
+  it('reste juste sous 1 sur un iPhone 15', () => {
+    // 345 / 361. La boîte est légèrement réduite, ce qui est le prix des
+    // 24 pt de marge.
+    assert.ok(feedScale(IPHONE_15) > 0.95 && feedScale(IPHONE_15) < 1);
   });
 
   it('reste au-dessus du plancher typographique de la tuile sur les vrais écrans', () => {
@@ -121,8 +133,8 @@ describe('feedScale', () => {
    */
   it('laisse apparaître le post suivant sur un iPhone 15', () => {
     const HEADER = 64;
-    const GAP = 10;
-    const MARGIN = 28;
+    const GAP = HEADER_GAP;
+    const MARGIN = POST_GAP;
     const USABLE = 709;
     const post = HEADER + GAP + DESIGN_HEIGHT * feedScale(IPHONE_15) + MARGIN;
     assert.ok(post < USABLE, `le post déborde : ${post} pt pour ${USABLE} pt`);
