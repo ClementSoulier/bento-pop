@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, type Server, type ServerResponse } from 'node:http';
 
 /**
  * Bouchon PostgREST pour les tests d'intégration.
@@ -15,7 +15,27 @@ import { createServer } from 'node:http';
 
 const YEAR = '2026-05-15T15:05:24.848+00:00';
 
-const item = (id, title, extra = {}) => ({
+type StubItem = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  year: number | null;
+  image_url: string | null;
+  image_credit: string | null;
+};
+
+type StubUser = {
+  pseudo: string;
+  display_name: string | null;
+  bentos: {
+    id: string;
+    published_at: string;
+    is_featured: boolean;
+    bento_items: { category_id: number; items: StubItem | null }[];
+  } | null;
+};
+
+const item = (id: string, title: string, extra: Partial<StubItem> = {}): StubItem => ({
   id,
   title,
   subtitle: null,
@@ -40,7 +60,7 @@ const fullItems = [
  * différente de celle qu'on demandera dans l'URL : c'est ce qui permet de
  * vérifier la redirection canonique.
  */
-export const USERS = [
+export const USERS: StubUser[] = [
   {
     pseudo: 'Keremasan',
     display_name: 'Clement',
@@ -93,13 +113,13 @@ export const USERS = [
 ];
 
 /** Reproduit la sémantique d'`ILIKE` : `%` quelconque, `_` un caractère. */
-function ilikeMatches(pattern, value) {
+function ilikeMatches(pattern: string, value: string): boolean {
   const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`^${escaped.replace(/%/g, '.*').replace(/_/g, '.')}$`, 'i');
   return regex.test(value);
 }
 
-export function startStub(port) {
+export function startStub(port: number): Promise<Server> {
   let requests = 0;
   let failing = false;
 
@@ -147,7 +167,7 @@ export function startStub(port) {
   });
 }
 
-function json(res, status, body) {
+function json(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     'Content-Type': 'application/json',

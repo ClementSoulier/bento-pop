@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { startStub } from './stub.mjs';
+import { startStub } from './stub';
 
 /**
  * Tests d'intégration HTTP de la page bento publique.
