@@ -51,12 +51,28 @@ export async function setBentoSlot(
   }
 }
 
-/** Publie un bento (set `published_at = now()` si pas déjà publié). */
+/**
+ * Publie un bento. **Idempotent** : `published_at` n'est posé qu'à la
+ * première publication.
+ *
+ * Le `.is('published_at', null)` n'est pas une précaution cosmétique. Le CTA
+ * du composer reste « Publier mon bento » une fois le bento publié
+ * (`compose.tsx`), donc cette fonction est rappelée à chaque nouveau tap.
+ * Sans ce filtre, chaque tap remettait la date à `now()` : le fil « La
+ * table », trié sur `published_at desc`, n'ordonnait plus les dernières
+ * publications mais les derniers taps sur un bouton, et un bento de mai
+ * pouvait réapparaître en tête.
+ *
+ * Un bento déjà publié produit donc zéro ligne affectée, sans erreur.
+ * L'appelant n'a rien à distinguer : dans les deux cas le bento est public
+ * à la sortie, ce qui est la seule chose qui l'intéresse.
+ */
 export async function publishBento(bentoId: string): Promise<void> {
   const { error } = await supabase
     .from('bentos')
     .update({ published_at: new Date().toISOString() })
-    .eq('id', bentoId);
+    .eq('id', bentoId)
+    .is('published_at', null);
   if (error) throw new Error(`Publish failed: ${error.message}`);
 }
 
