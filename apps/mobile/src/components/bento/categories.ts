@@ -1,27 +1,14 @@
-import type { CategoryKey } from '@/supabase/types';
-
 /**
- * Métadonnées affichables des 6 catégories MVP — labels FR + stamp tout-caps.
- * Doit rester aligné avec le seed de `bento_categories` (cf. migration
- * `supabase/migrations/20260511000000_initial_schema.sql`).
+ * Métadonnées affichables des six catégories.
  *
- * À terme : peut être chargé depuis la BDD pour rester évolutif sans
- * redéploiement (P3+).
+ * Le contenu vit désormais dans `@bento-pop/supabase-mobile/bento`,
+ * partagé avec la landing. Les identifiants doivent rester alignés avec
+ * le seed de `bento_categories` (migration `20260511000000`), et les
+ * libellés avec ce qu'affiche la page publique.
  */
-export const CATEGORY_META: Record<CategoryKey, { label: string; stamp: string }> = {
-  film:    { label: 'Film',                stamp: 'FILM' },
-  series:  { label: 'Série',               stamp: 'SÉRIE' },
-  artist:  { label: 'Artiste',             stamp: 'ARTISTE' },
-  track:   { label: 'Chanson',             stamp: 'SON' },
-  creator: { label: 'Créateur de contenu', stamp: 'CRÉA' },
-  place:   { label: 'Lieu',                stamp: 'LIEU' },
-};
-
-export const CATEGORY_ORDER: readonly CategoryKey[] = [
-  'film',
-  'series',
-  'artist',
-  'track',
-  'creator',
-  'place',
-];
+export {
+  CATEGORY_META,
+  CATEGORY_ORDER,
+  CATEGORY_IDS,
+  CATEGORY_BY_ID,
+} from '@bento-pop/supabase-mobile/bento';

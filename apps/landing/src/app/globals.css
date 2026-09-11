@@ -366,3 +366,68 @@ button {
   line-height: 0;
   padding: 0 6px;
 }
+
+/* ---------- Bento public (/u/[pseudo]) ---------- */
+
+/* Conteneur de requête. Doit rester SANS marge intérieure ni bordure : les
+ * unités `cqw` se résolvent sur la boîte de contenu du conteneur, donc
+ * poser `container-type` directement sur le cadre (qui a padding + border)
+ * fausserait l'unité de la valeur de ces marges. */
+.bento-scope {
+  container-type: inline-size;
+}
+
+/* `--u` = un « pixel de design ». Toutes les dimensions de la boîte sont
+ * exprimées en `calc(N * var(--u))`, N étant la valeur en points de l'app
+ * mobile (cf. `components/bento/layout.ts`). La boîte garde donc exactement
+ * les proportions de l'app à n'importe quelle largeur, sans point de
+ * rupture. `--bento-design-width` est posée en style inline par
+ * `PublicBentoGrid`, pour n'avoir qu'une seule source de la valeur. */
+.bento-frame {
+  --u: calc(100cqw / var(--bento-design-width));
+}
+
+/* Repli pour les moteurs sans requêtes de conteneur. Approxime la largeur
+ * réelle du conteneur : `min(100% , 420px)` moins les marges de la page.
+ * Suffisant pour que la boîte reste proportionnée, à quelques pixels près. */
+@supports not (container-type: inline-size) {
+  .bento-frame {
+    --u: calc(min(100vw - 40px, 420px) / var(--bento-design-width));
+  }
+}
+
+/* Titre d'un compartiment.
+ *
+ * La chaîne de repli n'est pas décorative : le catalogue contient des
+ * titres japonais (稲葉曇, ロストアンブレラ) et des symboles (★, tiret
+ * U+2010) qu'Extenda ne couvre pas. Sans `system-ui` en bout de chaîne, le
+ * navigateur choisirait une police arbitraire, voire afficherait des carrés.
+ *
+ * `overflow-wrap: anywhere` : certains titres sont un seul mot très long
+ * (« Anticonstitutionnellement ») qui déborderait d'un petit compartiment. */
+.bento-tile-title {
+  font-family:
+    var(--font-extenda), var(--font-bungee), var(--font-fredoka), system-ui, sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Initiale en filigrane des compartiments sans illustration (72 des 277
+ * items du catalogue). Décalée en haut à droite et très peu opaque pour
+ * meubler le dégradé sans concurrencer le titre. */
+.bento-tile-initial {
+  font-family: var(--font-extenda), var(--font-bungee), system-ui, sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+  opacity: 0.12;
+  transform: rotate(-6deg);
+  pointer-events: none;
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { cleanTitle } from '@/lib/text';
 import { CATEGORY_META } from '@/components/bento/categories';
-import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
+import { PALETTES, paletteKeyForItem } from '@/components/bento/palettes';
 import { StampButton, useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
@@ -81,11 +81,6 @@ export default function SearchModal() {
     staleTime: ITEM_SEARCH_STALE_MS,
   });
 
-  const paletteForResult = useMemo(() => {
-    const keys = Object.keys(PALETTES) as PaletteKey[];
-    return (idx: number): PaletteKey => keys[idx % (keys.length - 1)] ?? 'neutral';
-  }, []);
-
   /**
    * Confirme un item existant du catalogue → l'attache au bento.
    */
@@ -95,13 +90,12 @@ export default function SearchModal() {
     try {
       const bentoId = await ensureBento(userId);
       await setBentoSlot(bentoId, category, item.id);
-      const idx = results.findIndex((r) => r.id === item.id);
       setSlot(category, {
         title: item.title,
         subtitle: item.subtitle ?? undefined,
         imageUrl: item.imageUrl ?? undefined,
         imageCredit: item.imageCredit ?? undefined,
-        paletteKey: paletteForResult(idx >= 0 ? idx : 0),
+        paletteKey: paletteKeyForItem(item.id),
         itemId: item.id,
         pending: false,
       });
@@ -176,7 +170,7 @@ export default function SearchModal() {
         title,
         subtitle: undefined,
         imageUrl: undefined,
-        paletteKey: paletteForResult(0),
+        paletteKey: paletteKeyForItem(itemId),
         itemId,
         pending: true,
       });
@@ -314,7 +308,10 @@ export default function SearchModal() {
           }
           renderItem={({ item, index }) => {
             const isSelected = selected?.id === item.id;
-            const palette = PALETTES[paletteForResult(index)];
+            // Même palette que celle qu'aura la case une fois choisie :
+            // l'utilisateur voit dans les résultats exactement ce qu'il
+            // obtiendra dans son bento.
+            const palette = PALETTES[paletteKeyForItem(item.id)];
             return (
               <Pressable
                 onPress={() => setSelected(item)}

@@ -34,5 +34,11 @@ jobs:
       - name: Typecheck
         run: pnpm turbo run typecheck
 
+      - name: Test
+        run: pnpm turbo run test
+
+      - name: Test (intégration HTTP)
+        run: pnpm turbo run test:e2e
+
       - name: Build
         run: pnpm turbo run build

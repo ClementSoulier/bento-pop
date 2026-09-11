@@ -1,17 +1,7 @@
 import { supabase } from '@/supabase/client';
-import type { CategoryKey } from '@/supabase/types';
-import { PALETTES, type PaletteKey } from '@/components/bento/palettes';
+import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
 import type { BentoItems } from '@/components/bento';
 
-const CATEGORY_BY_ID: Record<number, CategoryKey> = {
-  1: 'film',
-  2: 'series',
-  3: 'artist',
-  4: 'track',
-  5: 'creator',
-  6: 'place',
-};
-const PALETTE_KEYS = Object.keys(PALETTES) as PaletteKey[];
 
 export type FeaturedBento = {
   bentoId: string;
@@ -65,7 +55,7 @@ export async function loadFeaturedBentos(limit = 12): Promise<FeaturedBento[]> {
         title: item.title,
         subtitle: item.subtitle ?? undefined,
         imageUrl: item.image_url ?? undefined,
-        paletteKey: PALETTE_KEYS[idx % (PALETTE_KEYS.length - 1)] ?? 'neutral',
+        paletteKey: paletteKeyForItem(item.id),
       };
     });
     return {
