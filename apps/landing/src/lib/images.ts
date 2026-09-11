@@ -14,20 +14,44 @@
 /** Miniatures YouTube (`youtubeThumbnail()` dans `lib/episodes.ts`). */
 const YOUTUBE_IMAGE_HOSTS = ['i.ytimg.com', 'img.youtube.com'] as const;
 
-function readSupabaseHost(): string | null {
-  // Accès direct à la propriété : c'est ce qui permet à Next d'inliner la
-  // valeur au build dans le bundle client.
-  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!raw) return null;
+/**
+ * Illustrations du catalogue mobile (`items.image_url`), affichées par la
+ * page publique `/u/[pseudo]`. Les items récents sont hébergés sur le
+ * Storage du projet mobile, mais les items historiques pointent encore
+ * vers les APIs externes d'origine. Relevé de production du 11 septembre
+ * 2026 : 82 affiches TMDb, 5 photos Wikimedia, 1 pochette MusicBrainz.
+ */
+const CATALOG_IMAGE_HOSTS = [
+  'image.tmdb.org',
+  'upload.wikimedia.org',
+  'coverartarchive.org',
+] as const;
+
+function hostnameOf(rawUrl: string | undefined): string | null {
+  if (!rawUrl) return null;
   try {
-    return new URL(raw).hostname;
+    return new URL(rawUrl).hostname;
   } catch {
     return null;
   }
 }
 
+/**
+ * Storage du projet Supabase landing (photos d'équipe, miniatures d'épisodes)
+ * et du projet mobile (illustrations du catalogue `items`, affichées par
+ * `/u/[pseudo]`). Deux `project-ref` distincts, donc deux hostnames.
+ *
+ * Les deux `process.env.NEXT_PUBLIC_*` sont lus en accès direct à la
+ * propriété, et pas via une variable ou une boucle : c'est ce qui permet à
+ * Next d'inliner la valeur au build dans le bundle client.
+ */
 const OPTIMIZABLE_HOSTS: ReadonlySet<string> = new Set(
-  [readSupabaseHost(), ...YOUTUBE_IMAGE_HOSTS].filter((host): host is string => Boolean(host)),
+  [
+    hostnameOf(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    hostnameOf(process.env.NEXT_PUBLIC_MOBILE_SUPABASE_URL),
+    ...YOUTUBE_IMAGE_HOSTS,
+    ...CATALOG_IMAGE_HOSTS,
+  ].filter((host): host is string => Boolean(host)),
 );
 
 /**

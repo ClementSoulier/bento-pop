@@ -106,6 +106,9 @@ importers:
       '@bento-pop/supabase':
         specifier: workspace:*
         version: link:../../packages/supabase
+      '@bento-pop/supabase-mobile':
+        specifier: workspace:*
+        version: link:../../packages/supabase-mobile
       '@bento-pop/ui':
         specifier: workspace:*
         version: link:../../packages/ui

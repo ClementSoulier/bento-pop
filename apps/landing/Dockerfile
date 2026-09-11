@@ -22,6 +22,7 @@ COPY apps/landing/package.json        ./apps/landing/
 COPY packages/brand/package.json      ./packages/brand/
 COPY packages/ui/package.json         ./packages/ui/
 COPY packages/supabase/package.json   ./packages/supabase/
+COPY packages/supabase-mobile/package.json ./packages/supabase-mobile/
 COPY packages/tsconfig/package.json   ./packages/tsconfig/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 
@@ -40,9 +41,20 @@ COPY . .
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_SITE_URL
+# Projet Supabase mobile (bentos publics servis par /u/[pseudo]).
+#   - l'URL est inlinée au build (remotePatterns de next/image + allowlist
+#     de src/lib/images.ts)
+#   - la clé anon est server-only, mais reste nécessaire ICI : les pages ISR
+#     pré-rendues au build et `generateStaticParams` (pseudos featured)
+#     interrogent Supabase pendant `next build`. Elle doit AUSSI être
+#     fournie au runtime par Coolify, pour la génération à la demande.
+ARG NEXT_PUBLIC_MOBILE_SUPABASE_URL
+ARG MOBILE_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_MOBILE_SUPABASE_URL=$NEXT_PUBLIC_MOBILE_SUPABASE_URL \
+    MOBILE_SUPABASE_ANON_KEY=$MOBILE_SUPABASE_ANON_KEY \
     NEXT_TELEMETRY_DISABLED=1 \
     NODE_ENV=production
 

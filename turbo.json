@@ -6,7 +6,17 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]
+      // Toute variable lue PENDANT `next build` doit figurer ici, sinon le
+      // cache Turbo peut resservir un build produit avec d'autres valeurs.
+      // Cela couvre les `NEXT_PUBLIC_*` (inlinées dans le bundle) et les
+      // variables serveur interrogées au pré-rendu ISR / generateStaticParams.
+      "env": [
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_SITE_URL",
+        "NEXT_PUBLIC_MOBILE_SUPABASE_URL",
+        "MOBILE_SUPABASE_ANON_KEY"
+      ]
     },
     "dev": {
       "cache": false,

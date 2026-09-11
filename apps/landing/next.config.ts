@@ -2,25 +2,54 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 
 /**
- * Hôte du projet Supabase, extrait de l'URL pour éviter de le hardcoder.
- * `NEXT_PUBLIC_SUPABASE_URL` est disponible au build (cf. les ARG du
- * Dockerfile). Sans elle, les images Storage retombent sur un `<img>` brut
- * via `SmartImage` plutôt que de faire échouer le build.
+ * Hôte d'un projet Supabase, extrait de son URL pour éviter de le hardcoder.
+ * Les `NEXT_PUBLIC_*` sont disponibles au build (cf. les ARG du Dockerfile).
+ * Sans elles, les images Storage retombent sur un `<img>` brut via
+ * `SmartImage` plutôt que de faire échouer le build.
  */
-function supabaseHostname(): string | null {
-  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!raw) return null;
+function hostnameOf(rawUrl: string | undefined): string | null {
+  if (!rawUrl) return null;
   try {
-    return new URL(raw).hostname;
+    return new URL(rawUrl).hostname;
   } catch {
     return null;
   }
 }
 
-/** ⚠️ Doit rester synchronisé avec l'allowlist de `src/lib/images.ts`. */
-const imageHosts = [supabaseHostname(), 'i.ytimg.com', 'img.youtube.com'].filter(
-  (host): host is string => Boolean(host),
-);
+/**
+ * ⚠️ Doit rester synchronisé avec l'allowlist de `src/lib/images.ts`.
+ *
+ * Deux projets Supabase : le projet landing (photos d'équipe, miniatures
+ * d'épisodes) et le projet mobile (illustrations du catalogue `items`,
+ * affichées par la page publique `/u/[pseudo]`). Deux `project-ref`, donc
+ * deux hostnames distincts.
+ *
+ * Les trois hôtes tiers ci-dessous sont ceux réellement présents dans le
+ * catalogue mobile en production (relevé du 11 septembre 2026, sur 205
+ * items illustrés) :
+ *
+ *   ggjgktbcqumfxrixcdyx.supabase.co  117   bucket `item-images` (catalogue maison)
+ *   image.tmdb.org                     82   affiches TMDb (items historiques)
+ *   upload.wikimedia.org                5   photos Wikimedia Commons
+ *   coverartarchive.org                 1   pochettes MusicBrainz
+ *
+ * Les items historiques pointent encore vers les APIs externes ; le
+ * rapatriement vers le Storage est progressif. Sans ces hôtes, les trois
+ * quarts des illustrations contourneraient l'optimiseur (cf. le fallback
+ * `<img>` de `SmartImage`) et seraient téléchargées en taille d'origine
+ * par chaque visiteur, directement chez les tiers.
+ *
+ * Ce sont des hostnames fixes, sans joker : pas de proxy d'images ouvert.
+ */
+const imageHosts = [
+  hostnameOf(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  hostnameOf(process.env.NEXT_PUBLIC_MOBILE_SUPABASE_URL),
+  'i.ytimg.com',
+  'img.youtube.com',
+  'image.tmdb.org',
+  'upload.wikimedia.org',
+  'coverartarchive.org',
+].filter((host): host is string => Boolean(host));
 
 const nextConfig: NextConfig = {
   // Permet à Next d'importer les modules TS et les assets statiques (PNG/JPG)

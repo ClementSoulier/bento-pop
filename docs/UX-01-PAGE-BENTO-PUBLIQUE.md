@@ -310,7 +310,11 @@ Fond jaune Bento, la grille du bento à gauche, à droite l'avatar Popy, `@pseud
 ### 7.3 Contraintes techniques
 
 - **Polices.** `next/og` exige des buffers de police. Le précédent du repo est l'inlining base64 (`apps/landing/src/app/_og/assets.ts`, dont le commentaire explique que c'est la seule méthode fiable dans tous les runtimes). On suit ce précédent pour `extenda-100-yotta.otf` (174 Ko).
-  **Tâche de vérification préalable :** contrôler la couverture de glyphes d'Extenda sur les accents français et sur les caractères non latins susceptibles d'apparaître dans un titre d'item (titres japonais, coréens). Satori rend des carrés vides pour tout glyphe absent. Si la couverture est insuffisante, les titres d'items passent sur une police de couverture large et Extenda reste sur le seul bloc identité.
+  **Le problème de couverture de glyphes est avéré, pas hypothétique.** Relevé du 11 septembre 2026 sur les 277 items du catalogue : 6 titres contiennent des caractères non latins, dont `ロストアンブレラ`, `稲葉曇`, `浦沢直樹`, `鷺巣詩郎`, ainsi que `Puella Magi Madoka★Magica` (U+2605) et `C‐C‐C` (tiret U+2010, pas un tiret ASCII). Satori rend un carré vide pour tout glyphe absent.
+  **Décision :** Extenda est réservée au bloc identité (`@pseudo`, accroche). Les titres d'items utilisent une police à couverture large, embarquée en buffer. Une chaîne de repli par caractère est nécessaire, car aucune police unique ne couvrira latin, japonais et symboles.
+  Même contrainte côté page web (§6), mais moins critique : le navigateur applique automatiquement sa propre chaîne de repli. Il faut malgré tout déclarer un `font-family` de secours après `--font-extenda`, sinon les titres japonais s'afficheront dans une police système arbitraire sans cohérence de taille.
+
+  **Statistiques de titres**, utiles au dimensionnement typographique des tuiles et de l'OG : médiane 11 caractères, p95 28, maximum 70 (`Le Monde de Narnia : Le Lion, la sorcière blanche et l'armoire magique`). Le rendu doit être vérifié à 70 caractères, pas seulement sur des titres courts.
 - **Images distantes.** `ImageResponse` télécharge lui-même les visuels, sans passer par `next/image`. Au maximum 6 requêtes. Chacune avec un **timeout de 2 s** et un `Promise.allSettled` ; toute image en échec retombe sur le dégradé plus initiale. Une image OG lente est pire qu'une image OG sans photos : le scraper abandonne et il n'y a plus d'aperçu du tout.
 - **Ne jamais lever d'exception.** Tout le rendu est enveloppé dans un `try/catch` qui retombe sur une image de marque statique. Une route OG qui throw casse l'aperçu et, avec la convention de fichier, peut faire échouer le rendu de métadonnées.
 - **Cache.** L'image est générée au plus une fois par fenêtre de revalidation grâce à l'ISR. Vérifier que le `revalidate` du segment s'applique bien à l'image générée, et sinon poser un `Cache-Control` explicite.
@@ -367,8 +371,21 @@ Revalidation à la demande : l'endpoint `POST /api/revalidate` existe et est aut
 
 - Toutes les illustrations passent par `SmartImage`, donc par `next/image`, avec `sizes` explicite par taille de tuile.
 - `priority` **uniquement** sur la tuile film, qui est le LCP. Le mettre partout annulerait le bénéfice du lazy loading.
-- Ajouter l'hôte Supabase mobile à `images.remotePatterns` (`next.config.ts`) **et** à `OPTIMIZABLE_HOSTS` (`src/lib/images.ts`). Les deux, la duplication est volontaire et documentée dans le code. Un oubli côté `images.ts` fait silencieusement retomber sur un `<img>` brut, et tout le trafic image repart taper Supabase en taille d'origine.
+- Ajouter les hôtes du catalogue à `images.remotePatterns` (`next.config.ts`) **et** à `OPTIMIZABLE_HOSTS` (`src/lib/images.ts`). Les deux, la duplication est volontaire et documentée dans le code. Un oubli côté `images.ts` fait silencieusement retomber sur un `<img>` brut, et tout le trafic image repart taper la source en taille d'origine.
 - `minimumCacheTTL` est déjà à un an et les chemins Storage sont en UUID (`{itemId}/main.{ext}`), donc stables. Rien à changer.
+
+**Relevé de production du 11 septembre 2026**, sur les 277 items validés du catalogue, dont 205 illustrés :
+
+| Hôte | Items | Origine |
+|---|---:|---|
+| `<ref-mobile>.supabase.co` | 117 | bucket `item-images`, catalogue maison |
+| `image.tmdb.org` | 82 | affiches TMDb, items historiques |
+| `upload.wikimedia.org` | 5 | photos Wikimedia Commons |
+| `coverartarchive.org` | 1 | pochettes MusicBrainz |
+
+Le Storage mobile ne couvre donc que 57 % des illustrations. Se limiter à cet hôte, comme prévu initialement, aurait laissé 43 % des images hors de l'optimiseur. Les trois hôtes tiers sont ajoutés à l'allowlist. Ce sont des hostnames fixes sans joker, donc pas un proxy d'images ouvert, et l'attribution requise est déjà portée par `items.image_credit` (91 items en `Affiche : The Movie Database (TMDb)`).
+
+**Note runtime.** `@supabase/supabase-js` refuse de s'instancier sur Node 20 sans `WebSocket` global. Ce n'est pas un problème dans la landing : Next 15.5 polyfille `globalThis.WebSocket` avec son `ws` embarqué (`next/dist/server/node-environment-baseline.js:9`). En revanche, tout script Node autonome du repo qui construirait un client Supabase sur Node 20 échouerait. À garder en tête pour les harnais de test du lot 7.
 
 **Note egress.** C'est le point critique connu du projet. Sans `next/image`, chaque visiteur télécharge jusqu'à 6 visuels en taille d'origine depuis le Storage mobile. Avec, le serveur Next les récupère une fois et sert du WebP redimensionné depuis son disque.
 
