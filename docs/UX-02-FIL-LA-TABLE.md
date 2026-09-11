@@ -658,10 +658,14 @@ Assertions :
 4. Le curseur envoyé est identique, caractère pour caractère, au
    `published_at` renvoyé à la page précédente.
 5. Une réponse 500 produit un rejet, pas un tableau vide silencieux.
+6. `publishBento` émet bien `published_at=is.null`. Le correctif du lot 0 est
+   une ligne dont l'utilité n'est visible qu'à la lecture du commentaire :
+   sans test, le prochain lecteur la prendra pour une redondance et la
+   retirera, et le fil recommencera à trier sur les taps.
 
-`loadFeedPage` accepte pour cela un client injecté en dernier paramètre, avec
-le singleton en valeur par défaut. Aucun branchement de test dans le code de
-production.
+`loadFeedPage` et `publishBento` acceptent pour cela un client injecté en
+dernier paramètre, avec le singleton en valeur par défaut. Aucun branchement
+de test dans le code de production.
 
 ### 10.4 QA manuelle, checklist bloquante
 
@@ -751,6 +755,7 @@ partage sur les deux plateformes.
 - `src/lib/feed.ts` : `FeedBento`, `Cursor`, `PAGE_SIZE`, `mapFeedRow`,
   `cursorOf`, `loadFeedPage`, `feedAccessibilityLabel`.
 - Suppression de `src/lib/featured.ts`.
+- `publishBento` accepte un client injecté, pour l'assertion 6 de §10.3.
 - Remontée d'erreur au lieu du tableau vide.
 - Tests unitaires (§10.2) et bouchon d'intégration (§10.3).
 
