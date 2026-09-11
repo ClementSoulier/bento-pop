@@ -16,8 +16,29 @@ const SITE = 'https://bento-pop.com';
 
 export type ShareOutcome = 'shared' | 'copied' | 'cancelled' | 'unsupported';
 
+/**
+ * Adresse publique d'un bento, sous sa forme canonique.
+ *
+ * En minuscules : c'est la forme canonique côté web, où toute autre casse
+ * déclenche une redirection 308. Partager directement la bonne évite un
+ * aller-retour, et surtout évite qu'un aperçu de messagerie doive suivre
+ * une redirection — certains robots ne le font pas et n'affichent alors
+ * aucun aperçu.
+ *
+ * L'unicité étant posée en base sur `lower(pseudo)`, la minuscule désigne
+ * sans ambiguïté la même personne.
+ */
+export function publicBentoUrl(pseudo: string): string {
+  return `${SITE}/u/${pseudo.trim().toLowerCase()}`;
+}
+
+/** Idem sans le protocole, pour l'afficher sur l'image de partage. */
+export function publicBentoLabel(pseudo: string): string {
+  return publicBentoUrl(pseudo).replace(/^https:\/\//, '');
+}
+
 export async function shareBento(pseudo: string): Promise<ShareOutcome> {
-  const url = `${SITE}/u/${pseudo}`;
+  const url = publicBentoUrl(pseudo);
   const title = `Mon Bento Pop · @${pseudo}`;
   const message = `Mon Bento Pop @${pseudo} 🍱\n${url}`;
 

@@ -636,10 +636,12 @@ Un lot égale un commit. L'ordre est contraint : chaque lot doit laisser la bran
 
 **Note macOS.** Le cache ISR de Next écrit un fichier par chemin. Sur un système de fichiers insensible à la casse, `/u/REJETE` et `/u/rejete` se disputent la même entrée, ce qui rend les tests de casse dépendants de l'ordre. Les fixtures de redirection sont donc réservées à ce seul test. Sous Linux, en CI comme en production, le problème n'existe pas.
 
-### Lot 8 · URL sur l'image de partage mobile
-- `apps/mobile/src/components/bento/ShareImage.tsx` : ajout de `bento-pop.com/u/<pseudo>`
-- **Vert quand** : le PNG capturé porte l'URL lisible
-- Inclus dans ce chantier. Le changement partira avec la prochaine release mobile, qui embarquera aussi les chantiers suivants : pas de sortie déclenchée pour lui seul.
+### Lot 8 · URL sur l'image de partage mobile ✅
+- `ShareImage.tsx` affiche `bento-pop.com/u/<pseudo>` au lieu du seul domaine
+- `share.ts` : `publicBentoUrl()` normalise en minuscules, la forme canonique côté web. Partager la bonne casse évite une redirection, et surtout évite qu'un robot d'aperçu ait à la suivre — certains ne le font pas et n'affichent alors rien.
+- **Vert** : rendu vérifié en capture via la cible `react-native-web`, avec un pseudo court et un pseudo de 20 caractères.
+
+**Un défaut préexistant corrigé au passage.** La carte 1080×1920 débordait déjà : la grille a une hauteur fixe (512 × échelle) et n'absorbe rien malgré son `flex: 1`, donc tout dépassement du header rogne le pied de page. À l'échelle 2,6 avec un `@pseudo` sur deux lignes, le total atteignait 2053pt pour 1920 disponibles, et le pied de page était coupé. Le budget vertical est maintenant écrit dans le composant, l'échelle passe à 2,5, et le pseudo tient sur une ligne quitte à rétrécir. Sans cette correction, l'adresse ajoutée par ce lot aurait été la première victime.
 
 ---
 

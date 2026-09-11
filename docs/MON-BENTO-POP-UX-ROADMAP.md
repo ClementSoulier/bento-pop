@@ -13,7 +13,7 @@
 
 | # | Chantier | Impact | Effort | Dépend de | Statut |
 |---|---|---|---|---|---|
-| 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | 🟡 lots 0 à 7 livrés · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
+| 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | 🟡 développement terminé, reste la QA manuelle · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | Flux « Derniers bentos » dans À la une | Rétention | S | rien | ⬜ |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | ⬜ |
 | 4 | `expo-image` partout | Perf + egress | S | rien | ⬜ |
