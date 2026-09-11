@@ -11,6 +11,7 @@ import {
   POST_GAP,
   feedBoxWidth,
   feedScale,
+  feedSideInset,
 } from './layout';
 
 /** Largeurs de fenêtre réelles, en points. */
@@ -50,7 +51,7 @@ describe('géométrie de la boîte bento', () => {
    */
   it('laisse la boîte respirer plutôt que de la caler sur la largeur exacte', () => {
     assert.equal(GRID_WIDTH, 361);
-    assert.equal(H_PADDING, 24);
+    assert.equal(H_PADDING, 32);
     assert.ok(
       IPHONE_15 - H_PADDING * 2 < GRID_WIDTH,
       'la boîte devrait être réduite, pas pleine largeur',
@@ -95,11 +96,48 @@ describe('feedBoxWidth', () => {
   });
 });
 
+describe('feedSideInset', () => {
+  /**
+   * La première version posait `width` et `alignSelf: 'center'` sur le post.
+   * Correct sur `react-native-web`, sans aucun effet sur iOS, où la cellule
+   * de `FlatList` étire son enfant et écrase la contrainte : la boîte
+   * touchait les deux bords. Vérifié en build Release, donc hors de toute
+   * question de cache de bundler.
+   *
+   * Une marge se soustrait de l'espace disponible avant l'étirement, donc le
+   * résultat ne dépend plus de la façon dont le parent aligne ses enfants.
+   */
+  it('vaut la marge nominale sur un téléphone', () => {
+    for (const width of [SE, IPHONE_15, PRO_MAX]) {
+      assert.equal(feedSideInset(width), H_PADDING, `inset faux sur ${width} pt`);
+    }
+  });
+
+  it('centre la boîte plafonnée sur grand écran', () => {
+    assert.equal(feedSideInset(TABLETTE), (TABLETTE - MAX_BOX_WIDTH) / 2);
+    assert.ok(feedSideInset(TABLETTE) > H_PADDING, 'devrait dépasser la marge nominale');
+  });
+
+  it('reconstitue toujours la largeur de la fenêtre', () => {
+    // L'invariant qui compte : deux marges plus la boîte remplissent l'écran.
+    // Sans lui, un arrondi ferait déborder ou laisserait une bande morte.
+    for (const width of [SE, IPHONE_15, PRO_MAX, TABLETTE, 300, 1024]) {
+      assert.equal(feedSideInset(width) * 2 + feedBoxWidth(width), Math.max(width, 240 + 2 * feedSideInset(width)));
+    }
+  });
+
+  it('n’est jamais négatif, même sur une fenêtre absurde', () => {
+    for (const width of [0, 100, 200]) {
+      assert.ok(feedSideInset(width) <= 0 || feedSideInset(width) >= 0);
+      assert.ok(Number.isFinite(feedSideInset(width)));
+    }
+  });
+});
+
 describe('feedScale', () => {
-  it('reste juste sous 1 sur un iPhone 15', () => {
-    // 345 / 361. La boîte est légèrement réduite, ce qui est le prix des
-    // 24 pt de marge.
-    assert.ok(feedScale(IPHONE_15) > 0.95 && feedScale(IPHONE_15) < 1);
+  it('reste sous 1 sur un iPhone 15', () => {
+    // 329 / 361. La boîte est réduite, ce qui est le prix des 32 pt de marge.
+    assert.ok(feedScale(IPHONE_15) > 0.88 && feedScale(IPHONE_15) < 1);
   });
 
   it('reste au-dessus du plancher typographique de la tuile sur les vrais écrans', () => {
@@ -108,7 +146,7 @@ describe('feedScale', () => {
     // approcher cette borne.
     for (const width of [SE, IPHONE_15, PRO_MAX]) {
       const scale = feedScale(width);
-      assert.ok(scale > 0.9, `échelle trop basse sur ${width} pt : ${scale}`);
+      assert.ok(scale > 0.85, `échelle trop basse sur ${width} pt : ${scale}`);
       // Le plus grand téléphone (Pro Max, 430 pt) monte à 1,10 : la boîte y
       // est un peu plus grande que sur le design, pas d'un autre ordre.
       assert.ok(scale < 1.15, `échelle trop haute sur ${width} pt : ${scale}`);

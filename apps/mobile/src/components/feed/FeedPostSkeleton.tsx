@@ -7,7 +7,7 @@ import { HEADER_GAP, POST_GAP } from './layout';
 const BONE = 'rgba(10,10,10,0.09)';
 
 type FeedPostSkeletonProps = {
-  width: number;
+  sideInset: number;
   scale: number;
 };
 
@@ -26,7 +26,7 @@ type FeedPostSkeletonProps = {
  * de seconde sur un réseau normal, et une animation demanderait un worklet
  * Reanimated pour un gain nul.
  */
-export function FeedPostSkeleton({ width, scale }: FeedPostSkeletonProps) {
+export function FeedPostSkeleton({ sideInset, scale }: FeedPostSkeletonProps) {
   const g = GRID_GEOMETRY;
   const s = (value: number) => value * scale;
 
@@ -34,7 +34,7 @@ export function FeedPostSkeleton({ width, scale }: FeedPostSkeletonProps) {
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={{ width, alignSelf: 'center', marginBottom: POST_GAP }}
+      style={{ marginHorizontal: sideInset, marginBottom: POST_GAP }}
     >
       {/* Étiquette d'identité */}
       <View

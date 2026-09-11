@@ -31,8 +31,10 @@ const RIBBON_BORDER = 7;
 
 type FeedPostProps = {
   bento: FeedBento;
-  /** Largeur de la boîte, cf. `feedBoxWidth`. */
+  /** Largeur de la boîte, cf. `feedBoxWidth`. Sert au cadrage de l'étiquette. */
   width: number;
+  /** Marge de chaque côté, cf. `feedSideInset`. */
+  sideInset: number;
   /** Échelle de la grille, cf. `feedScale`. */
   scale: number;
   onPress: () => void;
@@ -55,7 +57,7 @@ type FeedPostProps = {
  * activable. Les descendants sont masqués pour ne pas être parcourus deux
  * fois.
  */
-export function FeedPost({ bento, width, scale, onPress, now }: FeedPostProps) {
+export function FeedPost({ bento, width, sideInset, scale, onPress, now }: FeedPostProps) {
   const ribbon = bento.isFeatured ? FEATURED_RIBBON : null;
 
   return (
@@ -64,12 +66,15 @@ export function FeedPost({ bento, width, scale, onPress, now }: FeedPostProps) {
       accessible
       accessibilityRole="button"
       accessibilityLabel={feedAccessibilityLabel(bento, now)}
-      style={({ pressed }) => ({
-        width,
-        alignSelf: 'center',
+      // Style statique et non fonction de `pressed` : la variante fonction
+      // n'appliquait pas les marges au premier rendu sur iOS. Le léger
+      // assombrissement à l'appui est repris par `android_ripple` sur Android
+      // et par l'opacité par défaut du `Pressable` sur iOS.
+      style={{
+        // Marges et non `width` + `alignSelf` : cf. `feedSideInset`.
+        marginHorizontal: sideInset,
         marginBottom: POST_GAP,
-        opacity: pressed ? 0.94 : 1,
-      })}
+      }}
     >
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <FeedPostHeader

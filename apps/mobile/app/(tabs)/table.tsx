@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
-import { FeedPost, FeedPostSkeleton, feedBoxWidth, feedScale } from '@/components/feed';
+import { FeedPost, FeedPostSkeleton, feedBoxWidth, feedScale, feedSideInset } from '@/components/feed';
 import { Sticker, YellowBg } from '@/components/primitives';
 import { PAGE_SIZE, loadFeedPage, type FeedBento, type FeedCursor } from '@/lib/feed';
 import { useBlocked } from '@/state/blocked';
@@ -33,6 +33,7 @@ import { supabase } from '@/supabase/client';
 export default function TableTab() {
   const { width } = useWindowDimensions();
   const boxWidth = feedBoxWidth(width);
+  const sideInset = feedSideInset(width);
   const scale = feedScale(width);
 
   const {
@@ -68,11 +69,12 @@ export default function TableTab() {
       <FeedPost
         bento={item}
         width={boxWidth}
+        sideInset={sideInset}
         scale={scale}
         onPress={() => router.push(`/u/${item.pseudo}` as const)}
       />
     ),
-    [boxWidth, scale],
+    [boxWidth, sideInset, scale],
   );
 
   const onEndReached = useCallback(() => {
@@ -94,10 +96,10 @@ export default function TableTab() {
           // par-dessus : la liste s'arrête déjà au-dessus d'elle. Il ne reste
           // à réserver que de quoi ne pas coller le pied de liste au bord.
           contentContainerStyle={{ paddingBottom: 32 }}
-          ListHeaderComponent={<Header />}
+          ListHeaderComponent={<Header sideInset={sideInset} />}
           ListEmptyComponent={
             isLoading ? (
-              <Loading width={boxWidth} scale={scale} />
+              <Loading sideInset={sideInset} scale={scale} />
             ) : isError ? (
               <ErrorState onRetry={() => void refetch()} />
             ) : (
@@ -142,13 +144,13 @@ export default function TableTab() {
  * indique déjà la section active, le doublon avait déjà été écarté sur
  * l'écran précédent.
  */
-function Header() {
+function Header({ sideInset }: { sideInset: number }) {
   return (
-    <View style={{ paddingBottom: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 }}>
+    <View style={{ paddingBottom: 18, paddingHorizontal: sideInset }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8 }}>
         <Image source={logo} style={{ height: 28, width: 130 }} resizeMode="contain" />
       </View>
-      <View style={{ paddingTop: 14, paddingHorizontal: 20 }}>
+      <View style={{ paddingTop: 14 }}>
         <Text
           accessibilityRole="header"
           maxFontSizeMultiplier={1.4}
@@ -175,11 +177,11 @@ function Header() {
  * l'écran ne saute pas à l'arrivée des données, et l'utilisateur voit la
  * forme de ce qui arrive.
  */
-function Loading({ width, scale }: { width: number; scale: number }) {
+function Loading({ sideInset, scale }: { sideInset: number; scale: number }) {
   return (
     <View>
-      <FeedPostSkeleton width={width} scale={scale} />
-      <FeedPostSkeleton width={width} scale={scale} />
+      <FeedPostSkeleton sideInset={sideInset} scale={scale} />
+      <FeedPostSkeleton sideInset={sideInset} scale={scale} />
     </View>
   );
 }

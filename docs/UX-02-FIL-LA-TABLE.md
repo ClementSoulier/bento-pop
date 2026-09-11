@@ -258,17 +258,36 @@ const boxWidth = Math.min(width - H_PADDING * 2, MAX_WIDTH);
 const scale = boxWidth / DESIGN_WIDTH;
 ```
 
-**La marge est passée de 16 à 24 après recette.** À 16, la boîte tombait pile
+**La marge est passée de 16 à 32 après recette.** À 16, la boîte tombait pile
 à l'échelle 1 sur un iPhone 15 (361 = 393 - 32), coïncidence élégante mais qui
 donnait des posts collés aux bords : dans un fil, la boîte doit flotter sur le
-jaune, pas le remplir. Effet de bord bienvenu, la boîte légèrement réduite
-tient désormais entièrement à l'écran sur un iPhone 17, ce qui n'était pas le
-cas à 16.
+jaune, pas le remplir.
 
-**L'écart entre deux posts est passé de 28 à 44.** L'ombre stamp de la boîte
-descend déjà de 8 pt et l'étiquette du post suivant porte la sienne, donc
-l'écart perçu valait une vingtaine de points et le pseudo semblait collé au
-bento du dessus.
+**L'écart entre deux posts est passé de 28 à 72, et celui sous l'étiquette de
+10 à 8.** Ce qui rattache un pseudo à un bento n'est pas la distance absolue
+mais le contraste entre les deux écarts. Mesuré au pixel sur le rendu : 66 pt
+de vide au-dessus de l'étiquette (72 moins les 8 pt d'ombre stamp de la boîte)
+contre 7 pt en dessous, soit un rapport de 9 pour 1. À 28 contre 10, le rapport
+tombait à 2,8 et le pseudo semblait appartenir au bento du dessus.
+
+#### Marges, et surtout pas `width` avec `alignSelf`
+
+La première version posait `width: boxWidth` et `alignSelf: 'center'` sur le
+post. **Ça se rend correctement sur `react-native-web` et pas du tout sur
+iOS**, où la boîte occupait toute la largeur de l'écran.
+
+La cause n'est ni le cache du bundler ni la cellule de `FlatList` : c'est la
+**fonction de style de `Pressable`**. Avec
+`style={({ pressed }) => ({ width, alignSelf, ... })}`, les propriétés de mise
+en page n'étaient pas appliquées sur iOS. Le même objet passé statiquement les
+applique. Diagnostiqué en build Release, donc hors de toute question de
+rechargement à chaud, en instrumentant successivement la valeur calculée puis
+les limites réelles du conteneur.
+
+Deux conséquences dans le code : le post reçoit une **marge** (`feedSideInset`)
+et non une largeur, ce qui le rend insensible à la façon dont son parent aligne
+ses enfants ; et son style est un **objet, pas une fonction**. Le retour visuel
+à l'appui passe par le comportement par défaut de `Pressable`.
 
 L'échelle se calcule sur la **largeur**, parce qu'un fil défile
 verticalement : la largeur est la seule contrainte. C'est l'inverse du

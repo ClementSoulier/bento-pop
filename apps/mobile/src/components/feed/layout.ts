@@ -19,12 +19,12 @@ export const DESIGN_HEIGHT = GRID_HEIGHT;
 /**
  * Marge latérale de l'écran, de chaque côté.
  *
- * 24 et non 16. À 16, la boîte tombait pile à l'échelle 1 sur un iPhone 15
- * (361 = 393 - 32), coïncidence élégante mais qui donnait des posts collés
- * aux bords : dans un fil, la boîte doit flotter sur le jaune, pas le
- * remplir. On perd la coïncidence, on gagne de l'air.
+ * 32, contre 16 à l'origine. À 16, la boîte tombait pile à l'échelle 1 sur
+ * un iPhone 15 (361 = 393 - 32), coïncidence élégante mais qui donnait des
+ * posts collés aux bords : dans un fil, la boîte doit flotter sur le jaune,
+ * pas le remplir. On perd la coïncidence, on gagne de l'air.
  */
-export const H_PADDING = 24;
+export const H_PADDING = 32;
 
 /**
  * Au-delà, sur tablette, la boîte s'étalerait jusqu'à des cases plus grandes
@@ -39,17 +39,27 @@ export const MAX_BOX_WIDTH = 420;
  */
 export const MIN_BOX_WIDTH = 240;
 
-/** Écart entre l'étiquette d'identité et la boîte. */
-export const HEADER_GAP = 10;
+/**
+ * Écart entre l'étiquette d'identité et **sa** boîte.
+ *
+ * Volontairement serré, et à lire avec `POST_GAP` : ce qui rattache un pseudo
+ * à un bento, ce n'est pas la distance absolue mais le contraste entre les
+ * deux écarts. 8 pt en dessous contre 72 au-dessus, soit un rapport de 9
+ * pour 1, ne laisse aucun doute sur le lien. À 10 contre 44, le pseudo
+ * paraissait appartenir au bento du dessus.
+ */
+export const HEADER_GAP = 8;
 
 /**
- * Écart entre deux posts.
+ * Écart entre deux posts, donc entre une boîte et l'étiquette de la
+ * suivante.
  *
- * 44 et non 28 : l'ombre stamp de la boîte descend déjà de 8 pt et
- * l'étiquette du post suivant porte la sienne, donc l'écart perçu valait une
- * vingtaine de points et le pseudo semblait collé au bento du dessus.
+ * 72, contre 28 à l'origine. L'ombre stamp de la boîte en mange 8, donc le
+ * vide réellement perçu est de 66 pt, mesuré au pixel sur le rendu. Voir
+ * `HEADER_GAP` : c'est le rapport entre les deux écarts qui fait qu'on
+ * rattache le pseudo au bon bento.
  */
-export const POST_GAP = 44;
+export const POST_GAP = 72;
 
 /**
  * Débordement de l'étiquette « coup de cœur » sur le coin supérieur droit de
@@ -77,4 +87,23 @@ export function feedBoxWidth(windowWidth: number): number {
 /** Échelle à passer à `BentoGrid` pour une largeur de fenêtre donnée. */
 export function feedScale(windowWidth: number): number {
   return feedBoxWidth(windowWidth) / DESIGN_WIDTH;
+}
+
+/**
+ * Marge horizontale à appliquer de chaque côté d'un post.
+ *
+ * Vaut `H_PADDING` sur téléphone, et davantage sur grand écran, où la boîte
+ * est plafonnée par `MAX_BOX_WIDTH` et doit rester centrée.
+ *
+ * **C'est une marge, pas une largeur plus un `alignSelf`.** La première
+ * version posait `width` et `alignSelf: 'center'` sur le post : ça se rend
+ * correctement sur `react-native-web`, et pas du tout sur iOS, où la cellule
+ * de `FlatList` étire son enfant sur toute la largeur et écrase la
+ * contrainte. Vérifié en build Release, donc hors de toute question de cache
+ * de bundler. Une marge, elle, se soustrait de l'espace disponible avant
+ * l'étirement : le résultat ne dépend plus de la façon dont le parent aligne
+ * ses enfants.
+ */
+export function feedSideInset(windowWidth: number): number {
+  return (windowWidth - feedBoxWidth(windowWidth)) / 2;
 }

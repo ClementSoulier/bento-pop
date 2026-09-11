@@ -12,4 +12,5 @@ export {
   RIBBON_OFFSET,
   feedBoxWidth,
   feedScale,
+  feedSideInset,
 } from './layout';
