@@ -882,6 +882,7 @@ rien écrire. États nominal, chargement et erreur capturés.
 | D5 | Nom de l'onglet | « La table ». Prolonge le vocabulaire du produit là où « le fil » est le mot générique de tout le monde, et ouvre la suite : le bento de la semaine devient « le menu ». |
 | D6 | Barre d'actions | Absente en v1. Pas d'affordance inerte. Budget de mise en page réservé par une constante. |
 | D7 | Emballage du post | Pas de carte. La boîte bento est le post, l'étiquette d'identité flotte au-dessus sans chevauchement. |
+| D8 | Superposition des crédits d'image | **Accepté tel quel.** Le crédit est en `bottom: 4` et le bloc titre en `bottom: conf.pad`, donc ils partagent la même bande et le crédit recouvre le sous-titre (« 2011 » sous « Affiche : The Movie Database »). Constaté en recette, arbitré par Clément : la mention légale CC-BY-SA reste présente, ce qui est l'obligation, et corriger toucherait `Tile`, donc le composer, la page publique et l'image de partage. Non rouvert au chantier 11. |
 
 ---
 
@@ -910,18 +911,6 @@ fil le rend beaucoup plus visible.
 
 `search-modal`, `search`, `profile`, `u/[pseudo]`. Le chantier 4 s'en trouve
 réduit à ces quatre écrans.
-
-### Superposition des crédits d'image
-
-Le crédit est en `position: absolute; bottom: 4` et le bloc titre en
-`bottom: conf.pad` : ils occupent la même bande, donc le crédit recouvre le
-sous-titre. « 2011 » et « Affiche : The Movie Database » se chevauchent, tout
-comme « vidéaste web… » et « Photo : Mickaël Schauli ». Le défaut est ancien
-et vit dans `Tile`, mais le fil l'affiche sur chaque case de chaque post.
-
-Ce n'est donc plus le simple problème de contraste listé au chantier 11.
-Corriger touche le composer, la page publique et l'image de partage, chacun
-demandant une vérification visuelle : environ une demi-journée.
 
 ### Poids de l'image de partage, réglé au lot 5
 
