@@ -1,7 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { checkPseudoShape } from '@/lib/pseudo-rules';
+import { updateMobileUser } from './actions';
 import {
   filterUsers,
   funnelShare,
@@ -19,10 +21,18 @@ type UsersClientProps = {
   orphans: OrphanRow[];
 };
 
-export function UsersClient({ funnel, rows, orphans }: UsersClientProps) {
+export function UsersClient({ funnel, rows: initialRows, orphans }: UsersClientProps) {
   const [tab, setTab] = useState<Tab>('profils');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('tous');
+  const [rows, setRows] = useState(initialRows);
+  const [editing, setEditing] = useState<UserListRow | null>(null);
+
+  const applyEdit = (userId: string, pseudo: string, displayName: string | null) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === userId ? { ...r, pseudo, displayName } : r)),
+    );
+  };
 
   const visible = useMemo(() => {
     const searched = filterUsers(rows, query);
@@ -85,11 +95,127 @@ export function UsersClient({ funnel, rows, orphans }: UsersClientProps) {
             </div>
           ) : null}
 
-          <ProfilesTable rows={visible} />
+          <ProfilesTable rows={visible} onEdit={setEditing} />
         </>
       ) : (
         <OrphansTable rows={orphans} />
       )}
+
+      {editing ? (
+        <EditDialog
+          row={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(pseudo, displayName) => {
+            applyEdit(editing.id, pseudo, displayName);
+            setEditing(null);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Édition du pseudo et du nom affiché.
+ *
+ * Deux champs seulement : ce sont les deux demandes prévisibles, un pseudo
+ * insultant et une coquille. Tout le reste est du contenu, qui a ses propres
+ * écrans.
+ *
+ * Le contrôle de forme est immédiat, mais **la base reste l'arbitre** :
+ * l'unicité et les motifs de modération ne se vérifient pas ici, et le refus
+ * revient traduit par l'action.
+ */
+function EditDialog({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: UserListRow;
+  onClose: () => void;
+  onSaved: (pseudo: string, displayName: string | null) => void;
+}) {
+  const [pseudo, setPseudo] = useState(row.pseudo);
+  const [displayName, setDisplayName] = useState(row.displayName ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const shape = checkPseudoShape(pseudo);
+  const pseudoChanged = pseudo.trim() !== row.pseudo;
+  const nothingChanged = !pseudoChanged && (displayName.trim() === (row.displayName ?? ''));
+
+  const submit = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await updateMobileUser({ userId: row.id, pseudo: pseudo.trim(), displayName });
+      if (res.ok) {
+        onSaved(pseudo.trim(), displayName.trim() === '' ? null : displayName.trim());
+      } else {
+        setError(res.error);
+      }
+    });
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose} role="presentation">
+      <div
+        className="admin-modal-content max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Modifier @${row.pseudo}`}
+      >
+        <h2 className="text-[16px] font-semibold">Modifier @{row.pseudo}</h2>
+
+        <label className="mt-5 block text-[12px] font-medium">
+          Pseudo
+          <input
+            className="admin-input mt-1 w-full"
+            value={pseudo}
+            onChange={(e) => setPseudo(e.target.value)}
+            autoFocus
+          />
+        </label>
+        {!shape.ok ? (
+          <p className="mt-1 text-[12px] text-bento-red">{shape.message}</p>
+        ) : null}
+        {pseudoChanged && shape.ok ? (
+          <p className="mt-1 text-[12px] text-admin-muted">
+            L&apos;adresse publique deviendra <code className="font-mono">/u/{pseudo.trim()}</code>.
+            L&apos;ancienne renverra une page introuvable.
+          </p>
+        ) : null}
+
+        <label className="mt-4 block text-[12px] font-medium">
+          Nom affiché
+          <input
+            className="admin-input mt-1 w-full"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="facultatif"
+          />
+        </label>
+
+        {error ? (
+          <p className="mt-4 rounded border border-bento-red bg-bento-red/10 px-3 py-2 text-[12px] text-bento-red">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" className="admin-btn admin-btn-ghost" onClick={onClose} disabled={pending}>
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="admin-btn admin-btn-primary"
+            onClick={submit}
+            disabled={pending || !shape.ok || nothingChanged}
+          >
+            {pending ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -165,7 +291,13 @@ function Tabs({
   );
 }
 
-function ProfilesTable({ rows }: { rows: UserListRow[] }) {
+function ProfilesTable({
+  rows,
+  onEdit,
+}: {
+  rows: UserListRow[];
+  onEdit: (row: UserListRow) => void;
+}) {
   if (rows.length === 0) {
     return (
       <div className="admin-card p-6 text-[14px] text-admin-muted">
@@ -185,6 +317,7 @@ function ProfilesTable({ rows }: { rows: UserListRow[] }) {
             <th className="px-4 py-2.5">Inscrit le</th>
             <th className="px-4 py-2.5">Dernière visite</th>
             <th className="px-4 py-2.5">Appareil</th>
+            <th className="px-4 py-2.5 text-right">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -222,6 +355,11 @@ function ProfilesTable({ rows }: { rows: UserListRow[] }) {
               </td>
               <td className="px-4 py-3 text-[12px] text-admin-muted">
                 {r.platform ? `${r.platform === 'ios' ? 'iOS' : 'Android'} · ${r.appVersion ?? '?'}` : 'inconnu'}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => onEdit(r)}>
+                  Modifier
+                </button>
               </td>
             </tr>
           ))}

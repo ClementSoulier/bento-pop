@@ -188,13 +188,28 @@ pour un bug.
 Deux champs seulement : **pseudo** et **nom affiché**. Ce sont les deux demandes
 prévisibles, un pseudo insultant et une coquille.
 
-La modification passe par les **mêmes règles que l'app**, et c'est le point à
-ne pas rater : format `^[A-Za-z0-9_.]{3,20}$`, unicité insensible à la casse
-(`users_pseudo_lower_idx`), et `blocked_pseudo_patterns`. Le service-role
-contourne la RLS mais **pas les contraintes**, donc le format et l'unicité sont
-garantis par la base. La liste de motifs bloqués, elle, n'est pas une
-contrainte : elle doit être vérifiée explicitement côté admin, sinon on
-pourrait poser depuis le BO un pseudo que l'app refuserait.
+La modification passe par les **mêmes règles que l'app**, et la base les
+applique toutes les trois, y compris au service-role. Vérifié en production :
+
+| Règle | Origine | Refus observé |
+|---|---|---|
+| Format `^[A-Za-z0-9_.]{3,20}$` | contrainte `pseudo_format` | `23514`, « violates check constraint "pseudo_format" » |
+| Unicité insensible à la casse | index `users_pseudo_lower_idx` | `23505` |
+| Motifs de modération | **trigger** `users_pseudo_block_check`, en `security definer` | `23514`, « Pseudo non autorisé. » |
+
+Le troisième point corrige une erreur de la première rédaction de cette spec,
+qui affirmait que les motifs bloqués « ne sont pas une contrainte » et
+devaient être revérifiés côté admin. C'est faux : un trigger les applique
+depuis la migration `20260511130000`, et un service-role n'échappe pas aux
+triggers. **Le back-office ne peut donc pas poser un pseudo que l'app
+refuserait**, même par erreur de code, et il n'a rien à réimplémenter.
+
+Ce qu'il doit faire, en revanche, c'est **traduire** ces refus. Les deux
+causes de refus de pseudo partagent le code `23514` et ne se distinguent que
+par le message : les confondre afficherait « format invalide » sur un pseudo
+parfaitement bien formé mais interdit. Un contrôle de forme immédiat côté
+client complète le dispositif, pour répondre sans aller-retour sur le cas le
+plus courant.
 
 Changer un pseudo change l'URL publique `/u/<pseudo>`. L'écran le dit avant de
 valider.
@@ -543,9 +558,17 @@ c'est aussi la seule façon d'en contrôler les chiffres sans session
 d'administration. 13 contrôles au vert, entonnoir conforme aux mesures du
 §4.1.
 
-### Lot 2 · Modifier
+### Lot 2 · Modifier ✅
 
-Pseudo et nom affiché, avec la validation partagée et ses tests.
+Pseudo et nom affiché, dans une boîte de dialogue depuis la liste. 14 tests
+s'ajoutent aux 16 du lot 1.
+
+L'écran prévient qu'un changement de pseudo change l'adresse publique et que
+l'ancienne renverra une page introuvable.
+
+Vérifié contre la production sur le compte de recette, renommé puis remis en
+place : les trois refus reviennent avec leur bonne traduction, le renommage
+aboutit, et le nombre de profils est inchangé.
 
 ### Lot 3 · Supprimer
 
