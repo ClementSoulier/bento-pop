@@ -570,8 +570,17 @@ le comptage des cases passe par `bento_items(count)`, dont l'agrégat arrive
 en `[{ count: n }]`, et un changement de forme donnerait zéro case partout
 sans qu'aucune requête n'échoue. L'écran étant derrière une authentification,
 c'est aussi la seule façon d'en contrôler les chiffres sans session
-d'administration. 13 contrôles au vert, entonnoir conforme aux mesures du
-§4.1.
+d'administration. L'écran étant derrière une authentification,
+c'est aussi la seule façon d'en contrôler les chiffres sans session
+d'administration.
+
+Il ne compare **plus à des comptages figés**. La première version attendait
+« 106 installations, 70 membres… », relevés le 12 septembre. Ces nombres
+bougent dès qu'on supprime un compte ou qu'on crée un bento invité, et le
+script criait à l'échec sur des chiffres corrects. Une valeur de référence qui
+change avec l'usage n'est pas un test, c'est un rappel à mettre à jour. Il
+vérifie donc des invariants entre les trois sources, dont celui qui porte la
+promesse de l'écran : les bentos éditoriaux publiés ne comptent pas.
 
 **Recette visuelle faite** une fois l'accès admin obtenu (cf. §4.7) : les
 quatre compteurs affichent 106 / 70 / 56 / 26, l'onglet des installations sans
@@ -646,9 +655,43 @@ l'entrée de registre porte le type, le motif composé
 (« Compte de test : recette du chantier 3, bento non publié »), l'email de
 l'administrateur et la date, **sans pseudo ni nom affiché**.
 
-### Lot 4 · Le bento éditorial
+### Lot 4 · Le bento éditorial ✅
 
-Formulaire, création profil puis bento puis cases, publication, mise en avant.
+Formulaire en une page, sous `/utilisateurs/nouveau`.
+
+**L'ordre des écritures est ce qui protège le public.** Trois insertions se
+suivent sans transaction commune, PostgREST n'en offrant pas. L'ordre est donc
+choisi pour que chaque interruption laisse un état invisible : le profil
+d'abord, qui est ce qui échoue le plus souvent et n'a alors rien créé ; le
+bento **toujours en brouillon** ; les six cases en une seule insertion, que
+Postgres traite comme une unité ; et la publication **en dernier**. Un échec
+en cours de route laisse au pire un brouillon incomplet, que personne ne voit
+et que la liste permet de supprimer. L'ordre inverse aurait pu exposer un
+bento à trois cases dans le fil.
+
+La recherche d'item passe par `search_items`, la fonction que l'app utilise
+déjà. Chercher autrement afficherait un autre catalogue, classé autrement, et
+on composerait des bentos avec des items que personne ne retrouve.
+
+La publication est refusée sur un bento incomplet, comme dans l'app : la case
+se désactive plutôt que d'échouer à l'envoi.
+
+**Recette réelle**, un bento « Joueur du Grenier » composé, publié et mis en
+avant. Vérifié : `auth.users` **n'a pas bougé** (critère C7), le profil porte
+`kind = editorial` et pas de CGU, le bento est visible en anonyme donc dans le
+fil, et l'entonnoir **ne bouge pas** : les publiés restent à 26 alors qu'un
+bento publié vient d'être créé (critère C8).
+
+**Ce bento a été supprimé aussitôt**, et pas par excès de prudence : il était
+publié et mis en avant en production, attribué à une personne réelle et
+identifiable, avec six choix que j'avais inventés. C'est le cas d'usage de la
+fonctionnalité, mais pas avec un contenu de test. Sa suppression a par ailleurs
+exercé la branche restante : un profil éditorial n'a pas de compte
+d'authentification, et la boîte l'annonce avant de supprimer.
+
+**Un défaut corrigé en capture** : les libellés et leurs champs se suivaient
+sur la même ligne. Un `input` en `w-full max-w-sm` reste au fil du texte tant
+qu'il n'est pas `block`.
 
 ### Lot 5 · L'étiquette « Invité »
 

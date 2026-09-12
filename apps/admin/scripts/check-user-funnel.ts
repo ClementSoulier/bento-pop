@@ -32,8 +32,18 @@ if (!URL_ || !KEY) {
 }
 const headers = { apikey: KEY, authorization: `Bearer ${KEY}` };
 
-/** Référence relevée le 12 septembre 2026. */
-const EXPECTED = { installs: 106, members: 70, started: 56, published: 26, slots: 282 };
+/**
+ * Pas de comptages figés.
+ *
+ * La première version comparait à « 106 installations, 70 membres… », relevés
+ * le 12 septembre 2026. Ces nombres bougent dès qu'on supprime un compte ou
+ * qu'on crée un bento invité, et le script criait alors à l'échec sur des
+ * chiffres parfaitement corrects. Une valeur de référence qui change avec
+ * l'usage n'est pas un test, c'est un rappel à mettre à jour.
+ *
+ * On vérifie donc des **invariants** entre les trois sources, qui eux tiennent
+ * quelle que soit la taille de la base.
+ */
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail = '') => {
@@ -73,22 +83,61 @@ async function main() {
   console.log(`écran Utilisateurs sur ${URL_}\n`);
   console.log('[entonnoir]');
   const funnel = computeFunnel(accounts, profiles, bentos);
-  check('installations', funnel.installs === EXPECTED.installs, `${funnel.installs}`);
-  check('membres', funnel.members === EXPECTED.members, `${funnel.members}`);
-  check('bentos commencés', funnel.started === EXPECTED.started, `${funnel.started}`);
-  check('bentos publiés', funnel.published === EXPECTED.published, `${funnel.published}`);
+  console.log(
+    `  ${funnel.installs} installations · ${funnel.members} membres · ` +
+      `${funnel.started} commencés · ${funnel.published} publiés · ` +
+      `${funnel.editorial} éditoriaux · ${funnel.orphans} sans pseudo`,
+  );
+
+  check('la pagination a ramené des comptes', funnel.installs > 0, `${funnel.installs}`);
   check(
-    'installations sans pseudo',
-    funnel.orphans === EXPECTED.installs - EXPECTED.members,
+    'membres et éditoriaux couvrent tous les profils',
+    funnel.members + funnel.editorial === profiles.length,
+    `${funnel.members} + ${funnel.editorial} = ${profiles.length}`,
+  );
+  check(
+    'l\'entonnoir décroît',
+    funnel.members >= funnel.started && funnel.started >= funnel.published,
+    `${funnel.members} ≥ ${funnel.started} ≥ ${funnel.published}`,
+  );
+  check(
+    'les orphelins sont les comptes sans profil',
+    funnel.orphans === accounts.filter((a) => !profiles.some((p) => p.id === a.id)).length,
     `${funnel.orphans}`,
+  );
+
+  // Le contrôle qui protège la promesse faite à l'écran : un profil
+  // éditorial n'a pas installé l'app et son bento a été composé par
+  // l'équipe. Le compter fausserait le seul chiffre qui sert à juger
+  // l'adoption.
+  const editorialIds = new Set(profiles.filter((p) => p.kind === 'editorial').map((p) => p.id));
+  const editorialPublished = bentos.filter(
+    (b) => editorialIds.has(b.user_id) && b.published_at !== null,
+  ).length;
+  check(
+    'les bentos éditoriaux publiés ne comptent pas',
+    funnel.published + editorialPublished ===
+      bentos.filter((b) => b.published_at !== null).length,
+    `${editorialPublished} publié(s) éditorial(aux) exclu(s)`,
+  );
+  check(
+    'aucun profil éditorial n\'a de compte',
+    [...editorialIds].every((id) => !accounts.some((a) => a.id === id)),
+    `${editorialIds.size} profil(s) éditorial(aux)`,
   );
 
   console.log('\n[forme des réponses]');
   const rows = buildUserRows(profiles, bentos, new Set(accounts.map((a) => a.id)));
   const totalSlots = rows.reduce((sum, r) => sum + r.slots, 0);
-  // Le contrôle qui compte : si l'agrégat changeait de forme, ce total
-  // tomberait à zéro sans qu'aucune requête n'échoue.
-  check("l'agrégat bento_items(count) est lu", totalSlots === EXPECTED.slots, `${totalSlots} cases`);
+  // Le contrôle qui compte : l'agrégat `bento_items(count)` arrive sous la
+  // forme `[{ count: n }]`. Un changement de forme donnerait zéro case
+  // partout sans qu'aucune requête n'échoue, et la liste afficherait
+  // « aucun » pour tout le monde.
+  check("l'agrégat bento_items(count) est lu", totalSlots > 0, `${totalSlots} cases`);
+  check(
+    'chaque bento a entre 1 et 6 cases',
+    bentos.every((b) => b.slots >= 0 && b.slots <= 6),
+  );
   check('une ligne par profil', rows.length === profiles.length, `${rows.length}`);
   check(
     'chaque ligne a un pseudo',

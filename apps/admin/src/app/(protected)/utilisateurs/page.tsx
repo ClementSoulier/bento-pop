@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import {
@@ -62,6 +63,11 @@ export default async function UtilisateursPage() {
     <PageShell
       crumbs={`Mobile · ${funnel.installs} installations · ${funnel.members} inscrits`}
       title="Utilisateurs"
+      actions={
+        <Link href="/utilisateurs/nouveau" className="admin-btn admin-btn-primary admin-btn-sm">
+          Nouveau bento invité
+        </Link>
+      }
     >
       <UsersClient funnel={funnel} rows={rows} orphans={orphans} />
     </PageShell>
