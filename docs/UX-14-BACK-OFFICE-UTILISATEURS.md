@@ -720,10 +720,38 @@ avant garde « À la une ».
 une valeur inconnue ajoutée en base avant le déploiement des clients doit se
 lire « pas invité » plutôt que faire échouer le rendu.
 
-### Lot 6 · Télémétrie
+### Lot 6 · Télémétrie ✅
 
 Écriture côté app, colonnes remplies côté admin. Part avec la même version
 mobile que le lot 5, et que l'haptique du chantier 3.
+
+**L'endroit compte plus que le code.** L'écriture est dans `session.init()`,
+pas dans `refreshProfile()` : ce dernier est rappelé par le composer à
+**chaque retour d'onglet**, ce qui aurait multiplié les allers-retours réseau
+pour une précision dont personne n'a besoin. Une visite par lancement est la
+bonne granularité. Elle passe aussi après `refreshProfile` : sans profil, il
+n'y a rien à mettre à jour.
+
+`telemetry.ts` n'importe ni `react-native` ni `expo-constants`, la lecture de
+`Platform.OS` et de la version se faisant chez l'appelant. C'est la troisième
+fois de la journée que cette contrainte se rappelle : un module qui importe
+`react-native` n'est pas chargeable sous `node:test`.
+
+**Dix tests, dont ceux qui comptent le plus** : `recordVisit` ne lève jamais,
+ni sur un refus RLS, ni sur une contrainte violée, ni sur une panne serveur,
+ni sur un réseau injoignable. Cette écriture part au démarrage : si elle
+levait, l'app resterait sur le splash pour une colonne d'écran
+d'administration.
+
+Deux détails que le bouchon a permis de figer : le filtre `id=eq.` est bien
+présent, sans quoi une mise à jour PostgREST toucherait toutes les lignes
+visibles ; et une valeur inconnue part à `null` plutôt que d'être omise, sans
+quoi quelqu'un passé du téléphone au web garderait « ios » pour toujours.
+
+**Vérifié contre la production**, avec un compte créé puis supprimé : les
+trois colonnes s'écrivent sous RLS (204), la base refuse « web » (400,
+d'où le `null` rendu par `describeApp`), et une session ne peut pas écrire la
+télémétrie de quelqu'un d'autre.
 
 ### Lot 7 · Recette et DoD
 

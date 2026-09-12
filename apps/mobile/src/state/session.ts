@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { supabase } from '@/supabase/client';
+import { describeApp, recordVisit } from '@/lib/telemetry';
 import type { Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
@@ -75,6 +78,20 @@ export const useSession = create<SessionState>((set, get) => ({
           // refreshProfile non bloquant : profil resté `null`, l'app ouvre
           // sur l'onboarding ou un state vide.
         });
+
+        // Télémétrie : une fois par lancement, ici et pas dans
+        // `refreshProfile`, que le composer rappelle à chaque retour
+        // d'onglet. Lancée sans être attendue et sans remonter d'erreur :
+        // le back-office peut se passer d'une ligne, pas l'utilisateur d'un
+        // démarrage. Après `refreshProfile` : sans profil il n'y a rien à
+        // mettre à jour.
+        if (get().profile) {
+          void recordVisit(
+            supabase,
+            session.user.id,
+            describeApp(Platform.OS, Constants.expoConfig?.version),
+          );
+        }
       }
 
       // 3. Écoute les changements de session (refresh token, logout futur)
