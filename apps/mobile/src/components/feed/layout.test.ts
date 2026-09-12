@@ -44,9 +44,9 @@ describe('géométrie de la boîte bento', () => {
   /**
    * La marge latérale était à 16, ce qui faisait tomber la boîte pile à
    * l'échelle 1 sur un iPhone 15 (361 = 393 - 32). Coïncidence élégante, mais
-   * les posts touchaient les bords. Elle est passée à 24, et la boîte est
-   * donc désormais légèrement réduite sur un téléphone plutôt qu'à taille
-   * exacte : c'est voulu, et ce test le dit pour qu'on ne « rétablisse » pas
+   * les posts touchaient les bords. Elle est passée à 32, et la boîte est
+   * donc désormais réduite sur un téléphone plutôt qu'à taille exacte :
+   * c'est voulu, et ce test le dit pour qu'on ne « rétablisse » pas
    * l'ancienne valeur en croyant corriger une dérive.
    */
   it('laisse la boîte respirer plutôt que de la caler sur la largeur exacte', () => {
@@ -98,14 +98,18 @@ describe('feedBoxWidth', () => {
 
 describe('feedSideInset', () => {
   /**
-   * La première version posait `width` et `alignSelf: 'center'` sur le post.
-   * Correct sur `react-native-web`, sans aucun effet sur iOS, où la cellule
-   * de `FlatList` étire son enfant et écrase la contrainte : la boîte
-   * touchait les deux bords. Vérifié en build Release, donc hors de toute
-   * question de cache de bundler.
+   * La première version posait `width` et `alignSelf: 'center'` sur le post,
+   * dans la **fonction de style** d'un `Pressable`. Correct sur
+   * `react-native-web`, sans aucun effet sur iOS : la boîte touchait les deux
+   * bords. La cellule de `FlatList` n'y était pour rien, c'est la forme
+   * fonction de `style` qui n'appliquait pas les propriétés de mise en page.
+   * Diagnostiqué en build Release, donc hors de toute question de cache de
+   * bundler.
    *
-   * Une marge se soustrait de l'espace disponible avant l'étirement, donc le
-   * résultat ne dépend plus de la façon dont le parent aligne ses enfants.
+   * D'où une marge plutôt qu'une largeur, et un objet de style plutôt qu'une
+   * fonction : la marge se soustrait de l'espace disponible avant
+   * l'étirement, donc le résultat ne dépend plus de la façon dont le parent
+   * aligne ses enfants.
    */
   it('vaut la marge nominale sur un téléphone', () => {
     for (const width of [SE, IPHONE_15, PRO_MAX]) {
@@ -118,18 +122,26 @@ describe('feedSideInset', () => {
     assert.ok(feedSideInset(TABLETTE) > H_PADDING, 'devrait dépasser la marge nominale');
   });
 
-  it('reconstitue toujours la largeur de la fenêtre', () => {
-    // L'invariant qui compte : deux marges plus la boîte remplissent l'écran.
-    // Sans lui, un arrondi ferait déborder ou laisserait une bande morte.
-    for (const width of [SE, IPHONE_15, PRO_MAX, TABLETTE, 300, 1024]) {
-      assert.equal(feedSideInset(width) * 2 + feedBoxWidth(width), Math.max(width, 240 + 2 * feedSideInset(width)));
+  it('reconstitue exactement la largeur de la fenêtre', () => {
+    // L'invariant qui compte : deux marges plus la boîte remplissent l'écran,
+    // ni plus ni moins. Sans lui, un arrondi ferait déborder ou laisserait une
+    // bande morte sur un bord.
+    for (const width of [SE, IPHONE_15, PRO_MAX, TABLETTE, 361, 1024]) {
+      assert.equal(feedSideInset(width) * 2 + feedBoxWidth(width), width, `à ${width} pt`);
     }
   });
 
-  it('n’est jamais négatif, même sur une fenêtre absurde', () => {
-    for (const width of [0, 100, 200]) {
-      assert.ok(feedSideInset(width) <= 0 || feedSideInset(width) >= 0);
-      assert.ok(Number.isFinite(feedSideInset(width)));
+  /**
+   * Sous `MIN_BOX_WIDTH`, la boîte est plus large que la fenêtre et le calcul
+   * brut donnerait une marge négative, donc un débordement. Seule une largeur
+   * absurde y mène (0 sur la première frame de certaines plateformes), mais
+   * une marge négative se rattrape mal une fois rendue.
+   */
+  it('ne devient jamais négatif sur une fenêtre absurde', () => {
+    for (const width of [0, -100, 50, 100, 200]) {
+      const inset = feedSideInset(width);
+      assert.ok(Number.isFinite(inset), `non fini pour ${width}`);
+      assert.ok(inset >= 0, `marge négative pour ${width} : ${inset}`);
     }
   });
 });

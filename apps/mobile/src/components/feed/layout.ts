@@ -105,5 +105,10 @@ export function feedScale(windowWidth: number): number {
  * ses enfants.
  */
 export function feedSideInset(windowWidth: number): number {
-  return (windowWidth - feedBoxWidth(windowWidth)) / 2;
+  // Plancher à 0 : sous `MIN_BOX_WIDTH`, la boîte est plus large que la
+  // fenêtre et le calcul brut donnerait une marge négative, donc un
+  // débordement. Le cas n'est atteignable que sur une largeur absurde (0 sur
+  // la première frame de certaines plateformes), mais une marge négative se
+  // rattrape mal une fois rendue.
+  return Math.max(0, (windowWidth - feedBoxWidth(windowWidth)) / 2);
 }

@@ -878,15 +878,48 @@ rien écrire. États nominal, chargement et erreur capturés.
 
 ## 12. Definition of Done
 
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` au vert sur tout le dépôt.
-- [ ] Les tests de §10.2 et §10.3 existent et passent en CI.
-- [ ] Les huit critères de succès de §2 sont vérifiés sur device.
+État au 12 septembre 2026, à l'issue du lot 5.
+
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` au vert sur tout le dépôt.
+      Lint et typecheck 8/8, 69 tests mobile et 104 landing, 21 d'intégration
+      HTTP côté landing, aucun échec ni annulation.
+- [~] Les tests de §10.2 et §10.3 existent et passent **en CI**. Ils existent
+      et passent en local sous la commande exacte de la CI
+      (`pnpm turbo run test`), mais la branche n'a jamais été poussée : la CI
+      n'a pas encore vu ces commits.
+- [ ] Les huit critères de succès de §2 sont vérifiés **sur device**. Quatre
+      sur huit restent ouverts, et aucun n'a été vérifié ailleurs que sur
+      simulateur. Détail en §12.1.
 - [ ] La checklist §10.4 est intégralement cochée, capture de partage
-      comprise sur les deux plateformes.
-- [ ] `expo export` passe pour iOS et Android.
-- [ ] Aucune référence résiduelle à `featured.ts` ni à `MiniBentoCard`.
-- [ ] Le plan Supabase et son quota d'egress ont été vérifiés (§4.2).
-- [ ] Roadmap mise à jour, suivis consignés.
+      comprise sur les deux plateformes. Android n'a pas été ouvert du tout.
+- [x] `expo export` passe pour iOS et Android.
+- [x] Aucune référence résiduelle à `featured.ts` ni à `MiniBentoCard`. Deux
+      mentions subsistent dans des commentaires, qui documentent pourquoi
+      `loadFeedPage` lève au lieu de rendre une liste vide : volontaires.
+- [ ] Le plan Supabase et son quota d'egress ont été vérifiés (§4.2). À faire
+      dans le tableau de bord, hors de portée d'ici.
+- [~] Roadmap mise à jour, suivis consignés. Suivis consignés en §14, roadmap
+      à l'état réel et non à l'état terminé.
+
+### 12.1 Les huit critères, un par un
+
+| # | Critère | État |
+|---|---|---|
+| 1 | L'onglet n'est jamais vide | ✅ simulateur, 26 bentos affichés |
+| 2 | Les 26 atteignables sans doublon ni trou | ✅ simulateur, 4 requêtes, pied de liste atteint |
+| 3 | Chaque bento lisible sans taper | ✅ simulateur, iPhone 17 et SE |
+| 4 | Un featured identifiable au premier coup d'œil | ⬜ jamais vu en situation : les 3 featured sont en position 15 à 22 du fil, et le défilement du simulateur ne s'est pas rendu jusque-là. Vérifié seulement sur l'écran d'aperçu du lot 3 |
+| 5 | Un bento publié apparaît en tête au pull-to-refresh | ⬜ demande une écriture en base |
+| 6 | Republier ne fait pas remonter en tête | ⬜ demande une écriture en base |
+| 7 | Le second passage ne retélécharge aucune image | ✅ simulateur, 106 fichiers et 17 Mo dans le cache disque |
+| 8 | Le défilement reste fluide, budget de §8 | ⬜ **non mesuré**. Ni le temps de première peinture, ni les images par seconde, ni la mémoire. Le simulateur ne donne d'ailleurs pas de chiffre représentatif là-dessus |
+
+**Avertissement sur les cases déjà cochées de §10.4.** La recette du lot 5 a
+tourné sur un build qui portait encore le défaut de marge corrigé en fin de
+lot. Les vérifications fonctionnelles (pagination, cache disque, capture de
+partage, état d'erreur) n'en dépendent pas et restent valides. Les
+vérifications de mise en page, elles, ont été refaites après correctif :
+marge de 32 pt mesurée au pixel sur iPhone 17 et sur iPhone SE.
 
 ---
 

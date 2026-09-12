@@ -14,7 +14,7 @@
 | # | Chantier | Impact | Effort | Dépend de | Statut |
 |---|---|---|---|---|---|
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
-| 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 développé, recette simulateur iOS faite · reste device et Android · [spec](./UX-02-FIL-LA-TABLE.md) |
+| 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 développé, recette simulateur iOS faite · DoD 4/8 · reste device réel, Android et perf mesurée · [spec](./UX-02-FIL-LA-TABLE.md) |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | ⬜ |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
@@ -73,6 +73,8 @@ Les featured restent distingués **à l'intérieur du fil**, à leur date de pub
 **Deux défauts corrigés au passage.** `publishBento` réécrit `published_at` à chaque appel (`bento-actions.ts:66`), donc republier ferait remonter un vieux bento en tête d'un fil où chaque post occupe un écran (correctif avancé depuis le chantier 5). Et `loadFeaturedBentos` avale toute erreur en `return []`, ce qui affiche l'état vide quand Supabase est tombé.
 
 **Fait quand** : l'onglet n'est jamais vide dès qu'un bento est publié, chaque bento est lisible sans taper, et le second passage sur le fil ne retélécharge aucune image.
+
+**Où on en est.** Les cinq lots sont développés et le code est vert (lint, typecheck, 69 tests mobile, `expo export` iOS et Android). La recette a tourné sur simulateur iOS avec les données de production : pagination sur les 26 bentos, cache disque à 106 fichiers pour 17 Mo, capture de partage fonctionnelle, état d'erreur atteint. La DoD est à 4 items sur 8 (cf. §12 de la spec). Restent quatre choses, toutes hors de portée d'un simulateur : la vérification sur device réel, Android de bout en bout, la mesure du budget de performance, et le contrôle du plan Supabase et de son quota d'egress.
 
 ---
 
