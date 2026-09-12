@@ -4,6 +4,7 @@ import type { CategoryKey } from '@/supabase/types';
 import { EmptyTile } from './EmptyTile';
 import { GRID_GEOMETRY } from './geometry';
 import { Tile, type TileData } from './Tile';
+import { TilePulse } from './TilePulse';
 import { SHADOWS } from '@/components/primitives/shadow';
 
 export type BentoItems = Partial<Record<CategoryKey, TileData>>;
@@ -32,6 +33,12 @@ type BentoGridProps = {
    * distinguer un coup de cœur sans changer de composant.
    */
   frameBorderWidth?: number;
+  /**
+   * Case à faire pulser, et jeton qui rejoue l'animation à chaque pose.
+   * `null` partout ailleurs que sur le composer : le fil, la page publique
+   * et l'image de partage rendent des bentos figés.
+   */
+  pulse?: { cat: CategoryKey; seq: number } | null;
 };
 
 /**
@@ -52,6 +59,7 @@ export function BentoGrid({
   onTap,
   readOnly = false,
   frameBorderWidth = GRID_GEOMETRY.BORDER,
+  pulse = null,
 }: BentoGridProps) {
   const H_FILM = GRID_GEOMETRY.H_FILM * scale;
   const H_MID = GRID_GEOMETRY.H_MID * scale;
@@ -76,15 +84,17 @@ export function BentoGrid({
       );
     }
     return (
-      <Tile
-        cat={cat}
-        data={item}
-        height={height}
-        size={size}
-        scale={scale}
-        rotate={rotate}
-        onPress={onTap ? () => onTap(cat) : undefined}
-      />
+      <TilePulse trigger={pulse?.cat === cat ? pulse.seq : null}>
+        <Tile
+          cat={cat}
+          data={item}
+          height={height}
+          size={size}
+          scale={scale}
+          rotate={rotate}
+          onPress={onTap ? () => onTap(cat) : undefined}
+        />
+      </TilePulse>
     );
   };
 

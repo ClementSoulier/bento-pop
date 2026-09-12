@@ -30,6 +30,53 @@ describe('cases', () => {
   });
 });
 
+describe('lastFilled, déclencheur de la pulsation', () => {
+  it('est nul au départ', () => {
+    assert.equal(state().lastFilled, null);
+  });
+
+  it('désigne la dernière case posée', () => {
+    state().setSlot('film', FILM);
+    assert.equal(state().lastFilled?.cat, 'film');
+    state().setSlot('series', SERIE);
+    assert.equal(state().lastFilled?.cat, 'series');
+  });
+
+  /**
+   * Sans compteur, remplacer deux fois de suite l'item d'une même case
+   * laisserait `lastFilled` identique et l'animation ne se rejouerait pas.
+   */
+  it('incrémente son jeton à chaque pose, même sur la même case', () => {
+    state().setSlot('film', FILM);
+    const first = state().lastFilled?.seq;
+    state().setSlot('film', SERIE);
+    const second = state().lastFilled?.seq;
+    assert.ok(first !== undefined && second !== undefined);
+    assert.ok(second > first, `${second} devrait dépasser ${first}`);
+  });
+
+  /**
+   * Le point qui compte : au démarrage à froid, `hydrate` remplit les six
+   * cases d'un coup. Si elle touchait `lastFilled`, les six tuiles
+   * pulseraient à l'ouverture de l'app.
+   */
+  it('n\'est pas touché par une resynchronisation', () => {
+    state().hydrate({ film: FILM, series: SERIE });
+    assert.equal(state().lastFilled, null);
+
+    state().setSlot('place', FILM);
+    const after = state().lastFilled;
+    state().hydrate({ film: FILM });
+    assert.deepEqual(state().lastFilled, after, 'hydrate a bougé le déclencheur');
+  });
+
+  it('repart de zéro sur reset', () => {
+    state().setSlot('film', FILM);
+    state().reset();
+    assert.equal(state().lastFilled, null);
+  });
+});
+
 describe('hydrate face aux écritures en vol', () => {
   it('applique l\'état distant quand rien n\'est en vol', () => {
     state().setSlot('film', FILM);

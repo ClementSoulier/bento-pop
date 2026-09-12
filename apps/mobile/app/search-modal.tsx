@@ -30,6 +30,7 @@ import {
   loadSuggestions,
   suggestionAccessibilityLabel,
 } from '@/lib/suggestions';
+import { failureFeedback, slotFilledFeedback, tapFeedback } from '@/lib/haptics';
 import { supabase } from '@/supabase/client';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
@@ -229,6 +230,10 @@ export default function SearchModal() {
     if (!userId || choosingRef.current) return;
     choosingRef.current = true;
 
+    // Au moment du tap, pas à la fin de l'écriture : le retour tactile doit
+    // accompagner le geste, pas confirmer un aller-retour réseau.
+    tapFeedback();
+
     const previous = currentSlot ?? null;
     // Posé avant l'écriture optimiste : le composer reprend le focus dès le
     // `router.back()` ci-dessous et relit le bento en base, où la nouvelle
@@ -249,6 +254,7 @@ export default function SearchModal() {
     try {
       const bentoId = await ensureBento(userId);
       await setBentoSlot(bentoId, category, item.id);
+      slotFilledFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
         variant: 'success',
         durationMs: 5000,
@@ -258,6 +264,7 @@ export default function SearchModal() {
       // Retour arrière local : la case affichée doit refléter la base.
       if (previous) setSlot(category, previous);
       else clearSlot(category);
+      failureFeedback();
       reportWriteFailure('remplissage de case', e);
       showToast("La case n'a pas pu être enregistrée. Réessaie.", {
         variant: 'danger',

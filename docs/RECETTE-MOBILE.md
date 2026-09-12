@@ -199,25 +199,55 @@ pour un développeur, mais il ressemble au bandeau blanc à pastille décrit plu
 bas : avant de partir en chasse, vérifier si une écriture vient d'échouer,
 notamment derrière le proxy où elles échouent toutes.
 
-### `expo run:ios` ne relance pas Metro, et Metro garde ses variables
+### L'URL Supabase est **compilée dans l'app**, pas servie par Metro
 
-Les `EXPO_PUBLIC_*` sont **inlinées dans le bundle par Metro**, pas lues au
-démarrage de l'app. Un Metro lancé une fois avec les variables du proxy
-continue donc de servir l'URL du proxy, y compris après une nouvelle
-`expo run:ios` sans variables, qui affiche simplement « Skipping dev server »
-et se raccroche à l'instance existante.
+C'est le piège le plus coûteux rencontré jusqu'ici, et il ne se voit nulle
+part dans le code de l'écran.
 
-Conséquence vécue : une recette « sur la production » qui tapait en réalité un
-proxy éteint, et qui aurait été rapportée comme concluante.
+`app.config.ts` recopie `process.env.EXPO_PUBLIC_SUPABASE_URL` dans
+`extra.SUPABASE_URL`, et `src/supabase/client.ts` lit
+`Constants.expoConfig?.extra?.[key]` **avant** `process.env[key]`. Or
+`app.config.ts` est évalué par `expo run:ios` au moment de la **compilation**,
+et son résultat est figé dans `MonBentoPop.app/EXConstants.bundle/app.config`.
+
+Conséquences, toutes vérifiées :
+
+- relancer Metro avec d'autres variables ne change **rien** à la cible de
+  l'app ;
+- le bundle servi par Metro contient bien la nouvelle URL, mais seulement
+  dans le shim `process.env`, qui n'est jamais atteint puisque `extra` gagne.
+  **Vérifier le bundle ne prouve donc rien** ;
+- changer de cible impose une **reconstruction**.
+
+Le seul contrôle qui fait foi :
+
+```bash
+APP=$(find ~/Library/Developer/Xcode/DerivedData/MonBentoPop-* -name "*.app" -type d | grep simulator | head -1)
+strings "$APP/EXConstants.bundle/app.config" | grep -o "127.0.0.1:8098\|ggjgktbcqumfxrixcdyx"
+```
+
+Second contrôle, côté données cette fois : la clé de session dans
+AsyncStorage porte la référence du projet.
+
+```bash
+D=$(xcrun simctl get_app_container <UDID> com.bentopop.mobile data)
+cat "$D/Library/Application Support/com.bentopop.mobile/RCTAsyncLocalStorage_V1/manifest.json"
+# sb-<ref>-auth-token  → la référence dit sur quel projet l'app est branchée
+```
+
+Vécu : une session de recette entière passée à croire que l'app tapait le
+proxy alors qu'elle écrivait en production, en s'appuyant sur le contrôle du
+bundle, qui est insuffisant.
+
+### `expo run:ios` ne relance pas Metro
 
 `pkill -f "expo start"` ne suffit pas, le processus s'appelle
-`expo/bin/cli run:ios`. Trouver le vrai coupable et vérifier ensuite :
+`expo/bin/cli run:ios` et garde le port 8081. Une nouvelle `expo run:ios`
+affiche alors « Skipping dev server » et se raccroche à l'instance existante.
 
 ```bash
 lsof -ti :8081 | xargs -I{} ps -o command= -p {}
 pkill -f "expo/bin/cli"
-curl -s "http://localhost:8081/apps/mobile/index.bundle?platform=ios&dev=true" \
-  | grep -c "127.0.0.1:8098"     # 0 attendu si on vise la production
 ```
 
 ### `idb ui text` tape sur le clavier matériel, avec la mauvaise disposition

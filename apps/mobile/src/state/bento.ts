@@ -33,8 +33,24 @@ import type { TileData } from '@/components/bento/Tile';
 
 type BentoSlots = Partial<Record<CategoryKey, TileData & { itemId?: string }>>;
 
+/**
+ * Dernière case posée par une action de l'utilisateur.
+ *
+ * Sert à ne faire pulser *que* la tuile concernée sur le composer. Le
+ * déclencheur vit ici et non dans l'écran parce que seul le store sait
+ * distinguer un choix d'une resynchronisation : au démarrage à froid,
+ * `hydrate` remplit les six cases d'un coup, et un écran qui comparerait
+ * l'ancien et le nouvel état ferait pulser les six tuiles à l'ouverture.
+ *
+ * `seq` s'incrémente à chaque pose, y compris sur la même catégorie : sans
+ * lui, remplacer deux fois de suite l'item d'une même case ne rejouerait
+ * pas l'animation.
+ */
+type LastFilled = { cat: CategoryKey; seq: number };
+
 type BentoState = {
   slots: BentoSlots;
+  lastFilled: LastFilled | null;
   /** Écritures parties et non encore confirmées, succès ou échec. */
   pendingWrites: number;
   setSlot: (cat: CategoryKey, data: TileData & { itemId?: string }) => void;
@@ -53,15 +69,20 @@ type BentoState = {
 
 export const useBento = create<BentoState>((set, get) => ({
   slots: {},
+  lastFilled: null,
   pendingWrites: 0,
-  setSlot: (cat, data) => set((s) => ({ slots: { ...s.slots, [cat]: data } })),
+  setSlot: (cat, data) =>
+    set((s) => ({
+      slots: { ...s.slots, [cat]: data },
+      lastFilled: { cat, seq: (s.lastFilled?.seq ?? 0) + 1 },
+    })),
   clearSlot: (cat) =>
     set((s) => {
       const next = { ...s.slots };
       delete next[cat];
       return { slots: next };
     }),
-  reset: () => set({ slots: {}, pendingWrites: 0 }),
+  reset: () => set({ slots: {}, lastFilled: null, pendingWrites: 0 }),
   hydrate: (slots) => {
     if (get().pendingWrites > 0) return;
     set({ slots });

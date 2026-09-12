@@ -74,6 +74,7 @@ const FAIL = process.env.FAIL ?? '';
  */
 const FAKE_AUTH = process.env.FAKE_AUTH === '1';
 const FAKE_USER_ID = '00000000-0000-4000-8000-0000000000fa';
+const FAKE_PSEUDO = 'recette';
 
 /**
  * Fonctions RPC relayables en POST. Toutes sont `language sql stable`
@@ -126,6 +127,23 @@ createServer(async (req, res) => {
     // (`signup`, `token`) attendent la session complète.
     return json(res, 200, url.startsWith('/auth/v1/user') ? fakeUser() : fakeSession());
   }
+  // Profil synthétique du compte factice. Sans lui, l'app se croit connectée
+  // mais sans profil, et reste bloquée sur l'onboarding : le composer et tout
+  // ce qui en dépend restent hors d'atteinte en recette. Le compte n'a aucun
+  // bento, donc on tombe exactement sur l'état « 0 / 6 ».
+  if (FAKE_AUTH && url.startsWith('/rest/v1/users') && url.includes(FAKE_USER_ID)) {
+    return json(res, 200, [
+      {
+        id: FAKE_USER_ID,
+        pseudo: FAKE_PSEUDO,
+        display_name: null,
+        terms_accepted_at: new Date(0).toISOString(),
+        created_at: new Date(0).toISOString(),
+        updated_at: new Date(0).toISOString(),
+      },
+    ]);
+  }
+
   if (FAIL && url.startsWith(FAIL)) {
     return json(res, 500, { message: 'panne simulee', code: '500' });
   }

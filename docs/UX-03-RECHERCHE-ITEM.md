@@ -857,6 +857,37 @@ recette « en production » se serait faite dans le vide. Et `idb ui text` passe
 par le clavier matériel, donc `_`, `0` et `3` sont sortis en `)`, `à` et `»`
 dans le champ pseudo.
 
+### 9.2 sexies Ce que la recette du lot 5 a trouvé
+
+**Le bouton principal touchait la boîte.** Signalé à l'œil, confirmé au
+pixel : **0 pt** entre le bas du cadre de la boîte et le haut du bouton, et
+93 pt de jaune mort *sous* le bouton. La cause est
+`paddingBottom: tabBarHeight + 12`, alors que la zone de contenu de l'écran
+exclut déjà la barre d'onglets : elle était comptée deux fois, et l'espace
+volé l'était exactement là où il devait respirer.
+
+Le budget vertical est sorti de l'écran dans `components/bento/compose-layout.ts`,
+testé sur toute combinaison plausible de hauteur d'écran, d'encoche et de
+barre d'onglets. Après correction, mesuré : **60,7 pt** de jaune visible
+au-dessus du bouton, 12 pt en dessous.
+
+Au passage, la constante `CTA_BLOCK_H` valait 100 pour un bloc mesuré à 66.
+Le modèle annonçait donc 28 pt d'écart là où l'écran en montrait 66 : un
+modèle faux qui donne un résultat acceptable reste un modèle faux, et il
+aurait menti au premier changement de gabarit. Constante corrigée, écart
+demandé porté à 56, et le calcul colle désormais au rendu.
+
+**Le bandeau LogBox inexpliqué du chantier 2 a une explication.** Il dit
+`AuthApiError: Invalid Refresh Token: Refresh Token Not Found`, levé par
+`GoTrueClient._recoverAndRefresh` en `console.error`. Il apparaît quand
+l'app retrouve un jeton devenu invalide, ce que produit exactement un
+aller-retour entre le proxy de recette et la production. Rien à corriger
+côté chantier 3, mais le mystère est levé.
+
+Ce que cette découverte laisse ouvert, et qui n'est pas de ce chantier : un
+jeton de rafraîchissement invalide fait repartir l'app sur un nouveau compte
+anonyme, donc **sur un bento vide**. Cf. §13.
+
 ### 9.3 Ce qui ne se teste pas automatiquement
 
 L'`autoFocus`, la hauteur de clavier, l'haptique et les animations. Ils passent
@@ -1018,6 +1049,12 @@ les montrent encore.
 **`items.ts` n'est pas testable.** Il importe le singleton Supabase. Le
 refactoriser sur le patron client-en-paramètre permettrait de tester
 `searchItems` et `submitItem`. Hors périmètre ici.
+
+**Un jeton de rafraîchissement invalide fait perdre son bento.** Constaté en
+recette : `GoTrueClient` échoue à rafraîchir, la session est vidée, `init()`
+relance un `signInAnonymously`, et l'utilisateur repart avec un nouvel
+identifiant, donc un bento vide. C'est le talon d'Achille du compte anonyme,
+et cela relève du chantier 5 ou 9, qui touchent au modèle de compte.
 
 **`can_publish_bento` côté SQL.** Toujours pas implémenté, la règle vit encore
 côté UI seulement (cf. la note en fin de migration `20260528120000`). Sans
