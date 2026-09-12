@@ -13,6 +13,15 @@ L'app pointe sur un proxy local qui relaie les lectures vers Supabase et
 bloque tout le reste. On obtient les vraies données, le vrai rendu, les vraies
 images, sans compte anonyme créé ni écriture possible.
 
+Sont relayés : tous les `GET`, et les `POST` vers les fonctions RPC de la liste
+blanche (`search_items`, `find_similar_items`, `popular_items`), qui sont
+`stable` en SQL donc en lecture. Tout le reste répond 405. Pour une recette qui
+a besoin d'une autre fonction :
+
+```bash
+RPC_ALLOW=search_items,ma_fonction TARGET=… KEY=… node …/readonly-proxy.mjs
+```
+
 ```bash
 # 1. le proxy, dans un terminal à part
 set -a && . apps/landing/.env && set +a
@@ -142,10 +151,41 @@ route :
 
 ```bash
 FAIL=/rest/v1/bentos TARGET=... KEY=... node apps/mobile/scripts/readonly-proxy.mjs
+# ou, pour un écran qui tape une RPC :
+FAIL=/rest/v1/rpc/popular_items TARGET=... KEY=... node apps/mobile/scripts/readonly-proxy.mjs
 ```
 
 Compter environ trois secondes de squelette avant l'erreur : React Query
 retente deux fois.
+
+### « Search failed: undefined », ou une RPC qui ne répond pas en recette
+
+PostgREST expose les fonctions SQL en `POST`, pas en `GET`. Une fonction absente
+de `RPC_ALLOW` répond donc 405 et l'écran affiche une erreur réseau, alors que
+la base va très bien. Le journal du proxy le dit : chaque ligne porte désormais
+la méthode et le poids de la réponse.
+
+```
+200 POST /rest/v1/rpc/search_items 245o
+405 POST /rest/v1/rpc/ma_fonction
+```
+
+C'est aussi le moyen de **mesurer l'egress d'un parcours** : additionner la
+colonne de droite sur la durée de la recette.
+
+### Installer une build déjà compilée sur un second simulateur
+
+Inutile de recompiler pour comparer deux tailles d'écran. Le `.app` vit dans
+DerivedData :
+
+```bash
+APP=$(find ~/Library/Developer/Xcode/DerivedData/MonBentoPop-* -name "*.app" -type d | grep simulator | head -1)
+xcrun simctl boot "iPhone SE (3rd generation)"
+xcrun simctl install <UDID> "$APP" && xcrun simctl launch <UDID> com.bentopop.mobile
+```
+
+Vérifier ensuite dans le journal du proxy que le second appareil passe bien par
+lui, et pas directement en production.
 
 ### `INSTALL_FAILED_VERSION_DOWNGRADE` sur Android
 

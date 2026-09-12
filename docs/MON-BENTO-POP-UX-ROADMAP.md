@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
-| 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | ⬜ |
+| 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 spécifié, en attente de validation · [spec](./UX-03-RECHERCHE-ITEM.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
@@ -85,6 +85,16 @@ Les featured restent distingués **à l'intérieur du fil**, à leur date de pub
 ---
 
 ## 3. Recherche d'item : suggestions, autofocus, haptique
+
+> **Spécification détaillée : [`UX-03-RECHERCHE-ITEM.md`](./UX-03-RECHERCHE-ITEM.md)**
+> (mesures de production, design, contrat de données, plan en 7 lots, DoD, décisions).
+>
+> Trois écarts avec le constat ci-dessous, tranchés par la mesure et documentés
+> dans la spec : le classement par popularité **n'a pas encore de signal** (au
+> plus 3 items choisis 2 fois par catégorie, 0 pour « Chanson »), l'`Alert`
+> anti-doublon est **démontrablement redondante** avec les résultats déjà
+> affichés (24 cas sur 24), et le double tap proposé est remplacé par un
+> **tap unique avec annulation par toast**. `compose.tsx:181` est devenu 183.
 
 **Constat** (tout dans `apps/mobile/app/search-modal.tsx`) :
 
