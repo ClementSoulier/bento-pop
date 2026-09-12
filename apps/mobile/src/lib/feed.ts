@@ -45,7 +45,7 @@ const FEED_SELECT = `
   id,
   published_at,
   is_featured,
-  users:user_id ( pseudo, display_name ),
+  users:user_id ( pseudo, display_name, kind ),
   bento_items (
     category_id,
     items ( id, title, subtitle, image_url, image_credit )
@@ -56,7 +56,7 @@ export type FeedRow = {
   id: string;
   published_at: string | null;
   is_featured: boolean;
-  users: { pseudo: string; display_name: string | null } | null;
+  users: { pseudo: string; display_name: string | null; kind: string } | null;
   bento_items:
     | {
         category_id: number;
@@ -76,6 +76,13 @@ export type FeedBento = {
   pseudo: string;
   displayName: string | null;
   isFeatured: boolean;
+  /**
+   * Bento composé par l'équipe pour un créateur rencontré hors de l'app.
+   *
+   * L'information ne se déduit d'aucune autre : sans elle, le fil attribue à
+   * quelqu'un une composition qu'il n'a pas faite dans l'app.
+   */
+  isGuest: boolean;
   /**
    * Chaîne renvoyée par PostgREST, **opaque**. Ne jamais la reconstruire via
    * `new Date(...).toISOString()` : cf. `cursorOf`.
@@ -133,6 +140,10 @@ export function mapFeedRow(row: FeedRow): FeedBento | null {
     pseudo: user.pseudo,
     displayName: user.display_name,
     isFeatured: row.is_featured,
+    // Comparaison à la chaîne plutôt qu'au type : une valeur inconnue,
+    // ajoutée en base avant que les clients ne soient déployés, doit se lire
+    // comme « pas invité » et non faire planter le mapping.
+    isGuest: user.kind === 'editorial',
     publishedAt: row.published_at,
     slots,
   };
@@ -162,7 +173,10 @@ export function cursorOf(row: FeedRow): FeedCursor | null {
 export function feedAccessibilityLabel(bento: FeedBento, now?: number): string {
   const when = relativeDate(bento.publishedAt, now);
   const parts = [when ? `Bento de @${bento.pseudo}, publié ${when}.` : `Bento de @${bento.pseudo}.`];
-  if (bento.isFeatured) parts.push("Coup de cœur de l'équipe.");
+  // Même priorité qu'à l'écran : « invité » d'abord, parce que c'est la seule
+  // information qu'un lecteur ne peut déduire de rien d'autre.
+  if (bento.isGuest) parts.push("Bento invité, composé par l'équipe.");
+  else if (bento.isFeatured) parts.push("Coup de cœur de l'équipe.");
   for (const cat of CATEGORY_ORDER) {
     const slot = bento.slots[cat];
     // Les cases vides sont omises, sinon VoiceOver énoncerait « Film

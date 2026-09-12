@@ -35,7 +35,7 @@ const rowAt = (id: string, publishedAt: string, pseudo = 'someone'): FeedRow => 
   id,
   published_at: publishedAt,
   is_featured: false,
-  users: { pseudo, display_name: null },
+  users: { pseudo, display_name: null, kind: 'member' },
   bento_items: [
     {
       category_id: 1,

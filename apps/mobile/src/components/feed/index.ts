@@ -1,4 +1,5 @@
-export { FeedPost, FEATURED_RIBBON, type FeedRibbon } from './FeedPost';
+export { FeedPost } from './FeedPost';
+export { FEATURED_RIBBON, GUEST_RIBBON, ribbonFor, type FeedRibbon } from './ribbon';
 export { FeedPostHeader } from './FeedPostHeader';
 export { FeedPostSkeleton } from './FeedPostSkeleton';
 export {

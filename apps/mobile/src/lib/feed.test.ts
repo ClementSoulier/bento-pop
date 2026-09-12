@@ -31,7 +31,7 @@ const row = (overrides: Partial<FeedRow> = {}): FeedRow => ({
   id: 'b-1',
   published_at: PUBLISHED,
   is_featured: false,
-  users: { pseudo: 'dark_hifus', display_name: 'Florian' },
+  users: { pseudo: 'dark_hifus', display_name: 'Florian', kind: 'member' },
   bento_items: fullLinks,
   ...overrides,
 });
@@ -78,7 +78,7 @@ describe('mapFeedRow', () => {
   it('préserve un `display_name` nul plutôt que de le vider', () => {
     // `null` et `''` ne se rendent pas pareil : l'étiquette d'identité affiche
     // une seconde ligne vide dans le second cas.
-    assert.equal(mapFeedRow(row({ users: { pseudo: 'x', display_name: null } }))?.displayName, null);
+    assert.equal(mapFeedRow(row({ users: { pseudo: 'x', display_name: null, kind: 'member' } }))?.displayName, null);
   });
 
   it('attribue les palettes déterministes du domaine partagé', () => {

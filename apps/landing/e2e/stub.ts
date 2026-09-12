@@ -27,6 +27,8 @@ type StubItem = {
 type StubUser = {
   pseudo: string;
   display_name: string | null;
+  /** `member` par défaut ; `editorial` pour un bento composé par l'équipe. */
+  kind?: string;
   bentos: {
     id: string;
     published_at: string;
@@ -92,6 +94,16 @@ export const USERS: StubUser[] = [
       is_featured: false,
       bento_items: [...fullItems.slice(0, 5), { category_id: 6, items: null }],
     },
+  },
+  {
+    // Bento invité : composé par l'équipe pour un créateur rencontré hors de
+    // l'app, et **aussi** mis en avant, ce qui est le cas courant. Sert à
+    // vérifier que la pastille « Invité » l'emporte sur « À la une » : c'est
+    // la seule information que le visiteur ne peut déduire d'aucune autre.
+    pseudo: 'invite',
+    display_name: 'Créateur Invité',
+    kind: 'editorial',
+    bentos: { id: 'b-6', published_at: YEAR, is_featured: true, bento_items: fullItems },
   },
   {
     // Réservé au test de redirection canonique : aucun autre test ne doit

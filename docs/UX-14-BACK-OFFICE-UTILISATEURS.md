@@ -693,9 +693,32 @@ d'authentification, et la boîte l'annonce avant de supprimer.
 sur la même ligne. Un `input` en `w-full max-w-sm` reste au fil du texte tant
 qu'il n'est pas `block`.
 
-### Lot 5 · L'étiquette « Invité »
+### Lot 5 · L'étiquette « Invité » ✅
 
-Côté mobile et côté page publique. Livrable avec la prochaine version.
+Côté fil mobile et côté page publique. Le fil part avec la prochaine version
+de l'app ; la page publique est déployable tout de suite.
+
+**Une seule étiquette à la fois, et « invité » l'emporte.** Un bento invité
+est presque toujours aussi un coup de cœur, c'est même la raison de le
+composer. Mais « coup de cœur » est un avis que le lecteur peut deviner,
+alors que « invité » est la seule information qu'il ne peut déduire de rien
+d'autre. En cas de conflit, on affiche ce qui ne se devine pas.
+
+La règle vit dans `components/feed/ribbon.ts`, sorti de `FeedPost.tsx` pour
+la même raison qu'au chantier 3 : un module qui importe `react-native` n'est
+pas chargeable sous `node:test`, et c'est justement cette règle-là qui se
+perdra au prochain type de bento. Six tests la verrouillent, dont celui du
+conflit.
+
+Côté landing, la pastille suit le même arbitrage, et le libellé reste porté
+par du texte et pas seulement par la couleur et le pictogramme. Deux tests
+d'intégration HTTP le couvrent, avec un profil éditorial ajouté au bouchon :
+un bento invité **et** mis en avant n'affiche que « Invité », un membre mis en
+avant garde « À la une ».
+
+`kind` est lu comme une chaîne et non comme un type fermé, des deux côtés :
+une valeur inconnue ajoutée en base avant le déploiement des clients doit se
+lire « pas invité » plutôt que faire échouer le rendu.
 
 ### Lot 6 · Télémétrie
 

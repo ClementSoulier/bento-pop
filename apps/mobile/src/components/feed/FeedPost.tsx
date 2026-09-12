@@ -4,27 +4,10 @@ import { GRID_GEOMETRY } from '@/components/bento/geometry';
 import { Sticker } from '@/components/primitives';
 import { feedAccessibilityLabel, type FeedBento } from '@/lib/feed';
 import { FeedPostHeader } from './FeedPostHeader';
+// Les étiquettes vivent dans un module sans dépendance à `react-native`,
+// pour que la règle de priorité entre elles reste testable.
+import { ribbonFor } from './ribbon';
 import { HEADER_GAP, POST_GAP, RIBBON_OFFSET } from './layout';
-
-/**
- * Étiquette posée sur le coin de la boîte.
- *
- * Prop plutôt que booléen `isFeatured` : le bento de la semaine et les futurs
- * types reprendront le même emplacement avec un autre libellé et une autre
- * couleur (cf. chantier 13). Un nouveau type sera une valeur, pas une
- * branche de plus dans le composant.
- */
-export type FeedRibbon = {
-  label: string;
-  color: string;
-  textColor?: string;
-};
-
-export const FEATURED_RIBBON: FeedRibbon = {
-  label: 'Coup de cœur',
-  color: '#e63946',
-  textColor: '#fbf3de',
-};
 
 /** Cadre épaissi des posts à étiquette, second signal après l'étiquette. */
 const RIBBON_BORDER = 7;
@@ -58,7 +41,7 @@ type FeedPostProps = {
  * fois.
  */
 export function FeedPost({ bento, width, sideInset, scale, onPress, now }: FeedPostProps) {
-  const ribbon = bento.isFeatured ? FEATURED_RIBBON : null;
+  const ribbon = ribbonFor(bento);
 
   return (
     <Pressable
