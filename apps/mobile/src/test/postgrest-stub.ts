@@ -30,6 +30,14 @@ export type StubRequest = {
   rawQuery: string;
   /** Chaîne de requête décodée, plus lisible pour les assertions de forme. */
   query: string;
+  /**
+   * Corps brut de la requête, vide pour un `GET`.
+   *
+   * PostgREST expose les fonctions SQL en `POST` avec les arguments dans le
+   * corps : sans ça, un test de RPC ne pourrait rien assurer d'autre que le
+   * nom de la fonction dans l'URL.
+   */
+  body: string;
 };
 
 type Reply = { status: number; body: unknown };
@@ -74,22 +82,31 @@ export async function startPostgrestStub(): Promise<PostgrestStub> {
     const raw = req.url ?? '';
     const cut = raw.indexOf('?');
     const rawQuery = cut === -1 ? '' : raw.slice(cut + 1);
-    requests.push({
-      method: req.method ?? 'GET',
-      path: cut === -1 ? raw : raw.slice(0, cut),
-      rawQuery,
-      query: decodeURIComponent(rawQuery),
-    });
 
-    // Défaut : liste vide. Un test qui oublie d'empiler une réponse obtient un
-    // résultat vide plutôt qu'une attente infinie.
-    const reply = replies.shift() ?? { status: 200, body: [] };
-    const payload = JSON.stringify(reply.body);
-    res.writeHead(reply.status, {
-      'content-type': 'application/json; charset=utf-8',
-      'content-length': Buffer.byteLength(payload),
+    // La réponse n'est envoyée qu'une fois le corps entièrement lu : y
+    // répondre plus tôt marcherait pour un `GET` mais laisserait le corps
+    // d'un `POST` de RPC hors de portée des assertions.
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => chunks.push(c));
+    req.on('end', () => {
+      requests.push({
+        method: req.method ?? 'GET',
+        path: cut === -1 ? raw : raw.slice(0, cut),
+        rawQuery,
+        query: decodeURIComponent(rawQuery),
+        body: Buffer.concat(chunks).toString('utf8'),
+      });
+
+      // Défaut : liste vide. Un test qui oublie d'empiler une réponse obtient
+      // un résultat vide plutôt qu'une attente infinie.
+      const reply = replies.shift() ?? { status: 200, body: [] };
+      const payload = JSON.stringify(reply.body);
+      res.writeHead(reply.status, {
+        'content-type': 'application/json; charset=utf-8',
+        'content-length': Buffer.byteLength(payload),
+      });
+      res.end(payload);
     });
-    res.end(payload);
   });
 
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));

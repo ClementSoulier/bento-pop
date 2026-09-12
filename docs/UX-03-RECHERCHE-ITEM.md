@@ -687,18 +687,45 @@ déjà écrit pour le chantier 2 :
 - `suggestionAccessibilityLabel` : silencieux à 0 et 1 choix, explicite à 2 et
   plus, et le pluriel est correct.
 
-### 9.2 Test d'intégration contre la production
+### 9.2 Test d'intégration de l'appel, sur bouchon
 
-`src/lib/suggestions.integration.test.ts`, en lecture seule avec la clé
-anonyme, sur le patron de `feed.integration.test.ts` :
+`src/lib/suggestions.integration.test.ts`, contre le bouchon HTTP, sur le
+patron de `feed.integration.test.ts`. La CI n'a pas d'identifiants Supabase,
+donc rien ici ne touche la vraie base.
 
-- les six catégories renvoient au plus 12 items ;
-- l'ordre est décroissant sur `picks` ;
-- deux appels consécutifs renvoient exactement le même ordre (c'est le test
-  qui protège le départage par `i.id` du §6.1) ;
-- tous les items renvoyés sont `validated` ;
-- `excludeItemId` retire bien l'item demandé ;
-- la latence reste sous 150 ms à chaud (§6.2).
+Ce qui est exercé, c'est le vrai `supabase-js` : le verbe, le chemin et le
+corps envoyés sur le fil. Une RPC casse autrement qu'une requête de table, et
+plus silencieusement : un nom d'argument qui dérive du SQL donne un
+`PGRST202` qui ressemble à une fonction absente, et un `lim` oublié laisse
+Postgres appliquer son défaut sans le signaler.
+
+- `POST` sur `/rest/v1/rpc/popular_items` ;
+- corps exact `{ category_key, lim, exclude_item }`, noms compris ;
+- `lim` à 12 par défaut, surchargeable ;
+- `exclude_item` transmis à `null` plutôt qu'omis ;
+- l'ordre reçu est conservé tel quel, le client ne retrie jamais (il n'a pas
+  `created_at`, donc il ne pourrait pas reproduire le départage) ;
+- une réponse `null` donne une liste vide, une erreur lève.
+
+Le bouchon a été étendu pour capturer le corps des requêtes : il ne relevait
+que la méthode et l'URL, ce qui ne suffit pas pour une RPC.
+
+### 9.2 bis Vérification contre la production
+
+`apps/mobile/scripts/check-popular-items.mjs`, en lecture seule avec la clé
+anonyme, lancé à la main après application de la migration. Il couvre ce
+qu'un bouchon ne peut pas : les propriétés qui dépendent des données et du
+planificateur Postgres.
+
+- les six catégories renvoient au plus 12 items, et au moins un ;
+- `picks` est décroissant, entier et positif ;
+- à `picks` égal, les items sans image sont relégués en fin de groupe ;
+- deux appels consécutifs renvoient exactement le même ordre (c'est le
+  contrôle qui protège le départage par `i.id` du §6.1) ;
+- tous les items renvoyés sont `validated`, recoupé sur la table ;
+- `exclude_item` retire l'item demandé sans décaler le reste du classement ;
+- la latence médiane à chaud reste sous 150 ms (§6.2), le premier appel étant
+  écarté car il porte l'établissement TLS et le démarrage du pooler.
 
 ### 9.3 Ce qui ne se teste pas automatiquement
 
