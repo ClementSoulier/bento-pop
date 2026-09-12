@@ -6,6 +6,7 @@
 
 **Légende effort** : S = moins d'une journée · M = 1 à 3 jours · L = plus de 3 jours ou arbitrage produit nécessaire.
 **Légende statut** : ⬜ à faire · 🟡 en cours · ✅ livré et vérifié.
+**Le numéro est un identifiant stable**, pas un rang : l'ordre d'attaque est celui du tableau. Un chantier inséré prend le numéro suivant disponible et se place à sa position d'attaque, pour ne pas renuméroter des références déjà écrites ailleurs.
 
 **Recette sur simulateur** : mode d'emploi et pièges dans [`RECETTE-MOBILE.md`](./RECETTE-MOBILE.md). Le proxy `apps/mobile/scripts/readonly-proxy.mjs` permet de faire tourner l'app sur les données de production sans rien y écrire.
 
@@ -18,6 +19,7 @@
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 7 lots livrés, DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
+| 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | ⬜ **prochain**, en cours de spécification |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2, tuiles de recherche par le chantier 3 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
@@ -128,6 +130,55 @@ Côté composer (`apps/mobile/app/(tabs)/compose.tsx`) :
 - CTA « Commence par ton film » quand le bento est vide, qui ouvre directement la modale.
 
 **Fait quand** : remplir les six cases se fait sans écran vide, sans tap superflu, et chaque case validée produit une réponse tactile et visuelle.
+
+---
+
+## 14. Back-office : utilisateurs, suppression, bentos éditoriaux
+
+> **À spécifier.** Trois besoins distincts, énoncés le 12 septembre 2026.
+
+**Constat.** Le BO admin (`apps/admin`) couvre aujourd'hui le catalogue
+d'items, sa modération, les signalements, la configuration mobile et la mise
+en avant des bentos publiés (`/bentos`, toggle `is_featured` et
+`featured_order`). Il ne sait rien faire des **utilisateurs** eux-mêmes : ni
+les lister, ni les supprimer, ni en créer.
+
+Trois manques, de nature différente.
+
+**1. Voir les utilisateurs, avec des statistiques d'usage.** Aucune vue ne
+liste les comptes. Les statistiques demandées (dernière connexion, iOS ou
+Android, version de l'app) **n'existent nulle part** : `public.users` porte
+`pseudo`, `display_name`, `terms_accepted_at`, `created_at`, `updated_at`, et
+rien d'autre. L'app lit bien sa propre version et `Platform.OS`, mais
+seulement pour le garde-fou de mise à jour forcée
+(`src/lib/app-config.ts:88`), et ne les envoie jamais. `auth.users`
+(service-role) porte `last_sign_in_at`, mais avec l'anonymous sign-in la
+session persiste : cette date vaut en pratique la date de création du compte,
+pas une date de dernière visite. **Ce point demande donc une instrumentation
+de l'app mobile, pas seulement un écran d'admin**, et les données
+n'existeront que pour les comptes qui ouvriront une version postérieure.
+
+**2. Supprimer des utilisateurs, avec un motif tracé.** Rien côté admin.
+Côté app, `deleteOwnAccount` supprime la ligne `public.users` et laisse
+**`auth.users` orpheline**, ce que la migration `20260511120000` assume
+explicitement. Une suppression admin devrait au contraire passer par
+`auth.admin.deleteUser`, dont la cascade
+(`users.id references auth.users(id) on delete cascade`) nettoie tout. Le
+motif de suppression demande une table de journal, et son contenu est un
+arbitrage RGPD : conserver un motif et une date se défend, conserver le
+pseudo beaucoup moins.
+
+**3. Composer un bento depuis l'admin, pour un créateur.** Des créateurs ont
+composé leur bento en vidéo ; il faut pouvoir le recréer dans l'app et le
+mettre en avant. Le verrou est structurel :
+`public.users.id references auth.users(id)`, donc **un profil ne peut pas
+exister sans compte d'authentification**. Créer un tel compte est possible en
+service-role, mais la forme qu'on lui donne décide si le créateur pourra un
+jour le revendiquer.
+
+**Fait quand** : l'équipe peut, sans toucher au SQL, lister et supprimer un
+utilisateur avec traçabilité, et publier le bento d'un créateur invité qui
+apparaît dans le fil comme les autres.
 
 ---
 
