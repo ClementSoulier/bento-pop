@@ -57,6 +57,7 @@ export async function setBentoFeatured(input: {
 
 const deleteUserSchema = z.object({
   userId: z.string().uuid(),
+  reason: z.string().min(1).max(500),
 });
 
 /**
@@ -72,14 +73,15 @@ const deleteUserSchema = z.object({
  * (`on delete set null` sur `reporter_id`), ce qui est voulu : ils
  * concernent quelqu'un d'autre.
  *
- * Cet écran ne liste que des bentos, donc tous ses comptes ont une
- * authentification. La suppression avec motif tracé vit sur
- * `/utilisateurs`.
+ * Cet écran ne liste que des bentos publiés, donc tous ses comptes ont une
+ * authentification. Le choix du motif, lui, vit sur `/utilisateurs` : ici on
+ * se contente de le transmettre.
  */
 export async function deleteUserAccount(input: {
   userId: string;
+  reason: string;
 }): Promise<ActionResult> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = deleteUserSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'userId invalide' };
@@ -94,6 +96,8 @@ export async function deleteUserAccount(input: {
 
   const result = await deleteMobileAccount(mobile, parsed.data.userId, {
     hasAuthAccount: true,
+    reason: parsed.data.reason,
+    adminEmail: admin.email,
   });
   if (!result.ok) return result;
 

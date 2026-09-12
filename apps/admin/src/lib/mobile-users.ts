@@ -14,8 +14,11 @@ import type { Database } from '@bento-pop/supabase-mobile/types';
 type MobileClient = SupabaseClient<Database>;
 
 /**
- * Supprime intégralement un compte : le profil et, s'il en a un, le compte
- * d'authentification.
+ * Supprime un profil, écrit sa trace au registre, et retire le compte
+ * d'authentification s'il en existe un.
+ *
+ * Un profil éditorial n'a pas de compte : `hasAuthAccount` vaut alors `false`
+ * et l'appel à l'API d'administration est évité.
  *
  * **Les deux suppressions sont nécessaires depuis la migration
  * `20260913000000_admin_users.sql`.** Avant elle,
@@ -29,7 +32,8 @@ type MobileClient = SupabaseClient<Database>;
  * L'ordre compte. On supprime **le profil d'abord** : c'est lui qui porte la
  * cascade vers `bentos` et `bento_items`, donc en cas d'interruption on
  * préfère un compte d'authentification orphelin, invisible et sans donnée, à
- * un bento orphelin visible de tous.
+ * un bento orphelin visible de tous. C'est aussi le seul ordre qui garantit
+ * que le registre ne mentionne jamais une suppression qui n'a pas eu lieu.
  *
  * Un profil éditorial n'a pas de compte d'authentification : la suppression
  * côté `auth` échoue alors avec un 404, ce qui n'est pas une erreur ici.
@@ -37,9 +41,17 @@ type MobileClient = SupabaseClient<Database>;
 export async function deleteMobileAccount(
   mobile: MobileClient,
   userId: string,
-  options: { hasAuthAccount: boolean },
+  options: { hasAuthAccount: boolean; reason: string; adminEmail: string },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error: profileError } = await mobile.from('users').delete().eq('id', userId);
+  // Registre et suppression du profil dans la même transaction, côté SQL.
+  // Les enchaîner ici laisserait soit une trace sans suppression, soit une
+  // suppression sans trace, et c'est précisément ce que le registre doit
+  // empêcher. Cf. `20260913100000_admin_delete_user.sql`.
+  const { error: profileError } = await mobile.rpc('admin_delete_user', {
+    target_id: userId,
+    reason: options.reason,
+    admin_email: options.adminEmail,
+  });
   if (profileError) return { ok: false, error: profileError.message };
 
   if (options.hasAuthAccount) {

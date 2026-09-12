@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { checkPseudoShape } from '@/lib/pseudo-rules';
-import { updateMobileUser } from './actions';
+import { DELETION_REASONS, type DeletionReasonId } from '@/lib/deletion-reasons';
+import { deleteMobileUser, deleteOrphanAccounts, updateMobileUser } from './actions';
 import {
   filterUsers,
   funnelShare,
@@ -27,6 +28,8 @@ export function UsersClient({ funnel, rows: initialRows, orphans }: UsersClientP
   const [filter, setFilter] = useState<Filter>('tous');
   const [rows, setRows] = useState(initialRows);
   const [editing, setEditing] = useState<UserListRow | null>(null);
+  const [deleting, setDeleting] = useState<UserListRow | null>(null);
+  const [orphanRows, setOrphanRows] = useState(orphans);
 
   const applyEdit = (userId: string, pseudo: string, displayName: string | null) => {
     setRows((prev) =>
@@ -60,7 +63,7 @@ export function UsersClient({ funnel, rows: initialRows, orphans }: UsersClientP
       <FunnelBar funnel={funnel} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Tabs tab={tab} setTab={setTab} profils={rows.length} orphelins={orphans.length} />
+        <Tabs tab={tab} setTab={setTab} profils={rows.length} orphelins={orphanRows.length} />
       </div>
 
       {tab === 'profils' ? (
@@ -95,11 +98,22 @@ export function UsersClient({ funnel, rows: initialRows, orphans }: UsersClientP
             </div>
           ) : null}
 
-          <ProfilesTable rows={visible} onEdit={setEditing} />
+          <ProfilesTable rows={visible} onEdit={setEditing} onDelete={setDeleting} />
         </>
       ) : (
-        <OrphansTable rows={orphans} />
+        <OrphansTable rows={orphanRows} onPurged={(ids) => setOrphanRows((p) => p.filter((o) => !ids.includes(o.id)))} />
       )}
+
+      {deleting ? (
+        <DeleteDialog
+          row={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => {
+            setRows((prev) => prev.filter((r) => r.id !== deleting.id));
+            setDeleting(null);
+          }}
+        />
+      ) : null}
 
       {editing ? (
         <EditDialog
@@ -294,9 +308,11 @@ function Tabs({
 function ProfilesTable({
   rows,
   onEdit,
+  onDelete,
 }: {
   rows: UserListRow[];
   onEdit: (row: UserListRow) => void;
+  onDelete: (row: UserListRow) => void;
 }) {
   if (rows.length === 0) {
     return (
@@ -357,9 +373,14 @@ function ProfilesTable({
                 {r.platform ? `${r.platform === 'ios' ? 'iOS' : 'Android'} · ${r.appVersion ?? '?'}` : 'inconnu'}
               </td>
               <td className="px-4 py-3 text-right">
-                <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => onEdit(r)}>
-                  Modifier
-                </button>
+                <span className="inline-flex gap-2">
+                  <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => onEdit(r)}>
+                    Modifier
+                  </button>
+                  <button type="button" className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => onDelete(r)}>
+                    Supprimer
+                  </button>
+                </span>
               </td>
             </tr>
           ))}
@@ -390,7 +411,31 @@ function BentoCell({ row }: { row: UserListRow }) {
  * On n'en connaît que l'identifiant et la date, et c'est justement le sujet :
  * elles représentent un tiers des installations, et personne ne les voyait.
  */
-function OrphansTable({ rows }: { rows: OrphanRow[] }) {
+function OrphansTable({
+  rows,
+  onPurged,
+}: {
+  rows: OrphanRow[];
+  onPurged: (ids: string[]) => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const purge = () => {
+    setError(null);
+    const ids = rows.map((r) => r.id);
+    startTransition(async () => {
+      const res = await deleteOrphanAccounts({ ids });
+      if (res.ok) {
+        onPurged(ids);
+        setConfirming(false);
+      } else {
+        setError(res.error);
+      }
+    });
+  };
+
   if (rows.length === 0) {
     return (
       <div className="admin-card p-6 text-[14px] text-admin-muted">
@@ -401,11 +446,44 @@ function OrphansTable({ rows }: { rows: OrphanRow[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="admin-card px-4 py-3 text-[12px] text-admin-muted">
-        Ces comptes existent côté authentification mais n&apos;ont pas de profil : l&apos;app
-        a été installée, puis quittée avant le choix du pseudo. Ils ne portent aucune
-        donnée personnelle.
+      <div className="admin-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="max-w-3xl space-y-2 text-[12px] text-admin-muted">
+          <p>
+            Ces comptes existent côté authentification mais n&apos;ont pas de profil :
+            l&apos;app a été installée, puis quittée avant le choix du pseudo. Ils ne
+            portent aucune donnée personnelle, et leur suppression n&apos;est donc pas
+            inscrite au registre.
+          </p>
+          {/* Le point qui n'est pas évident et qu'il faut dire avant le clic :
+              ces lignes SONT le compteur d'installations. Les supprimer pour
+              « faire propre » efface la seule trace de ce que l'onboarding
+              perd, et l'entonnoir tomberait à 100 % de conversion. */}
+          <p className="text-bento-red">
+            À supprimer seulement s&apos;il s&apos;agit vraiment d&apos;essais. Ces lignes
+            sont ce qui fait le compteur d&apos;installations : les effacer ferait
+            passer l&apos;entonnoir à 100 % de pseudos choisis, et la perte réelle à
+            l&apos;inscription deviendrait invisible.
+          </p>
+        </div>
+        {confirming ? (
+          <span className="flex items-center gap-2">
+            <span className="text-[12px]">Supprimer les {rows.length} ?</span>
+            <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => setConfirming(false)} disabled={pending}>
+              Non
+            </button>
+            <button type="button" className="admin-btn admin-btn-sm admin-btn-danger" onClick={purge} disabled={pending}>
+              {pending ? 'Suppression…' : 'Oui, supprimer'}
+            </button>
+          </span>
+        ) : (
+          <button type="button" className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => setConfirming(true)}>
+            Supprimer les {rows.length} comptes
+          </button>
+        )}
       </div>
+      {error ? (
+        <div className="admin-card border-bento-red px-4 py-3 text-[12px] text-bento-red">{error}</div>
+      ) : null}
       <div className="admin-card overflow-hidden">
         <table className="w-full text-[13px]">
           <thead className="border-b border-admin-border bg-admin-bg/60">
@@ -423,6 +501,128 @@ function OrphansTable({ rows }: { rows: OrphanRow[] }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Suppression d'un compte.
+ *
+ * Irréversible et sans corbeille, donc la boîte **récapitule ce qui
+ * disparaît** plutôt que de demander une confirmation vague. Le motif est
+ * obligatoire : c'est la trace RGPD, écrite dans la même transaction que la
+ * suppression.
+ */
+function DeleteDialog({
+  row,
+  onClose,
+  onDeleted,
+}: {
+  row: UserListRow;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [reasonId, setReasonId] = useState<DeletionReasonId>('test');
+  const [detail, setDetail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const detailRequired = reasonId === 'autre';
+  const blocked = detailRequired && detail.trim().length === 0;
+
+  const submit = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await deleteMobileUser({
+        userId: row.id,
+        reasonId,
+        detail,
+        hasAuthAccount: row.hasAuthAccount,
+      });
+      if (res.ok) onDeleted();
+      else setError(res.error);
+    });
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose} role="presentation">
+      <div
+        className="admin-modal-content max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Supprimer @${row.pseudo}`}
+      >
+        <h2 className="text-[16px] font-semibold text-bento-red">Supprimer @{row.pseudo}</h2>
+
+        <ul className="mt-4 space-y-1 text-[13px] text-admin-muted">
+          <li>· Le profil et son historique disparaissent.</li>
+          <li>
+            ·{' '}
+            {row.slots > 0
+              ? `Son bento (${row.slots} case${row.slots > 1 ? 's' : ''}${row.publishedAt ? ', publié' : ', brouillon'}) est supprimé.`
+              : "Aucun bento à supprimer."}
+          </li>
+          <li>
+            · <code className="font-mono">/u/{row.pseudo}</code> renverra une page introuvable.
+          </li>
+          <li>
+            ·{' '}
+            {row.hasAuthAccount
+              ? "Le compte d'authentification est supprimé également."
+              : "Ce profil n'a pas de compte d'authentification."}
+          </li>
+          <li>· Ses signalements éventuels sont conservés, ils concernent d&apos;autres personnes.</li>
+        </ul>
+
+        <label className="mt-5 block text-[12px] font-medium">
+          Motif
+          <select
+            className="admin-select mt-1 w-full"
+            value={reasonId}
+            onChange={(e) => setReasonId(e.target.value as DeletionReasonId)}
+          >
+            {DELETION_REASONS.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="mt-3 block text-[12px] font-medium">
+          Précision {detailRequired ? '(obligatoire)' : '(facultative)'}
+          <input
+            className="admin-input mt-1 w-full"
+            value={detail}
+            onChange={(e) => setDetail(e.target.value)}
+            placeholder={detailRequired ? 'Explique le motif' : ''}
+          />
+        </label>
+        <p className="mt-1 text-[11px] text-admin-muted">
+          Enregistré au registre pendant 12 mois, sans le pseudo ni le nom.
+        </p>
+
+        {error ? (
+          <p className="mt-4 rounded border border-bento-red bg-bento-red/10 px-3 py-2 text-[12px] text-bento-red">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" className="admin-btn admin-btn-ghost" onClick={onClose} disabled={pending}>
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="admin-btn admin-btn-danger"
+            onClick={submit}
+            disabled={pending || blocked}
+          >
+            {pending ? 'Suppression…' : 'Supprimer définitivement'}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -597,11 +597,54 @@ referme la boîte en mettant la ligne à jour. La normalisation du nom affiché
 se voit de bout en bout, « &nbsp;&nbsp;Compte&nbsp;&nbsp;&nbsp;de recette&nbsp;&nbsp; » ressortant
 « Compte de recette » en base.
 
-### Lot 3 · Supprimer
+### Lot 3 · Supprimer ✅
 
 Suppression des deux cas, motif obligatoire, registre, purge, confirmation
-récapitulative. Recette sur les comptes de test existants, à commencer par
-`recetteuxt_pop` et les 36 orphelins.
+récapitulative. 6 tests s'ajoutent, 36 au total.
+
+**Le registre et la suppression sont atomiques**, par une fonction plpgsql
+(`20260913100000_admin_delete_user.sql`). Les enchaîner en deux appels
+PostgREST laissait deux fenêtres d'incohérence : une trace pour quelqu'un qui
+existe toujours, ou un compte effacé sans trace, soit exactement ce que le
+registre doit empêcher. Un `select … for update` verrouille la ligne, pour que
+deux administrateurs supprimant le même profil n'écrivent pas deux entrées.
+
+**La suppression a quitté l'écran des bentos.** Elle y existait déjà, derrière
+un `window.confirm` et **sans motif**. Deux chemins destructifs dont un sans
+trace annulaient l'intérêt du registre. Le bouton est devenu un lien vers la
+liste des utilisateurs, filtrée sur le pseudo.
+
+**Les orphelins ne sont pas inscrits au registre**, et c'est délibéré : sans
+profil, il n'y a jamais eu ni pseudo, ni nom, ni bento, ni CGU acceptées.
+Aucune donnée personnelle à consigner. Un garde-fou serveur refuse malgré tout
+la suppression en lot si un identifiant porte un profil : l'écran ne le
+proposera jamais, mais une action irréversible ne doit pas dépendre de la
+justesse de son appelant.
+
+**Un conflit vu en recette, et signalé dans l'écran.** Purger les orphelins
+« pour faire propre » détruit la seule trace de ce que l'onboarding perd : ces
+36 lignes *sont* le compteur d'installations, et les effacer ferait passer
+l'entonnoir à 100 % de pseudos choisis. Le nettoyage et la mesure sont en
+opposition directe. L'écran le dit en rouge avant le clic, et le mécanisme a
+donc été vérifié sur un orphelin créé pour l'occasion plutôt qu'en supprimant
+les 36.
+
+**Recette réelle, de bout en bout.** Le compte `recetteuxt_pop` du chantier 3
+a été supprimé par l'écran, ce qui était son cas d'usage exact :
+
+| | Avant | Après |
+|---|---|---|
+| `auth.users` | 106 | 105 |
+| `users` | 70 | 69 |
+| `bentos` | 56 | 55 |
+| `bento_items` | 282 | **276** |
+| `user_deletions` | 0 | 1 |
+
+L'arithmétique de la cascade tombe juste : six cases retirées pour un bento
+6/6. Le compte d'authentification répond 404, le profil a disparu, et
+l'entrée de registre porte le type, le motif composé
+(« Compte de test : recette du chantier 3, bento non publié »), l'email de
+l'administrateur et la date, **sans pseudo ni nom affiché**.
 
 ### Lot 4 · Le bento éditorial
 

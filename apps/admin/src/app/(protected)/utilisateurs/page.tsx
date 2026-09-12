@@ -8,6 +8,7 @@ import {
   type BentoRow,
   type ProfileRow,
 } from '@/lib/user-funnel';
+import { purgeDeletionRegistry } from './actions';
 import { UsersClient } from './UsersClient';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,12 @@ export default async function UtilisateursPage() {
       </PageShell>
     );
   }
+
+  // La purge du registre à 12 mois se fait ici, faute d'ordonnanceur dans le
+  // projet. Elle est lancée sans être attendue et n'est jamais remontée : une
+  // purge ratée n'empêche personne de travailler et repassera au chargement
+  // suivant. Cf. la décision D8 de la spec.
+  void purgeDeletionRegistry();
 
   const [accounts, profiles, bentos] = await Promise.all([
     listAuthAccounts(mobile),

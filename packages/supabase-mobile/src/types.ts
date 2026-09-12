@@ -412,6 +412,11 @@ export type Database = {
           picks: number;
         }>;
       };
+      admin_delete_user: {
+        Args: { target_id: string; reason: string; admin_email: string };
+        /** Type du profil supprimé, pour savoir s'il faut aussi purger `auth`. */
+        Returns: UserKind;
+      };
       purge_user_deletions: {
         Args: Record<string, never>;
         /** Nombre de lignes retirées du registre. */
