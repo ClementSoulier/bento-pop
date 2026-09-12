@@ -779,6 +779,38 @@ juste en dessous l'écran proposait quand même de créer l'item. C'est
 l'invitation au doublon exacte, au moment précis où l'on est le moins capable
 de le détecter. La ligne est maintenant conditionnée à l'absence d'erreur.
 
+### 9.2 quater Ce que la recette du lot 4 a trouvé
+
+**La régression que le tap unique introduisait.** `hydrate` remplace
+l'intégralité des cases par l'état distant, et `compose.tsx` l'appelle à
+chaque retour d'onglet via `refreshProfile`. Or la modale se ferme désormais
+**avant** que l'écriture ne soit confirmée. La séquence tap, fermeture,
+reprise de focus, relecture, hydratation faisait donc disparaître la case
+qu'on venait d'afficher, pendant que l'écriture, elle, aboutissait.
+
+Corrigé par un compteur d'écritures en vol dans le store : `hydrate` ignore
+les données distantes tant qu'une écriture locale n'est pas confirmée. La
+règle vit dans `state/bento.ts` et non chez l'appelant, parce qu'il y a un
+seul `hydrate` à protéger et que tout appelant futur en hérite.
+`state/bento.test.ts` couvre le cas nominal, l'imbrication de deux écritures
+et le compteur qui ne doit jamais passer sous zéro.
+
+Ce défaut n'était visible ni à la lecture du diff, qui ne touche pas
+`compose.tsx`, ni sur un test unitaire de l'écran.
+
+**Les messages d'erreur techniques devenus le corps du toast.**
+`bento-actions.ts` lève « Bento create failed: … », qui passait jusqu'ici
+derrière un `Alert` intitulé « Oups ». En toast, la chaîne devient le message
+entier, en rouge et en capitales. L'écran affiche maintenant une phrase
+française actionnable et garde le détail dans les journaux. Harmoniser les
+messages de `bento-actions.ts` déborde de cet écran, cf. §13.
+
+**Un outil de recette en plus.** Sans session, tous les gestionnaires
+d'écriture sortent immédiatement, donc rien du lot 4 n'était observable
+derrière le proxy. `FAKE_AUTH=1` fournit une session synthétique : l'app se
+croit connectée, la première écriture se heurte au 405, et on exerce tout le
+chemin sauf le succès sans créer de compte en production.
+
 ### 9.3 Ce qui ne se teste pas automatiquement
 
 L'`autoFocus`, la hauteur de clavier, l'haptique et les animations. Ils passent
@@ -931,6 +963,11 @@ gratuit.
 **Couverture d'images de la catégorie « Chanson ».** 35 %, contre 90 % et plus
 ailleurs. C'est un problème de catalogue, pas d'app : il se traite en
 modération.
+
+**Messages d'erreur de `bento-actions.ts`.** Techniques, et en partie en
+anglais (« Bento create failed », « Slot upsert failed »). Ils ne sont plus
+affichés tels quels par la modale de recherche, mais le composer et le profil
+les montrent encore.
 
 **`items.ts` n'est pas testable.** Il importe le singleton Supabase. Le
 refactoriser sur le patron client-en-paramètre permettrait de tester

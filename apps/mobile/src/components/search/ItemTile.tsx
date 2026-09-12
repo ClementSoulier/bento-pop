@@ -18,6 +18,9 @@ import { TILE_ASPECT } from './layout';
  * La palette est dérivée de l'identifiant, donc elle est celle que la case
  * aura une fois choisie : l'utilisateur voit dans la grille ce qu'il obtiendra
  * dans son bento.
+ *
+ * Pas d'état « sélectionné ». Un tap remplit la case et ferme la modale, donc
+ * l'état n'aurait le temps de s'afficher sur aucune frame.
  */
 
 /** Le minimum commun à un résultat de recherche et à une proposition. */
@@ -41,7 +44,6 @@ type ItemTileProps = {
   index: number;
   width: number;
   pixelRatio: number;
-  selected?: boolean;
   accessibilityLabel: string;
   onPress: () => void;
 };
@@ -51,7 +53,6 @@ export function ItemTile({
   index,
   width,
   pixelRatio,
-  selected = false,
   accessibilityLabel,
   onPress,
 }: ItemTileProps) {
@@ -62,7 +63,6 @@ export function ItemTile({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected }}
       style={[
         styles.tile,
         { width, transform: [{ rotate: `${ROTATIONS[index % ROTATIONS.length] ?? 0}deg` }] },
@@ -115,11 +115,6 @@ export function ItemTile({
         <Text numberOfLines={2} style={styles.title}>
           {cleanTitle(item.title)}
         </Text>
-        {selected ? (
-          <View style={styles.check}>
-            <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '800' }}>✓</Text>
-          </View>
-        ) : null}
       </View>
       {item.subtitle ? (
         <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
@@ -173,18 +168,5 @@ const styles = StyleSheet.create({
     color: 'rgba(10,10,10,0.6)',
     fontFamily: 'Bungee',
     letterSpacing: 0.6,
-  },
-  check: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: '#e63946',
-    borderWidth: 2,
-    borderColor: '#0a0a0a',
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

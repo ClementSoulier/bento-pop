@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   PixelRatio,
   Platform,
@@ -18,7 +17,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { cleanTitle } from '@/lib/text';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { paletteKeyForItem } from '@/components/bento/palettes';
-import { StampButton, useToast } from '@/components/primitives';
+import { useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
 import {
   ItemTile,
@@ -36,12 +35,7 @@ import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
-import {
-  findSimilarItems,
-  searchItems,
-  submitItem,
-  type ItemSearchResult,
-} from '@/lib/items';
+import { searchItems, submitItem, type ItemSearchResult } from '@/lib/items';
 import {
   clearBentoSlot,
   ensureBento,
@@ -78,6 +72,23 @@ const ITEM_SEARCH_STALE_MS = 60 * 1000;
 const SUGGESTIONS_STALE_MS = 30 * 60 * 1000;
 const SUGGESTIONS_GC_MS = 60 * 60 * 1000;
 
+/**
+ * Signale un échec d'écriture.
+ *
+ * Le message de l'exception ne va **pas** à l'écran. `bento-actions.ts` lève
+ * des chaînes techniques et en partie anglaises (« Bento create failed:
+ * … »), qui passaient jusqu'ici derrière un `Alert` intitulé « Oups ». En
+ * toast, elles deviennent le message entier, en rouge et en capitales : ni
+ * lisibles, ni actionnables. On dit donc ce qui s'est passé et quoi faire,
+ * et on garde le détail dans les journaux.
+ *
+ * Harmoniser les messages de `bento-actions.ts` eux-mêmes déborde de cet
+ * écran, ils sont partagés avec le composer et le profil.
+ */
+function reportWriteFailure(what: string, error: unknown) {
+  console.warn(`[search-modal] ${what}`, error);
+}
+
 /** Ce dont l'écran a besoin pour afficher une tuile et remplir une case. */
 type ChosenItem = Pick<
   ItemSearchResult,
@@ -87,14 +98,25 @@ type ChosenItem = Pick<
 /** Une tuile prête à rendre : les données plus son libellé VoiceOver. */
 type DisplayedItem = ChosenItem & { a11y: string };
 
+/**
+ * État d'une case avant modification. `null` veut dire « la case était
+ * vide », ce qui est une valeur à part entière : annuler le remplissage
+ * d'une case vide doit la revider.
+ */
+type SlotSnapshot = ReturnType<typeof useBento.getState>['slots'][CategoryKey] | null;
+
 export default function SearchModal() {
   const params = useLocalSearchParams<{ category?: string }>();
   const category = (params.category ?? 'film') as CategoryKey;
   const meta = CATEGORY_META[category];
 
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<ChosenItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /**
+   * Verrou du tap unique. Une ref et non un état : il doit être lu et posé
+   * dans le même tour de boucle que le tap, avant tout rendu.
+   */
+  const choosingRef = useRef(false);
 
   const { width: windowWidth } = useWindowDimensions();
   const tileWidth = searchTileWidth(windowWidth);
@@ -106,8 +128,9 @@ export default function SearchModal() {
   const userId = useSession((s) => s.user?.id);
   const setSlot = useBento((s) => s.setSlot);
   const clearSlot = useBento((s) => s.clearSlot);
+  const beginWrite = useBento((s) => s.beginWrite);
+  const endWrite = useBento((s) => s.endWrite);
   const currentSlot = useBento((s) => s.slots[category]);
-  const slotIsFilled = Boolean(currentSlot);
   const showToast = useToast((s) => s.show);
 
   const debouncedQuery = useDebouncedValue(query.trim(), 300);
@@ -149,36 +172,111 @@ export default function SearchModal() {
   });
 
   /**
-   * Confirme un item existant du catalogue → l'attache au bento.
+   * Restaure l'état d'avant un remplissage : soit l'item précédent, soit la
+   * case vide. Sert à l'annulation par toast et au retour arrière quand
+   * l'écriture échoue.
    */
-  const onConfirmExisting = async (item: ChosenItem) => {
-    if (!userId) return;
-    setSubmitting(true);
+  const restoreSlot = async (bentoId: string, previous: SlotSnapshot) => {
+    // L'annulation part depuis le toast, donc alors que le composer a déjà
+    // le focus et peut relancer une hydratation à tout moment.
+    beginWrite();
     try {
-      const bentoId = await ensureBento(userId);
-      await setBentoSlot(bentoId, category, item.id);
-      setSlot(category, {
-        title: item.title,
-        subtitle: item.subtitle ?? undefined,
-        imageUrl: item.imageUrl ?? undefined,
-        imageCredit: item.imageCredit ?? undefined,
-        paletteKey: paletteKeyForItem(item.id),
-        itemId: item.id,
-        pending: false,
-      });
-      router.back();
-    } catch (e) {
-      Alert.alert('Oups', (e as Error).message);
+      if (previous?.itemId) {
+        await setBentoSlot(bentoId, category, previous.itemId);
+        setSlot(category, previous);
+      } else {
+        // Le cas qui manquerait si on se contentait de réécrire l'ancien
+        // item : remplir une case vide puis annuler doit la revider, pas la
+        // laisser telle quelle.
+        await clearBentoSlot(bentoId, category);
+        clearSlot(category);
+      }
+    } catch {
+      // La restauration a échoué : l'utilisateur rouvre la case et
+      // recommence. Un second toast d'erreur par-dessus le premier
+      // n'apporterait rien.
     } finally {
-      setSubmitting(false);
+      endWrite();
     }
   };
 
   /**
-   * Soumet un nouvel item (pending). Vérifie d'abord la liste des
-   * similaires validés et propose à l'utilisateur de prendre un existant
-   * plutôt que d'ajouter un doublon. Si l'utilisateur valide quand même,
-   * on crée le pending et on l'attache au bento.
+   * Un tap sur une tuile remplit la case et ferme la modale.
+   *
+   * Le double tap d'avant (sélectionner, puis « Choisir X » en bas) coûtait
+   * deux taps à tout le monde, soit douze sur un bento complet, pour un
+   * geste dont la seule conséquence est réversible.
+   *
+   * L'écriture part en arrière-plan et la modale se ferme tout de suite :
+   * `setSlot` est un store Zustand et `showToast` aussi, donc l'un et
+   * l'autre survivent au démontage de cet écran. Si l'écriture échoue, le
+   * store revient en arrière et le toast le dit.
+   *
+   * La clé primaire de `bento_items` étant `(bento_id, category_id)`, une
+   * seconde tuile remplacerait simplement la première : il n'y a pas d'état
+   * incohérent atteignable. Le verrou `choosingRef` sert seulement à ce
+   * qu'un double tap très rapide, avant que la modale n'ait disparu, ne
+   * lance pas deux écritures dont l'ordre d'arrivée n'est pas garanti.
+   */
+  const onChoose = async (item: ChosenItem) => {
+    if (!userId || choosingRef.current) return;
+    choosingRef.current = true;
+
+    const previous = currentSlot ?? null;
+    // Posé avant l'écriture optimiste : le composer reprend le focus dès le
+    // `router.back()` ci-dessous et relit le bento en base, où la nouvelle
+    // case n'existe pas encore. Sans ce verrou, l'hydratation écraserait la
+    // tuile qu'on vient d'afficher. Cf. `state/bento.ts`.
+    beginWrite();
+    setSlot(category, {
+      title: item.title,
+      subtitle: item.subtitle ?? undefined,
+      imageUrl: item.imageUrl ?? undefined,
+      imageCredit: item.imageCredit ?? undefined,
+      paletteKey: paletteKeyForItem(item.id),
+      itemId: item.id,
+      pending: false,
+    });
+    router.back();
+
+    try {
+      const bentoId = await ensureBento(userId);
+      await setBentoSlot(bentoId, category, item.id);
+      showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
+        variant: 'success',
+        durationMs: 5000,
+        action: { label: 'Annuler', onPress: () => void restoreSlot(bentoId, previous) },
+      });
+    } catch (e) {
+      // Retour arrière local : la case affichée doit refléter la base.
+      if (previous) setSlot(category, previous);
+      else clearSlot(category);
+      reportWriteFailure('remplissage de case', e);
+      showToast("La case n'a pas pu être enregistrée. Réessaie.", {
+        variant: 'danger',
+        durationMs: 5000,
+      });
+    } finally {
+      endWrite();
+    }
+  };
+
+  /**
+   * Propose un item absent du catalogue.
+   *
+   * **Plus de popup anti-doublon.** `find_similar_items` et `search_items`
+   * partagent score, filtre de catégorie et filtre de statut, et ne
+   * diffèrent que par leur seuil, 0,4 contre 0,15 : les résultats de la
+   * première sont donc toujours un sous-ensemble de ceux de la seconde, et
+   * toujours en tête. Vérifié sur 24 requêtes réelles, 24 fois sur 24. La
+   * popup interrompait l'utilisateur pour lui montrer la tuile devant
+   * laquelle il venait de passer. Les vrais doublons se traitent en aval,
+   * par la modération et `admin_merge_items`.
+   *
+   * Contrairement au choix d'un item existant, on attend ici avant de
+   * fermer : l'identifiant n'existe pas encore, donc rien à écrire de façon
+   * optimiste. C'est aussi lisible ainsi, choisir est instantané, créer
+   * prend un instant.
    */
   const onSubmitNew = async () => {
     if (!userId) return;
@@ -187,47 +285,6 @@ export default function SearchModal() {
 
     setSubmitting(true);
     try {
-      const similars = await findSimilarItems(category, title);
-      const top = similars[0];
-      if (top) {
-        // Popup anti-doublon : on propose le candidat top puis on laisse
-        // décider. Cancel = on ne fait rien, l'utilisateur peut affiner.
-        const cleaned = cleanTitle(top.title);
-        const subtitle = top.subtitle ? ` (${top.subtitle})` : '';
-        const decision = await new Promise<'existing' | 'new' | 'cancel'>((resolve) => {
-          Alert.alert(
-            'Tu veux dire celui-là ?',
-            `On a déjà ${cleaned}${subtitle} dans le catalogue.`,
-            [
-              { text: 'Annuler', style: 'cancel', onPress: () => resolve('cancel') },
-              {
-                text: 'Ajouter quand même',
-                style: 'destructive',
-                onPress: () => resolve('new'),
-              },
-              {
-                text: 'Oui, c\'est celui-là',
-                onPress: () => resolve('existing'),
-              },
-            ],
-            { cancelable: true, onDismiss: () => resolve('cancel') },
-          );
-        });
-
-        if (decision === 'cancel') return;
-        if (decision === 'existing') {
-          await onConfirmExisting({
-            id: top.id,
-            title: top.title,
-            subtitle: top.subtitle,
-            imageUrl: top.imageUrl,
-            imageCredit: null,
-          });
-          return;
-        }
-        // decision === 'new' → on continue avec submitItem.
-      }
-
       const itemId = await submitItem(category, title);
       const bentoId = await ensureBento(userId);
       await setBentoSlot(bentoId, category, itemId);
@@ -245,16 +302,19 @@ export default function SearchModal() {
         durationMs: 4000,
       });
     } catch (e) {
-      Alert.alert('Oups', (e as Error).message);
+      reportWriteFailure('soumission d\'item', e);
+      showToast("La proposition n'a pas pu être envoyée. Réessaie.", {
+        variant: 'danger',
+        durationMs: 5000,
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
   const onClear = async () => {
-    if (!userId || !slotIsFilled || !currentSlot) return;
+    if (!userId || !currentSlot) return;
     const snapshot = currentSlot;
-    const snapshotItemId = currentSlot.itemId;
     setSubmitting(true);
     try {
       const bentoId = await ensureBento(userId);
@@ -264,22 +324,14 @@ export default function SearchModal() {
       showToast('Case vidée', {
         variant: 'neutral',
         durationMs: 5000,
-        action: snapshotItemId
-          ? {
-              label: 'Annuler',
-              onPress: async () => {
-                try {
-                  await setBentoSlot(bentoId, category, snapshotItemId);
-                  setSlot(category, snapshot);
-                } catch {
-                  // Si la restauration échoue, l'user peut re-sélectionner.
-                }
-              },
-            }
-          : undefined,
+        action: { label: 'Annuler', onPress: () => void restoreSlot(bentoId, snapshot) },
       });
     } catch (e) {
-      Alert.alert('Oups', (e as Error).message);
+      reportWriteFailure('vidage de case', e);
+      showToast("La case n'a pas pu être vidée. Réessaie.", {
+        variant: 'danger',
+        durationMs: 5000,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -367,6 +419,22 @@ export default function SearchModal() {
           <Text style={{ fontSize: 18, fontWeight: '800', lineHeight: 18 }}>×</Text>
         </Pressable>
         <Text style={styles.headerLabel}>Case · {meta.stamp}</Text>
+        <View style={{ flex: 1 }} />
+        {/* Remontée du bas de l'écran : c'est une action rare, elle n'a pas
+            à occuper en permanence la zone que le clavier vient recouvrir.
+            `minHeight` à 44 pour une cible tactile réglementaire, contre
+            8 pt de padding vertical dans la version précédente. */}
+        {currentSlot ? (
+          <Pressable
+            onPress={() => void onClear()}
+            disabled={submitting}
+            accessibilityRole="button"
+            accessibilityLabel="Vider cette case"
+            style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }}
+          >
+            <Text style={styles.clearLabel}>Vider</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Search input */}
@@ -472,39 +540,16 @@ export default function SearchModal() {
               index={index}
               width={tileWidth}
               pixelRatio={pixelRatio}
-              selected={selected?.id === item.id}
               accessibilityLabel={item.a11y}
-              onPress={() => setSelected(item)}
+              onPress={() => void onChoose(item)}
             />
           )}
         />
       </View>
 
-      {/* Boutons d'action bas — confirmer (si sélection) + vider (si slot rempli) */}
-      {selected || slotIsFilled ? (
-        <View style={{ padding: 16, paddingBottom: 24, gap: 8 }}>
-          {selected ? (
-            <StampButton
-              wide
-              disabled={submitting}
-              onPress={() => onConfirmExisting(selected)}
-            >
-              {submitting ? 'Sauvegarde…' : `Choisir ${cleanTitle(selected.title, 24)}`}
-            </StampButton>
-          ) : null}
-          {slotIsFilled ? (
-            <Pressable
-              onPress={onClear}
-              disabled={submitting}
-              accessibilityRole="button"
-              accessibilityLabel="Vider cette case"
-              style={{ alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14 }}
-            >
-              <Text style={styles.clearLabel}>Vider cette case</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+      {/* Plus de barre de boutons en bas : le tap sur une tuile valide, et
+          « Vider cette case » a rejoint l'en-tête. C'est ce qui libère le bas
+          de l'écran, donc ce qui rend inutile un `KeyboardAvoidingView`. */}
     </SafeAreaView>
   );
 }

@@ -58,6 +58,22 @@ const TARGET = process.env.TARGET;
 const KEY = process.env.KEY;
 const PORT = Number(process.env.PORT ?? 8098);
 const FAIL = process.env.FAIL ?? '';
+/**
+ * Session factice, pour recetter les écrans qui écrivent.
+ *
+ * Sans session, `useSession().user` reste nul et tous les gestionnaires
+ * d'écriture sortent immédiatement : impossible de vérifier une écriture
+ * optimiste, son retour arrière, ou un toast d'erreur. Avec `FAKE_AUTH=1`,
+ * `/auth/*` renvoie une session synthétique au lieu d'un 503, l'app se croit
+ * connectée, et la première écriture se heurte au 405 du proxy.
+ *
+ * On exerce donc tout le chemin sauf le succès, sans créer le moindre compte
+ * anonyme en production. Les lectures continuent de passer : le proxy
+ * réinjecte de toute façon la vraie clé anonyme, le jeton du client n'est
+ * jamais transmis.
+ */
+const FAKE_AUTH = process.env.FAKE_AUTH === '1';
+const FAKE_USER_ID = '00000000-0000-4000-8000-0000000000fa';
 
 /**
  * Fonctions RPC relayables en POST. Toutes sont `language sql stable`
@@ -103,7 +119,12 @@ createServer(async (req, res) => {
     return res.end();
   }
   if (url.startsWith('/auth/')) {
-    return json(res, 503, { error: 'auth desactivee en recette' });
+    if (!FAKE_AUTH) {
+      return json(res, 503, { message: 'auth desactivee en recette', code: '503' });
+    }
+    // `/auth/v1/user` attend l'utilisateur seul, les autres routes
+    // (`signup`, `token`) attendent la session complète.
+    return json(res, 200, url.startsWith('/auth/v1/user') ? fakeUser() : fakeSession());
   }
   if (FAIL && url.startsWith(FAIL)) {
     return json(res, 500, { message: 'panne simulee', code: '500' });
@@ -150,9 +171,53 @@ createServer(async (req, res) => {
   console.log(
     `proxy lecture seule sur ${PORT} → ${TARGET}` +
       `\n  rpc autorisées : ${[...RPC_ALLOW].join(', ')}` +
+      (FAKE_AUTH ? `\n  session factice : ${FAKE_USER_ID} (aucun compte créé)` : '') +
       (FAIL ? `\n  panne simulée sur ${FAIL}` : ''),
   );
 });
+
+/**
+ * Jeton d'accès synthétique.
+ *
+ * `supabase-js` décode la charge utile pour lire l'expiration et le `sub`,
+ * mais ne vérifie aucune signature côté client : un JWT bien formé suffit.
+ * Il ne sert jamais à s'authentifier auprès de Supabase, le proxy remplaçant
+ * l'en-tête par la vraie clé anonyme avant de relayer.
+ */
+function fakeJwt() {
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({
+    sub: FAKE_USER_ID,
+    role: 'authenticated',
+    aud: 'authenticated',
+    is_anonymous: true,
+    exp,
+  })}.recette`;
+}
+
+function fakeUser() {
+  return {
+    id: FAKE_USER_ID,
+    aud: 'authenticated',
+    role: 'authenticated',
+    is_anonymous: true,
+    app_metadata: { provider: 'anonymous', providers: ['anonymous'] },
+    user_metadata: {},
+    created_at: new Date(0).toISOString(),
+  };
+}
+
+function fakeSession() {
+  return {
+    access_token: fakeJwt(),
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    refresh_token: 'recette-refresh',
+    user: fakeUser(),
+  };
+}
 
 /** Lit le corps d'une requête entrante, pour le retransmettre tel quel. */
 function readBody(req) {

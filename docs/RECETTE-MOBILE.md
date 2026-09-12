@@ -22,6 +22,24 @@ a besoin d'une autre fonction :
 RPC_ALLOW=search_items,ma_fonction TARGET=… KEY=… node …/readonly-proxy.mjs
 ```
 
+### Recetter un écran qui écrit, sans écrire
+
+Sans session, `useSession().user` reste nul et **tous les gestionnaires
+d'écriture sortent immédiatement** : le tap ne fait rien, et on ne voit ni
+l'écriture optimiste, ni son retour arrière, ni le toast d'erreur.
+
+`FAKE_AUTH=1` fait répondre à `/auth/*` une session synthétique au lieu d'un
+503. L'app se croit connectée, et la première écriture se heurte au 405 du
+proxy :
+
+```bash
+FAKE_AUTH=1 TARGET=… KEY=… node apps/mobile/scripts/readonly-proxy.mjs
+```
+
+On exerce ainsi tout le chemin d'écriture **sauf le succès**, sans créer le
+moindre compte anonyme en production. Le chemin nominal, lui, demande une
+vraie session : c'est la seule partie qui reste à recetter à la main.
+
 ```bash
 # 1. le proxy, dans un terminal à part
 set -a && . apps/landing/.env && set +a
@@ -172,6 +190,14 @@ la méthode et le poids de la réponse.
 
 C'est aussi le moyen de **mesurer l'egress d'un parcours** : additionner la
 colonne de droite sur la durée de la recette.
+
+### Un bandeau LogBox après un échec d'écriture, c'est voulu
+
+`search-modal.tsx` journalise les échecs d'écriture avec `console.warn`, ce
+qui déclenche l'encadré jaune de LogBox en développement. C'est le bon signal
+pour un développeur, mais il ressemble au bandeau blanc à pastille décrit plus
+bas : avant de partir en chasse, vérifier si une écriture vient d'échouer,
+notamment derrière le proxy où elles échouent toutes.
 
 ### `idb ui text` fait disparaître le clavier logiciel
 
