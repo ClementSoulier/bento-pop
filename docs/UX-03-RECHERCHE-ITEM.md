@@ -319,13 +319,26 @@ restants laissent dépasser le haut de la rangée suivante, ce qui donne
 l'affordance de défilement gratuitement. Sur l'iPhone SE, c'est juste mais ça
 passe, avec 45 pt de marge.
 
-**Décision : `autoFocus` activé.** Le critère C3 reste vérifié par capture
-après implémentation, parce que ces chiffres décrivent l'écran actuel : ajouter
-l'en-tête de section et la grille peut décaler de quelques points.
+**Décision : `autoFocus` activé.**
 
-Sur l'iPhone SE, la marge de 45 pt est le budget total : **tout élément ajouté
-entre le champ et la grille le consomme**. C'est la contrainte de conception du
-lot 3, pas une remarque en passant.
+**Vérifié après implémentation**, capture mesurée au pixel sur les deux
+appareils, catégorie « Chanson » pour l'iPhone SE puisque c'est le pire cas :
+
+| | iPhone SE | iPhone 17 |
+|---|---|---|
+| Première rangée de tuiles | 169,0 → 351,0 pt | 200,7 → 396,7 pt |
+| Hauteur de rangée mesurée | 182,5 pt (prévu 183,5) | 196,3 pt (prévu 197) |
+| Haut du clavier | 410,5 pt | 522,3 pt |
+| **Marge sous la rangée** | **59,5 pt** | **125,6 pt** |
+| Rangée suivante visible sur | 49,5 pt | 138 pt |
+
+C3 est rempli. La marge réelle sur iPhone SE est meilleure que les 45 pt
+prévus, parce que l'en-tête « Au menu » occupe la place qu'occupait « Tape
+pour chercher » au lieu de s'y ajouter.
+
+Elle reste le budget total : **tout élément glissé entre le champ et la grille
+le consomme**. C'est la contrainte de conception de l'écran, pas une remarque
+en passant, et `components/search/layout.test.ts` la fige.
 
 `returnKeyType="search"` sur le champ. La touche entrée ne déclenche rien de
 plus que le debounce déjà en cours, elle sert à replier le clavier pour voir
@@ -643,9 +656,26 @@ Trois contreparties :
   sur l'autre.
 - **Rien n'est préchargé** (§6.3).
 
-**C10 exige une mesure, pas une estimation** : compter les octets réellement
-servis pendant une composition complète, en lisant le journal du proxy de
-recette. Le chiffre à publier est celui-là.
+**Mesuré au lot 3**, en téléchargeant réellement les 72 images des six top 12,
+après application du redimensionnement TMDb :
+
+| | Nombre | Poids |
+|---|---|---|
+| JSON des 6 RPC | 6 | 22 Ko |
+| Images hébergées chez Supabase | 44 | **9 645 Ko, facturés** |
+| Images TMDb (en `w342`) | 20 | 1 052 Ko, gratuits |
+| Images Wikimedia et autres | 6 | 164 Ko, gratuits |
+| Tuiles sans image | 2 | 0 |
+| **Total téléchargé** | | **10,63 Mo** |
+| **Dont egress facturé** | | **9,44 Mo** |
+
+Soit **542 compositions complètes avant de toucher les 5 Go**, et uniquement à
+froid : le cache disque rend les suivantes gratuites, et les propositions sont
+par construction les mêmes d'une ouverture à l'autre.
+
+44 tuiles sur 72 portent une image Supabase et pèsent 91 % du total. C'est le
+chiffre qui rend la recompression à l'upload rentable : à -71 %, mesuré au
+chantier 2, on passerait de 542 à environ 1 900 compositions.
 
 ### 8.2 Ce que le chantier ne peut pas résoudre
 
@@ -726,6 +756,28 @@ planificateur Postgres.
 - `exclude_item` retire l'item demandé sans décaler le reste du classement ;
 - la latence médiane à chaud reste sous 150 ms (§6.2), le premier appel étant
   écarté car il porte l'établissement TLS et le démarrage du pooler.
+
+### 9.2 ter Ce que la recette du lot 3 a trouvé
+
+Trois défauts, dont deux invisibles à la lecture du code.
+
+**La bande blanche vide.** Une rangée `flex` étire ses enfants par défaut :
+une tuile sans sous-titre était donc allongée à la hauteur de la plus grande
+de sa rangée et montrait une bande blanche vide sous son affiche. Le catalogue
+mélange les deux cas dans presque toutes les catégories, donc c'était visible
+dès la première grille. Corrigé par `alignItems: 'flex-start'` sur la rangée ;
+des rangées un peu inégales vont d'ailleurs mieux à une DA d'autocollants.
+
+**« Cherche un chanson… ».** Le placeholder concaténait « Cherche un » et le
+libellé de la catégorie. Faux pour « Chanson » et « Série », donc sur deux
+écrans sur six, depuis toujours. `CATEGORY_META` porte désormais le genre
+grammatical du libellé, qui est une propriété du mot et non de l'écran.
+
+**La ligne « Ajouter » survivait à une panne de recherche.** Trouvé en
+simulant `FAIL=/rest/v1/rpc/search_items` : le bandeau d'erreur s'affichait, et
+juste en dessous l'écran proposait quand même de créer l'item. C'est
+l'invitation au doublon exacte, au moment précis où l'on est le moins capable
+de le détecter. La ligne est maintenant conditionnée à l'absence d'erreur.
 
 ### 9.3 Ce qui ne se teste pas automatiquement
 

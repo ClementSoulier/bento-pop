@@ -12,18 +12,26 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { cleanTitle } from '@/lib/text';
 import { CATEGORY_META } from '@/components/bento/categories';
-import { PALETTES, paletteKeyForItem } from '@/components/bento/palettes';
+import { paletteKeyForItem } from '@/components/bento/palettes';
 import { StampButton, useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
-import { searchTileWidth } from '@/components/search/layout';
-import { itemImageUrl } from '@/lib/item-image';
+import {
+  ItemTile,
+  SuggestionSkeleton,
+  searchPlaceholder,
+  searchTileWidth,
+} from '@/components/search';
+import {
+  SUGGESTIONS_COUNT,
+  loadSuggestions,
+  suggestionAccessibilityLabel,
+} from '@/lib/suggestions';
+import { supabase } from '@/supabase/client';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
 import { useBento } from '@/state/bento';
@@ -43,14 +51,41 @@ import {
 /**
  * Modal de recherche d'un item pour une catégorie donnée.
  *
- * V1.1+ : la recherche tape le catalogue maison (table `items` filtrée
- * `status='validated'`) au lieu des APIs externes. Si l'utilisateur ne
- * trouve pas, il peut soumettre — un popup anti-doublon vérifie d'abord
- * qu'aucun item validé proche n'existe déjà, puis crée un item pending
- * qui attend la modération côté admin.
+ * La recherche tape le catalogue maison (table `items` filtrée
+ * `status='validated'`). Si l'utilisateur ne trouve pas, il peut soumettre
+ * un item, qui part en `pending` et attend la modération côté admin.
+ *
+ * **L'écran ne s'ouvre plus sur du vide.** Il montre d'abord un échantillon
+ * du catalogue, le bloc « Au menu », parce qu'au moment de remplir une case
+ * l'utilisateur ne sait justement pas quoi y mettre : lui renvoyer « Tape
+ * pour chercher » lui repasse la question, et six fois de suite. Mesuré
+ * avant correction : 78,3 % de l'écran en crème vide.
+ *
+ * Ce n'est pas un palmarès, et le libellé ne prétend pas l'être : le signal
+ * de popularité est encore trop mince pour ça. Cf.
+ * `docs/UX-03-RECHERCHE-ITEM.md` §4.1 et la décision D2.
  */
 
 const ITEM_SEARCH_STALE_MS = 60 * 1000;
+
+/**
+ * Le catalogue bouge à la vitesse de la modération, pas à celle de
+ * l'utilisateur. Une demi-heure de fraîcheur et une heure en mémoire :
+ * rouvrir la même case dans une session ne redéclenche ni requête ni
+ * chargement d'image, ce qui est aussi ce qui rend le bloc tenable côté
+ * egress.
+ */
+const SUGGESTIONS_STALE_MS = 30 * 60 * 1000;
+const SUGGESTIONS_GC_MS = 60 * 60 * 1000;
+
+/** Ce dont l'écran a besoin pour afficher une tuile et remplir une case. */
+type ChosenItem = Pick<
+  ItemSearchResult,
+  'id' | 'title' | 'subtitle' | 'imageUrl' | 'imageCredit'
+>;
+
+/** Une tuile prête à rendre : les données plus son libellé VoiceOver. */
+type DisplayedItem = ChosenItem & { a11y: string };
 
 export default function SearchModal() {
   const params = useLocalSearchParams<{ category?: string }>();
@@ -58,7 +93,7 @@ export default function SearchModal() {
   const meta = CATEGORY_META[category];
 
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<ItemSearchResult | null>(null);
+  const [selected, setSelected] = useState<ChosenItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const { width: windowWidth } = useWindowDimensions();
@@ -76,6 +111,8 @@ export default function SearchModal() {
   const showToast = useToast((s) => s.show);
 
   const debouncedQuery = useDebouncedValue(query.trim(), 300);
+  /** En dessous de 2 caractères la recherche ne part pas : on propose. */
+  const showSuggestions = debouncedQuery.length < 2;
 
   const {
     data: results = [],
@@ -84,14 +121,37 @@ export default function SearchModal() {
   } = useQuery({
     queryKey: ['items-search', category, debouncedQuery],
     queryFn: () => searchItems(category, debouncedQuery),
-    enabled: debouncedQuery.length >= 2,
+    enabled: !showSuggestions,
     staleTime: ITEM_SEARCH_STALE_MS,
+    // Garde la grille précédente pendant qu'on charge la suivante. Sans ça,
+    // chaque caractère tapé vidait l'écran le temps d'un aller-retour, ce
+    // qui donnait la sensation d'instabilité.
+    placeholderData: keepPreviousData,
+  });
+
+  const currentItemId = currentSlot?.itemId ?? null;
+
+  const { data: suggestions = [], isPending: suggestionsPending } = useQuery({
+    // `currentItemId` fait partie de la clé : ouvrir une case remplie et une
+    // case vide de la même catégorie ne donne pas la même liste.
+    queryKey: ['item-suggestions', category, currentItemId],
+    queryFn: () =>
+      loadSuggestions(supabase, category, {
+        excludeItemId: currentItemId,
+        limit: SUGGESTIONS_COUNT,
+      }),
+    staleTime: SUGGESTIONS_STALE_MS,
+    gcTime: SUGGESTIONS_GC_MS,
+    // Une panne de suggestion ne doit pas ressembler à une panne de
+    // l'écran : pas de bandeau, pas de nouvel essai bruyant. On retombe
+    // simplement sur « Tape pour chercher », le comportement d'avant.
+    retry: 1,
   });
 
   /**
    * Confirme un item existant du catalogue → l'attache au bento.
    */
-  const onConfirmExisting = async (item: ItemSearchResult) => {
+  const onConfirmExisting = async (item: ChosenItem) => {
     if (!userId) return;
     setSubmitting(true);
     try {
@@ -160,10 +220,8 @@ export default function SearchModal() {
             id: top.id,
             title: top.title,
             subtitle: top.subtitle,
-            year: top.year,
             imageUrl: top.imageUrl,
             imageCredit: null,
-            score: top.score,
           });
           return;
         }
@@ -227,7 +285,74 @@ export default function SearchModal() {
     }
   };
 
-  const canSubmitNew = query.trim().length >= 2;
+  /**
+   * Les deux sources ramenées à une seule liste de tuiles.
+   *
+   * Le libellé VoiceOver est calculé ici plutôt que dans `ItemTile` : une
+   * proposition annonce en plus son nombre de choix quand il dépasse 1, un
+   * résultat de recherche n'a pas cette information.
+   */
+  const displayed: DisplayedItem[] = useMemo(
+    () =>
+      showSuggestions
+        ? suggestions.map((s) => ({
+            id: s.id,
+            title: s.title,
+            subtitle: s.subtitle,
+            imageUrl: s.imageUrl,
+            imageCredit: s.imageCredit,
+            a11y: `Choisir ${suggestionAccessibilityLabel(s)}`,
+          }))
+        : results.map((r) => ({
+            id: r.id,
+            title: r.title,
+            subtitle: r.subtitle,
+            imageUrl: r.imageUrl,
+            imageCredit: r.imageCredit,
+            a11y: `Choisir ${cleanTitle(r.title)}${r.subtitle ? `, ${r.subtitle}` : ''}`,
+          })),
+    [showSuggestions, suggestions, results],
+  );
+
+  /**
+   * Libellé au-dessus de la grille.
+   *
+   * « Au menu » et non « Populaires » : au 12 septembre 2026, au plus trois
+   * items par catégorie ont été choisis plus d'une fois, et zéro pour
+   * « Chanson ». Annoncer un classement serait faux, et faux d'une manière
+   * que l'utilisateur peut vérifier en regardant son propre bento.
+   */
+  const sectionLabel = showSuggestions
+    ? displayed.length > 0 || suggestionsPending
+      ? 'Au menu'
+      : 'Tape pour chercher'
+    : error
+      ? 'Erreur réseau'
+      : loading
+        ? 'Recherche…'
+        : results.length > 0
+          ? `${results.length} résultat${results.length > 1 ? 's' : ''}`
+          : 'Aucun résultat trouvé';
+
+  /**
+   * La ligne « Ajouter » n'apparaît que quand la grille correspond
+   * réellement au texte tapé, c'est-à-dire quand on a pu vérifier que
+   * l'item n'existe pas.
+   *
+   * Trois conditions, et chacune correspond à un cas observé en recette :
+   *
+   * - `debouncedQuery === query.trim()` : sinon elle proposait de créer
+   *   « inception » pendant que la grille affichait encore les résultats de
+   *   « incep » ;
+   * - `!loading` : sinon elle s'affichait dès la première frappe, avant tout
+   *   résultat ;
+   * - `!error` : quand la recherche est tombée, on ne sait pas si l'item
+   *   existe. Proposer de le créer, c'est inviter au doublon précisément
+   *   quand on est le moins capable de le détecter. Le bandeau d'erreur
+   *   suffit à expliquer pourquoi l'écran ne propose rien.
+   */
+  const canSubmitNew =
+    !showSuggestions && debouncedQuery === query.trim() && !loading && !error;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fbf3de' }}>
@@ -252,7 +377,7 @@ export default function SearchModal() {
             ref={inputRef}
             value={query}
             onChangeText={setQuery}
-            placeholder={`Cherche un ${meta.label.toLowerCase()}…`}
+            placeholder={searchPlaceholder(category)}
             autoCapitalize="none"
             autoCorrect={false}
             // Le clavier est levé d'emblée : six cases à remplir, c'est six
@@ -272,16 +397,8 @@ export default function SearchModal() {
 
       {/* Résultats + CTA Ajouter */}
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
-        <Text style={styles.resultsCount}>
-          {results.length > 0
-            ? `${results.length} résultat${results.length > 1 ? 's' : ''}`
-            : query.trim()
-              ? error
-                ? 'Erreur réseau'
-                : loading
-                  ? 'Recherche…'
-                  : 'Aucun résultat trouvé'
-              : 'Tape pour chercher'}
+        <Text style={styles.resultsCount} accessibilityRole="header">
+          {sectionLabel}
         </Text>
         {error ? (
           <View style={styles.errorBanner}>
@@ -292,10 +409,17 @@ export default function SearchModal() {
         ) : null}
 
         <FlatList
-          data={results}
+          data={displayed}
           keyExtractor={(r) => r.id}
           numColumns={3}
-          columnWrapperStyle={{ gap: 10, justifyContent: 'flex-start' }}
+          // `alignItems: 'flex-start'` et non l'étirement par défaut d'une
+          // rangée flex : sans lui, une tuile sans sous-titre est étirée à la
+          // hauteur de la plus grande de sa rangée et montre une bande
+          // blanche vide sous son affiche. Le catalogue mélange les deux cas
+          // (les films portent leur année, les créateurs non), donc c'est
+          // visible dès la première grille. Des rangées légèrement inégales
+          // vont bien mieux à une DA d'autocollants posés à la main.
+          columnWrapperStyle={{ gap: 10, justifyContent: 'flex-start', alignItems: 'flex-start' }}
           contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
           // Décale le contenu de la hauteur du clavier pour que la dernière
           // rangée reste atteignable. Remplace un `KeyboardAvoidingView`, que
@@ -308,6 +432,14 @@ export default function SearchModal() {
           // Sans ça, le premier tap sur une tuile ne servirait qu'à fermer le
           // clavier et il en faudrait un second pour sélectionner.
           keyboardShouldPersistTaps="handled"
+          // Une rangée d'os, pas quatre : c'est ce qui est visible au-dessus
+          // du clavier, et remplir l'écran pour un chargement d'environ
+          // 50 ms ressemblerait plus à une panne qu'à une attente.
+          ListEmptyComponent={
+            showSuggestions && suggestionsPending ? (
+              <SuggestionSkeleton width={tileWidth} />
+            ) : null
+          }
           ListFooterComponent={
             canSubmitNew ? (
               <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
@@ -334,103 +466,17 @@ export default function SearchModal() {
               </View>
             ) : null
           }
-          renderItem={({ item, index }) => {
-            const isSelected = selected?.id === item.id;
-            // Même palette que celle qu'aura la case une fois choisie :
-            // l'utilisateur voit dans les résultats exactement ce qu'il
-            // obtiendra dans son bento.
-            const palette = PALETTES[paletteKeyForItem(item.id)];
-            return (
-              <Pressable
-                onPress={() => setSelected(item)}
-                accessibilityRole="button"
-                accessibilityLabel={`Sélectionner ${cleanTitle(item.title)}${item.subtitle ? `, ${item.subtitle}` : ''}`}
-                accessibilityState={{ selected: isSelected }}
-                style={[
-                  styles.tile,
-                  {
-                    width: tileWidth,
-                    transform: [
-                      { rotate: `${[-0.6, 0.3, -0.4, 0.5, -0.3, 0.4][index % 6] ?? 0}deg` },
-                    ],
-                  },
-                  SHADOWS.stamp,
-                ]}
-              >
-                <View style={{ aspectRatio: 2 / 3, backgroundColor: palette.colors[0] }}>
-                  {item.imageUrl ? (
-                    <Image
-                      source={{ uri: itemImageUrl(item.imageUrl, tileWidth, pixelRatio) }}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="cover"
-                      // `Image` de react-native ne persiste rien sur disque :
-                      // rouvrir la même case retéléchargeait tout. Les
-                      // propositions du bloc « Au menu » étant par nature les
-                      // mêmes d'une fois sur l'autre, c'est le cache qui rend
-                      // la fonctionnalité tenable côté egress.
-                      cachePolicy="memory-disk"
-                      transition={120}
-                      // Sans lui, une cellule recyclée montre brièvement
-                      // l'affiche du résultat précédent.
-                      recyclingKey={item.id}
-                    />
-                  ) : (
-                    <>
-                      <LinearGradient
-                        colors={palette.colors}
-                        start={palette.start}
-                        end={palette.end}
-                        style={StyleSheet.absoluteFill}
-                      />
-                      <View
-                        pointerEvents="none"
-                        style={[
-                          StyleSheet.absoluteFill,
-                          {
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            paddingBottom: 12,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.tileInitial,
-                            { color: palette.ink },
-                          ]}
-                        >
-                          {getInitial(cleanTitle(item.title))}
-                        </Text>
-                      </View>
-                    </>
-                  )}
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.7)']}
-                    start={{ x: 0.5, y: 0.4 }}
-                    end={{ x: 0.5, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text numberOfLines={2} style={styles.tileTitle}>
-                    {cleanTitle(item.title)}
-                  </Text>
-                  {isSelected ? (
-                    <View style={styles.tileCheck}>
-                      <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '800' }}>
-                        ✓
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                {item.subtitle ? (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
-                    <Text numberOfLines={1} style={styles.tileSubtitle}>
-                      {item.subtitle}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          }}
+          renderItem={({ item, index }) => (
+            <ItemTile
+              item={item}
+              index={index}
+              width={tileWidth}
+              pixelRatio={pixelRatio}
+              selected={selected?.id === item.id}
+              accessibilityLabel={item.a11y}
+              onPress={() => setSelected(item)}
+            />
+          )}
         />
       </View>
 
@@ -461,11 +507,6 @@ export default function SearchModal() {
       ) : null}
     </SafeAreaView>
   );
-}
-
-function getInitial(s: string): string {
-  const match = s.trim().match(/[A-Za-zÀ-ÿ0-9]/);
-  return (match?.[0] ?? '?').toUpperCase();
 }
 
 const styles = StyleSheet.create({
@@ -521,54 +562,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(230,57,70,0.1)',
     borderWidth: 1.5,
     borderColor: '#e63946',
-  },
-  tile: {
-    // La largeur est posée au rendu, cf. `searchTileWidth`.
-    backgroundColor: '#ffffff',
-    borderWidth: 2.5,
-    borderColor: '#0a0a0a',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  tileInitial: {
-    fontFamily: 'Extenda',
-    fontSize: 64,
-    lineHeight: 60,
-    opacity: 0.22,
-    letterSpacing: -2,
-    textTransform: 'uppercase',
-  },
-  tileTitle: {
-    position: 'absolute',
-    bottom: 6,
-    left: 6,
-    right: 6,
-    fontFamily: 'Extenda',
-    fontSize: 11,
-    lineHeight: 11,
-    color: '#ffffff',
-    textTransform: 'uppercase',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowRadius: 2,
-  },
-  tileSubtitle: {
-    fontSize: 9,
-    color: 'rgba(10,10,10,0.6)',
-    fontFamily: 'Bungee',
-    letterSpacing: 0.6,
-  },
-  tileCheck: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: '#e63946',
-    borderWidth: 2,
-    borderColor: '#0a0a0a',
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   addRow: {
     backgroundColor: '#ffffff',

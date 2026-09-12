@@ -173,6 +173,19 @@ la méthode et le poids de la réponse.
 C'est aussi le moyen de **mesurer l'egress d'un parcours** : additionner la
 colonne de droite sur la durée de la recette.
 
+### `idb ui text` fait disparaître le clavier logiciel
+
+`idb ui text` tape via le **clavier matériel**, ce qui le « connecte » pour le
+reste de la session de démarrage du simulateur : le clavier logiciel ne
+remonte plus, même sur un écran qui a bien un `autoFocus`. On croit alors à une
+régression de l'app.
+
+Symptôme : le curseur clignote dans le champ mais aucun clavier n'est affiché.
+Remède : `xcrun simctl shutdown <UDID>` puis `boot`, et prendre la capture du
+clavier **avant** toute frappe via `idb`. Pour saisir du texte sans perdre le
+clavier logiciel, taper les touches une par une avec `idb ui tap` sur les
+coordonnées du clavier.
+
 ### Installer une build déjà compilée sur un second simulateur
 
 Inutile de recompiler pour comparer deux tailles d'écran. Le `.app` vit dans

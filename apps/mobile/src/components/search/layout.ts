@@ -1,5 +1,8 @@
+import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
+import type { CategoryKey } from '@bento-pop/supabase-mobile/types';
+
 /**
- * Géométrie de la modale de recherche d'item.
+ * Géométrie et libellés de la modale de recherche d'item.
  *
  * Aucun import de `react-native` : le module doit rester chargeable sous
  * `node:test`. Même raison et même forme que `components/feed/layout.ts`.
@@ -38,4 +41,16 @@ export function searchTileWidth(windowWidth: number): number {
 /** Hauteur totale d'une tuile, sous-titre compris. */
 export function searchTileHeight(windowWidth: number): number {
   return searchTileWidth(windowWidth) * TILE_ASPECT + TILE_SUBTITLE_HEIGHT;
+}
+
+/**
+ * Placeholder du champ de recherche.
+ *
+ * L'article s'accorde au genre du libellé. La version précédente
+ * concaténait « Cherche un » et le libellé, ce qui donnait « Cherche un
+ * chanson… » et « Cherche un série… », visibles sur deux des six écrans.
+ */
+export function searchPlaceholder(category: CategoryKey): string {
+  const meta = CATEGORY_META[category];
+  return `Cherche ${meta.gender === 'f' ? 'une' : 'un'} ${meta.label.toLowerCase()}…`;
 }

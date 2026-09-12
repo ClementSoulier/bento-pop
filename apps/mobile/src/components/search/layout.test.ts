@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { CATEGORY_ORDER } from '@bento-pop/supabase-mobile/bento';
 import {
   COLUMNS,
   GRID_CHROME,
+  searchPlaceholder,
   searchTileHeight,
   searchTileWidth,
 } from './layout';
@@ -87,5 +89,29 @@ describe('une rangée doit tenir au-dessus du clavier', () => {
   it('chiffre la marge restante sur le plus petit écran', () => {
     const slack = ABOVE_KEYBOARD[SE] - searchTileHeight(SE);
     assert.ok(slack > 30 && slack < 60, `marge inattendue : ${slack.toFixed(1)} pt`);
+  });
+});
+
+describe('searchPlaceholder', () => {
+  /**
+   * Repéré sur une capture de recette, pas par relecture : « Cherche un
+   * chanson… » sur l'écran « Son », et « Cherche un série… » sur l'écran
+   * « Série ». Deux écrans sur six.
+   */
+  it('accorde l\'article au genre du libellé', () => {
+    assert.equal(searchPlaceholder('track'), 'Cherche une chanson…');
+    assert.equal(searchPlaceholder('series'), 'Cherche une série…');
+    assert.equal(searchPlaceholder('film'), 'Cherche un film…');
+    assert.equal(searchPlaceholder('place'), 'Cherche un lieu…');
+    assert.equal(searchPlaceholder('artist'), 'Cherche un artiste…');
+    assert.equal(searchPlaceholder('creator'), 'Cherche un créateur de contenu…');
+  });
+
+  it('couvre les six catégories sans trou', () => {
+    for (const cat of CATEGORY_ORDER) {
+      const text = searchPlaceholder(cat);
+      assert.match(text, /^Cherche une? .+…$/, `placeholder douteux pour ${cat} : ${text}`);
+      assert.ok(!text.includes('undefined'), cat);
+    }
   });
 });
