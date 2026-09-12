@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut : chantier 1 livré, chantier 2 spécifié.** Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 12 septembre 2026 : chantiers 1, 2, 3 et 14 fusionnés.** Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -10,10 +10,45 @@
 
 **Recette sur simulateur** : mode d'emploi et pièges dans [`RECETTE-MOBILE.md`](./RECETTE-MOBILE.md). Le proxy `apps/mobile/scripts/readonly-proxy.mjs` permet de faire tourner l'app sur les données de production sans rien y écrire.
 
-> **Une livraison mobile est en attente**, et elle accumule quatre choses :
-> l'haptique et les animations du chantier 3, l'étiquette « Invité » du
-> chantier 14, et la télémétrie. Deux critères de DoD ne se fermeront qu'après
-> elle. Elle mérite sa propre recette d'un bloc, simulateur puis appareil.
+## Le déploiement en attente
+
+Rien de ce qui a été fusionné les 11 et 12 septembre n'est encore entre les
+mains des utilisateurs, à l'exception de la page publique du chantier 1. Trois
+choses distinctes attendent, et elles ne partent pas au même rythme :
+
+| Quoi | Où | État |
+|---|---|---|
+| Migrations SQL du projet mobile | Supabase hébergé | **Déjà appliquées** pendant le développement |
+| Back-office et landing | Coolify | À déployer : rien de spécifique, le code est sur `main` |
+| App mobile | App Store et Play Store | **Build EAS à refaire**, `expo-haptics` étant un module natif |
+
+La livraison mobile accumule quatre choses : l'haptique et les animations du
+chantier 3, l'étiquette « Invité » sur ses deux écrans, et la télémétrie. Deux
+critères de DoD ne se fermeront qu'après elle, et **elle mérite une recette
+d'un bloc**, simulateur puis appareil réel, plutôt qu'une vérification par
+morceaux. La checklist appareil accumule d'ailleurs trois chantiers : haptique,
+VoiceOver, taille de police système, fluidité du fil sur build de production,
+et aperçus de partage.
+
+Deux points à vérifier avant de déployer la landing et le back-office :
+`MOBILE_SUPABASE_URL` doit porter `.supabase.co` et non `.com` (la valeur
+locale était fausse), et `MOBILE_SUPABASE_SERVICE_ROLE_KEY` doit être présente
+en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
+
+---
+
+---
+
+## Ménage en attente
+
+- **36 installations sans pseudo** dans `auth.users`. Volontairement conservées :
+  elles sont le compteur d'installations, et les effacer rendrait invisible la
+  perte d'un tiers à l'inscription. Arbitrage produit à trancher.
+- **Compte d'administration de recette** `recette.bo@bento-pop.com`, à retirer
+  de `admin_users` et `auth.users` quand il ne sert plus.
+- **Migration `20260911000000_revalidate_landing_on_publish.sql`** du chantier 1,
+  toujours pas appliquée, ainsi que ses deux secrets Vault. Sans elle, la page
+  publique se rafraîchit toutes les cinq minutes au lieu d'immédiatement.
 
 ---
 
@@ -23,9 +58,9 @@
 |---|---|---|---|---|---|
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
-| 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 7 lots livrés, DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
-| 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 7 lots livrés, DoD 8 remplis / 2 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
-| 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2, tuiles de recherche par le chantier 3 |
+| 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 fusionné (PR #50) · DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
+| 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 fusionné (PR #51) · DoD 9 remplis / 1 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
+| 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ **prochain** · réduit : `Tile` migré par le chantier 2, tuiles de recherche par le chantier 3 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
 | 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
