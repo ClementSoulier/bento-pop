@@ -14,7 +14,7 @@
 | # | Chantier | Impact | Effort | Dépend de | Statut |
 |---|---|---|---|---|---|
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
-| 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 développé, recettes iOS et Android faites · DoD 6/8 · reste device réel et fluidité · [spec](./UX-02-FIL-LA-TABLE.md) |
+| 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | ⬜ |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
@@ -74,7 +74,7 @@ Les featured restent distingués **à l'intérieur du fil**, à leur date de pub
 
 **Fait quand** : l'onglet n'est jamais vide dès qu'un bento est publié, chaque bento est lisible sans taper, et le second passage sur le fil ne retélécharge aucune image.
 
-**Où on en est.** Les cinq lots sont développés et le code est vert (lint, typecheck, 69 tests mobile, `expo export` iOS et Android). La recette a tourné sur simulateur iOS **et sur émulateur Android**, avec les données de production : pagination sur les 26 bentos en 4 pages, cache disque à 106 fichiers pour 17 Mo sur iOS et 107 pour 18 Mo sur Android, capture de partage fonctionnelle sur les deux plateformes, état d'erreur atteint, coup de cœur vu en situation. La DoD est à 6 items sur 8 (cf. §12 de la spec).
+**Où on en est.** Les cinq lots sont développés et le code est vert (lint, typecheck, 69 tests mobile, `expo export` iOS et Android). La recette a tourné sur simulateur iOS **et sur émulateur Android**, avec les données de production : pagination sur les 26 bentos en 4 pages, cache disque à 106 fichiers pour 17 Mo sur iOS et 107 pour 18 Mo sur Android, capture de partage fonctionnelle sur les deux plateformes, état d'erreur atteint, coup de cœur vu en situation. La DoD compte 6 items remplis, 1 partiel et 1 ouvert (cf. §12 de la spec).
 
 **Deux points restent ouverts.** Ce qui demande une écriture en base (publier, republier, bloquer), qui n'est pas faisable sans toucher à la production. Et **la fluidité, mesurée et non tenue** : 62 % de trames saccadées au défilement rapide sur émulateur Pixel 8, contre 1,3 % pour une application système sur le même appareil. Le chiffre vient d'un build de débogage, donc il exagère, mais l'écart avec le témoin est trop large pour être ignoré. Détail et piste écartée en §12.2 de la spec.
 

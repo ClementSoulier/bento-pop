@@ -885,15 +885,15 @@ rien écrire. États nominal, chargement et erreur capturés.
 
 ## 12. Definition of Done
 
-État au 12 septembre 2026, à l'issue du lot 5.
+État au 12 septembre 2026, après la recette Android et la fusion de la PR #47.
+**Six items remplis, un partiel, un ouvert.**
 
 - [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` au vert sur tout le dépôt.
       Lint et typecheck 8/8, 69 tests mobile et 104 landing, 21 d'intégration
       HTTP côté landing, aucun échec ni annulation.
-- [~] Les tests de §10.2 et §10.3 existent et passent **en CI**. Ils existent
-      et passent en local sous la commande exacte de la CI
-      (`pnpm turbo run test`), mais la branche n'a jamais été poussée : la CI
-      n'a pas encore vu ces commits.
+- [x] Les tests de §10.2 et §10.3 existent et passent **en CI**. Job `verify`
+      de la PR #47, 2 min 32 : lint 8/8, typecheck 8/8, 69 tests mobile,
+      104 landing, 21 d'intégration HTTP, build 3/3, zéro échec.
 - [ ] Les huit critères de succès de §2 sont vérifiés **sur device**. Quatre
       sur huit restent ouverts, et aucun n'a été vérifié ailleurs que sur
       simulateur. Détail en §12.1.
@@ -907,8 +907,8 @@ rien écrire. États nominal, chargement et erreur capturés.
       `loadFeedPage` lève au lieu de rendre une liste vide : volontaires.
 - [x] Le plan Supabase et son quota d'egress ont été vérifiés (§4.2) : plan
       gratuit, 5 Go par mois, 0,01 consommé.
-- [~] Roadmap mise à jour, suivis consignés. Suivis consignés en §14, roadmap
-      à l'état réel et non à l'état terminé.
+- [x] Roadmap mise à jour, suivis consignés. Suivis en §14, roadmap à l'état
+      réel et non à l'état terminé.
 
 ### 12.1 Les huit critères, un par un
 
