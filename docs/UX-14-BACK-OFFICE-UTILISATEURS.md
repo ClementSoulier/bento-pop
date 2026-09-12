@@ -474,12 +474,40 @@ avait dépendu de cette clé sans qu'on l'ait vu, c'est là que ça se verra.
 
 ## 10. Plan de développement
 
-### Lot 0 · La migration
+### Lot 0 · La migration ✅
 
 `20260913000000_admin_users.sql` : `kind`, retrait de la clé étrangère,
-colonnes de télémétrie, `user_deletions`, purge. Un script de vérification sur
-le patron de `check-popular-items.mjs`, qui compare les comptages avant/après
-et exerce un parcours mobile de bout en bout.
+colonnes de télémétrie, `user_deletions`, purge. Appliquée le 12 septembre
+2026, vérifiée par deux scripts.
+
+**Deux défauts trouvés par la vérification, pas par la relecture.**
+
+`users.id` n'avait aucune valeur par défaut, parce qu'il venait toujours de
+`auth.uid()`. La première insertion d'un profil éditorial est donc partie sur
+un `23502`. Corrigé par `default gen_random_uuid()`, sans risque pour les
+membres : le défaut ne s'applique que si la colonne est omise, et un client
+qui l'omettrait obtiendrait un UUID aussitôt rejeté par `users_insert_own`.
+
+**Plus grave, `purge_user_deletions` était appelable avec la clé anonyme.**
+`revoke all on function … from public` ne suffit pas : Supabase accorde
+`execute` aux rôles `anon` et `authenticated` par des privilèges par défaut,
+et ces droits survivent au revoke sur `public`. N'importe qui pouvait donc
+vider le registre en appelant une fonction `security definer`. Il faut
+révoquer nommément sur les deux rôles. Le registre était vide et la fenêtre
+n'a duré que le temps de la vérification, mais c'est le genre de trou qu'une
+relecture ne voit pas.
+
+**Deux scripts plutôt qu'un.** `check-admin-users.mjs` couvre le schéma, les
+comptages et les lectures sous RLS. Il ne prouve rien sur les écritures, et
+c'est justement là que le retrait d'une clé étrangère sur la table d'identité
+pouvait faire mal. `check-write-path.mjs` rejoue donc le premier lancement de
+l'app avec une vraie session anonyme : inscription, création du profil,
+tentative de création au nom d'autrui (refusée, 403), création du bento,
+écriture de la télémétrie. Il supprime ensuite le compte des deux côtés et
+vérifie que les compteurs sont revenus.
+
+Résultat : 20 contrôles au vert d'un côté, 8 de l'autre, comptages identiques
+à la référence.
 
 ### Lot 1 · La liste et l'entonnoir
 

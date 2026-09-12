@@ -15,6 +15,18 @@
 --   auth.users 106 · users 70 · bentos 56 · bento_items 282
 --   items 324 · reports 3
 
+-- ─── 0. Un identifiant qui peut se générer seul ───────────────────────
+--
+-- `users.id` n'avait pas de valeur par défaut : il venait toujours de
+-- `auth.uid()`. Un profil éditorial n'a pas de compte, donc personne ne
+-- fournit d'identifiant, et l'insertion échouait sur un `23502`.
+--
+-- Sans risque pour les membres : la valeur par défaut ne s'applique que si
+-- la colonne est omise, et un client qui l'omettrait obtiendrait un UUID
+-- aléatoire aussitôt rejeté par `users_insert_own`, qui exige
+-- `id = auth.uid()`.
+alter table public.users alter column id set default gen_random_uuid();
+
 -- ─── 1. Type de profil ────────────────────────────────────────────────
 --
 -- `member`    : quelqu'un qui a installé l'app et choisi un pseudo.
@@ -153,5 +165,13 @@ comment on function public.purge_user_deletions() is
   'Supprime les entrées du registre de plus de 12 mois et renvoie le '
   'nombre de lignes retirées. Appelée par le back-office.';
 
--- Pas de grant à anon ni authenticated : seul le service-role l'appelle.
+-- Retirer le droit d'exécution à tout le monde sauf au service-role.
+--
+-- `revoke ... from public` ne suffit pas : Supabase accorde `execute` aux
+-- rôles `anon` et `authenticated` par des privilèges par défaut, et ces
+-- droits-là survivent au revoke sur `public`. Constaté : la fonction
+-- répondait 200 avec la clé anonyme, donc n'importe qui pouvait vider le
+-- registre d'une fonction `security definer`.
 revoke all on function public.purge_user_deletions() from public;
+revoke all on function public.purge_user_deletions() from anon;
+revoke all on function public.purge_user_deletions() from authenticated;
