@@ -10,6 +10,11 @@
 
 **Recette sur simulateur** : mode d'emploi et pièges dans [`RECETTE-MOBILE.md`](./RECETTE-MOBILE.md). Le proxy `apps/mobile/scripts/readonly-proxy.mjs` permet de faire tourner l'app sur les données de production sans rien y écrire.
 
+> **Une livraison mobile est en attente**, et elle accumule quatre choses :
+> l'haptique et les animations du chantier 3, l'étiquette « Invité » du
+> chantier 14, et la télémétrie. Deux critères de DoD ne se fermeront qu'après
+> elle. Elle mérite sa propre recette d'un bloc, simulateur puis appareil.
+
 ---
 
 ## 0. Ordre d'attaque
@@ -19,7 +24,7 @@
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 7 lots livrés, DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
-| 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | ⬜ **prochain**, spécifié · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
+| 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 7 lots livrés, DoD 8 remplis / 2 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2, tuiles de recherche par le chantier 3 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
@@ -187,6 +192,14 @@ jour le revendiquer.
 **Fait quand** : l'équipe peut, sans toucher au SQL, lister et supprimer un
 utilisateur avec traçabilité, et publier le bento d'un créateur invité qui
 apparaît dans le fil comme les autres.
+
+**Livré.** Trois migrations, un espace « Utilisateurs » dans le BO, et une
+instrumentation de l'app. Ce que la mesure a appris en chemin : un compte
+d'authentification exige un email, donc les profils éditoriaux se font sans
+compte ; `last_sign_in_at` ne dit rien de la dernière visite ; et **36
+installations sur 105 n'ont jamais choisi de pseudo**, un tiers que personne
+ne voyait. Restent l'étiquette du fil et la télémétrie, qui partent avec la
+prochaine version mobile.
 
 ---
 

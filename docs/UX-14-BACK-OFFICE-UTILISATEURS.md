@@ -759,19 +759,85 @@ télémétrie de quelqu'un d'autre.
 
 ## 11. Definition of Done
 
-Les dix critères du §2, avec la preuve en face, plus :
+**Neuf critères sur dix remplis.** Le dixième, la télémétrie, ne peut pas se
+fermer avant que chacun ait mis l'app à jour.
 
-- `pnpm lint`, `pnpm typecheck` et les tests passent, CI verte ;
-- la migration est appliquée en production et le fichier est commité ;
-- les comptages d'avant et d'après sont publiés ;
-- le ménage est fait : compte de recette du chantier 3 et 36 orphelins ;
+| # | Critère | État | Preuve |
+|---|---|---|---|
+| C1 | La liste et l'entonnoir | ✅ | Écran, 105 / 69 / 55 / 26 conformes aux scripts |
+| C2 | Suppression en deux clics, motif obligatoire | ✅ | Recette réelle, deux comptes supprimés |
+| C3 | Aucun orphelin après suppression | ✅ | `auth.users` **et** `users` diminuent ensemble, compte auth en 404 |
+| C4 | Registre à 12 mois, pas plus | ✅ | Fenêtre testée à 11 et 13 mois, purge appelée à chaque ouverture |
+| C5 | Pseudo corrigé sans SQL, règles respectées | ✅ | Les trois refus traduits, vérifiés en production |
+| C6 | Bento de créateur visible dans le fil | ✅ | Créé, publié, lisible en anonyme |
+| C7 | Un profil éditorial ne crée **aucun** compte | ✅ | `auth.users` inchangé alors que `users` augmente |
+| C8 | Profils éditoriaux distinguables | ✅ | Vérifié sur les **trois** surfaces : fil, page du bento dans l'app, page publique. Le code du fil part avec la prochaine livraison |
+| C9 | Dernière visite, plateforme et version | 🟡 | Écriture vérifiée sous RLS en production. **Les colonnes resteront vides jusqu'à la mise à jour de chacun** |
+| C10 | Aucune régression sur l'app mobile | ✅ | Cf. §11.1 |
+
+### 11.1 La non-régression, vérifiée et pas supposée
+
+Ce chantier retire une clé étrangère sur la table d'identité, celle dont
+dépendent dix-sept politiques RLS. Quatre scripts la surveillent, tous verts :
+
+| Script | Ce qu'il couvre |
+|---|---|
+| `check-admin-users.mjs` | schéma, lectures sous RLS, création d'un profil sans compte, et l'état de la base inchangé par sa propre exécution |
+| `check-write-path.mjs` | le premier lancement de l'app avec une vraie session : inscription, profil, usurpation refusée en 403, bento, télémétrie |
+| `check-user-funnel.ts` | les invariants de l'entonnoir et la forme des réponses PostgREST |
+| `check-popular-items.mjs` | le chantier 3, pour vérifier que rien n'a bougé de ce côté |
+
+**Aucun ne compare plus à des comptages figés.** Les trois qui le faisaient
+attendaient « 106 comptes, 70 profils… », relevés au matin. Ces nombres
+bougent à la première suppression, et les scripts criaient alors à l'échec sur
+des chiffres corrects. Ils relèvent désormais l'état au début de leur propre
+exécution et vérifient qu'ils ne laissent rien derrière eux. Une référence qui
+change avec l'usage n'est pas un test, c'est un rappel à mettre à jour.
+
+Côté suites automatiques : **146 tests mobile, 36 admin, 23 d'intégration HTTP
+sur la landing**. Le back-office n'en avait aucun avant ce chantier.
+
+### 11.2 L'étiquette « Invité », vérifiée sur trois surfaces
+
+Un bento invité **et** mis en avant a été composé, publié, observé, puis
+supprimé. La même règle d'arbitrage s'applique partout, et « invité » gagne :
+
+| Surface | Rendu |
+|---|---|
+| Fil « La table » | étiquette noire et jaune sur l'angle de la boîte |
+| Page du bento dans l'app | pastille losange sur le Popy, à la place de l'étoile |
+| Page publique de la landing | pastille « Invité », couverte par deux tests HTTP |
+
+**La page du bento dans l'app était le trou.** La spécification ne parlait que
+du fil et de la page publique ; cette troisième surface affichait l'étoile
+« à la une » sans rien dire de l'origine du contenu. Trouvée en capture, pas
+en relisant la spec, et corrigée dans la foulée.
+
+### 11.3 Ce qui attend la prochaine version mobile
+
+C9 ne peut pas se fermer ici : les colonnes de télémétrie se rempliront au
+rythme des mises à jour, et sur les 69 profils actuels l'écran affichera
+« inconnu » pendant des semaines. L'écran l'explique, c'est prévu, mais il
+faut le savoir.
+
+La livraison mobile accumule désormais quatre choses : l'haptique et les
+animations du chantier 3, l'étiquette « Invité » sur ses deux écrans, et la
+télémétrie. **Elle mérite sa propre recette d'un bloc**, sur simulateur puis
+sur appareil, plutôt qu'une vérification par morceaux.
+
+### 11.4 Le reste de la définition
+
+- `pnpm lint`, `pnpm typecheck`, `pnpm test` et `pnpm test:e2e` passent ;
+- les trois migrations sont appliquées en production et les fichiers commités ;
+- le ménage est fait : tout ce qui a été créé pour la recette a été supprimé,
+  hors le compte d'administration `recette.bo@bento-pop.com` ;
+- les captures ont été partagées à chaque lot ;
 - la roadmap est à jour.
 
-**C9 ne sera vérifiable qu'après une livraison mobile.** Il est donc attendu
-qu'il reste partiel à la fusion, comme l'haptique du chantier 3, et qu'il se
-ferme avec la même version.
-
----
+**Les 36 installations sans pseudo n'ont pas été purgées**, délibérément :
+elles sont le compteur d'installations, et les effacer rendrait invisible la
+perte d'un tiers à l'inscription. C'est un arbitrage produit, pas une tâche
+oubliée. Cf. §13.
 
 ## 12. Décisions tranchées
 
@@ -805,5 +871,16 @@ sujet produit à part entière, et sans doute le plus rentable de la roadmap.
 reproduira pas ce comportement, mais l'app le fait encore. À aligner, sans
 doute au chantier 5.
 
-**Le BO admin n'a aucun test.** Ce chantier en apporte pour ses fonctions
-pures. Généraliser est un sujet à soi.
+**Le BO admin n'avait aucun test.** Ce chantier en apporte 36 pour ses
+fonctions pures, et la CI les ramasse déjà. Généraliser aux Server Actions
+reste un sujet à soi.
+
+**Une session qui ne peut pas se rafraîchir bloque le fil.** Observé en
+recette : avec un jeton périmé et un serveur d'authentification qui répond
+503, `GoTrueClient` boucle sur son rafraîchissement et l'écran reste sur son
+squelette. `supabase-js` sérialise ses requêtes derrière le verrou
+d'authentification, donc une lecture publique qui n'a pourtant besoin
+d'aucune session n'aboutit jamais. C'est la suite de la découverte du
+chantier 3 sur `Invalid Refresh Token`, en pire : on ne perd pas seulement
+son bento, l'app ne montre plus rien. À traiter avec le modèle de compte,
+chantier 5 ou 9.

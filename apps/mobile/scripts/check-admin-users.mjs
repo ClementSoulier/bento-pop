@@ -34,15 +34,31 @@ if (!TARGET || !SERVICE_KEY) {
   process.exit(1);
 }
 
-/** Comptages relevés le 12 septembre 2026, juste avant application. */
-const BEFORE = {
-  auth_users: 106,
-  users: 70,
-  bentos: 56,
-  bento_items: 282,
-  items: 324,
-  reports: 3,
-};
+/**
+ * Pas de comptages figés.
+ *
+ * La première version comparait à « 106 comptes, 70 profils… », relevés juste
+ * avant la migration. Utile ce jour-là, faux dès la première suppression :
+ * le script criait alors à l'échec sur des chiffres parfaitement corrects.
+ * Une référence qui bouge avec l'usage n'est pas un test.
+ *
+ * On relève donc l'état **au début de ce script**, et on vérifie qu'il est
+ * identique à la fin : ce qui compte est que la vérification elle-même ne
+ * laisse aucune trace, pas que la base ait la taille d'un jour donné.
+ */
+const TABLES = [
+  ['users', 'id'],
+  ['bentos', 'id'],
+  ['bento_items', 'bento_id'],
+  ['items', 'id'],
+  ['reports', 'id'],
+];
+
+async function snapshot() {
+  const out = { auth_users: await countAuthUsers() };
+  for (const [table, key] of TABLES) out[table] = await count(table, key);
+  return out;
+}
 
 const svc = { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}` };
 const anon = ANON_KEY ? { apikey: ANON_KEY, authorization: `Bearer ${ANON_KEY}` } : null;
@@ -111,18 +127,15 @@ async function main() {
   });
   check('fonction purge_user_deletions', purge.ok, `HTTP ${purge.status}`);
 
-  console.log('\n[comptages, avant → après]');
-  const after = {
-    auth_users: await countAuthUsers(),
-    users: await count('users'),
-    bentos: await count('bentos'),
-    bento_items: await count('bento_items', 'bento_id'),
-    items: await count('items'),
-    reports: await count('reports'),
-  };
-  for (const [table, before] of Object.entries(BEFORE)) {
-    check(table, after[table] === before, `${before} → ${after[table]}`);
-  }
+  console.log('\n[état de départ]');
+  const before = await snapshot();
+  console.log(
+    '  ' +
+      Object.entries(before)
+        .map(([k, v]) => `${k} ${v}`)
+        .join(' · '),
+  );
+  check('la base répond sur toutes les tables', Object.values(before).every((v) => Number.isFinite(v)));
 
   console.log('\n[RLS inchangée, vue par la clé anonyme]');
   if (!anon) {
@@ -167,7 +180,7 @@ async function main() {
   }
 
   console.log('\n[profil éditorial : le cœur de la migration]');
-  const authBefore = after.auth_users;
+  const authBefore = before.auth_users;
   const pseudo = `verif${Date.now().toString().slice(-8)}`;
   const created = await fetch(`${TARGET}/rest/v1/users`, {
     method: 'POST',
@@ -202,7 +215,12 @@ async function main() {
       headers: svc,
     });
     check('le profil de vérification est supprimé', gone.ok, `HTTP ${gone.status}`);
-    check('users revient à son compte initial', (await count('users')) === BEFORE.users);
+  }
+
+  console.log('\n[la vérification n\'a rien laissé]');
+  const after = await snapshot();
+  for (const [table, value] of Object.entries(before)) {
+    check(table, after[table] === value, `${value} → ${after[table]}`);
   }
 
   console.log(failures === 0 ? '\nTout est vert.' : `\n${failures} contrôle(s) en échec.`);

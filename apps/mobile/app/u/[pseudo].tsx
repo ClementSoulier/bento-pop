@@ -35,7 +35,14 @@ export default function PublicBento() {
   const [sharing, setSharing] = useState(false);
   const [state, setState] = useState<
     | { kind: 'loading' }
-    | { kind: 'found'; slots: BentoItems; displayName: string | null; publishedAt: string; isFeatured: boolean }
+    | {
+        kind: 'found';
+        slots: BentoItems;
+        displayName: string | null;
+        publishedAt: string;
+        isFeatured: boolean;
+        isGuest: boolean;
+      }
     | { kind: 'not-found' }
   >({ kind: 'loading' });
 
@@ -75,6 +82,7 @@ export default function PublicBento() {
         displayName: result.user.display_name,
         publishedAt: result.bento.published_at!,
         isFeatured: result.bento.is_featured,
+        isGuest: result.user.kind === 'editorial',
       });
     })().catch(() => {
       if (!cancelled) setState({ kind: 'not-found' });
@@ -174,7 +182,12 @@ export default function PublicBento() {
                 >
                   <Image source={popy.source} style={{ width: 64, height: 64 }} resizeMode="contain" />
                 </View>
-                {state.isFeatured ? (
+                {/* Une seule pastille, et « invité » l'emporte : c'est le
+                    même arbitrage que l'étiquette du fil et que la page
+                    publique, cf. `components/feed/ribbon.ts`. Sans elle, cet
+                    écran attribue à une personne réelle une composition
+                    qu'elle n'a pas faite. */}
+                {state.isGuest || state.isFeatured ? (
                   <View
                     style={{
                       position: 'absolute',
@@ -183,22 +196,26 @@ export default function PublicBento() {
                       width: 26,
                       height: 26,
                       borderRadius: 13,
-                      backgroundColor: '#e63946',
+                      backgroundColor: state.isGuest ? '#0a0a0a' : '#e63946',
                       borderWidth: 2.5,
                       borderColor: '#0a0a0a',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
+                    accessible
+                    accessibilityLabel={
+                      state.isGuest ? "Bento invité, composé par l'équipe" : "Coup de cœur de l'équipe"
+                    }
                   >
                     <Text
                       style={{
-                        color: '#ffffff',
+                        color: state.isGuest ? '#fbbf24' : '#ffffff',
                         fontSize: 14,
                         lineHeight: 16,
                         fontWeight: '800',
                       }}
                     >
-                      ★
+                      {state.isGuest ? '◆' : '★'}
                     </Text>
                   </View>
                 ) : null}

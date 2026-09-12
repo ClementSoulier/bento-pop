@@ -32,6 +32,21 @@ const svc={apikey:S,authorization:`Bearer ${S}`,'content-type':'application/json
 let fail=0;
 const ok=(l,c,d='')=>{console.log(`  ${c?'ok   ':'ECHEC'} ${l}${d?' '+d:''}`); if(!c)fail++;};
 
+/** Compte les lignes d'une table. `bento_items` n'a pas d'`id`. */
+const c=async(t,k='id')=>{const r=await fetch(`${U}/rest/v1/${t}?select=${k}`,
+  {headers:{apikey:S,authorization:`Bearer ${S}`,Prefer:'count=exact',Range:'0-0'}});
+  return Number((r.headers.get('content-range')||'').split('/')[1]);};
+
+async function snap(){
+  let page=1,auth=0;
+  for(;;){const r=await fetch(`${U}/auth/v1/admin/users?page=${page}&per_page=200`,{headers:{apikey:S,authorization:`Bearer ${S}`}});
+    const us=(await r.json()).users||[]; auth+=us.length; if(us.length<200)break; page++;}
+  return { auth, users: await c('users'), bentos: await c('bentos') };
+}
+
+const before = await snap();
+console.log(`état de départ : auth ${before.auth} · users ${before.users} · bentos ${before.bentos}\n`);
+
 // 1. inscription anonyme, exactement ce que fait l'app au premier lancement
 const su=await fetch(`${U}/auth/v1/signup`,{method:'POST',
   headers:{apikey:A,authorization:`Bearer ${A}`,'content-type':'application/json'},body:JSON.stringify({data:{}})});
@@ -70,15 +85,15 @@ ok('écriture de la télémétrie sous RLS', tel.ok, `HTTP ${tel.status}`);
 await fetch(`${U}/auth/v1/admin/users/${uid}`,{method:'DELETE',headers:svc});
 await fetch(`${U}/rest/v1/users?id=eq.${uid}`,{method:'DELETE',headers:svc});
 
-// 7. tout est revenu à sa place
-const c=async(t,k='id')=>{const r=await fetch(`${U}/rest/v1/${t}?select=${k}`,
-  {headers:{apikey:S,authorization:`Bearer ${S}`,Prefer:'count=exact',Range:'0-0'}});
-  return Number((r.headers.get('content-range')||'').split('/')[1]);};
-let page=1,auth=0;
-for(;;){const r=await fetch(`${U}/auth/v1/admin/users?page=${page}&per_page=200`,{headers:{apikey:S,authorization:`Bearer ${S}`}});
-  const us=(await r.json()).users||[]; auth+=us.length; if(us.length<200)break; page++;}
-ok('auth.users revenu à 106', auth===106, `${auth}`);
-ok('users revenu à 70', (await c('users'))===70);
-ok('bentos revenu à 56', (await c('bentos'))===56);
+// 7. Tout est revenu à sa place.
+//
+//    On compare à l'état relevé au début de ce script, pas à des chiffres
+//    figés : ce qui compte est que la vérification ne laisse aucune trace,
+//    pas que la base ait la taille d'un jour donné. Une référence en dur
+//    criait à l'échec dès la première suppression légitime.
+const after = await snap();
+ok('auth.users est revenu à son compte', after.auth === before.auth, `${before.auth} → ${after.auth}`);
+ok('users est revenu à son compte', after.users === before.users, `${before.users} → ${after.users}`);
+ok('bentos est revenu à son compte', after.bentos === before.bentos, `${before.bentos} → ${after.bentos}`);
 console.log(fail===0?'\nParcours d\'écriture intact.':`\n${fail} échec(s).`);
 process.exit(fail?1:0);
