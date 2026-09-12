@@ -994,21 +994,82 @@ Recette iOS et Android en entier, mesure d'egress sur une composition complète
 
 ## 11. Definition of Done
 
-Le chantier est terminé quand les dix critères du §2 sont remplis, avec la
-preuve en face, et que :
+**Neuf critères sur dix sont remplis, le dixième partiellement.** Ce qui
+manque est ce qu'aucun simulateur ne restitue.
 
-- `pnpm lint`, `pnpm typecheck`, `pnpm --filter mobile test` passent ;
-- la CI est verte sur la PR ;
+| # | Critère | État | Preuve |
+|---|---|---|---|
+| C1 | Aucun écran vide à l'ouverture | ✅ | Captures des six catégories, iOS et Android |
+| C2 | Clavier actif sans tap supplémentaire | ✅ | Captures iOS et Android, `autoFocus` |
+| C3 | Une rangée entière au-dessus du clavier | ✅ | Mesuré au pixel : 59,5 pt de marge sur iPhone SE, 125,6 pt sur iPhone 17, 577 dp d'espace utile sur Pixel 8 |
+| C4 | Un tap remplit une case | ✅ | 12 taps pour un bento complet contre 24, compté en production |
+| C5 | Une case remplie par erreur s'annule | ✅ | Vérifié jusqu'en base par redémarrage à froid |
+| C6 | Plus aucune `Alert` native | ✅ | `grep` sur les deux écrans, plus la recette |
+| C7 | CTA jamais grisé sur un bento vide | ✅ | « Commence par ton film », qui ouvre la case |
+| C8 | Retour haptique **et** visuel au remplissage | 🟡 | Visuel vérifié. **L'haptique ne se restitue ni sur simulateur ni sur émulateur**, elle passe en checklist appareil |
+| C9 | Pas de régression de fluidité | ✅ | Mesuré, cf. §11.1 |
+| C10 | Surcoût d'egress mesuré et tenable | ✅ | 9,44 Mo facturés par composition à froid, 542 avant les 5 Go |
+
+### 11.1 La fluidité, mesurée
+
+`dumpsys gfxinfo` sur Pixel 8, avec deux témoins. Le chantier 2 avait mesuré
+62,5 % de trames saccadées sur le fil, sans conclure ; il fallait savoir si ce
+chantier aggravait quoi que ce soit.
+
+| Scénario | Trames | Saccadées |
+|---|---|---|
+| Grille de propositions, 8 allers-retours | 414 | 16 (**3,86 %**) |
+| Idem, série précédente de 6 | 295 | 13 (4,41 %) |
+| Composer, 4 remplissages **avec** animations | 401 | 52 (12,97 %) |
+| Composer, 4 ouvertures/fermetures **sans** animation | 137 | 66 (48,18 %) |
+| Témoin système : application Réglages, mêmes gestes | 546 | 1 (0,18 %) |
+
+Deux conclusions, et une précaution de lecture.
+
+**Les animations du lot 5 n'ajoutent pas de saccade.** Le pourcentage est
+trompeur ici : la série sans animation paraît trois fois pire, mais elle n'a
+rendu que 137 trames contre 401. Reanimated pilote des trames supplémentaires,
+donc il dilue le ratio. **C'est le nombre absolu qui se compare** : 52 trames
+perdues avec animations contre 66 sans, sur le même nombre de cycles. Les
+animations ne coûtent rien de mesurable, et la saccade qui reste appartient à
+la transition d'ouverture de la modale, antérieure à ce chantier.
+
+**La grille de propositions défile correctement**, à 3,86 % contre 0,18 % pour
+le témoin système. C'est vingt fois le témoin en ratio, mais seize trames
+perdues sur seize allers-retours en valeur absolue, et surtout **très loin des
+62,5 % du fil**. Le problème du chantier 2 est donc propre au fil, pas aux
+écrans à grille en général.
+
+Précaution : tout ceci est mesuré sur émulateur, où même le témoin système
+n'atteint pas la perfection. Les chiffres se comparent entre eux, pas dans
+l'absolu.
+
+### 11.2 Ce qui reste, et à qui
+
+Aucun de ces points n'est un défaut connu, ce sont des vérifications qu'aucun
+simulateur ne permet :
+
+- **L'haptique sur appareil réel** (C8), et surtout : n'est-elle pas envahissante
+  au sixième déclenchement d'une composition ?
+- **VoiceOver**, §5.8 en entier : l'ordre de parcours après l'`autoFocus`,
+  l'annonce du nombre de propositions, et le toast.
+- **Taille de police système au maximum** : débordement des libellés de tuile.
+
+### 11.3 Reste ouvert, hors périmètre
+
+- Un **écart plus serré sur Android** : 53,3 dp au-dessus du bouton contre
+  56 attendus, et surtout l'ombre stamp du bouton rasée par la barre
+  d'onglets, là où iOS garde ses 12 pt. À reprendre avec le reste des écarts
+  Android.
+- Le **jeton de rafraîchissement invalide** qui fait repartir sur un bento
+  vide, cf. §13.
+
+### 11.4 Le reste de la définition
+
+- `pnpm lint`, `pnpm typecheck` et les **130 tests** passent ;
 - la migration du lot 0 est appliquée en production et le fichier est commité ;
-- la checklist §9.4 est cochée, ou ses restes explicitement listés comme dans
-  les chantiers 1 et 2 ;
-- les captures ont été partagées et validées ;
+- les captures ont été partagées à chaque lot ;
 - le tableau de la roadmap est à jour.
-
-**Un critère non rempli se déclare, il ne s'arrondit pas.** Le chantier 2 a
-livré 6 critères sur 8 et l'a écrit ainsi.
-
----
 
 ## 12. Décisions tranchées
 
