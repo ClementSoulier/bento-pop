@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createMobileClient } from '@/lib/supabase/mobile';
+import { deleteMobileAccount } from '@/lib/mobile-users';
 
 const featuredSchema = z.object({
   bentoId: z.string().uuid(),
@@ -59,12 +60,21 @@ const deleteUserSchema = z.object({
 });
 
 /**
- * Supprime un compte utilisateur sur le projet mobile (auth.users), ce qui
- * cascade vers public.users → public.bentos → public.bento_items via les FK
- * `on delete cascade`. Les reports liés au reporter sont conservés
- * (`on delete set null` sur `reporter_id`).
+ * Supprime un compte utilisateur du projet mobile.
  *
- * Utilisé depuis le BO admin pour purger les comptes de test / abusifs.
+ * **La cascade depuis `auth.users` n'existe plus** depuis la migration
+ * `20260913000000_admin_users.sql`, qui a retiré la clé étrangère pour
+ * permettre les profils éditoriaux. Supprimer le seul compte
+ * d'authentification laisserait le profil, son bento et ses cases en place.
+ * La logique est donc partagée dans `lib/mobile-users.ts`.
+ *
+ * Les signalements émis par la personne sont conservés
+ * (`on delete set null` sur `reporter_id`), ce qui est voulu : ils
+ * concernent quelqu'un d'autre.
+ *
+ * Cet écran ne liste que des bentos, donc tous ses comptes ont une
+ * authentification. La suppression avec motif tracé vit sur
+ * `/utilisateurs`.
  */
 export async function deleteUserAccount(input: {
   userId: string;
@@ -82,9 +92,12 @@ export async function deleteUserAccount(input: {
     };
   }
 
-  const { error } = await mobile.auth.admin.deleteUser(parsed.data.userId);
-  if (error) return { ok: false, error: error.message };
+  const result = await deleteMobileAccount(mobile, parsed.data.userId, {
+    hasAuthAccount: true,
+  });
+  if (!result.ok) return result;
 
   revalidatePath('/bentos');
+  revalidatePath('/utilisateurs');
   return { ok: true };
 }

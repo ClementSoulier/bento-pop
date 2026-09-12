@@ -509,10 +509,39 @@ vérifie que les compteurs sont revenus.
 Résultat : 20 contrôles au vert d'un côté, 8 de l'autre, comptages identiques
 à la référence.
 
-### Lot 1 · La liste et l'entonnoir
+### Lot 1 · La liste et l'entonnoir ✅
 
 Écran en lecture seule : compteurs, liste, onglet des installations sans
-pseudo, recherche, tri, filtres. Rien qui écrive.
+pseudo, recherche, tri, filtres.
+
+**Une régression du lot 0, trouvée en lisant le code existant.**
+`deleteUserAccount` existait déjà dans les actions de `/bentos` et
+s'appuyait sur la cascade `auth.users → public.users`, que le lot 0 venait de
+retirer. Il supprimait donc le compte d'authentification en laissant le
+profil, son bento et ses cases : un bento visible dans le fil, rattaché à
+quelqu'un qui n'existe plus. Ma spécification disait « l'admin ne doit pas
+reproduire ce comportement » sans avoir vérifié qu'une suppression admin
+existait déjà.
+
+Corrigé par `lib/mobile-users.ts`, partagé entre les deux écrans parce qu'une
+suppression dupliquée est bien pire qu'un autre code dupliqué. Le profil est
+supprimé **en premier** : c'est lui qui porte la cascade vers `bentos`, donc
+une interruption laisse au pire un compte d'authentification orphelin,
+invisible et sans donnée, plutôt qu'un bento orphelin visible de tous.
+
+**Le BO admin a maintenant des tests.** `pnpm turbo run test` les ramasse
+automatiquement, la CI les exécutait déjà. 16 tests sur l'entonnoir, le tri,
+le repli sur la date d'inscription quand la télémétrie est vide, et la
+recherche insensible aux accents.
+
+`scripts/check-user-funnel.ts` vérifie la couche de données contre la vraie
+base. Les tests unitaires ne voient pas la **forme des réponses PostgREST** :
+le comptage des cases passe par `bento_items(count)`, dont l'agrégat arrive
+en `[{ count: n }]`, et un changement de forme donnerait zéro case partout
+sans qu'aucune requête n'échoue. L'écran étant derrière une authentification,
+c'est aussi la seule façon d'en contrôler les chiffres sans session
+d'administration. 13 contrôles au vert, entonnoir conforme aux mesures du
+§4.1.
 
 ### Lot 2 · Modifier
 
