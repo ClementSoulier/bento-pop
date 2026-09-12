@@ -7,6 +7,8 @@
 **Légende effort** : S = moins d'une journée · M = 1 à 3 jours · L = plus de 3 jours ou arbitrage produit nécessaire.
 **Légende statut** : ⬜ à faire · 🟡 en cours · ✅ livré et vérifié.
 
+**Recette sur simulateur** : mode d'emploi et pièges dans [`RECETTE-MOBILE.md`](./RECETTE-MOBILE.md). Le proxy `apps/mobile/scripts/readonly-proxy.mjs` permet de faire tourner l'app sur les données de production sans rien y écrire.
+
 ---
 
 ## 0. Ordre d'attaque
