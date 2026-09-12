@@ -19,7 +19,7 @@
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 7 lots livrés, DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
-| 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | ⬜ **prochain**, en cours de spécification |
+| 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | ⬜ **prochain**, spécifié · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2, tuiles de recherche par le chantier 3 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
@@ -135,7 +135,15 @@ Côté composer (`apps/mobile/app/(tabs)/compose.tsx`) :
 
 ## 14. Back-office : utilisateurs, suppression, bentos éditoriaux
 
-> **À spécifier.** Trois besoins distincts, énoncés le 12 septembre 2026.
+> **Spécification détaillée : [`UX-14-BACK-OFFICE-UTILISATEURS.md`](./UX-14-BACK-OFFICE-UTILISATEURS.md)**
+> (entonnoir mesuré, contrat de données, plan en 8 lots, DoD, 11 décisions).
+>
+> Trois choses que la mesure a apprises et qui commandent le chantier : un
+> compte d'authentification **exige un email** (vérifié, 400), donc les
+> profils éditoriaux se feront sans compte ; `last_sign_in_at` **ne dit rien**
+> de la dernière visite (écart médian de 0,0 s avec la création, 0 cas sur
+> 106) ; et **36 installations sur 106 n'ont jamais choisi de pseudo**, un
+> tiers, que personne ne voyait.
 
 **Constat.** Le BO admin (`apps/admin`) couvre aujourd'hui le catalogue
 d'items, sa modération, les signalements, la configuration mobile et la mise
