@@ -222,7 +222,7 @@ export default function PublicBento() {
 
             {/* Grille bento read-only (pas de onTap) */}
             <View style={{ paddingHorizontal: 16, flex: 1 }}>
-              <BentoGrid items={state.slots} scale={0.94} />
+              <BentoGrid items={state.slots} scale={0.94} readOnly />
             </View>
 
             {/* Sticky CTAs bottom */}
@@ -403,7 +403,7 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
         onPress: () =>
           Alert.alert(
             'Bloquer cet utilisateur ?',
-            "Tu ne verras plus son bento dans À la une ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.",
+            "Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.",
             [
               { text: 'Annuler', style: 'cancel' },
               {

@@ -1,5 +1,6 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { CategoryKey } from '@/supabase/types';
 import { CATEGORY_META } from './categories';
@@ -133,11 +134,41 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
     <>
       {/* COUCHE 1 — Background : image plein cadre OU gradient + initiale */}
       {hasImage ? (
-        <Image
-          source={{ uri: data.imageUrl }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
+        <>
+          {/* Placeholder coloré sous l'image. La palette est déterministe
+              par item, donc la case a déjà SA couleur pendant le
+              téléchargement — un fil qui charge reste un fil coloré, pas
+              une suite de rectangles noirs.
+
+              Inséré à 1px des bords, et non en absoluteFill : l'inner a un
+              fond noir volontaire pour masquer le liseré sub-pixel entre la
+              bordure et l'image sur iOS (cf. commentaire de `innerStyle`).
+              Un gradient à fleur de bord réintroduirait exactement ce
+              liseré clair. */}
+          <LinearGradient
+            colors={palette.colors}
+            start={palette.start}
+            end={palette.end}
+            style={{ position: 'absolute', top: 1, left: 1, right: 1, bottom: 1 }}
+            pointerEvents="none"
+          />
+          <Image
+            source={{ uri: data.imageUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            // `memory-disk` et non le défaut `disk` : au défilement rapide
+            // du fil, le cache mémoire évite un aller-retour disque par
+            // case revenant à l'écran.
+            cachePolicy="memory-disk"
+            // Fondu court : sans lui l'image apparaît d'un coup par-dessus
+            // le placeholder, ce qui saute à l'œil sur une liste.
+            transition={160}
+            // Sans `recyclingKey`, une cellule FlatList recyclée affiche
+            // brièvement l'image de la précédente avant de charger la
+            // sienne. L'URL identifie l'item de façon stable.
+            recyclingKey={data.imageUrl}
+          />
+        </>
       ) : (
         <>
           <LinearGradient
