@@ -143,6 +143,21 @@ défendable pour un compte anonyme sans donnée personnelle, mais ça explique
 une partie des 36 orphelins, et l'admin ne doit pas reproduire ce
 comportement : `auth.admin.deleteUser` supprime les deux.
 
+### 4.7 L'accès au back-office, et pourquoi il manquait
+
+Le BO ne pouvait pas être lancé en local : `NEXT_PUBLIC_SUPABASE_URL` pointait
+sur `kshnckyoitebczuvhoyj.supabase.co`, une référence de projet hébergé qui ne
+résout plus dans aucun DNS. Le projet landing et admin est en réalité
+**auto-hébergé** sur le VPS, derrière `https://supabase.bento-pop.com`.
+
+Aucune protection particulière : c'est le Kong standard de Supabase, qui
+répond « No API key found in request » sans clé. La clé service-role du
+fichier local déclarait `ref = kshnckyoitebczuvhoyj` dans sa charge utile,
+donc appartenait à l'ancien projet, et Kong la rejetait.
+
+C'est le troisième écart entre l'environnement local et la production croisé
+en une journée, après `.supabase.com` au lieu de `.co` et cette URL. Cf. §13.
+
 ### 4.6 Un défaut trouvé en chemin
 
 `apps/admin/.env` portait `MOBILE_SUPABASE_URL=https://….supabase.**com**`, au
@@ -558,6 +573,11 @@ c'est aussi la seule façon d'en contrôler les chiffres sans session
 d'administration. 13 contrôles au vert, entonnoir conforme aux mesures du
 §4.1.
 
+**Recette visuelle faite** une fois l'accès admin obtenu (cf. §4.7) : les
+quatre compteurs affichent 106 / 70 / 56 / 26, l'onglet des installations sans
+pseudo en liste bien 36, et les colonnes de télémétrie affichent « inconnu »
+sous leur encart d'explication.
+
 ### Lot 2 · Modifier ✅
 
 Pseudo et nom affiché, dans une boîte de dialogue depuis la liste. 14 tests
@@ -569,6 +589,13 @@ l'ancienne renverra une page introuvable.
 Vérifié contre la production sur le compte de recette, renommé puis remis en
 place : les trois refus reviennent avec leur bonne traduction, le renommage
 aboutit, et le nombre de profils est inchangé.
+
+**Recette visuelle faite** : le refus d'un motif bloqué s'affiche en français
+dans la boîte de dialogue, l'avertissement sur le changement d'adresse
+publique apparaît dès que le pseudo change, et une modification acceptée
+referme la boîte en mettant la ligne à jour. La normalisation du nom affiché
+se voit de bout en bout, « &nbsp;&nbsp;Compte&nbsp;&nbsp;&nbsp;de recette&nbsp;&nbsp; » ressortant
+« Compte de recette » en base.
 
 ### Lot 3 · Supprimer
 
