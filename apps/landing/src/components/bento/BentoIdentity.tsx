@@ -13,12 +13,15 @@ export function BentoIdentity({
   displayName,
   publishedAt,
   isFeatured = false,
+  isGuest = false,
   subtitle,
 }: {
   pseudo: string;
   displayName?: string | null;
   publishedAt?: string;
   isFeatured?: boolean;
+  /** Bento composé par l'équipe pour un créateur invité. */
+  isGuest?: boolean;
   /** Remplace la ligne de date, pour l'état « pas encore terminé ». */
   subtitle?: string;
 }) {
@@ -34,10 +37,18 @@ export function BentoIdentity({
         <span className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full border-[4px] border-bento-ink bg-white shadow-stamp">
           <Image src={popy} alt="" width={64} height={64} priority className="h-16 w-16 object-contain" />
         </span>
-        {isFeatured ? (
-          /* Le libellé est porté par du texte, pas seulement par l'étoile
-             et sa couleur : une information ne doit jamais dépendre de la
-             seule couleur, ni d'un pictogramme sans équivalent textuel. */
+        {/* Une seule pastille, et « invité » l'emporte : c'est la seule
+            information que le lecteur ne peut déduire de rien d'autre, alors
+            que « à la une » est un avis qui se devine. Même arbitrage que
+            l'étiquette du fil, cf. `components/feed/ribbon.ts`.
+            Le libellé est porté par du texte, pas seulement par le
+            pictogramme et sa couleur : une information ne doit jamais
+            dépendre de la seule couleur. */}
+        {isGuest ? (
+          <span className="absolute -bottom-1 -right-1 inline-flex items-center gap-1 rounded-full border-[2.5px] border-bento-ink bg-bento-ink px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-bento-yellow">
+            <span aria-hidden>◆</span> Invité
+          </span>
+        ) : isFeatured ? (
           <span className="absolute -bottom-1 -right-1 inline-flex items-center gap-1 rounded-full border-[2.5px] border-bento-ink bg-bento-red px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-bento-cream">
             <span aria-hidden>★</span> À la une
           </span>

@@ -34,6 +34,9 @@ export type ItemStatus =
 
 export type ImageSuggestionStatus = 'pending' | 'accepted' | 'dismissed';
 
+/** Nature d'un profil, cf. la migration `20260913000000_admin_users.sql`. */
+export type UserKind = 'member' | 'editorial';
+
 export type Database = {
   public: {
     Tables: {
@@ -65,12 +68,33 @@ export type Database = {
           terms_accepted_at: string | null;
           created_at: string;
           updated_at: string;
+          /**
+           * `member` : compte réel, `id` vaut son `auth.uid()`.
+           * `editorial` : profil créé par l'équipe pour un créateur invité,
+           * sans compte d'authentification. Ne compte pas comme utilisateur.
+           */
+          kind: UserKind;
+          /**
+           * Dernier démarrage de l'app, écrit par le client.
+           *
+           * `null` tant que la personne n'a pas ouvert une version
+           * instrumentée. Ne pas confondre avec `auth.users.last_sign_in_at`,
+           * qui vaut la date de création : la session anonyme persiste.
+           */
+          last_seen_at: string | null;
+          platform: 'ios' | 'android' | null;
+          app_version: string | null;
         };
         Insert: {
-          id: string;
+          /** Pour un membre, doit valoir `auth.uid()`. Généré pour un éditorial. */
+          id?: string;
           pseudo: string;
           display_name?: string | null;
           terms_accepted_at?: string | null;
+          kind?: UserKind;
+          last_seen_at?: string | null;
+          platform?: 'ios' | 'android' | null;
+          app_version?: string | null;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
@@ -313,6 +337,29 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
         Relationships: [];
       };
+      user_deletions: {
+        Row: {
+          id: string;
+          /**
+           * Profil supprimé. Sans clé étrangère, et sans pouvoir en avoir :
+           * la ligne qu'il désigne n'existe plus au moment de l'insertion.
+           */
+          deleted_user_id: string;
+          kind: UserKind;
+          reason: string;
+          /** Email de l'administrateur. */
+          deleted_by: string;
+          deleted_at: string;
+        };
+        Insert: {
+          deleted_user_id: string;
+          kind: UserKind;
+          reason: string;
+          deleted_by: string;
+        };
+        Update: Partial<Database['public']['Tables']['user_deletions']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: { [_: string]: never };
     Functions: {
@@ -364,6 +411,16 @@ export type Database = {
           /** Nombre de bentos **publiés** qui contiennent cet item. */
           picks: number;
         }>;
+      };
+      admin_delete_user: {
+        Args: { target_id: string; reason: string; admin_email: string };
+        /** Type du profil supprimé, pour savoir s'il faut aussi purger `auth`. */
+        Returns: UserKind;
+      };
+      purge_user_deletions: {
+        Args: Record<string, never>;
+        /** Nombre de lignes retirées du registre. */
+        Returns: number;
       };
       admin_merge_items: {
         Args: {

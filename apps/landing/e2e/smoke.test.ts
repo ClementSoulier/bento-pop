@@ -210,6 +210,27 @@ describe('métadonnées', () => {
     assert.equal(meta(draft, 'robots'), 'noindex, follow');
   });
 
+  /**
+   * Un bento invité est composé par l'équipe pour un créateur rencontré hors
+   * de l'app, et il est presque toujours aussi mis en avant. Les deux
+   * pastilles ne peuvent pas coexister sur le même Popy, et c'est « Invité »
+   * qui doit gagner : « à la une » est un avis qui se devine, alors que
+   * l'origine du contenu ne se déduit de rien. Sans elle, la page attribue à
+   * une personne réelle une composition qu'elle n'a pas faite.
+   */
+  it('affiche « Invité » plutôt que « À la une » sur un bento éditorial', async () => {
+    const guest = await (await get('/u/invite')).text();
+    assert.ok(guest.includes('Invité'), 'la pastille invité manque');
+    assert.ok(!guest.includes('À la une'), 'les deux pastilles s’affichent en même temps');
+    assert.ok(guest.includes('Créateur Invité'), 'le nom affiché manque');
+  });
+
+  it('garde « À la une » sur un bento de membre mis en avant', async () => {
+    const featured = await (await get('/u/keremasan')).text();
+    assert.ok(featured.includes('À la une'));
+    assert.ok(!featured.includes('>Invité<'), 'un membre ne doit pas être marqué invité');
+  });
+
   it('déclare la bannière Smart App iOS', async () => {
     const html = await (await get('/u/keremasan')).text();
     assert.match(meta(html, 'apple-itunes-app') ?? '', /^app-id=\d+, app-argument=https:\/\//);

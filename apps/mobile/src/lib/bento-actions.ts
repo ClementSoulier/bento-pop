@@ -140,8 +140,14 @@ export async function loadPublicBentoByPseudo(pseudo: string) {
   // Correspondance exacte, cf. `findUserByPseudo` : `_` est un joker
   // `ilike` autorisé par la contrainte SQL, donc un lien profond
   // `bentopop://u/buyt_k` affichait le bento de `buyt.k`.
-  const user = (await findUserByPseudo('id, pseudo, display_name, created_at', pseudo)) as
-    | { id: string; pseudo: string; display_name: string | null; created_at: string }
+  const user = (await findUserByPseudo('id, pseudo, display_name, created_at, kind', pseudo)) as
+    | {
+        id: string;
+        pseudo: string;
+        display_name: string | null;
+        created_at: string;
+        kind: string;
+      }
     | null;
   if (!user) return null;
 

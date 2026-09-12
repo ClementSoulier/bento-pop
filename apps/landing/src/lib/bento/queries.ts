@@ -15,6 +15,7 @@ import { mapBentoItems, type BentoSlots, type RawBentoItemRow } from './map';
 const BENTO_SELECT = `
   pseudo,
   display_name,
+  kind,
   bentos (
     id,
     published_at,
@@ -32,6 +33,14 @@ export type PublicBento = {
   readonly displayName: string | null;
   readonly publishedAt: string;
   readonly isFeatured: boolean;
+  /**
+   * Bento composé par l'équipe pour un créateur rencontré hors de l'app.
+   *
+   * Affiché parce que l'information ne se déduit d'aucune autre : sans elle,
+   * la page attribue à une personne réelle une composition qu'elle n'a pas
+   * faite elle-même.
+   */
+  readonly isGuest: boolean;
   readonly slots: BentoSlots;
 };
 
@@ -57,6 +66,7 @@ type RawBentoRow = {
 type RawUserRow = {
   readonly pseudo: string;
   readonly display_name: string | null;
+  readonly kind: string;
   // Relation « to-one » côté PostgREST, mais certaines versions du client
   // la typent en tableau. On accepte les deux et on normalise.
   readonly bentos: RawBentoRow | readonly RawBentoRow[] | null;
@@ -141,6 +151,10 @@ export async function lookupPublicBento(
       displayName: user.display_name,
       publishedAt: bento.published_at,
       isFeatured: bento.is_featured,
+      // Comparaison à la chaîne : une valeur inconnue, ajoutée en base avant
+      // le déploiement de la landing, doit se lire « pas invité » plutôt que
+      // faire échouer la page.
+      isGuest: user.kind === 'editorial',
       slots: mapBentoItems(bento.bento_items ?? []),
     },
   };

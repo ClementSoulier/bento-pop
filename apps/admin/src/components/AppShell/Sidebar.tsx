@@ -38,6 +38,7 @@ const NAV = [
   { id: 'polls',     href: '/polls',    label: 'Sondages',   Icon: PollIcon },
   { id: 'links',     href: '/links',    label: 'Liens & CTAs', Icon: LinkIcon },
   { id: 'team',      href: '/team',     label: 'Team',       Icon: UsersIcon },
+  { id: 'users',     href: '/utilisateurs', label: 'Utilisateurs (mobile)', Icon: UsersIcon },
   { id: 'bentos',    href: '/bentos',   label: 'Bentos (mobile)', Icon: DashboardIcon },
   { id: 'catalogue', href: '/catalogue', label: 'Catalogue (mobile)', Icon: EyeIcon },
   { id: 'reports',   href: '/reports',  label: 'Modération',      Icon: PollIcon },

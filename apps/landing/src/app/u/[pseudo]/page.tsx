@@ -208,6 +208,7 @@ export default async function PublicBentoPage({ params }: PageProps) {
             displayName={bento.displayName}
             publishedAt={bento.publishedAt}
             isFeatured={bento.isFeatured}
+            isGuest={bento.isGuest}
           />
         </div>
 
