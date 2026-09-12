@@ -344,6 +344,27 @@ export type Database = {
           score: number;
         }>;
       };
+      popular_items: {
+        Args: {
+          category_key: CategoryKey;
+          lim?: number;
+          /**
+           * Retire un item du résultat. Sert à ne pas reproposer celui qui
+           * occupe déjà la case ouverte.
+           */
+          exclude_item?: string | null;
+        };
+        Returns: Array<{
+          id: string;
+          title: string;
+          subtitle: string | null;
+          year: number | null;
+          image_url: string | null;
+          image_credit: string | null;
+          /** Nombre de bentos **publiés** qui contiennent cet item. */
+          picks: number;
+        }>;
+      };
       admin_merge_items: {
         Args: {
           canonical_id: string;

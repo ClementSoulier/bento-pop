@@ -13,6 +13,33 @@ L'app pointe sur un proxy local qui relaie les lectures vers Supabase et
 bloque tout le reste. On obtient les vraies données, le vrai rendu, les vraies
 images, sans compte anonyme créé ni écriture possible.
 
+Sont relayés : tous les `GET`, et les `POST` vers les fonctions RPC de la liste
+blanche (`search_items`, `find_similar_items`, `popular_items`), qui sont
+`stable` en SQL donc en lecture. Tout le reste répond 405. Pour une recette qui
+a besoin d'une autre fonction :
+
+```bash
+RPC_ALLOW=search_items,ma_fonction TARGET=… KEY=… node …/readonly-proxy.mjs
+```
+
+### Recetter un écran qui écrit, sans écrire
+
+Sans session, `useSession().user` reste nul et **tous les gestionnaires
+d'écriture sortent immédiatement** : le tap ne fait rien, et on ne voit ni
+l'écriture optimiste, ni son retour arrière, ni le toast d'erreur.
+
+`FAKE_AUTH=1` fait répondre à `/auth/*` une session synthétique au lieu d'un
+503. L'app se croit connectée, et la première écriture se heurte au 405 du
+proxy :
+
+```bash
+FAKE_AUTH=1 TARGET=… KEY=… node apps/mobile/scripts/readonly-proxy.mjs
+```
+
+On exerce ainsi tout le chemin d'écriture **sauf le succès**, sans créer le
+moindre compte anonyme en production. Le chemin nominal, lui, demande une
+vraie session : c'est la seule partie qui reste à recetter à la main.
+
 ```bash
 # 1. le proxy, dans un terminal à part
 set -a && . apps/landing/.env && set +a
@@ -142,10 +169,124 @@ route :
 
 ```bash
 FAIL=/rest/v1/bentos TARGET=... KEY=... node apps/mobile/scripts/readonly-proxy.mjs
+# ou, pour un écran qui tape une RPC :
+FAIL=/rest/v1/rpc/popular_items TARGET=... KEY=... node apps/mobile/scripts/readonly-proxy.mjs
 ```
 
 Compter environ trois secondes de squelette avant l'erreur : React Query
 retente deux fois.
+
+### « Search failed: undefined », ou une RPC qui ne répond pas en recette
+
+PostgREST expose les fonctions SQL en `POST`, pas en `GET`. Une fonction absente
+de `RPC_ALLOW` répond donc 405 et l'écran affiche une erreur réseau, alors que
+la base va très bien. Le journal du proxy le dit : chaque ligne porte désormais
+la méthode et le poids de la réponse.
+
+```
+200 POST /rest/v1/rpc/search_items 245o
+405 POST /rest/v1/rpc/ma_fonction
+```
+
+C'est aussi le moyen de **mesurer l'egress d'un parcours** : additionner la
+colonne de droite sur la durée de la recette.
+
+### Un bandeau LogBox après un échec d'écriture, c'est voulu
+
+`search-modal.tsx` journalise les échecs d'écriture avec `console.warn`, ce
+qui déclenche l'encadré jaune de LogBox en développement. C'est le bon signal
+pour un développeur, mais il ressemble au bandeau blanc à pastille décrit plus
+bas : avant de partir en chasse, vérifier si une écriture vient d'échouer,
+notamment derrière le proxy où elles échouent toutes.
+
+### L'URL Supabase est **compilée dans l'app**, pas servie par Metro
+
+C'est le piège le plus coûteux rencontré jusqu'ici, et il ne se voit nulle
+part dans le code de l'écran.
+
+`app.config.ts` recopie `process.env.EXPO_PUBLIC_SUPABASE_URL` dans
+`extra.SUPABASE_URL`, et `src/supabase/client.ts` lit
+`Constants.expoConfig?.extra?.[key]` **avant** `process.env[key]`. Or
+`app.config.ts` est évalué par `expo run:ios` au moment de la **compilation**,
+et son résultat est figé dans `MonBentoPop.app/EXConstants.bundle/app.config`.
+
+Conséquences, toutes vérifiées :
+
+- relancer Metro avec d'autres variables ne change **rien** à la cible de
+  l'app ;
+- le bundle servi par Metro contient bien la nouvelle URL, mais seulement
+  dans le shim `process.env`, qui n'est jamais atteint puisque `extra` gagne.
+  **Vérifier le bundle ne prouve donc rien** ;
+- changer de cible impose une **reconstruction**.
+
+Le seul contrôle qui fait foi :
+
+```bash
+APP=$(find ~/Library/Developer/Xcode/DerivedData/MonBentoPop-* -name "*.app" -type d | grep simulator | head -1)
+strings "$APP/EXConstants.bundle/app.config" | grep -o "127.0.0.1:8098\|ggjgktbcqumfxrixcdyx"
+```
+
+Second contrôle, côté données cette fois : la clé de session dans
+AsyncStorage porte la référence du projet.
+
+```bash
+D=$(xcrun simctl get_app_container <UDID> com.bentopop.mobile data)
+cat "$D/Library/Application Support/com.bentopop.mobile/RCTAsyncLocalStorage_V1/manifest.json"
+# sb-<ref>-auth-token  → la référence dit sur quel projet l'app est branchée
+```
+
+Vécu : une session de recette entière passée à croire que l'app tapait le
+proxy alors qu'elle écrivait en production, en s'appuyant sur le contrôle du
+bundle, qui est insuffisant.
+
+### `expo run:ios` ne relance pas Metro
+
+`pkill -f "expo start"` ne suffit pas, le processus s'appelle
+`expo/bin/cli run:ios` et garde le port 8081. Une nouvelle `expo run:ios`
+affiche alors « Skipping dev server » et se raccroche à l'instance existante.
+
+```bash
+lsof -ti :8081 | xargs -I{} ps -o command= -p {}
+pkill -f "expo/bin/cli"
+```
+
+### `idb ui text` tape sur le clavier matériel, avec la mauvaise disposition
+
+Les lettres passent, mais les chiffres et la ponctuation sortent faux :
+`recette_ux03` est devenu `recette)uxà »`. Et les caractères parasites se
+retrouvent **après** le curseur, donc les retours arrière ne les effacent pas.
+
+Pour saisir un texte fiable : n'utiliser que des lettres hors `a q z w m`, ou
+passer par l'interface (les puces de suggestion du champ pseudo remplissent le
+champ sans clavier). Et dans tous les cas, **relire la capture** avant de
+valider : l'écran affichait bien « Invalide ».
+
+### `idb ui text` fait disparaître le clavier logiciel
+
+`idb ui text` tape via le **clavier matériel**, ce qui le « connecte » pour le
+reste de la session de démarrage du simulateur : le clavier logiciel ne
+remonte plus, même sur un écran qui a bien un `autoFocus`. On croit alors à une
+régression de l'app.
+
+Symptôme : le curseur clignote dans le champ mais aucun clavier n'est affiché.
+Remède : `xcrun simctl shutdown <UDID>` puis `boot`, et prendre la capture du
+clavier **avant** toute frappe via `idb`. Pour saisir du texte sans perdre le
+clavier logiciel, taper les touches une par une avec `idb ui tap` sur les
+coordonnées du clavier.
+
+### Installer une build déjà compilée sur un second simulateur
+
+Inutile de recompiler pour comparer deux tailles d'écran. Le `.app` vit dans
+DerivedData :
+
+```bash
+APP=$(find ~/Library/Developer/Xcode/DerivedData/MonBentoPop-* -name "*.app" -type d | grep simulator | head -1)
+xcrun simctl boot "iPhone SE (3rd generation)"
+xcrun simctl install <UDID> "$APP" && xcrun simctl launch <UDID> com.bentopop.mobile
+```
+
+Vérifier ensuite dans le journal du proxy que le second appareil passe bien par
+lui, et pas directement en production.
 
 ### `INSTALL_FAILED_VERSION_DOWNGRADE` sur Android
 

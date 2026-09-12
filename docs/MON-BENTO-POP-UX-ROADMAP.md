@@ -17,8 +17,8 @@
 |---|---|---|---|---|---|
 | 1 | Page web `/u/[pseudo]` + OG image | Acquisition | M | rien | ✅ en production, validée 25/25 · QA device restante · [spec](./UX-01-PAGE-BENTO-PUBLIQUE.md) |
 | 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
-| 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | ⬜ |
-| 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2 |
+| 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 7 lots livrés, DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
+| 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ réduit : `Tile` migré par le chantier 2, tuiles de recherche par le chantier 3 |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
 | 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
@@ -85,6 +85,24 @@ Les featured restent distingués **à l'intérieur du fil**, à leur date de pub
 ---
 
 ## 3. Recherche d'item : suggestions, autofocus, haptique
+
+> **Spécification détaillée : [`UX-03-RECHERCHE-ITEM.md`](./UX-03-RECHERCHE-ITEM.md)**
+> (mesures de production, design, contrat de données, plan en 7 lots, DoD, décisions).
+>
+> **Livré, 7 lots.** Remplir une case passe de 4 taps à 2, soit 12 pour un
+> bento complet au lieu de 24. L'écran d'ouverture passe de 78,3 % de crème
+> vide à douze propositions du catalogue.
+>
+> Trois écarts avec le constat ci-dessous, tranchés par la mesure : le
+> classement par popularité **n'a pas encore de signal** (au plus 3 items
+> choisis 2 fois par catégorie, 0 pour « Chanson »), donc le bloc s'appelle
+> « Au menu » et non « Populaires » ; l'`Alert` anti-doublon est
+> **démontrablement redondante** avec les résultats déjà affichés (24 cas sur
+> 24, toujours au rang 1), elle est supprimée ; et le double tap proposé est
+> remplacé par un **tap unique avec annulation par toast**.
+>
+> Restent l'haptique et VoiceOver sur appareil réel, qu'aucun simulateur ne
+> restitue (DoD §11.2).
 
 **Constat** (tout dans `apps/mobile/app/search-modal.tsx`) :
 

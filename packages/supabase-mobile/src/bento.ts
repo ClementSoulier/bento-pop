@@ -53,16 +53,27 @@ export const CATEGORY_ORDER: readonly CategoryKey[] = [
   'place',
 ];
 
-/** Libellés FR et tampons tout-caps affichés sur les tuiles. */
+/**
+ * Libellés FR et tampons tout-caps affichés sur les tuiles.
+ *
+ * `gender` porte le genre grammatical du libellé. Il existe parce que toute
+ * phrase construite autour du libellé doit s'accorder : sans lui, la modale
+ * de recherche affichait « Cherche un chanson… » et « Cherche un série… ».
+ * Le genre est une propriété du mot, pas de l'écran qui l'emploie, donc il
+ * vit ici avec le libellé et non recopié chez chaque appelant.
+ */
 export const CATEGORY_META: Readonly<
-  Record<CategoryKey, { readonly label: string; readonly stamp: string }>
+  Record<
+    CategoryKey,
+    { readonly label: string; readonly stamp: string; readonly gender: 'm' | 'f' }
+  >
 > = {
-  film: { label: 'Film', stamp: 'FILM' },
-  series: { label: 'Série', stamp: 'SÉRIE' },
-  artist: { label: 'Artiste', stamp: 'ARTISTE' },
-  track: { label: 'Chanson', stamp: 'SON' },
-  creator: { label: 'Créateur de contenu', stamp: 'CRÉA' },
-  place: { label: 'Lieu', stamp: 'LIEU' },
+  film: { label: 'Film', stamp: 'FILM', gender: 'm' },
+  series: { label: 'Série', stamp: 'SÉRIE', gender: 'f' },
+  artist: { label: 'Artiste', stamp: 'ARTISTE', gender: 'm' },
+  track: { label: 'Chanson', stamp: 'SON', gender: 'f' },
+  creator: { label: 'Créateur de contenu', stamp: 'CRÉA', gender: 'm' },
+  place: { label: 'Lieu', stamp: 'LIEU', gender: 'm' },
 };
 
 // ─── Hash stable ───────────────────────────────────────────────────────
