@@ -199,6 +199,38 @@ pour un développeur, mais il ressemble au bandeau blanc à pastille décrit plu
 bas : avant de partir en chasse, vérifier si une écriture vient d'échouer,
 notamment derrière le proxy où elles échouent toutes.
 
+### `expo run:ios` ne relance pas Metro, et Metro garde ses variables
+
+Les `EXPO_PUBLIC_*` sont **inlinées dans le bundle par Metro**, pas lues au
+démarrage de l'app. Un Metro lancé une fois avec les variables du proxy
+continue donc de servir l'URL du proxy, y compris après une nouvelle
+`expo run:ios` sans variables, qui affiche simplement « Skipping dev server »
+et se raccroche à l'instance existante.
+
+Conséquence vécue : une recette « sur la production » qui tapait en réalité un
+proxy éteint, et qui aurait été rapportée comme concluante.
+
+`pkill -f "expo start"` ne suffit pas, le processus s'appelle
+`expo/bin/cli run:ios`. Trouver le vrai coupable et vérifier ensuite :
+
+```bash
+lsof -ti :8081 | xargs -I{} ps -o command= -p {}
+pkill -f "expo/bin/cli"
+curl -s "http://localhost:8081/apps/mobile/index.bundle?platform=ios&dev=true" \
+  | grep -c "127.0.0.1:8098"     # 0 attendu si on vise la production
+```
+
+### `idb ui text` tape sur le clavier matériel, avec la mauvaise disposition
+
+Les lettres passent, mais les chiffres et la ponctuation sortent faux :
+`recette_ux03` est devenu `recette)uxà »`. Et les caractères parasites se
+retrouvent **après** le curseur, donc les retours arrière ne les effacent pas.
+
+Pour saisir un texte fiable : n'utiliser que des lettres hors `a q z w m`, ou
+passer par l'interface (les puces de suggestion du champ pseudo remplissent le
+champ sans clavier). Et dans tous les cas, **relire la capture** avant de
+valider : l'écran affichait bien « Invalide ».
+
 ### `idb ui text` fait disparaître le clavier logiciel
 
 `idb ui text` tape via le **clavier matériel**, ce qui le « connecte » pour le

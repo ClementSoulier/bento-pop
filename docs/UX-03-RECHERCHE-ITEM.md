@@ -811,6 +811,52 @@ derrière le proxy. `FAKE_AUTH=1` fournit une session synthétique : l'app se
 croit connectée, la première écriture se heurte au 405, et on exerce tout le
 chemin sauf le succès sans créer de compte en production.
 
+**L'annulation avalait son échec.** La première version attrapait l'erreur
+sans rien dire, en se disant que l'utilisateur pouvait toujours rouvrir la
+case. Sauf qu'à l'écran, une annulation qui échoue et une annulation ignorée
+sont indiscernables : le toast disparaît, la case ne bouge pas. Annuler est
+une promesse, un échec se dit.
+
+### 9.2 quinquies Recette avec écriture, sur la production
+
+Le chemin nominal demande une vraie session. Fait le 12 septembre 2026 sur
+`ggjgktbcqumfxrixcdyx`, compte `recetteuxt_pop`
+(`0392e30f-d6e7-41b2-973a-655913cf9a86`), bento laissé **non publié**.
+
+- Six cases remplies d'affilée, **2 taps par case, 12 au total** contre 24
+  avant. Cinq depuis le bloc « Au menu » sans rien taper, une par la
+  recherche.
+- Le toast de succès nomme la case et l'item (« Film : Sacré Graal »).
+- **La case ne disparaît pas au retour sur le composer** : le compteur
+  d'écritures en vol fait son travail. C'était la régression à surveiller.
+- `exclude_item` vérifié à l'écran : rouvrir la case film ne repropose plus
+  Sacré Graal dans « Au menu ».
+- « Vider » apparaît dans l'en-tête dès que la case est remplie.
+- **Annulation vérifiée jusqu'en base** : après un tap sur « Annuler », un
+  redémarrage à froid montre la case vide. Le store étant en mémoire seule,
+  ce qui survit à un redémarrage vient de la base, et rien d'autre.
+- Aucune `Alert` native de bout en bout.
+
+Impact sur la production, mesuré avant et après :
+
+| | Avant | Après |
+|---|---|---|
+| `users` | 69 | 70 |
+| `bentos` visibles en anonyme | 26 | 26 |
+| `bento_items` visibles en anonyme | 156 | 156 |
+| Classement `popular_items` | | identique |
+
+Le brouillon reste invisible du fil et du classement, ce qui vérifie au
+passage le filtre `published_at is not null` explicite de la fonction SQL
+(§6.1) : sans lui, les six choix de ce compte auraient déplacé le classement
+pour tout le monde.
+
+**Deux pièges de recette, tous deux consignés dans le runbook.** Metro servait
+encore un bundle pointant sur le proxy après une nouvelle `expo run:ios` : la
+recette « en production » se serait faite dans le vide. Et `idb ui text` passe
+par le clavier matériel, donc `_`, `0` et `3` sont sortis en `)`, `à` et `»`
+dans le champ pseudo.
+
 ### 9.3 Ce qui ne se teste pas automatiquement
 
 L'`autoFocus`, la hauteur de clavier, l'haptique et les animations. Ils passent

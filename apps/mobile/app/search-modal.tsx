@@ -173,8 +173,13 @@ export default function SearchModal() {
 
   /**
    * Restaure l'état d'avant un remplissage : soit l'item précédent, soit la
-   * case vide. Sert à l'annulation par toast et au retour arrière quand
-   * l'écriture échoue.
+   * case vide. Sert à l'annulation par toast.
+   *
+   * **Un échec se dit.** La première version avalait l'erreur en silence,
+   * avec l'idée que l'utilisateur pouvait toujours rouvrir la case. Sauf
+   * qu'à l'écran, une annulation qui échoue et une annulation ignorée se
+   * ressemblent exactement : le toast disparaît, la case ne bouge pas, et
+   * rien ne dit s'il faut recommencer. Annuler est une promesse.
    */
   const restoreSlot = async (bentoId: string, previous: SlotSnapshot) => {
     // L'annulation part depuis le toast, donc alors que le composer a déjà
@@ -191,10 +196,12 @@ export default function SearchModal() {
         await clearBentoSlot(bentoId, category);
         clearSlot(category);
       }
-    } catch {
-      // La restauration a échoué : l'utilisateur rouvre la case et
-      // recommence. Un second toast d'erreur par-dessus le premier
-      // n'apporterait rien.
+    } catch (e) {
+      reportWriteFailure('annulation', e);
+      showToast("L'annulation n'a pas marché. Rouvre la case.", {
+        variant: 'danger',
+        durationMs: 5000,
+      });
     } finally {
       endWrite();
     }
