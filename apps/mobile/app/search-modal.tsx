@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
-  Image,
+  PixelRatio,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -20,6 +22,8 @@ import { CATEGORY_META } from '@/components/bento/categories';
 import { PALETTES, paletteKeyForItem } from '@/components/bento/palettes';
 import { StampButton, useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
+import { searchTileWidth } from '@/components/search/layout';
+import { itemImageUrl } from '@/lib/item-image';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
 import { useBento } from '@/state/bento';
@@ -46,10 +50,6 @@ import {
  * qui attend la modération côté admin.
  */
 
-// Largeur fixe par tile = (largeur écran - paddings horizontaux - 2 gaps) / 3.
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const TILE_WIDTH = Math.floor((SCREEN_WIDTH - 32 - 20) / 3);
-
 const ITEM_SEARCH_STALE_MS = 60 * 1000;
 
 export default function SearchModal() {
@@ -60,6 +60,13 @@ export default function SearchModal() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ItemSearchResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const { width: windowWidth } = useWindowDimensions();
+  const tileWidth = searchTileWidth(windowWidth);
+  // Constant sur la durée de vie de l'écran : la densité d'un écran ne change
+  // pas. Mémorisé pour ne pas rappeler le pont natif à chaque tuile rendue.
+  const pixelRatio = useMemo(() => PixelRatio.get(), []);
+  const inputRef = useRef<TextInput>(null);
 
   const userId = useSession((s) => s.user?.id);
   const setSlot = useBento((s) => s.setSlot);
@@ -242,11 +249,21 @@ export default function SearchModal() {
         <View style={[styles.searchInput, SHADOWS.stamp]}>
           <Text style={{ fontSize: 16, color: 'rgba(10,10,10,0.4)' }}>🔍</Text>
           <TextInput
+            ref={inputRef}
             value={query}
             onChangeText={setQuery}
             placeholder={`Cherche un ${meta.label.toLowerCase()}…`}
             autoCapitalize="none"
             autoCorrect={false}
+            // Le clavier est levé d'emblée : six cases à remplir, c'est six
+            // taps économisés. Il reste 229 pt au-dessus du clavier sur un
+            // iPhone SE, mesuré, soit une rangée de tuiles entière.
+            autoFocus
+            returnKeyType="search"
+            // La recherche tourne déjà en continu sur le debounce : la touche
+            // entrée ne relance rien, elle replie le clavier pour découvrir
+            // le reste de la grille.
+            onSubmitEditing={() => inputRef.current?.blur()}
             style={{ fontSize: 16, fontWeight: '600', flex: 1, paddingVertical: 0 }}
           />
           {loading ? <ActivityIndicator size="small" /> : null}
@@ -280,6 +297,17 @@ export default function SearchModal() {
           numColumns={3}
           columnWrapperStyle={{ gap: 10, justifyContent: 'flex-start' }}
           contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
+          // Décale le contenu de la hauteur du clavier pour que la dernière
+          // rangée reste atteignable. Remplace un `KeyboardAvoidingView`, que
+          // rien ne justifie ici : il n'y a pas de champ en bas d'écran à
+          // protéger, juste une liste à ne pas tronquer.
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          // Défiler ferme le clavier : sur un petit écran c'est le geste
+          // naturel pour voir plus de résultats.
+          keyboardDismissMode="on-drag"
+          // Sans ça, le premier tap sur une tuile ne servirait qu'à fermer le
+          // clavier et il en faudrait un second pour sélectionner.
+          keyboardShouldPersistTaps="handled"
           ListFooterComponent={
             canSubmitNew ? (
               <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
@@ -321,6 +349,7 @@ export default function SearchModal() {
                 style={[
                   styles.tile,
                   {
+                    width: tileWidth,
                     transform: [
                       { rotate: `${[-0.6, 0.3, -0.4, 0.5, -0.3, 0.4][index % 6] ?? 0}deg` },
                     ],
@@ -331,9 +360,19 @@ export default function SearchModal() {
                 <View style={{ aspectRatio: 2 / 3, backgroundColor: palette.colors[0] }}>
                   {item.imageUrl ? (
                     <Image
-                      source={{ uri: item.imageUrl }}
+                      source={{ uri: itemImageUrl(item.imageUrl, tileWidth, pixelRatio) }}
                       style={StyleSheet.absoluteFill}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      // `Image` de react-native ne persiste rien sur disque :
+                      // rouvrir la même case retéléchargeait tout. Les
+                      // propositions du bloc « Au menu » étant par nature les
+                      // mêmes d'une fois sur l'autre, c'est le cache qui rend
+                      // la fonctionnalité tenable côté egress.
+                      cachePolicy="memory-disk"
+                      transition={120}
+                      // Sans lui, une cellule recyclée montre brièvement
+                      // l'affiche du résultat précédent.
+                      recyclingKey={item.id}
                     />
                   ) : (
                     <>
@@ -484,7 +523,7 @@ const styles = StyleSheet.create({
     borderColor: '#e63946',
   },
   tile: {
-    width: TILE_WIDTH,
+    // La largeur est posée au rendu, cf. `searchTileWidth`.
     backgroundColor: '#ffffff',
     borderWidth: 2.5,
     borderColor: '#0a0a0a',
