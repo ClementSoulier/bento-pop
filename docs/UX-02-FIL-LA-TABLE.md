@@ -145,11 +145,17 @@ qui avait déjà été constaté côté landing.
 On sert donc un JPEG de 280 Ko dans une case de 100 pt de haut, sans levier
 côté serveur.
 
-**Le quota, à vérifier.** La transformation d'image est indisponible sur le
-plan gratuit. Si le projet mobile y est, le budget d'egress est de 5 Go par
-mois, soit **environ 365 défilements complets** avant épuisement. Avec 69
-comptes, cela laisse cinq défilements par personne et par mois. À confirmer
-dans le tableau de bord Supabase avant la mise en production du fil.
+**Le quota, confirmé.** Le projet est bien sur le **plan gratuit, 5 Go
+d'egress par mois**, relevé dans le tableau de bord le 12 septembre 2026, avec
+0,01 Go consommé sur le cycle en cours. Le budget vaut donc **environ 365
+défilements complets** avant épuisement, soit cinq par personne et par mois
+pour 69 comptes.
+
+La consommation actuelle est basse parce que l'écran d'accueil ne chargeait
+aucune image. Le fil change cette donne du tout au tout : c'est le premier
+écran de l'app à afficher de vraies photos en volume. Le cache disque le
+ramène à un coût unique par appareil (§4.3), et la recompression à l'upload le
+diviserait encore par trois (§4.4). À surveiller sur le premier mois.
 
 ### 4.3 Conséquence : `expo-image` est un préalable, pas une optimisation
 
@@ -771,8 +777,9 @@ Résultats notables de cette recette :
       image** au second passage. *(simulateur : 106 fichiers, 17 Mo dans le cache disque SDWebImage)*
 - [ ] Cache vide : les cases affichent leur dégradé de palette avant l'image,
       jamais un rectangle gris.
-- [x] Image de partage générée sur **iOS**, bento à six visuels. Aucun
-      visuel manquant ni blanc. *(simulateur)* · [ ] reste **Android**.
+- [x] Image de partage générée sur **iOS** et sur **Android**, bento à six
+      visuels. Aucun visuel manquant ni blanc. *(simulateur et émulateur)*
+      2,5 Mo sur iOS, 1,9 Mo sur Android.
 - [x] Les crédits d'image sont présents sur chaque case qui en porte un.
       *(mais ils se superposent au sous-titre, cf. §14)*
 
@@ -890,14 +897,16 @@ rien écrire. États nominal, chargement et erreur capturés.
 - [ ] Les huit critères de succès de §2 sont vérifiés **sur device**. Quatre
       sur huit restent ouverts, et aucun n'a été vérifié ailleurs que sur
       simulateur. Détail en §12.1.
-- [ ] La checklist §10.4 est intégralement cochée, capture de partage
-      comprise sur les deux plateformes. Android n'a pas été ouvert du tout.
+- [~] La checklist §10.4 est intégralement cochée, capture de partage
+      comprise sur les deux plateformes. **Android est couvert** depuis la
+      recette du 12 septembre sur émulateur Pixel 8. Restent VoiceOver, la
+      taille de police système, et tout ce qui demande une écriture en base.
 - [x] `expo export` passe pour iOS et Android.
 - [x] Aucune référence résiduelle à `featured.ts` ni à `MiniBentoCard`. Deux
       mentions subsistent dans des commentaires, qui documentent pourquoi
       `loadFeedPage` lève au lieu de rendre une liste vide : volontaires.
-- [ ] Le plan Supabase et son quota d'egress ont été vérifiés (§4.2). À faire
-      dans le tableau de bord, hors de portée d'ici.
+- [x] Le plan Supabase et son quota d'egress ont été vérifiés (§4.2) : plan
+      gratuit, 5 Go par mois, 0,01 consommé.
 - [~] Roadmap mise à jour, suivis consignés. Suivis consignés en §14, roadmap
       à l'état réel et non à l'état terminé.
 
@@ -908,11 +917,45 @@ rien écrire. États nominal, chargement et erreur capturés.
 | 1 | L'onglet n'est jamais vide | ✅ simulateur, 26 bentos affichés |
 | 2 | Les 26 atteignables sans doublon ni trou | ✅ simulateur, 4 requêtes, pied de liste atteint |
 | 3 | Chaque bento lisible sans taper | ✅ simulateur, iPhone 17 et SE |
-| 4 | Un featured identifiable au premier coup d'œil | ⬜ jamais vu en situation : les 3 featured sont en position 15 à 22 du fil, et le défilement du simulateur ne s'est pas rendu jusque-là. Vérifié seulement sur l'écran d'aperçu du lot 3 |
+| 4 | Un featured identifiable au premier coup d'œil | ✅ vu en situation sur émulateur Android, en remontant le fil jusqu'au bento de @sparkay : étiquette rouge pivotée débordant du coin, cadre épaissi, reconnaissable sans lire |
 | 5 | Un bento publié apparaît en tête au pull-to-refresh | ⬜ demande une écriture en base |
 | 6 | Republier ne fait pas remonter en tête | ⬜ demande une écriture en base |
 | 7 | Le second passage ne retélécharge aucune image | ✅ simulateur, 106 fichiers et 17 Mo dans le cache disque |
-| 8 | Le défilement reste fluide, budget de §8 | ⬜ **non mesuré**. Ni le temps de première peinture, ni les images par seconde, ni la mémoire. Le simulateur ne donne d'ailleurs pas de chiffre représentatif là-dessus |
+| 8 | Le défilement reste fluide, budget de §8 | ⬜ **mesuré et non tenu sur émulateur.** Voir §12.2 |
+
+### 12.2 La fluidité, mesurée et non tenue
+
+`dumpsys gfxinfo` sur émulateur Pixel 8, 30 balayages rapides dans le fil,
+build de débogage :
+
+| | Le fil | Réglages du système, même appareil |
+|---|---|---|
+| Trames saccadées | **62,5 %** | 1,3 % |
+| Médiane | 18 ms | 24 ms |
+| 90e centile | 48 ms | 29 ms |
+| 95e centile | 81 ms | 31 ms |
+| Dessin lent | 81 trames sur 136 | |
+
+Le témoin compte : l'émulateur n'est pas l'explication, une application
+système y défile proprement avec les mêmes gestes synthétiques. Et
+« Slow issue draw commands » sur 60 % des trames désigne le coût de dessin
+plutôt que le JavaScript.
+
+**Ce que ce chiffre ne prouve pas.** C'est un build de débogage, donc du
+JavaScript non optimisé et un React en mode développement, là où le témoin est
+une application native. La comparaison est déséquilibrée en notre défaveur.
+
+**Piste testée et écartée faute de preuve.** §8 anticipait le coût des ombres
+de case : six par boîte, quatre boîtes montées, donc vingt-quatre vues à
+`elevation` non nulle. Les retirer fait tomber les trames saccadées de 62 % à
+48 %, mais dégrade les centiles (médiane 18 ms vers 46 ms) sur un nombre de
+trames deux fois et demie supérieur. Les deux relevés ne sont pas comparables,
+et un changement visuel sur les deux plateformes ne se justifie pas sur une
+mesure aussi bruitée. Non retenu.
+
+**Ce qu'il faut pour trancher** : un build de production sur un appareil réel.
+C'est le seul instrument qui donne un chiffre exploitable, et c'est aussi le
+seul contexte où le résultat compte.
 
 **Avertissement sur les cases déjà cochées de §10.4.** La recette du lot 5 a
 tourné sur un build qui portait encore le défaut de marge corrigé en fin de
