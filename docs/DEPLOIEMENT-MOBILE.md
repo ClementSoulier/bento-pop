@@ -14,7 +14,7 @@
 | Numéroter la build | EAS, automatique | inchangé |
 | Envoyer au store | **à la main, deux consoles** | `eas submit` |
 | Déclencher l'envoi | à la main | à la main, une commande |
-| Modification purement JS | build + revue | **rien encore**, cf. §6 |
+| Modification purement JS | build + revue | `eas update`, appliqué au lancement suivant |
 
 La numérotation était déjà bien réglée avant ce document, et c'est ce que les
 gens ratent le plus souvent : `appVersionSource: remote` avec
@@ -119,6 +119,12 @@ quelque chose en ligne.
 code natif, `expo-haptics` par exemple, rend toute mise à jour à distance
 inopérante : il faut passer par les stores et leur revue.
 
+**Régler `app_config` après la mise en ligne.** `ios_latest_version` et
+`android_latest_version` pilotent l'invitation à mettre à jour, et
+`ios_min_version` / `android_min_version` le blocage dur. Ils ne bougent pas
+tout seuls : tant qu'ils portent l'ancienne version, les deux mécanismes
+dorment. Back-office → Configuration → Mobile.
+
 **La version de l'app se change à la main** dans `app.json`, champ `version`.
 Seul le numéro de build est automatique. Et comme `runtimeVersion` suit la
 politique `appVersion`, changer la version **coupe** les mises à jour à
@@ -169,29 +175,34 @@ npx eas-cli update --branch production --message "…"
 | Icône, écran de démarrage, permissions, plugins | **non**, ce sont des réglages natifs |
 | Changement de `version` | **non**, cela crée une nouvelle `runtimeVersion` |
 
-### 6.2 Le délai réel : la mise à jour s'applique au lancement **suivant**
+### 6.2 Le délai : la mise à jour s'applique au lancement courant
 
-L'app n'appelle `expo-updates` nulle part dans son code : on est donc sur le
-comportement par défaut, avec `fallbackToCacheTimeout` à 0. Concrètement :
+Par défaut, `expo-updates` démarre sur le bundle en cache, télécharge en
+arrière-plan, et n'applique qu'au **prochain** démarrage à froid. Depuis la
+0.2.0, l'app ne s'en contente plus : elle vérifie au lancement, télécharge, et
+recharge.
 
-1. l'app démarre **immédiatement** avec le bundle qu'elle a déjà, sans
-   attendre le réseau ;
-2. elle vérifie en arrière-plan s'il existe une mise à jour, et la télécharge ;
-3. la mise à jour s'applique au **prochain démarrage à froid**.
+Le mécanisme, ses deux plafonds et ses chemins d'échec sont décrits dans
+[`MISES-A-JOUR-APP.md`](./MISES-A-JOUR-APP.md). Ce qu'il faut en retenir ici :
 
-Donc quelqu'un qui a l'app ouverte voit le correctif à sa deuxième ouverture
-après publication, pas à la première. C'est le compromis par défaut, et c'est
-le bon : bloquer le démarrage sur un appel réseau ferait payer à tout le monde
-une lenteur permanente pour un gain occasionnel.
+- la vérification est plafonnée à **1500 ms** et se cache derrière un boot qui
+  dure déjà 500 ms à 2 s, donc elle ne coûte rien la plupart du temps ;
+- quand elle dépasse, l'app démarre quand même et l'on retombe **exactement**
+  sur le comportement par défaut décrit ci-dessus. Le chemin d'échec est
+  l'ancien comportement, pas une panne ;
+- l'écran « Mise à jour » n'apparaît qu'au téléchargement, jamais à la
+  vérification.
 
-Si un jour on veut l'appliquer tout de suite, il faudra du code, un
-`Updates.checkForUpdateAsync` suivi d'un `reloadAsync`, avec le rechargement
-visible que ça implique. À ne faire que si le besoin se présente vraiment.
+Conséquence pratique pour qui publie : une mise à jour à distance atteint les
+gens **à leur prochaine ouverture de l'app**, pas à la suivante. C'est le
+délai qui compte quand on corrige quelque chose en urgence.
 
 ### 6.3 La discipline à tenir, et le piège
 
 **Bump `version` dans `app.json` dès que le natif change.** C'est la seule
-règle à ne jamais oublier, et elle n'est protégée par rien.
+règle à ne jamais oublier, et elle n'est protégée par rien. Elle est d'autant
+plus tranchante depuis que la mise à jour s'applique au lancement courant : la
+casse serait immédiate, pas différée d'une ouverture.
 
 `runtimeVersion` suit la version. Si on ajoute une dépendance native sans
 changer la version, une mise à jour à distance partirait vers des binaires

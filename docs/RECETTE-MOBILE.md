@@ -160,12 +160,16 @@ choisit entre `AppContainer-dev` et `AppContainer-prod` selon `__DEV__` : il
 n'existe pas en production. Pour lire le message, taper dessus. Pour vérifier
 qu'il s'agit bien de lui, poser un `console.error` volontaire et comparer.
 
-### Couper tout le réseau bloque l'app sur le splash
+### Couper tout le réseau bloquait l'app sur le splash
 
-Le garde-fou de 12 s du root layout ne remet que `initialized`, pas
-`appStatusLoading` : si `app_config` n'aboutit jamais, l'écran jaune ne part
-pas. Pour atteindre l'état d'erreur d'un écran, faire échouer **une seule**
-route :
+**Corrigé le 13 septembre 2026.** Le garde-fou de 12 s du root layout ne
+remettait que `initialized`, pas `appStatusLoading` : si `app_config`
+n'aboutissait jamais, l'écran jaune ne partait pas. Il libère désormais les
+trois verrous, y compris la phase de mise à jour à distance ajoutée en même
+temps. La note reste ici parce que le mode de défaillance, lui, reste le bon
+premier soupçon devant un splash qui ne part pas.
+
+Pour atteindre l'état d'erreur d'un écran, faire échouer **une seule** route :
 
 ```bash
 FAIL=/rest/v1/bentos TARGET=... KEY=... node apps/mobile/scripts/readonly-proxy.mjs

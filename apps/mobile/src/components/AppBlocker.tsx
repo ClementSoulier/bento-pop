@@ -1,7 +1,8 @@
-import { Image, Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import popyContent from '@bento-pop/brand/assets/mascot/popy-content.png';
 import popyMalade from '@bento-pop/brand/assets/mascot/popy-malade.png';
 import { StampButton, YellowBg } from '@/components/primitives';
+import { openStore } from '@/lib/open-store';
 
 /**
  * Écrans bloquants au boot de l'app : maintenance (volontaire, switch BO)
@@ -11,23 +12,6 @@ import { StampButton, YellowBg } from '@/components/primitives';
  * RIEN faire dans l'app tant qu'ils sont affichés. Pas de bouton "Continuer
  * quand même" : c'est le point.
  */
-
-const IOS_APP_ID = '6768764158';
-const ANDROID_PACKAGE = 'com.bentopop.mobile';
-
-function openStore() {
-  if (Platform.OS === 'ios') {
-    // Schéma natif iOS : ouvre directement l'App Store app sur la fiche.
-    // Fallback HTTPS si pour une raison X le schéma n'est pas géré.
-    const deepLink = `itms-apps://apps.apple.com/app/id${IOS_APP_ID}`;
-    const webLink = `https://apps.apple.com/app/id${IOS_APP_ID}`;
-    Linking.openURL(deepLink).catch(() => Linking.openURL(webLink));
-    return;
-  }
-  const deepLink = `market://details?id=${ANDROID_PACKAGE}`;
-  const webLink = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
-  Linking.openURL(deepLink).catch(() => Linking.openURL(webLink));
-}
 
 type MaintenanceScreenProps = {
   title: string;

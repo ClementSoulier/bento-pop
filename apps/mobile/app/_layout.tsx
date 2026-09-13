@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { queryClient } from '@/lib/query-client';
 import { FONTS } from '@/lib/fonts';
 import { useSession } from '@/state/session';
@@ -13,8 +13,11 @@ import { useBlocked } from '@/state/blocked';
 import { useAppStatus } from '@/state/app-status';
 import { Splash } from '@/components/Splash';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { UpdateBanner } from '@/components/UpdateBanner';
 import { ForceUpdateScreen, MaintenanceScreen } from '@/components/AppBlocker';
 import { ToastHost } from '@/components/primitives';
+import { runStartupUpdateWithExpo } from '@/lib/ota-runtime';
+import type { OtaPhase } from '@/lib/ota';
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
@@ -30,6 +33,12 @@ export default function RootLayout() {
   const appStatusLoading = useAppStatus((s) => s.loading);
   const appStatusConfig = useAppStatus((s) => s.config);
   const initAppStatus = useAppStatus((s) => s.init);
+  const stopAppStatusLoading = useAppStatus((s) => s.stopLoading);
+
+  // Phase de mise à jour à distance. On démarre en 'checking' plutôt qu'en
+  // 'done' : sinon le premier rendu passerait le splash avant que l'effet
+  // n'ait démarré, et l'app clignoterait juste avant un rechargement.
+  const [otaPhase, setOtaPhase] = useState<OtaPhase | 'done'>('checking');
 
   useEffect(() => {
     init().catch((err) => {
@@ -49,19 +58,52 @@ export default function RootLayout() {
     useBlocked.getState().load();
   }, [init, setInitialized, initAppStatus]);
 
-  // Garde-fou ultime : si pour une raison X le splash dure plus de 12 s
-  // (fonts qui ne se chargent jamais, etc.), on force l'entrée dans
-  // l'app. Évite le rejet App Store « stuck on splash ».
+  // Mise à jour à distance au lancement. La vérification est plafonnée court
+  // et se cache derrière le boot déjà payé ; l'écran de téléchargement
+  // n'apparaît que si une mise à jour existe VRAIMENT. Tous les chemins
+  // d'échec sont dans `ota.ts` et mènent ici au même endroit : 'done', donc
+  // l'app démarre. Cf. `docs/MISES-A-JOUR-APP.md`.
   useEffect(() => {
-    const t = setTimeout(() => setInitialized(true), 12000);
-    return () => clearTimeout(t);
-  }, [setInitialized]);
+    runStartupUpdateWithExpo(setOtaPhase)
+      .then((outcome) => {
+        // 'reloading' est le seul cas où l'on ne reprend pas la main :
+        // laisser le splash évite un clignotement avant le redémarrage.
+        if (outcome !== 'reloading') setOtaPhase('done');
+      })
+      .catch((err) => {
+        // `runStartupUpdate` ne lève pas, mais on ne parie pas là-dessus :
+        // c'est exactement ce genre de pari qui bloque un splash.
+        console.error('[ota] failed', err);
+        setOtaPhase('done');
+      });
+  }, []);
 
-  if (!fontsLoaded || !initialized || appStatusLoading) {
+  // Garde-fou ultime : si pour une raison X le splash dure plus de 12 s,
+  // on force l'entrée dans l'app. Évite le rejet App Store « stuck on
+  // splash ».
+  //
+  // Il libère TOUS les verrous, pas seulement `initialized` : la version
+  // précédente laissait passer `appStatusLoading`, si bien qu'une lecture
+  // d'`app_config` qui n'aboutissait jamais gardait l'écran jaune pour
+  // toujours. Un seul point de sortie, pas trois timeouts qui se coursent.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setInitialized(true);
+      stopAppStatusLoading();
+      setOtaPhase('done');
+    }, 12000);
+    return () => clearTimeout(t);
+  }, [setInitialized, stopAppStatusLoading]);
+
+  if (!fontsLoaded || !initialized || appStatusLoading || otaPhase !== 'done') {
     // Splash custom (logo + Popy animé) tant que les fonts ne sont pas
     // chargées ET que la session anonymous n'est pas démarrée. Voilà
     // ce que l'utilisateur voit pendant ~500ms-2s au boot.
-    return <Splash />;
+    //
+    // La légende n'apparaît qu'au téléchargement d'une mise à jour : pendant
+    // la vérification, qui a lieu à chaque lancement, le splash reste
+    // strictement identique à d'habitude.
+    return <Splash caption={otaPhase === 'downloading' ? 'Mise à jour…' : undefined} />;
   }
 
   // Verdict app-config : maintenance ou force update bloquent tout accès
@@ -99,6 +141,7 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          <UpdateBanner />
           <OfflineBanner />
           <ToastHost />
         </QueryClientProvider>

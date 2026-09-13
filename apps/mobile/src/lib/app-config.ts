@@ -2,6 +2,9 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from '@/supabase/client';
 import { withTimeout } from '@/lib/with-timeout';
+import { compareVersions } from '@/lib/version';
+
+export { compareVersions };
 
 /**
  * Lecture de la config runtime de l'app (table publique `app_config`).
@@ -24,6 +27,12 @@ export type AppConfig = {
   androidLatestVersion: string | null;
 };
 
+/**
+ * Verdict BLOQUANT. Chacune de ces valeurs (hors 'ok') remplace toute l'app
+ * par un écran sans navigation. L'invitation douce à mettre à jour n'est
+ * volontairement PAS ici : elle cohabite avec l'app, elle ne la remplace pas.
+ * Cf. `deriveLatestVersion` et `state/app-status.ts`.
+ */
 export type AppStatus = 'ok' | 'maintenance' | 'force_update';
 
 /**
@@ -61,24 +70,6 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
 }
 
 /**
- * Compare deux versions "X.Y.Z". Retourne -1 si a<b, 0 si égales, 1 si a>b.
- * Les segments manquants comptent comme 0. Suffixes non supportés (suffit
- * pour les versions Expo en production).
- */
-export function compareVersions(a: string, b: string): -1 | 0 | 1 {
-  const pa = a.split('.').map((s) => Number.parseInt(s, 10) || 0);
-  const pb = b.split('.').map((s) => Number.parseInt(s, 10) || 0);
-  const len = Math.max(pa.length, pb.length);
-  for (let i = 0; i < len; i++) {
-    const va = pa[i] ?? 0;
-    const vb = pb[i] ?? 0;
-    if (va < vb) return -1;
-    if (va > vb) return 1;
-  }
-  return 0;
-}
-
-/**
  * Version courante de l'app (depuis app.config.ts → expo.version).
  * Si absente (cas dev très tordu), on renvoie '0.0.0' → toute borne
  * min > 0.0.0 déclenchera le force update, ce qui est le comportement
@@ -103,4 +94,14 @@ export function deriveAppStatus(config: AppConfig | null): AppStatus {
 
   const current = getCurrentAppVersion();
   return compareVersions(current, minVersion) < 0 ? 'force_update' : 'ok';
+}
+
+/**
+ * Version la plus récente publiée sur le store de la plateforme courante.
+ * `null` quand le back-office ne l'a pas renseignée, ce qui est le cas
+ * d'Android en production aujourd'hui.
+ */
+export function deriveLatestVersion(config: AppConfig | null): string | null {
+  if (!config) return null;
+  return Platform.OS === 'ios' ? config.iosLatestVersion : config.androidLatestVersion;
 }
