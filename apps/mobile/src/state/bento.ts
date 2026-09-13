@@ -51,6 +51,17 @@ type LastFilled = { cat: CategoryKey; seq: number };
 type BentoState = {
   slots: BentoSlots;
   lastFilled: LastFilled | null;
+  /**
+   * Date de publication du bento, ou `null` s'il n'est pas en ligne.
+   *
+   * L'app l'ignorait complètement : `loadOwnBento` la lisait et personne ne
+   * la gardait. Résultat, le composer proposait « Publier mon bento » pour
+   * l'éternité, y compris des mois après la publication, et `publishBento` a
+   * dû être rendue idempotente pour survivre à ces taps répétés. La donnée
+   * remonte maintenant jusqu'ici, et tout ce qui dépend de « est-ce public »
+   * en découle.
+   */
+  publishedAt: string | null;
   /** Écritures parties et non encore confirmées, succès ou échec. */
   pendingWrites: number;
   setSlot: (cat: CategoryKey, data: TileData & { itemId?: string }) => void;
@@ -61,6 +72,12 @@ type BentoState = {
    * qu'une écriture locale est en vol, cf. le bloc ci-dessus.
    */
   hydrate: (slots: BentoSlots) => void;
+  /**
+   * Pose l'état de publication. Volontairement séparé d'`hydrate` : une
+   * écriture de case en vol ne dit rien de l'état de publication, donc le
+   * verrou `pendingWrites` n'a pas à s'y appliquer.
+   */
+  setPublishedAt: (publishedAt: string | null) => void;
   /** À encadrer d'un `try` / `finally` autour de toute écriture optimiste. */
   beginWrite: () => void;
   endWrite: () => void;
@@ -70,6 +87,7 @@ type BentoState = {
 export const useBento = create<BentoState>((set, get) => ({
   slots: {},
   lastFilled: null,
+  publishedAt: null,
   pendingWrites: 0,
   setSlot: (cat, data) =>
     set((s) => ({
@@ -82,11 +100,12 @@ export const useBento = create<BentoState>((set, get) => ({
       delete next[cat];
       return { slots: next };
     }),
-  reset: () => set({ slots: {}, lastFilled: null, pendingWrites: 0 }),
+  reset: () => set({ slots: {}, lastFilled: null, publishedAt: null, pendingWrites: 0 }),
   hydrate: (slots) => {
     if (get().pendingWrites > 0) return;
     set({ slots });
   },
+  setPublishedAt: (publishedAt) => set({ publishedAt }),
   beginWrite: () => set((s) => ({ pendingWrites: s.pendingWrites + 1 })),
   // `Math.max` plutôt qu'une simple décrémentation : un `endWrite` en trop,
   // par exemple sur un chemin d'erreur remanié, rendrait le compteur négatif
