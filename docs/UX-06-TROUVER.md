@@ -329,6 +329,12 @@ résultats ne s'affichent qu'après un geste délibéré. Des puces de texte, do
 et un onglet qui ne coûte rien à ouvrir. C'est un écart assumé avec les
 chantiers 2 et 3, qui affichent des images parce qu'elles y sont le contenu.
 
+**Le titre d'une puce est plafonné à 28 caractères**, `cleanTitle` coupant à
+la frontière de mot. Trouvé en recette : « Le Seigneur des anneaux : La
+Communauté de l'anneau », 51 caractères, occupait une rangée entière et se
+faisait rogner à l'endroit exact où il devenait informatif. Mesuré sur
+iPhone 17 Pro, au-delà de 28 caractères la puce cesse d'être une puce.
+
 Si `shared_items` renvoie moins de deux lignes, le bloc ne se rend pas et l'on
 retombe sur « Tape pour chercher ». Additif, jamais bloquant.
 
@@ -417,8 +423,15 @@ Le libellé de catégorie vient de `CATEGORY_META`, déjà partagé avec la gril
 - Les en-têtes de section portent `accessibilityRole="header"`.
 - Les puces de suggestion :
   `Chercher Angers, présent dans 4 bentos`.
-- Les en-têtes et les puces plafonnent `maxFontSizeMultiplier` à 1,4, comme
-  `FeedPostHeader`.
+- **Tout texte de l'écran plafonne `maxFontSizeMultiplier` à 1,4**, comme
+  `FeedPostHeader`. La recette a montré pourquoi : sans plafond, à la plus
+  grande taille système, le titre se rognait en « TROUV » en débordant de
+  l'écran, le champ chassait la loupe hors de la barre, et « Rien pour
+  « xyz » » perdait la requête, c'est-à-dire la seule information que cet
+  état apporte.
+- **Les branches sans liste défilent.** À la plus grande taille système, le
+  bloc de suggestions dépasse la hauteur de l'écran ; sans `ScrollView` il
+  devenait inatteignable. La `SectionList` défile déjà.
 - Cible tactile des puces : 44 pt de haut minimum, quitte à dépasser la
   hauteur du texte.
 
@@ -720,12 +733,20 @@ anonyme donc RLS active :
 | `search_bentos('seigneur')` | les bentos portant les titres longs (§4.6) |
 | `search_bentos('incepton')` | 2 lignes, rattrapées par la similarité |
 | `search_bentos('angers')` | 4 lignes, et **ni Los Angeles ni Angoulême** |
-| `search_bentos('_')` | **0 ligne**, le joker est échappé |
-| `search_bentos('%')` | **0 ligne** |
+| `search_bentos('%')` | **0 ligne**, le joker est échappé |
+| `search_bentos('_')` | **seulement de vrais underscores**, voir ci-dessous |
 | **tout pseudo renvoyé** | **a un bento publié**, vérifié ligne à ligne |
 | tout `bento_id` renvoyé | apparaît **une seule fois** |
 | `shared_items()` | 11 lignes, toutes à `picks >= 2` |
 | latence à chaud | < 200 ms |
+
+**L'attente sur `_` a été corrigée après coup.** Une première rédaction
+attendait 0 ligne, par analogie avec `%`. C'est faux : `%` échappé ne
+correspond à rien parce qu'aucun pseudo ni titre ne contient le caractère,
+alors que 14 pseudos et 2 titres contiennent un vrai `_`. L'échappement
+transforme le joker en littéral, il ne supprime pas les correspondances. La
+bonne assertion est donc « strictement moins que le corpus, et toutes les
+lignes contiennent réellement un `_` ». Vérifiée : 4 lignes.
 
 Le compte anonyme créé par la sonde est supprimé, profil puis auth.
 
@@ -758,6 +779,57 @@ Sur simulateur, sur les données de production.
 15. Pseudo de 17 caractères, le plus long en production : pas de débordement.
 16. Titre de 51 caractères (« Le Seigneur des anneaux… ») : la deuxième ligne
     est tronquée proprement, sur une ligne.
+
+### 8.4 bis Ce que la recette a trouvé
+
+Passée le 13 septembre 2026 sur simulateur iPhone 17 Pro, sur les données de
+production, avec un compte de recette `recettesix` créé puis supprimé, profil
+puis auth.
+
+**Ce qui a marché du premier coup** : les deux sections et leur ordre, la
+mention de la raison, la ligne restée à 64 pt mesurée à l'écran, le plancher
+à deux caractères, le tap sur une puce, le tap sur une ligne, l'état vide,
+l'état d'erreur, le filtre des bloqués, et les libellés VoiceOver.
+
+**Trois défauts trouvés et corrigés dans la foulée.**
+
+| Trouvé | Corrigé par |
+|---|---|
+| « Le Seigneur des anneaux : La Communauté de l'anneau » occupait une rangée entière de puces | plafond de 28 caractères, §5.2 |
+| à la plus grande taille système, le titre se rognait en « TROUV », la requête disparaissait de l'état vide, le champ chassait la loupe | `maxFontSizeMultiplier` à 1,4 partout, §5.6 |
+| à la plus grande taille système, le bloc de suggestions dépassait l'écran sans pouvoir défiler | `ScrollView` sur les branches sans liste, §5.6 |
+
+**La démonstration du défaut de fond**, faite sur la production. Taper
+« bento » correspond à **20 pseudos**, dont **19 sans bento publié**. L'écran
+en affiche **un**. Et taper `recettesix`, le compte de recette qui n'avait
+rien publié, ne renvoie rien : on ne se propose pas soi-même tant qu'on n'a
+rien à montrer.
+
+**Le blocage tient sa promesse.** La boîte de dialogue dit « Tu ne verras
+plus son bento dans La table ni dans la recherche ». Après avoir bloqué
+`@ralgan` depuis sa page, la recherche « inception » passe de deux lignes à
+une, **sans nouvelle requête** : seul `blocked` a changé, le cache React
+Query est intact.
+
+**VoiceOver**, relevé dans l'arbre d'accessibilité (`idb ui describe-all`) :
+
+```
+[TextField ] Chercher un pseudo ou un titre
+[Heading   ] DANS LES BENTOS
+[Button    ] Voir le bento de @dark_hifus, qui a Le Seigneur des anneaux :
+             La Communauté de l'anneau dans sa case film
+```
+
+Le titre est lu **en entier** alors qu'il est visuellement tronqué, ce qui est
+le comportement voulu.
+
+**Latences relevées** par `check-search-bentos.mjs` sur 37 requêtes :
+p50 **48 ms**, p95 **107 ms**, pour un budget de 200. Premier appel à froid,
+non compté : environ 400 ms, dont l'établissement TLS et le démarrage du
+pooler.
+
+**Deux défauts trouvés et NON corrigés**, parce qu'ils débordent du chantier.
+Ils sont en §12.
 
 ### 8.5 Ce qui n'est pas testé, assumé
 
@@ -812,22 +884,26 @@ jour avec ce que la recette a trouvé.
 
 ## 10. Definition of Done
 
-| # | Critère | Vérifié par |
-|---|---|---|
-| 1 | Aucun résultat de recherche ne mène à « Bento introuvable » | §8.3 ligne à ligne + §8.4 étapes 5 et 10 |
-| 2 | `dark_hifus` se trouve en tapant `hifus` | §8.3, §8.4 étape 4 |
-| 3 | `inception` ramène les 2 bentos, avec leur case | §8.4 étape 6 |
-| 4 | Aucun item proposé n'est absent des bentos publiés | `shared_items` a `having count(*) >= 2` |
-| 5 | Un bento n'apparaît jamais deux fois | §8.3 |
-| 6 | Les jokers `_` et `%` ne cassent rien | §8.3 |
-| 7 | La ligne de résultat n'a pas grandi | mesure au point, §5.4 |
-| 8 | Zéro image téléchargée par une recherche | §8.4 étape 1 |
-| 9 | RPC sous 200 ms à chaud | §8.3 |
-| 10 | Tests unitaires et bouchon verts, suite complète verte | CI |
-| 11 | Les pseudos bloqués sont filtrés dans les deux sections | §8.1 tests 4 et 5, §8.4 étape 11 |
-| 12 | VoiceOver annonce la raison d'un résultat | §8.4 étape 13 |
+Renseignée le 13 septembre 2026. **12 critères sur 12.**
 
----
+| # | Critère | Vérifié par | État |
+|---|---|---|---|
+| 1 | Aucun résultat de recherche ne mène à « Bento introuvable » | 57 lignes sur 37 requêtes, contrôlées ligne à ligne contre la vérité de terrain, plus la recette | ✅ |
+| 2 | `dark_hifus` se trouve en tapant `hifus` | §8.3 et §8.4 bis | ✅ |
+| 3 | `inception` ramène les 2 bentos, avec leur case | recette, capture | ✅ |
+| 4 | Aucun item proposé n'est absent des bentos publiés | `having count(*) >= 2`, plus le contrôle « chaque suggestion ramène au moins deux résultats » | ✅ |
+| 5 | Un bento n'apparaît jamais deux fois | §8.3, sur les 37 requêtes | ✅ |
+| 6 | Les jokers `_` et `%` ne cassent rien | §8.3, avec l'attente corrigée | ✅ |
+| 7 | La ligne de résultat n'a pas grandi | mesurée à l'écran : 64 pt, avec et sans mention d'item | ✅ |
+| 8 | Zéro image téléchargée par une recherche | ni les puces ni les lignes n'en portent, vérifié à l'écran | ✅ |
+| 9 | RPC sous 200 ms à chaud | p50 48 ms, p95 107 ms | ✅ |
+| 10 | Tests unitaires et bouchon verts, suite complète verte | 37 nouveaux tests, 212 au total | ✅ |
+| 11 | Les pseudos bloqués sont filtrés dans les deux sections | tests 4 et 5, plus la recette sur `@ralgan` | ✅ |
+| 12 | VoiceOver annonce la raison d'un résultat | arbre d'accessibilité relevé, §8.4 bis | ✅ |
+
+**Ce qui reste, et qui n'appartient pas à ce chantier** : la recette sur
+appareil réel, qui accumule déjà cinq chantiers, et où seule l'haptique des
+puces est propre à celui-ci. Le simulateur ne restitue pas l'haptique.
 
 ## 11. Décisions tranchées
 
@@ -850,12 +926,32 @@ jour avec ce que la recette a trouvé.
 
 ## 12. Suivis générés par ce chantier
 
+**Bloquer quelqu'un est une porte à sens unique.** Trouvé en recette. La
+boîte de dialogue promet « Tu peux annuler à tout moment depuis ce menu », or
+le menu vit sur `/u/[pseudo]`, page que le fil filtrait déjà et que la
+recherche filtre désormais aussi. Il n'existe **aucune liste des comptes
+bloqués** dans l'app : une fois bloqué, quelqu'un devient injoignable, donc
+indéblocable. Le défaut préexiste à ce chantier, `search.tsx` filtrait déjà
+les bloqués, mais il ferme la dernière porte et rend la promesse fausse. Le
+correctif est une ligne « Comptes bloqués » dans le profil, avec la liste et
+un bouton par ligne. C'est du ressort du chantier 11, et ça n'a pas été fait
+ici : c'est le blocage qui est en cause, pas la recherche.
+
+**Le texte ne plafonne son grossissement nulle part ailleurs.** À la plus
+grande taille de police système, l'écran « Trouver » cassait ; il a été
+corrigé. Mais **20 usages d'`Extenda` dans l'app n'ont pas de plafond**, plus
+`TopChip`, dont le libellé déborde de l'écran par la droite au même réglage.
+Un seul écran a été traité, celui qu'on livre : on ne laisse pas un titre
+rogné sur l'écran qu'on livre, et on n'entreprend pas la reprise des 20
+autres au milieu d'un chantier de recherche. Chantier 11.
+
 **Les doublons du catalogue dégradent la recherche.** Trois titres existent en
 double parmi les items validés : « arcane » (creator et series), « joueur du
 grenier » (artist et creator), « lesadpanda » (artist et creator). Et deux
 variantes coexistent pour un même film : « le seigneur des anneaux » et « Le
-Seigneur des anneaux : La Communauté de l'anneau ». Une recherche affichera les
-deux. `admin_merge_items` existe depuis la migration du 30 mai, c'est un geste
+Seigneur des anneaux : La Communauté de l'anneau ». **Observé en recette** :
+taper « seigneur » affiche trois lignes, dont deux portent le titre long et
+une le titre court, pour le même film. `admin_merge_items` existe depuis la migration du 30 mai, c'est un geste
 de modération, pas de code. À faire passer dans le back-office.
 
 **Les 46 comptes sans bento publié restent 46.** Ce chantier les cache. Les

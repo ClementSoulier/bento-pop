@@ -166,7 +166,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 fusionné (PR #51) · DoD 9 remplis / 1 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
-| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | 🟡 **en cours**, spécification écrite et mesurée · [spec](./UX-06-TROUVER.md) |
+| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés, recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
 | 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
@@ -409,7 +409,13 @@ D'où la règle qui tient le chantier entier : **on ne propose que ce qui mène 
 
 **L'audit des autres culs-de-sac est clos.** Les six navigations vers `/u/[pseudo]` ont été relues : `search.tsx:202` est la seule non protégée. Le fil ne sert que des bentos publiés, le composer et le profil ont été protégés au chantier 5.
 
-**Fait quand** : on peut trouver quelqu'un sans connaître son pseudo, et aucun résultat de recherche ne mène à un cul-de-sac.
+**Livré le 13 septembre 2026.** Recette sur simulateur, sur les données de production. La démonstration tient en une requête : taper « bento » correspond à 20 pseudos, dont 19 sans bento publié, et l'écran en affiche **un**. Latence p50 de 48 ms sur 37 requêtes, pour un budget de 200. 212 tests verts.
+
+Trois défauts trouvés en recette et corrigés dans la foulée : les titres longs occupaient une rangée entière de puces, et à la plus grande taille de police système le titre se rognait en « TROUV » pendant que le bloc de suggestions dépassait l'écran sans pouvoir défiler.
+
+Deux défauts trouvés et **non** corrigés, parce qu'ils débordent du chantier, tous deux versés au chantier 11 : bloquer quelqu'un est une porte à sens unique, la page qui porte le bouton « Débloquer » n'étant plus atteignable une fois le blocage posé ; et 20 usages d'`Extenda` plus `TopChip` n'ont aucun plafond de grossissement, ce qui les casse à la plus grande taille système.
+
+**Fait quand** : on peut trouver quelqu'un sans connaître son pseudo, et aucun résultat de recherche ne mène à un cul-de-sac. **Fait.**
 
 ---
 
@@ -472,6 +478,13 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 - ~~Le crédit image en `rgba(255,255,255,0.5)` sur photo (`Tile.tsx:283`) est sous le seuil de contraste~~. La recette du chantier 2 a montré qu'il se superpose en plus au sous-titre, les deux occupant la même bande basse de la tuile. **Arbitré : accepté tel quel** (cf. D8 de la spec du chantier 2). La mention légale CC-BY-SA reste présente, ce qui est l'obligation ; corriger toucherait `Tile`, donc trois écrans.
 - Faute dans le menu de signalement : « Confirme-tu ? » (`u/[pseudo].tsx:427`).
 - Les états de chargement sont des `ActivityIndicator` centrés : les remplacer par des squelettes de tuiles sur featured et bento public. *Traité pour « La table » par le chantier 2 ; reste la page bento public.*
+
+---
+
+**Versé par le chantier 6, le 13 septembre 2026.**
+
+- **Le texte ne plafonne son grossissement nulle part.** 20 usages d'`Extenda` dans l'app n'ont pas de `maxFontSizeMultiplier`, plus `TopChip` : à la plus grande taille de police système, les titres se rognent en débordant de l'écran. Seul `app/(tabs)/search.tsx` a été traité, parce qu'on ne livre pas un écran au titre cassé.
+- **Bloquer quelqu'un est une porte à sens unique.** La boîte de dialogue promet « Tu peux annuler à tout moment depuis ce menu », or ce menu vit sur `/u/[pseudo]`, filtrée du fil comme de la recherche. Il n'existe aucune liste des comptes bloqués. Le correctif est une ligne « Comptes bloqués » dans le profil.
 
 ---
 
