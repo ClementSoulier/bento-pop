@@ -281,37 +281,77 @@ natif, donc il n'a pas besoin d'une build.
 
 ## 8. Recette
 
-Les cas à couvrir, tous au simulateur avec un compte de recette supprimé
-après :
+### 8.1 Faite au simulateur, le 13 septembre 2026
 
-| Cas | Attendu |
-|---|---|
-| 0 case, tap sur le CTA | ouvre `film` |
-| 3 cases, tap sur le CTA | ouvre la première case vide |
-| 6 cases, jamais publié | « Publier mon bento », publie |
-| 6 cases, déjà publié | « Voir mon bento public », navigue |
-| 6 cases, une case en attente | bouton inactif, libellé explicite |
-| Bento publié | mention « visible tout de suite » sous la boîte |
-| Dépublier | disparaît du fil, page publique en 404, cases intactes |
-| Après dépublication | le CTA redevient « Publier mon bento » |
-| Republier | remonte en tête du fil |
-| Lot C appliqué | publier et dépublier marchent toujours |
-| Lot C appliqué | un `PATCH is_featured` avec une session utilisateur échoue |
+iPhone 17 Pro, build de développement sur le Supabase de production, compte
+`recettecina` supprimé après, profil puis auth.
 
-Le dernier est le seul qui prouve quelque chose sur le lot C, et il se teste
-en appelant PostgREST directement, pas par l'app.
+| Cas | Attendu | Résultat |
+|---|---|---|
+| 0 case, tap sur le CTA | ouvre `film` | ouvre `film` |
+| 1 case, tap sur « Compléter (5 restants) » | ouvre `série` | ouvre `série`, **le bug est fermé** |
+| trou au milieu | ouvre le trou | couvert par test unitaire |
+| 6 cases, jamais publié | « Publier mon bento » | publie |
+| 6 cases, publié | « Voir mon bento public » | navigue |
+| Bento publié | mention « en ligne » à la place de « 6 / 6 » | affichée sur une ligne |
+| Profil, publié | date de publication | « En ligne · publié à l'instant » |
+| Retirer du fil | disparaît, cases intactes | disparaît, 6 cases conservées |
+| Après retrait | le CTA redevient « Publier mon bento » | oui, et « 6 / 6 » revient |
+| Republier | date fraîche, en tête du fil | 19 h 50 → 19 h 55, en tête |
+| Faille `is_featured` | reproductible avant migration | **confirmée**, cf. 8.3 |
 
----
+**Le budget vertical est intact.** La ligne « en ligne » remplace la barre de
+progression au lieu de s'ajouter, précisément pour ne pas rétrécir la boîte.
+Mesuré sur les deux captures : bas de boîte à 2180 px et haut du bouton à
+2325 px, **identique au pixel** dans les deux états. C'est le calcul qui
+s'était trompé au chantier 3 et il ne fallait pas y retoucher à l'aveugle.
+
+### 8.2 Deux défauts trouvés en recette, pas prévus par cette spéc
+
+**« Voir mon bento public » menait à un cul-de-sac.** Une fois le bento
+retiré, le bouton restait affiché sur le profil et ouvrait « Bento
+introuvable ». L'app proposait elle-même une impasse, juste après un geste
+volontaire. Il n'apparaît plus que si le bento est en ligne, et
+« Éditer mon bento » devient « Reprendre mon bento » en rouge, action unique.
+
+**Le fil ne se rafraîchissait pas.** `staleTime` d'une minute, `gcTime` de
+trente : après un retrait, la base disait `published_at: null` pendant que
+« La table » affichait toujours le bento. Du point de vue de la personne qui
+vient de se retirer, le geste n'a pas marché. `publishBento` et
+`unpublishBento` invalident désormais la requête `['feed']`. Le défaut
+existait déjà à la publication, il n'avait simplement jamais été vu.
+
+### 8.3 La faille `is_featured`, mesurée et non déduite
+
+Sonde exécutée sur la production le 13 septembre : création d'une session
+anonyme avec la clé publique, exactement comme l'app, création d'un profil et
+d'un bento par l'utilisateur lui-même, puis
+
+```
+PATCH /rest/v1/bentos?id=eq.<id>   {"is_featured": true, "featured_order": 1}
+```
+
+Réponse **200**, et l'état en base confirme `is_featured: true`. Compte de
+sonde supprimé dans la foulée, aucun résidu (3 bentos en avant, les mêmes
+qu'avant).
+
+**La migration `20260913200000_bentos_column_privileges.sql` n'est pas encore
+appliquée.** Elle doit l'être sur le Supabase mobile, et la sonde rejouée
+après pour vérifier que le `PATCH` échoue et que publier et dépublier marchent
+toujours.
 
 ## 9. Définition de terminé
 
-- [ ] Le bouton principal du composer fait quelque chose dans les trois états
-- [ ] L'app sait si le bento est publié, et le dit
-- [ ] On peut se retirer du fil sans supprimer son compte
-- [ ] Republier après dépublication remonte en tête, retaper sur un bento déjà
-      en ligne ne change rien
-- [ ] `is_featured` n'est plus écrivable par son propriétaire, et la
-      publication marche toujours
-- [ ] Tests, lint, typecheck verts
-- [ ] Recette faite, captures partagées, données de production rendues telles
-      quelles
+- [x] Le bouton principal du composer fait quelque chose dans les trois états
+- [x] L'app sait si le bento est publié, et le dit
+- [x] On peut se retirer du fil sans supprimer son compte
+- [x] Republier après dépublication remonte en tête. Retaper sur un bento déjà
+      en ligne n'est plus possible, le CTA a changé de nature, et le filtre
+      `.is('published_at', null)` reste en place par sécurité
+- [x] Le fil reflète immédiatement une publication ou un retrait
+- [x] Le budget vertical du composer est inchangé, mesuré au pixel
+- [x] 179 tests, lint et typecheck verts
+- [x] Recette faite, données de production rendues telles quelles
+- [ ] **Migration des privilèges de colonne appliquée**, et sonde rejouée
+- [ ] Livraison : le lot 0 part par mise à jour à distance, le reste attend
+      une build

@@ -3,8 +3,10 @@ import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSession } from '@/state/session';
+import { useBento } from '@/state/bento';
 import { popyForPseudo } from '@/lib/popy-avatar';
-import { deleteOwnAccount } from '@/lib/bento-actions';
+import { deleteOwnAccount, ensureBento, unpublishBento } from '@/lib/bento-actions';
+import { relativeDate } from '@/lib/relative-date';
 import { exportUserData } from '@/lib/data-export';
 import { SHADOWS, StampButton, YellowBg } from '@/components/primitives';
 
@@ -17,8 +19,11 @@ export default function ProfileTab() {
   const resetAndReinit = useSession((s) => s.resetAndReinit);
   const pseudo = profile?.pseudo ?? '';
   const popy = popyForPseudo(pseudo);
+  const publishedAt = useBento((s) => s.publishedAt);
+  const setPublishedAt = useBento((s) => s.setPublishedAt);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
 
   const onExport = async () => {
     if (!userId) return;
@@ -30,6 +35,40 @@ export default function ProfileTab() {
     } finally {
       setExporting(false);
     }
+  };
+
+  /**
+   * Retrait du fil. Avant ce bouton, la seule façon de ne plus être visible
+   * était de supprimer son compte, ce qui est sans commune mesure.
+   *
+   * Confirmation volontairement calme : le geste est réversible d'un tap, et
+   * un `style: 'destructive'` le mettrait au même niveau que la suppression
+   * de compte, qui est juste en dessous et qui, elle, ne se rattrape pas.
+   */
+  const confirmUnpublish = () => {
+    Alert.alert(
+      'Retirer mon bento du fil ?',
+      'Il disparaît de « La table » et de sa page publique. Tes cases restent en place, tu peux le republier quand tu veux.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Retirer',
+          onPress: async () => {
+            if (!userId) return;
+            setUnpublishing(true);
+            try {
+              const bentoId = await ensureBento(userId);
+              await unpublishBento(bentoId);
+              setPublishedAt(null);
+            } catch (e) {
+              Alert.alert('Oups', (e as Error).message);
+            } finally {
+              setUnpublishing(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const confirmDelete = () => {
@@ -101,7 +140,28 @@ export default function ProfileTab() {
               </Text>
             ) : null}
 
+            {/* La date existait en base depuis toujours et personne ne la
+                voyait. C'est elle qui donne la certitude que le bento est
+                bien parti, et sa disparition confirme le retrait. */}
+            <Text
+              style={{
+                fontFamily: 'Bungee',
+                fontSize: 9,
+                letterSpacing: 1,
+                marginTop: 10,
+                color: 'rgba(10,10,10,0.55)',
+                textTransform: 'uppercase',
+              }}
+            >
+              {publishedAt ? `En ligne · publié ${relativeDate(publishedAt)}` : 'Pas encore publié'}
+            </Text>
+
             <View style={{ marginTop: 32, width: '100%', gap: 12 }}>
+              {/* Uniquement quand le bento est en ligne. Depuis qu'on peut le
+                  retirer du fil, laisser ce bouton mènerait à « Bento
+                  introuvable » : un cul-de-sac que l'app propose elle-même,
+                  juste après un geste volontaire de l'utilisateur. */}
+              {publishedAt ? (
               <Pressable
                 onPress={() => router.push(`/u/${pseudo}` as const)}
                 accessibilityRole="button"
@@ -129,8 +189,13 @@ export default function ProfileTab() {
                   Voir mon bento public
                 </Text>
               </Pressable>
-              <StampButton wide variant="cream" onPress={() => router.push('/(tabs)/compose')}>
-                Éditer mon bento
+              ) : null}
+              <StampButton
+                wide
+                variant={publishedAt ? 'cream' : 'primary'}
+                onPress={() => router.push('/(tabs)/compose')}
+              >
+                {publishedAt ? 'Éditer mon bento' : 'Reprendre mon bento'}
               </StampButton>
             </View>
           </View>
@@ -178,6 +243,19 @@ export default function ProfileTab() {
             >
               Compte
             </Text>
+
+            {/* Neutre, et non encadré de rouge : retirer son bento se
+                rattrape d'un tap, supprimer son compte non. Les habiller
+                pareil serait fabriquer l'erreur. */}
+            {publishedAt ? (
+              <View style={{ marginBottom: 8 }}>
+                <ProfileLink
+                  label={unpublishing ? 'Retrait en cours…' : 'Retirer mon bento du fil'}
+                  onPress={unpublishing ? () => {} : confirmUnpublish}
+                />
+              </View>
+            ) : null}
+
             <Pressable
               onPress={confirmDelete}
               disabled={deleting}

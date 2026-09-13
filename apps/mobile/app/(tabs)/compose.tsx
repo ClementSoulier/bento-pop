@@ -12,6 +12,8 @@ import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { ensureBento, publishBento } from '@/lib/bento-actions';
 import { CTA_GAP, composeBentoScale } from '@/components/bento/compose-layout';
+import { composeCta } from '@/lib/compose-cta';
+import type { CategoryKey } from '@/supabase/types';
 
 
 /**
@@ -19,7 +21,9 @@ import { CTA_GAP, composeBentoScale } from '@/components/bento/compose-layout';
  *
  * Top bar (logo) + en-tête pseudo + titre + progress bar X/6 + grille
  * bento (taps → modal de recherche pour la catégorie cliquée) + CTA bas
- * dont le label dépend de l'état (« Compléter (n) » ou « Publier mon bento »).
+ * dont le libellé ET l'action viennent de `lib/compose-cta.ts`. Les avoir
+ * calculés séparément avait laissé le bouton actif et inerte pour tout bento
+ * partiel, soit 16 des 58 bentos en production le 13 septembre 2026.
  *
  * Le bento se rescale dynamiquement pour que tout tienne sur l'écran sans
  * scroller — quelle que soit la taille du device (SE → 15 Pro Max).
@@ -29,11 +33,13 @@ import { CTA_GAP, composeBentoScale } from '@/components/bento/compose-layout';
 export default function ComposeTab() {
   const slots = useBento((s) => s.slots);
   const lastFilled = useBento((s) => s.lastFilled);
+  const publishedAt = useBento((s) => s.publishedAt);
+  const setPublishedAt = useBento((s) => s.setPublishedAt);
   const pseudo = useSession((s) => s.profile?.pseudo);
   const userId = useSession((s) => s.user?.id);
   const refreshProfile = useSession((s) => s.refreshProfile);
-  const filled = Object.keys(slots).length;
-  const allFilled = filled === 6;
+  const filledCategories = Object.keys(slots) as CategoryKey[];
+  const filled = filledCategories.length;
   // Bloqué tant qu'au moins un slot référence un item en attente de
   // modération. La règle est gardée côté UI uniquement pour l'instant
   // (le SQL strict `can_publish_bento` arrive plus tard, cf. spec §7.1).
@@ -57,35 +63,39 @@ export default function ComposeTab() {
     }, [refreshProfile]),
   );
 
-  /**
-   * Action du bouton principal.
-   *
-   * Sur un bento vide il n'a rien à publier, mais le griser accueillait un
-   * nouvel utilisateur par un gros bouton mort au centre de l'écran. Il
-   * ouvre donc la première case, ce qui est exactement ce qu'il faut faire
-   * à ce moment-là.
-   */
+  // Libellé, action et état désactivé viennent d'une seule décision, testée
+  // dans `lib/compose-cta.ts`. Les avoir calculés séparément avait produit un
+  // bouton actif qui ne faisait rien : cf. le commentaire de ce fichier.
+  const cta = composeCta({
+    filled: filledCategories,
+    hasPending,
+    publishing,
+    published: publishedAt !== null,
+  });
+
   const onPrimary = () => {
-    if (filled === 0) {
-      router.push({ pathname: '/search-modal', params: { category: 'film' } });
+    if (cta.kind === 'open-slot') {
+      router.push({ pathname: '/search-modal', params: { category: cta.category } });
       return;
     }
-    void onPublish();
+    if (cta.kind === 'publish') void onPublish();
+    if (cta.kind === 'view-public') router.push(`/u/${pseudo}` as const);
   };
 
+  // Appelée seulement quand `composeCta` a rendu 'publish', donc sur un bento
+  // complet et sans case en modération : ces deux conditions ne sont plus
+  // revérifiées ici, il n'y a qu'un endroit qui décide. Reste la session, que
+  // le CTA ne connaît pas.
   const onPublish = async () => {
-    if (!userId || !allFilled) return;
-    if (hasPending) {
-      showToast(
-        'Une case attend encore la validation de l\'équipe.',
-        { variant: 'neutral', durationMs: 4000 },
-      );
-      return;
-    }
+    if (!userId) return;
     setPublishing(true);
     try {
       const bentoId = await ensureBento(userId);
       await publishBento(bentoId);
+      // Sans ça le CTA resterait « Publier mon bento » jusqu'à la prochaine
+      // hydratation, et l'app continuerait d'ignorer qu'elle vient de rendre
+      // ce bento public.
+      setPublishedAt(new Date().toISOString());
       router.push(`/u/${pseudo}` as const);
       // Feedback de succès — montré APRÈS le push pour que le toast
       // s'affiche sur la page publique (où l'utilisateur peut partager).
@@ -155,12 +165,37 @@ export default function ComposeTab() {
           >
             Mon bento
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-            <ProgressBar filled={filled} total={6} />
-            <Text style={{ fontFamily: 'Bungee', fontSize: 11, letterSpacing: 1 }}>
-              {filled} / 6
-            </Text>
-          </View>
+          {/* Une seule ligne, deux contenus possibles, la même hauteur : le
+              budget vertical de `compose-layout.ts` est mesuré au point et
+              ajouter un bloc ferait rétrécir la boîte pour tout le monde.
+              Sur un bento en ligne, « 6 / 6 » n'apprend plus rien, alors que
+              le fait que les modifications partent en direct, si. */}
+          {cta.kind === 'view-public' ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              <View
+                style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#0a0a0a' }}
+              />
+              <Text
+                style={{ fontFamily: 'Bungee', fontSize: 9, letterSpacing: 1 }}
+                numberOfLines={1}
+              >
+                En ligne
+              </Text>
+              <Text
+                style={{ fontFamily: 'Fredoka', fontSize: 12, opacity: 0.7, flexShrink: 1 }}
+                numberOfLines={1}
+              >
+                tes modifications sont visibles tout de suite
+              </Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
+              <ProgressBar filled={filled} total={6} />
+              <Text style={{ fontFamily: 'Bungee', fontSize: 11, letterSpacing: 1 }}>
+                {filled} / 6
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Grille bento — scale dynamique pour fit l'écran */}
@@ -193,20 +228,8 @@ export default function ComposeTab() {
             paddingBottom: 12,
           }}
         >
-          <StampButton
-            wide
-            disabled={publishing || (allFilled && hasPending)}
-            onPress={onPrimary}
-          >
-            {publishing
-              ? 'Publication…'
-              : filled === 0
-              ? 'Commence par ton film'
-              : allFilled
-              ? hasPending
-                ? 'En attente de validation'
-                : 'Publier mon bento'
-              : `Compléter (${6 - filled} restant${6 - filled > 1 ? 's' : ''})`}
+          <StampButton wide disabled={cta.disabled} onPress={onPrimary}>
+            {cta.label}
           </StampButton>
         </View>
       </SafeAreaView>

@@ -145,6 +145,7 @@ async function hydrateBentoFromRemote(userId: string) {
     .from('bentos')
     .select(
       `id,
+       published_at,
        bento_items (
          category_id,
          items ( id, title, subtitle, image_url, image_credit, status )
@@ -152,7 +153,11 @@ async function hydrateBentoFromRemote(userId: string) {
     )
     .eq('user_id', userId)
     .maybeSingle();
-  if (!data?.bento_items) return;
+  if (!data) return;
+  // Posé avant les cases : c'est ce qui décide du libellé du CTA, et on ne
+  // veut pas d'une frame où le bento est plein mais encore « à publier ».
+  useBento.getState().setPublishedAt(data.published_at);
+  if (!data.bento_items) return;
   const slots: ReturnType<typeof useBento.getState>['slots'] = {};
   data.bento_items.forEach((bi, idx) => {
     const cat = CATEGORY_BY_ID[bi.category_id];

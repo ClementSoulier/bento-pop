@@ -77,8 +77,8 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 fusionné (PR #50) · DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
 | 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 fusionné (PR #51) · DoD 9 remplis / 1 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
-| 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | 🟡 **prochain** · [spec](./UX-05-BROUILLON-PUBLIE.md) |
-| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
+| 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | 🟡 4 lots livrés, recette faite · reste la migration des privilèges de colonne à appliquer · [spec](./UX-05-BROUILLON-PUBLIE.md) |
+| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ **prochain** |
 | 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |

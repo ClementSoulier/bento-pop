@@ -1,4 +1,5 @@
 import { supabase } from '@/supabase/client';
+import { queryClient } from '@/lib/query-client';
 import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
 import { findUserByPseudo } from '@/lib/pseudo';
 import type { CategoryKey } from '@/supabase/types';
@@ -74,6 +75,43 @@ export async function publishBento(bentoId: string): Promise<void> {
     .eq('id', bentoId)
     .is('published_at', null);
   if (error) throw new Error(`Publish failed: ${error.message}`);
+  invalidateFeed();
+}
+
+/**
+ * Le fil a un `staleTime` d'une minute et un `gcTime` de trente : sans cette
+ * invalidation, publier puis ouvrir « La table » ne montre pas son bento, et
+ * le retirer ne l'en fait pas partir. Mesuré en recette le 13 septembre 2026 :
+ * la base disait `published_at: null` pendant que le fil l'affichait encore.
+ *
+ * C'est aussi la seule chose qui rende la dépublication crédible. Du point de
+ * vue de la personne qui vient de retirer son bento, le voir toujours en
+ * ligne, c'est un geste qui n'a pas marché.
+ */
+function invalidateFeed(): void {
+  void queryClient.invalidateQueries({ queryKey: ['feed'] });
+}
+
+/**
+ * Retire le bento du fil et de sa page publique.
+ *
+ * Aucune migration : `bentos_update_own` autorise déjà le propriétaire à
+ * écrire sur sa ligne, et `bentos_read_published` masque le bento aux autres
+ * dès que `published_at` est nul tout en le laissant visible à son auteur.
+ *
+ * Ne touche ni aux cases, ni à `is_featured`. Republier reposera une date
+ * fraîche, puisque `publishBento` ne s'abstient que sur un bento déjà en
+ * ligne : un bento qui revient repart en tête du fil, ce qui est le
+ * comportement voulu. Il rentrerait invisible autrement, à sa place
+ * historique.
+ */
+export async function unpublishBento(bentoId: string): Promise<void> {
+  const { error } = await supabase
+    .from('bentos')
+    .update({ published_at: null })
+    .eq('id', bentoId);
+  if (error) throw new Error(`Unpublish failed: ${error.message}`);
+  invalidateFeed();
 }
 
 /**
