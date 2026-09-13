@@ -65,3 +65,21 @@ supabase/.temp/
 *.tar.gz
 apps/mobile/ios/
 apps/mobile/android/
+
+# Clés de signature et de soumission aux stores.
+#
+# Le plan nominal est de ne PAS avoir ces fichiers sur disque : ils vivent
+# côté EAS, déposés une fois par `eas credentials`, et `eas submit` les
+# utilise sans qu'aucune clé ne transite par le dépôt. Ces règles sont un
+# filet, pour le jour où l'un d'eux sera téléchargé dans un coin du projet.
+#
+# Une clé d'API App Store Connect ou un compte de service Google commité,
+# c'est un accès en écriture à la fiche du store : à traiter comme une
+# fuite, pas comme une coquille.
+*.p8
+*.p12
+*.mobileprovision
+*.keystore
+*.jks
+google-service-account*.json
+**/service-account*.json
