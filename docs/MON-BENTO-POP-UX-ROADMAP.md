@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut au 12 septembre 2026 : chantiers 1, 2, 3 et 14 fusionnés.** Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 13 septembre 2026 : chantiers 1 à 4 et 14 livrés, version 0.2.0 envoyée aux deux stores.** Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -10,30 +10,46 @@
 
 **Recette sur simulateur** : mode d'emploi et pièges dans [`RECETTE-MOBILE.md`](./RECETTE-MOBILE.md). Le proxy `apps/mobile/scripts/readonly-proxy.mjs` permet de faire tourner l'app sur les données de production sans rien y écrire.
 
-## Le déploiement en attente
+## Le déploiement du 13 septembre
 
-Rien de ce qui a été fusionné les 11 et 12 septembre n'est encore entre les
-mains des utilisateurs, à l'exception de la page publique du chantier 1. Trois
-choses distinctes attendent, et elles ne partent pas au même rythme :
+La **0.2.0** est partie aux deux stores le 13 septembre à 18 h 07, par
+`eas build --auto-submit`, sans passer par les consoles. iOS en build 9 sur
+TestFlight, Android en versionCode 11 sur le canal interne. Les deux
+soumissions ont réussi, ce qui valide au passage que le compte de service
+Google est bien rattaché au compte développeur Play, la seule chose qu'aucune
+vérification préalable ne pouvait trancher.
+
+Elle embarque les chantiers 2, 3 et 14 côté mobile, plus les deux mécanismes
+de mise à jour ajoutés juste avant
+([`MISES-A-JOUR-APP.md`](./MISES-A-JOUR-APP.md)).
 
 | Quoi | Où | État |
 |---|---|---|
-| Migrations SQL du projet mobile | Supabase hébergé | **Déjà appliquées** pendant le développement |
-| Back-office et landing | Coolify | À déployer : rien de spécifique, le code est sur `main` |
-| App mobile | App Store et Play Store | **Build EAS à refaire**, `expo-haptics` étant un module natif. Procédure : [`DEPLOIEMENT-MOBILE.md`](./DEPLOIEMENT-MOBILE.md) |
+| Migrations SQL du projet mobile | Supabase hébergé | **Appliquées** |
+| Back-office et landing | Coolify | **À déployer**, le code est sur `main` |
+| App mobile 0.2.0 | TestFlight et canal interne | **Envoyée**, recette appareil à faire |
+| Mise en revue App Store | App Store Connect | Geste manuel, volontairement |
 
-La livraison mobile accumule quatre choses : l'haptique et les animations du
-chantier 3, l'étiquette « Invité » sur ses deux écrans, et la télémétrie. Deux
-critères de DoD ne se fermeront qu'après elle, et **elle mérite une recette
-d'un bloc**, simulateur puis appareil réel, plutôt qu'une vérification par
-morceaux. La checklist appareil accumule d'ailleurs trois chantiers : haptique,
+**Deux choses à ne pas oublier après la mise en ligne.**
+
+`app_config` porte encore `0.0.1` partout et `null` côté Android, valeurs
+jamais touchées depuis le 28 mai. Tant qu'elles ne sont pas réglées sur la
+version publiée, le bandeau « nouvelle version » et le blocage dur ne se
+déclencheront jamais. Back-office → Configuration → Mobile.
+
+Le **lot B, la mise à jour appliquée au lancement, n'a jamais tourné pour de
+vrai**. Onze tests unitaires et sa garde `__DEV__` vérifiée, mais aucun
+`checkForUpdateAsync` réel. Il ne se recette qu'en publiant une vraie mise à
+jour sur la branche `production`, une fois la build installée.
+
+**La checklist appareil accumule quatre chantiers** : haptique du chantier 3,
 VoiceOver, taille de police système, fluidité du fil sur build de production,
-et aperçus de partage.
+aperçus de partage, plus les deux cas réseau du démarrage, avion et réseau
+très lent.
 
-Deux points à vérifier avant de déployer la landing et le back-office :
-`MOBILE_SUPABASE_URL` doit porter `.supabase.co` et non `.com` (la valeur
-locale était fausse), et `MOBILE_SUPABASE_SERVICE_ROLE_KEY` doit être présente
-en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
+Reste côté Coolify : `MOBILE_SUPABASE_URL` doit porter `.supabase.co` et non
+`.com` (la valeur locale était fausse), et `MOBILE_SUPABASE_SERVICE_ROLE_KEY`
+doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 
 ---
 
@@ -60,8 +76,8 @@ en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 2 | « La table » : fil de bentos complets | Rétention | M | rien | 🟡 fusionné (PR #47, CI verte) · DoD 6 remplis / 1 partiel / 1 ouvert · reste la fluidité sur appareil réel · [spec](./UX-02-FIL-LA-TABLE.md) |
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 fusionné (PR #50) · DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
 | 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 fusionné (PR #51) · DoD 9 remplis / 1 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
-| 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ⬜ **prochain** · réduit : `Tile` migré par le chantier 2, tuiles de recherche par le chantier 3 |
-| 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ⬜ |
+| 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
+| 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | 🟡 **prochain** · [spec](./UX-05-BROUILLON-PUBLIE.md) |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ |
 | 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
@@ -240,7 +256,23 @@ prochaine version mobile.
 
 ## 4. `expo-image` sur le reste de l'app
 
-**Constat.** Toutes les images distantes passent par `<Image>` de React Native : pas de cache disque, pas de placeholder, pas de fondu. Les mêmes visuels du catalogue sont retéléchargés à chaque scroll de À la une.
+> **Terminé sans chantier dédié.** Audit du 13 septembre 2026 : l'app ne
+> charge d'image distante qu'à **deux endroits**, `components/bento/Tile.tsx`
+> et `components/search/ItemTile.tsx`, tous deux sur `expo-image` avec
+> `cachePolicy="memory-disk"`, `transition` et `recyclingKey`. Les chantiers 2
+> et 3 les ont migrés, chacun pour ses propres besoins.
+>
+> Tous les `Image` de `react-native` qui subsistent (`AppBlocker`, `Splash`,
+> `TopChip`, `ShareImage`, `FeedPostHeader`, `compose`, `profile`,
+> `u/[pseudo]`, `onboarding/splash`) portent des **assets locaux** : le logo et
+> les mascottes Popy. Ils sont dans le bundle, `expo-image` ne leur
+> apporterait aucun cache et ajouterait une dépendance de rendu pour rien.
+>
+> Le piège du `prefetch` signalé ci-dessous a été traité en même temps :
+> `share-image.ts` utilise bien `Image.prefetch` d'`expo-image`, avec la même
+> `cachePolicy` que le composant, un appel par URL et un délai de 3 s.
+
+**Constat d'origine.** Toutes les images distantes passent par `<Image>` de React Native : pas de cache disque, pas de placeholder, pas de fondu. Les mêmes visuels du catalogue sont retéléchargés à chaque scroll de À la une.
 
 **Proposition.** Migrer vers `expo-image` : cache disque, `placeholder`, `transition`, `contentFit`. Gain visuel immédiat et réduction directe de l'egress Supabase Storage.
 
