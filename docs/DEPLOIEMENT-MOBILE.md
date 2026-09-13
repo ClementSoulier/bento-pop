@@ -125,6 +125,18 @@ inopérante : il faut passer par les stores et leur revue.
 tout seuls : tant qu'ils portent l'ancienne version, les deux mécanismes
 dorment. Back-office → Configuration → Mobile.
 
+**Le numéro de version doit dépasser celui déjà publié sur l'App Store.**
+Apple refuse une version dont le numéro n'est pas supérieur au précédent, et
+c'est ce qui bloque aujourd'hui : le store sert `1.1` alors que le dépôt en
+est à `0.2.0`. Toujours vérifier avant de bump :
+
+```bash
+curl -s "https://itunes.apple.com/lookup?id=6768764158" | grep -o '"version":"[^"]*"'
+```
+
+Le Play Store n'a pas cette contrainte, seul le `versionCode` doit croître, et
+EAS s'en charge.
+
 **La version de l'app se change à la main** dans `app.json`, champ `version`.
 Seul le numéro de build est automatique. Et comme `runtimeVersion` suit la
 politique `appVersion`, changer la version **coupe** les mises à jour à

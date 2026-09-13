@@ -30,12 +30,67 @@ de mise à jour ajoutés juste avant
 | App mobile 0.2.0 | TestFlight et canal interne | **Envoyée**, recette appareil à faire |
 | Mise en revue App Store | App Store Connect | Geste manuel, volontairement |
 
+## Le versionnage iOS bloque la mise en ligne publique
+
+Découvert le 13 septembre 2026 en réglant `app_config`, et jamais vu avant
+parce que personne n'avait comparé le dépôt à ce que les stores servent.
+
+| Où | Version servie |
+|---|---|
+| App Store, public | **1.1**, depuis le 7 septembre |
+| Play Store, public | **0.1.0** |
+| `app.json`, TestFlight, canal interne | **0.2.0** |
+
+`app.json` n'a jamais porté `1.1` : son historique est `0.0.1` → `0.1.0` →
+`0.2.0`. La version `1.1` a donc été posée hors du dépôt, et les deux
+plateformes ont divergé sans que rien ne le signale.
+
+**Conséquence immédiate.** `compareVersions('0.2.0', '1.1')` vaut `-1` : la
+build qu'on vient d'envoyer se déclare **plus ancienne** que ce qui est déjà
+en ligne sur l'App Store.
+
+**Conséquence bloquante.** App Store Connect refuse de créer une version dont
+le numéro n'est pas supérieur au précédent publié. **La 0.2.0 ne peut pas
+sortir publiquement sur iOS.** Elle vit sur TestFlight, elle n'ira pas plus
+loin sous ce numéro.
+
+**À trancher.** Repartir d'un numéro supérieur à `1.1`, aligné sur les deux
+plateformes, `1.2.0` par exemple. Play ne demande que des `versionCode`
+croissants, la version affichée peut sauter de `0.1.0` à `1.2.0` sans
+problème. Attention : changer `version` change la `runtimeVersion`, donc la
+mise à jour à distance publiée aujourd'hui ne s'appliquera pas au nouveau
+binaire, et il faudra en republier une.
+
+**Effet de bord assumé sur la recette.** `ios_latest_version` porte désormais
+`1.1`, la vérité. La build 0.2.0 de TestFlight, se croyant plus ancienne,
+affiche donc le bandeau « nouvelle version dispo ». Ne pas le suivre : il
+mène à du code plus ancien. Le bandeau disparaîtra dès que la version sera
+repartie au dessus de `1.1`, et en attendant il sert de démonstration que le
+mécanisme fonctionne en conditions réelles.
+
+## Les valeurs de `app_config`
+
+Réglées le 13 septembre 2026, elles portaient `0.0.1` et `null` depuis le
+28 mai.
+
+| Champ | Valeur | Pourquoi |
+|---|---|---|
+| `ios_latest_version` | `1.1` | ce que l'App Store sert |
+| `android_latest_version` | `0.1.0` | ce que le Play Store sert |
+| `ios_min_version` | `0.0.1` | inchangé |
+| `android_min_version` | `null` | inchangé |
+
+**Les `min_version` restent volontairement permissives.** Les relever au
+niveau du store bloquerait durement la build 0.2.0, qui se déclare plus
+ancienne que `1.1` : plus aucun accès à l'app, et aucune issue depuis
+l'écran de blocage. Le blocage dur ne se pose qu'en connaissance de cause,
+pour retirer de la circulation une version cassée.
+
 **Deux choses à ne pas oublier après la mise en ligne.**
 
-`app_config` porte encore `0.0.1` partout et `null` côté Android, valeurs
-jamais touchées depuis le 28 mai. Tant qu'elles ne sont pas réglées sur la
-version publiée, le bandeau « nouvelle version » et le blocage dur ne se
-déclencheront jamais. Back-office → Configuration → Mobile.
+`app_config` est réglé, cf. ci-dessus. À remettre à jour à chaque mise en
+ligne, sans quoi le bandeau ne se déclenchera pas.
+Back-office → Configuration → Mobile.
 
 Le **lot B, la mise à jour appliquée au lancement, n'a jamais tourné pour de
 vrai**. Onze tests unitaires et sa garde `__DEV__` vérifiée, mais aucun
