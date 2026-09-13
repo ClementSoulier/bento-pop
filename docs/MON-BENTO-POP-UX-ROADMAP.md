@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut au 13 septembre 2026 : chantiers 1 à 4 et 14 livrés, version 0.2.0 envoyée aux deux stores.** Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 13 septembre 2026 : chantiers 1 à 5 et 14 livrés, version 1.2.0 en cours d'envoi aux deux stores.** Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -14,7 +14,9 @@
 
 La **0.2.0** est partie aux deux stores le 13 septembre à 18 h 07, par
 `eas build --auto-submit`, sans passer par les consoles. iOS en build 9 sur
-TestFlight, Android en versionCode 11 sur le canal interne. Les deux
+TestFlight, Android en versionCode 11 sur le canal interne. Elle **restera sur
+TestFlight** : son numéro est inférieur à celui déjà publié sur l'App Store,
+cf. la section sur le versionnage. La **1.2.0** la remplace. Les deux
 soumissions ont réussi, ce qui valide au passage que le compte de service
 Google est bien rattaché au compte développeur Play, la seule chose qu'aucune
 vérification préalable ne pouvait trancher.
@@ -27,10 +29,10 @@ de mise à jour ajoutés juste avant
 |---|---|---|
 | Migrations SQL du projet mobile | Supabase hébergé | **Appliquées** |
 | Back-office et landing | Coolify | **À déployer**, le code est sur `main` |
-| App mobile 0.2.0 | TestFlight et canal interne | **Envoyée**, recette appareil à faire |
+| App mobile 1.2.0 | TestFlight et canal interne | à construire, remplace la 0.2.0 |
 | Mise en revue App Store | App Store Connect | Geste manuel, volontairement |
 
-## Le versionnage iOS bloque la mise en ligne publique
+## Le versionnage : pourquoi on est passé directement en 1.2.0
 
 Découvert le 13 septembre 2026 en réglant `app_config`, et jamais vu avant
 parce que personne n'avait comparé le dépôt à ce que les stores servent.
@@ -39,34 +41,35 @@ parce que personne n'avait comparé le dépôt à ce que les stores servent.
 |---|---|
 | App Store, public | **1.1**, depuis le 7 septembre |
 | Play Store, public | **0.1.0** |
-| `app.json`, TestFlight, canal interne | **0.2.0** |
+| `app.json` avant correction | **0.2.0** |
 
 `app.json` n'a jamais porté `1.1` : son historique est `0.0.1` → `0.1.0` →
 `0.2.0`. La version `1.1` a donc été posée hors du dépôt, et les deux
 plateformes ont divergé sans que rien ne le signale.
 
-**Conséquence immédiate.** `compareVersions('0.2.0', '1.1')` vaut `-1` : la
-build qu'on vient d'envoyer se déclare **plus ancienne** que ce qui est déjà
-en ligne sur l'App Store.
+Deux conséquences, dont une bloquante. `compareVersions('0.2.0', '1.1')` vaut
+`-1`, donc la build envoyée à 18 h 07 se déclarait **plus ancienne** que ce
+qui était déjà en ligne. Et surtout, App Store Connect refuse une version dont
+le numéro n'est pas supérieur au précédent publié : **la 0.2.0 ne pouvait pas
+sortir publiquement sur iOS.**
 
-**Conséquence bloquante.** App Store Connect refuse de créer une version dont
-le numéro n'est pas supérieur au précédent publié. **La 0.2.0 ne peut pas
-sortir publiquement sur iOS.** Elle vit sur TestFlight, elle n'ira pas plus
-loin sous ce numéro.
+**Corrigé en passant `app.json` à `1.2.0`**, supérieure à `1.1` donc
+acceptable par Apple, et alignée sur les deux plateformes. Play n'exige que
+des `versionCode` croissants, la version affichée peut sauter de `0.1.0` à
+`1.2.0` sans difficulté. La 0.2.0 reste sur TestFlight et n'ira pas plus loin.
 
-**À trancher.** Repartir d'un numéro supérieur à `1.1`, aligné sur les deux
-plateformes, `1.2.0` par exemple. Play ne demande que des `versionCode`
-croissants, la version affichée peut sauter de `0.1.0` à `1.2.0` sans
-problème. Attention : changer `version` change la `runtimeVersion`, donc la
-mise à jour à distance publiée aujourd'hui ne s'appliquera pas au nouveau
-binaire, et il faudra en republier une.
+**Le prix du bump.** `runtimeVersion` suit `version`, donc la mise à jour à
+distance publiée à 20 h 09 sur la runtime `0.2.0` **ne s'appliquera pas** au
+nouveau binaire. Ce n'est pas une perte : la 1.2.0 est construite depuis le
+même code, elle l'embarque déjà. Mais toute mise à jour à distance future
+devra viser la runtime `1.2.0`.
 
-**Effet de bord assumé sur la recette.** `ios_latest_version` porte désormais
-`1.1`, la vérité. La build 0.2.0 de TestFlight, se croyant plus ancienne,
-affiche donc le bandeau « nouvelle version dispo ». Ne pas le suivre : il
-mène à du code plus ancien. Le bandeau disparaîtra dès que la version sera
-repartie au dessus de `1.1`, et en attendant il sert de démonstration que le
-mécanisme fonctionne en conditions réelles.
+**Vérifier avant chaque bump**, c'est désormais dans
+[`DEPLOIEMENT-MOBILE.md`](./DEPLOIEMENT-MOBILE.md) :
+
+```bash
+curl -s "https://itunes.apple.com/lookup?id=6768764158" | grep -o '"version":"[^"]*"'
+```
 
 ## Les valeurs de `app_config`
 
@@ -75,16 +78,19 @@ Réglées le 13 septembre 2026, elles portaient `0.0.1` et `null` depuis le
 
 | Champ | Valeur | Pourquoi |
 |---|---|---|
-| `ios_latest_version` | `1.1` | ce que l'App Store sert |
-| `android_latest_version` | `0.1.0` | ce que le Play Store sert |
+| `ios_latest_version` | `1.1` | ce que l'App Store sert **aujourd'hui** |
+| `android_latest_version` | `0.1.0` | ce que le Play Store sert **aujourd'hui** |
 | `ios_min_version` | `0.0.1` | inchangé |
 | `android_min_version` | `null` | inchangé |
 
-**Les `min_version` restent volontairement permissives.** Les relever au
-niveau du store bloquerait durement la build 0.2.0, qui se déclare plus
-ancienne que `1.1` : plus aucun accès à l'app, et aucune issue depuis
-l'écran de blocage. Le blocage dur ne se pose qu'en connaissance de cause,
-pour retirer de la circulation une version cassée.
+**À repasser à `1.2.0` le jour où la 1.2.0 est réellement publique**, pas
+avant : un `latest_version` qui annonce une version indisponible envoie les
+gens sur une fiche de store inchangée.
+
+**Les `min_version` restent volontairement permissives.** Le blocage dur ne
+se pose qu'en connaissance de cause, pour retirer de la circulation une
+version cassée. Relever cette borne n'offre aucune issue depuis l'écran de
+blocage, c'est le geste le plus définitif de toute la configuration.
 
 **Deux choses à ne pas oublier après la mise en ligne.**
 

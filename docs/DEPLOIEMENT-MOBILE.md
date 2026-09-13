@@ -127,8 +127,9 @@ dorment. Back-office → Configuration → Mobile.
 
 **Le numéro de version doit dépasser celui déjà publié sur l'App Store.**
 Apple refuse une version dont le numéro n'est pas supérieur au précédent, et
-c'est ce qui bloque aujourd'hui : le store sert `1.1` alors que le dépôt en
-est à `0.2.0`. Toujours vérifier avant de bump :
+c'est ce qui a bloqué le 13 septembre 2026 : le store servait `1.1` alors que
+le dépôt en était à `0.2.0`, et la build partie ce jour-là ne pouvait pas
+sortir publiquement. Toujours vérifier avant de bump :
 
 ```bash
 curl -s "https://itunes.apple.com/lookup?id=6768764158" | grep -o '"version":"[^"]*"'
