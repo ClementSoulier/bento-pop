@@ -828,6 +828,23 @@ p50 **48 ms**, p95 **107 ms**, pour un budget de 200. Premier appel à froid,
 non compté : environ 400 ms, dont l'établissement TLS et le démarrage du
 pooler.
 
+**Un défaut trouvé en relecture, après la recette, et corrigé.** Le tap sur
+une puce remplissait la barre avec le titre brut alors que la puce affiche
+`cleanTitle` : on aurait touché « mia paper planes » et vu apparaître « mia
+paper planes (larsht_ edit) ». Et surtout le piège inverse, qu'il fallait
+éviter en corrigeant : la forme affichée est **tronquée** avec une ellipsis,
+et `ilike '%…%'` ne correspond à rien, donc une puce n'aurait pas trouvé
+l'item qu'elle annonce. `sharedItemQuery` rend la forme nettoyée entière.
+Aucun des titres actuellement suggérés ne change de forme, vérifié contre la
+production, donc ce que la recette a observé reste vrai.
+
+**Le corpus bouge pendant qu'on l'observe.** Entre la mesure du §4 et la fin
+de la recette, deux comptes se sont créés et le classement de `shared_items`
+a changé : « imagine dragons », « jojo's bizarre adventure » et « Kickstart
+My Heart » sont entrés, « Orelsan » et le titre long sont sortis du top 12.
+Les chiffres du §4 sont donc un instantané, ce que leur date dit déjà. Les
+invariants vérifiés, eux, sont structurels et ne dépendent pas des valeurs.
+
 **Deux défauts trouvés et NON corrigés**, parce qu'ils débordent du chantier.
 Ils sont en §12.
 
