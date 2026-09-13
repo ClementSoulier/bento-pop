@@ -148,21 +148,59 @@ Le mode d'emploi de la recette et ses pièges sont dans
 
 ---
 
-## 6. Les mises à jour à distance, pas encore utilisées
+## 6. Les mises à jour à distance
 
-`expo-updates` est installé, les canaux `development`, `preview` et
-`production` existent, et la politique `runtimeVersion: appVersion` est la
-bonne. **Aucune mise à jour n'a jamais été publiée.**
-
-C'est le plus gros levier inexploité : pour une modification purement
-JavaScript, un correctif de libellé, une couleur, une règle d'affichage,
-`eas update` la met entre les mains des gens en quelques minutes, sans revue.
+Tout est en place et vérifié sur la configuration résolue : `expo-updates` en
+dépendance, `updates.url` renseignée, canal `production` mappé sur la branche
+`production`, et `runtimeVersion` en politique `appVersion`. **Aucune mise à
+jour n'a encore été publiée.**
 
 ```bash
 npx eas-cli update --branch production --message "…"
 ```
 
-Deux réserves avant de s'y mettre :
+### 6.1 Ce que ça permet, et ce que ça ne permet pas
+
+| Type de changement | Mise à jour à distance |
+|---|---|
+| Libellé, couleur, mise en page, logique JavaScript | **oui**, en minutes |
+| Requête, règle d'affichage, correctif de bug JS | **oui** |
+| Nouvelle dépendance native (`expo-haptics`…) | **non**, build obligatoire |
+| Icône, écran de démarrage, permissions, plugins | **non**, ce sont des réglages natifs |
+| Changement de `version` | **non**, cela crée une nouvelle `runtimeVersion` |
+
+### 6.2 Le délai réel : la mise à jour s'applique au lancement **suivant**
+
+L'app n'appelle `expo-updates` nulle part dans son code : on est donc sur le
+comportement par défaut, avec `fallbackToCacheTimeout` à 0. Concrètement :
+
+1. l'app démarre **immédiatement** avec le bundle qu'elle a déjà, sans
+   attendre le réseau ;
+2. elle vérifie en arrière-plan s'il existe une mise à jour, et la télécharge ;
+3. la mise à jour s'applique au **prochain démarrage à froid**.
+
+Donc quelqu'un qui a l'app ouverte voit le correctif à sa deuxième ouverture
+après publication, pas à la première. C'est le compromis par défaut, et c'est
+le bon : bloquer le démarrage sur un appel réseau ferait payer à tout le monde
+une lenteur permanente pour un gain occasionnel.
+
+Si un jour on veut l'appliquer tout de suite, il faudra du code, un
+`Updates.checkForUpdateAsync` suivi d'un `reloadAsync`, avec le rechargement
+visible que ça implique. À ne faire que si le besoin se présente vraiment.
+
+### 6.3 La discipline à tenir, et le piège
+
+**Bump `version` dans `app.json` dès que le natif change.** C'est la seule
+règle à ne jamais oublier, et elle n'est protégée par rien.
+
+`runtimeVersion` suit la version. Si on ajoute une dépendance native sans
+changer la version, une mise à jour à distance partirait vers des binaires
+qui ne contiennent pas ce module natif : l'app plante à l'ouverture, chez tout
+le monde, sans possibilité de correctif par le même canal. Avec le bump, les
+anciens binaires ne voient simplement pas la mise à jour, ce qui est le
+comportement voulu.
+
+Deux réserves de fond :
 
 - **Apple tolère** les mises à jour à distance pour des correctifs et du
   contenu, pas pour changer la nature de l'app. La règle est floue mais
@@ -170,8 +208,6 @@ Deux réserves avant de s'y mettre :
 - une mise à jour à distance **ne passe par aucune revue, ni par la nôtre**.
   Il faut une discipline au moins égale à celle d'une livraison de store,
   sans quoi c'est le meilleur moyen de casser la production un vendredi soir.
-
-À mettre en place une fois la version en cours passée en revue, pas avant.
 
 ---
 
