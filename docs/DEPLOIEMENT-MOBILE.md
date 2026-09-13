@@ -46,8 +46,12 @@ Puis la déposer chez EAS :
 ```bash
 cd apps/mobile
 npx eas-cli credentials --platform ios
-# → Production → App Store Connect API Key → Set up a new key
 ```
+
+Le menu propose quatre entrées ; celle qui nous intéresse est
+**« App Store Connect: Manage your API Key »**, et non « Build Credentials »,
+qui concerne la signature de la build et non l'envoi. Puis choisir d'ajouter
+une clé et coller le *Key ID*, l'*Issuer ID* et le chemin du `.p8`.
 
 ### 2.2 Compte de service Google
 
@@ -60,8 +64,11 @@ npx eas-cli credentials --platform ios
 ```bash
 cd apps/mobile
 npx eas-cli credentials --platform android
-# → Google Service Account → Manage your Google Service Account Key
 ```
+
+Choisir **« Google Service Account »**, puis la gestion de la clé utilisée
+pour l'envoi (« used for Play Store submissions »), et donner le chemin du
+JSON téléchargé.
 
 **Le rôle compte.** « Release manager » suffit et ne donne pas accès aux
 finances ni aux données utilisateurs. Ne pas prendre « Admin » par facilité.
