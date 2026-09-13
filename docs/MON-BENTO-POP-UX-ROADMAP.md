@@ -20,7 +20,7 @@ choses distinctes attendent, et elles ne partent pas au même rythme :
 |---|---|---|
 | Migrations SQL du projet mobile | Supabase hébergé | **Déjà appliquées** pendant le développement |
 | Back-office et landing | Coolify | À déployer : rien de spécifique, le code est sur `main` |
-| App mobile | App Store et Play Store | **Build EAS à refaire**, `expo-haptics` étant un module natif |
+| App mobile | App Store et Play Store | **Build EAS à refaire**, `expo-haptics` étant un module natif. Procédure : [`DEPLOIEMENT-MOBILE.md`](./DEPLOIEMENT-MOBILE.md) |
 
 La livraison mobile accumule quatre choses : l'haptique et les animations du
 chantier 3, l'étiquette « Invité » sur ses deux écrans, et la télémétrie. Deux

@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import NetInfo from '@react-native-community/netinfo';
+import { useIsOffline } from '@/lib/use-is-offline';
 
 /**
  * Banner rouge en haut d'écran quand le device est offline.
@@ -10,21 +9,13 @@ import NetInfo from '@react-native-community/netinfo';
  * soit l'écran courant (composer, la table, recherche…). S'auto-cache quand
  * la connexion revient.
  *
- * NetInfo écoute les changements réseau natifs (`Reachability` sur iOS,
- * `ConnectivityManager` sur Android, `navigator.onLine` sur web).
+ * Occupe le haut de l'écran en `zIndex` 1000 : il passe devant le bandeau de
+ * mise à jour, qui de son côté s'efface hors ligne. La détection réseau vit
+ * dans `useIsOffline`, partagée entre les deux.
  */
 export function OfflineBanner() {
-  const [offline, setOffline] = useState(false);
+  const offline = useIsOffline();
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    const unsub = NetInfo.addEventListener((state) => {
-      // `isInternetReachable` peut être null pendant la 1ère eval → tolérant
-      const reachable = state.isInternetReachable !== false;
-      setOffline(!state.isConnected || !reachable);
-    });
-    return unsub;
-  }, []);
 
   if (!offline) return null;
 
