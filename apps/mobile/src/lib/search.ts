@@ -169,6 +169,27 @@ export function matchAccessibilityLabel(match: SearchMatch): string {
   return `Voir le bento de ${who}, qui a ${cleanTitle(match.item.title)} dans sa case ${label}`;
 }
 
+/**
+ * La chaîne à chercher quand on tape une puce de suggestion.
+ *
+ * **Pas `item.title` brut.** La puce affiche `cleanTitle`, qui retire les
+ * parenthèses : « mia paper planes (larsht_ edit) » s'y lit « mia paper
+ * planes ». Remplir la barre avec le titre brut afficherait autre chose que
+ * ce qu'on vient de toucher.
+ *
+ * **Pas la forme tronquée non plus.** `cleanTitle(t, 28)` ajoute une
+ * ellipsis, et `ilike '%…%'` ne correspondrait à rien : la puce ne
+ * trouverait pas l'item qu'elle annonce.
+ *
+ * Donc la forme nettoyée entière, avec repli sur le titre brut si le
+ * nettoyage la ramène sous le plancher de recherche, ce qu'un titre
+ * entièrement parenthésé produirait.
+ */
+export function sharedItemQuery(item: SharedItem): string {
+  const cleaned = cleanTitle(item.title);
+  return cleaned.length >= MIN_QUERY_LENGTH ? cleaned : item.title;
+}
+
 /** Libellé lu par VoiceOver pour une puce de suggestion. */
 export function sharedItemAccessibilityLabel(item: SharedItem): string {
   return `Chercher ${cleanTitle(item.title)}, présent dans ${item.picks} bentos`;

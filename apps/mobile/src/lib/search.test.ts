@@ -7,6 +7,7 @@ import {
   mapSearchRow,
   matchAccessibilityLabel,
   sharedItemAccessibilityLabel,
+  sharedItemQuery,
   splitResults,
   type SearchMatch,
   type SearchRow,
@@ -233,5 +234,42 @@ describe('sharedItemAccessibilityLabel', () => {
       sharedItemAccessibilityLabel({ id: 'i', title: 'Angers', category: 'place', picks: 4 }),
       'Chercher Angers, présent dans 4 bentos',
     );
+  });
+});
+
+describe('sharedItemQuery', () => {
+  const item = (title: string) => ({ id: 'i', title, category: 'track' as const, picks: 2 });
+
+  it('rend le titre tel quel quand il est déjà propre', () => {
+    assert.equal(sharedItemQuery(item('Inception')), 'Inception');
+  });
+
+  /**
+   * La puce affiche `cleanTitle`, donc la barre doit porter la même chose :
+   * sinon on touche « mia paper planes » et la barre affiche autre chose.
+   */
+  it('retire les parenthèses, comme la puce', () => {
+    assert.equal(sharedItemQuery(item('mia paper planes (larsht_ edit)')), 'mia paper planes');
+  });
+
+  /**
+   * Le piège que cette fonction existe pour éviter : la forme affichée est
+   * tronquée à 28 caractères avec une ellipsis, et `ilike '%…%'` ne
+   * correspond à rien. La puce ne trouverait pas l'item qu'elle annonce.
+   */
+  it('ne tronque pas, contrairement à ce que la puce affiche', () => {
+    const long = "Le Seigneur des anneaux : La Communauté de l'anneau";
+    assert.equal(sharedItemQuery(item(long)), long);
+    assert.ok(!sharedItemQuery(item(long)).includes('…'));
+  });
+
+  it('se replie sur le titre brut si le nettoyage vide la chaîne', () => {
+    assert.equal(sharedItemQuery(item('(instrumental)')), '(instrumental)');
+  });
+
+  it('rend toujours une chaîne cherchable', () => {
+    for (const t of ['Angers', 'Joyca', '(x)', 'A (b) (c)', 'Hans Zimmer']) {
+      assert.ok(sharedItemQuery(item(t)).trim().length >= 2, t);
+    }
   });
 });

@@ -23,6 +23,7 @@ import {
   matchAccessibilityLabel,
   searchBentos,
   sharedItemAccessibilityLabel,
+  sharedItemQuery,
   splitResults,
   type SearchMatch,
   type SharedItem,
@@ -99,7 +100,9 @@ export default function SearchTab() {
     tapFeedback();
     // On remplit la barre au lieu de sauter aux résultats : voir le texte
     // apparaître enseigne le geste, et laisse la possibilité de le modifier.
-    setQuery(item.title);
+    // `sharedItemQuery` et non `item.title` : la barre doit porter ce que la
+    // puce affiche, et surtout pas sa forme tronquée, qui ne trouverait rien.
+    setQuery(sharedItemQuery(item));
   };
 
   const sections = useMemo(
