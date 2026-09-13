@@ -178,6 +178,20 @@ async function main() {
     `« angers » → ${angers.json.map((r) => r.item_title).join(', ')}`,
   );
 
+  // La casse ne doit jouer sur aucun des trois chemins : `ilike` sur le
+  // pseudo, `ilike` sur le titre, et `similarity`, qui normalise ses
+  // trigrammes en minuscules mais dont rien dans la signature ne le dit.
+  const upper = await search('INCEPTION');
+  const upperTypo = await search('INCEPTON');
+  const upperPseudo = await search('DARK_HIFUS');
+  check(
+    'la casse est ignorée sur les trois chemins',
+    upper.json.length === inception.json.length &&
+      upperTypo.json.length === typo.json.length &&
+      upperPseudo.json.length === hifus.json.length,
+    `${upper.json.length}/${inception.json.length}, ${upperTypo.json.length}/${typo.json.length}, ${upperPseudo.json.length}/${hifus.json.length}`,
+  );
+
   // ─── Jokers ilike ───────────────────────────────────────────────────
   console.log('\n[jokers ilike]');
 
