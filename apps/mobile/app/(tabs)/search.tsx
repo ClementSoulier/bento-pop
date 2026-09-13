@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
+  ScrollView,
   SectionList,
   Text,
   TextInput,
@@ -14,12 +15,17 @@ import { useQuery } from '@tanstack/react-query';
 import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
 import { SHADOWS, TopChip, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
+import { tapFeedback } from '@/lib/haptics';
 import {
+  isEmpty,
   isSearchable,
+  loadSharedItems,
   matchAccessibilityLabel,
   searchBentos,
+  sharedItemAccessibilityLabel,
   splitResults,
   type SearchMatch,
+  type SharedItem,
 } from '@/lib/search';
 import { cleanTitle } from '@/lib/text';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
@@ -71,6 +77,31 @@ export default function SearchTab() {
     [rows, blocked],
   );
 
+  /**
+   * Les items présents dans au moins deux bentos publiés.
+   *
+   * Le bloc n'est pas décoratif : ce sont exactement les onze recherches qui
+   * ramènent plus d'une personne. Avec 26 bentos publiés, une barre nue est
+   * inutilisable, personne ne devine quoi taper.
+   *
+   * Cache long : la liste bouge à la vitesse des publications, pas à celle
+   * de l'utilisateur. Aucune erreur n'est remontée à l'écran, un bloc de
+   * suggestions absent n'est pas une panne de la recherche.
+   */
+  const { data: suggestions = [] } = useQuery({
+    queryKey: ['shared-items'],
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    queryFn: () => loadSharedItems(supabase),
+  });
+
+  const onPickSuggestion = (item: SharedItem) => {
+    tapFeedback();
+    // On remplit la barre au lieu de sauter aux résultats : voir le texte
+    // apparaître enseigne le geste, et laisse la possibilité de le modifier.
+    setQuery(item.title);
+  };
+
   const sections = useMemo(
     () =>
       [
@@ -88,6 +119,11 @@ export default function SearchTab() {
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          {/* Sans plafond, à la plus grande taille système le titre déborde
+              de l'écran et se rogne en « TROUV ». Le défaut est systémique,
+              20 usages d'Extenda dans l'app n'ont pas de plafond, plus
+              `TopChip` : c'est du ressort du chantier 11, mais on ne laisse
+              pas un titre cassé sur l'écran qu'on livre. */}
           <Text
             style={{
               fontFamily: 'Extenda',
@@ -96,6 +132,7 @@ export default function SearchTab() {
               letterSpacing: 1,
               textTransform: 'uppercase',
             }}
+            maxFontSizeMultiplier={1.4}
           >
             {'Trouve un\nbento.'}
           </Text>
@@ -131,6 +168,9 @@ export default function SearchTab() {
               autoCorrect={false}
               returnKeyType="search"
               accessibilityLabel="Chercher un pseudo ou un titre"
+              // Sans plafond, à la plus grande taille système le texte saisi
+              // pousse la loupe hors de la barre et déborde en hauteur.
+              maxFontSizeMultiplier={1.4}
               style={{ fontSize: 16, fontWeight: '600', flex: 1, paddingVertical: 0 }}
             />
             {loading ? <ActivityIndicator size="small" color="#0a0a0a" /> : null}
@@ -138,10 +178,19 @@ export default function SearchTab() {
         </View>
 
         <View style={{ paddingHorizontal: 16, flex: 1 }}>
+          {/* Les branches sans liste défilent aussi : à la plus grande taille
+              système, le bloc de suggestions dépasse la hauteur de l'écran et
+              devenait inatteignable. La `SectionList` défile déjà. */}
           {!enabled ? (
-            <Hint>Tape pour chercher</Hint>
+            <Scroll>
+              <Suggestions items={suggestions} onPick={onPickSuggestion} />
+            </Scroll>
           ) : isError ? (
             <SearchError onRetry={() => refetch()} />
+          ) : !loading && isEmpty({ accounts, viaItems }) ? (
+            <Scroll>
+              <NoResult query={debounced} items={suggestions} onPick={onPickSuggestion} />
+            </Scroll>
           ) : (
             <SectionList
               sections={sections}
@@ -159,6 +208,171 @@ export default function SearchTab() {
         </View>
       </SafeAreaView>
     </YellowBg>
+  );
+}
+
+/**
+ * Bloc d'accueil : les items qu'on retrouve dans plusieurs bentos.
+ *
+ * **Pas d'images.** 106 des 137 items posés en ont une, et douze vignettes se
+ * téléchargeraient à chaque entrée dans l'onglet, alors que les résultats ne
+ * s'affichent qu'après un geste délibéré. C'est un écart assumé avec les
+ * chantiers 2 et 3, où l'image est le contenu ; ici elle serait un décor
+ * payé par tout le monde. « Trouver » est le seul écran de l'app dont
+ * l'ouverture ne télécharge rien.
+ *
+ * Le bloc est additif : à moins de deux suggestions il ne se rend pas, et
+ * l'on retombe sur l'indication de départ.
+ */
+function Suggestions({
+  items,
+  onPick,
+  hint = 'On retrouve souvent',
+}: {
+  items: readonly SharedItem[];
+  onPick: (item: SharedItem) => void;
+  hint?: string;
+}) {
+  if (items.length < 2) return <Hint>Tape pour chercher</Hint>;
+  return (
+    <View>
+      <Hint>{hint}</Hint>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 8,
+          paddingHorizontal: 4,
+          paddingTop: 12,
+        }}
+      >
+        {items.map((item) => (
+          <Chip key={item.id} item={item} onPress={() => onPick(item)} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Longueur maximale d'un titre dans une puce.
+ *
+ * Sans elle, « Le Seigneur des anneaux : La Communauté de l'anneau », 51
+ * caractères, occupe une rangée entière et se fait rogner à l'endroit exact
+ * où il devenait informatif. Mesuré à l'écran sur iPhone 17 Pro : au-delà de
+ * 28 caractères la puce cesse d'être une puce. La troncature de `cleanTitle`
+ * coupe à la frontière de mot, donc « Le Seigneur des anneaux :… ».
+ */
+const CHIP_TITLE_MAX = 28;
+
+function Chip({ item, onPress }: { item: SharedItem; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={sharedItemAccessibilityLabel(item)}
+      style={[
+        {
+          backgroundColor: '#ffffff',
+          borderWidth: 2.5,
+          borderColor: '#0a0a0a',
+          borderRadius: 999,
+          paddingHorizontal: 14,
+          // 44 pt de haut au total, la cible tactile minimale, quitte à
+          // dépasser la hauteur du texte.
+          minHeight: 44,
+          justifyContent: 'center',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          maxWidth: '100%',
+        },
+        SHADOWS.stamp,
+      ]}
+    >
+      <Text
+        style={{ fontSize: 13, fontWeight: '600', flexShrink: 1 }}
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.4}
+      >
+        {cleanTitle(item.title, CHIP_TITLE_MAX)}
+      </Text>
+      <Text
+        style={{
+          fontFamily: 'Bungee',
+          fontSize: 10,
+          letterSpacing: 0.5,
+          color: 'rgba(10,10,10,0.5)',
+        }}
+        maxFontSizeMultiplier={1.4}
+      >
+        {item.picks}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Zéro résultat.
+ *
+ * L'écran n'en avait pas : une liste vide affichait « 0 résultats » et du
+ * jaune. Celui-ci cite ce qui a été cherché, dit quoi essayer, et redonne les
+ * suggestions, qui redeviennent utiles précisément là.
+ */
+function NoResult({
+  query,
+  items,
+  onPick,
+}: {
+  query: string;
+  items: readonly SharedItem[];
+  onPick: (item: SharedItem) => void;
+}) {
+  return (
+    <View style={{ paddingTop: 12 }}>
+      <Text
+        style={{
+          paddingHorizontal: 4,
+          fontFamily: 'Extenda',
+          fontSize: 20,
+          letterSpacing: 0.5,
+        }}
+        // Trois lignes et un plafond : à la plus grande taille système, deux
+        // lignes sans plafond rognaient la requête elle-même, c'est-à-dire la
+        // seule information que cet écran apporte.
+        numberOfLines={3}
+        maxFontSizeMultiplier={1.4}
+      >
+        {`Rien pour « ${query} ».`}
+      </Text>
+      <Text
+        style={{
+          paddingHorizontal: 4,
+          paddingTop: 8,
+          fontSize: 13,
+          lineHeight: 19,
+          color: 'rgba(10,10,10,0.65)',
+        }}
+        maxFontSizeMultiplier={1.4}
+      >
+        Essaie un titre de film, une série, un artiste, ou le pseudo de quelqu'un.
+      </Text>
+      <View style={{ paddingTop: 12 }}>
+        <Suggestions items={items} onPick={onPick} hint="Ou pioche ici" />
+      </View>
+    </View>
+  );
+}
+
+function Scroll({ children }: { children: React.ReactNode }) {
+  return (
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: 100 }}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
   );
 }
 
@@ -212,6 +426,7 @@ function SearchError({ onRetry }: { onRetry: () => void }) {
           textAlign: 'center',
           lineHeight: 19,
         }}
+        maxFontSizeMultiplier={1.4}
       >
         Recherche indisponible. Vérifie ta connexion.
       </Text>
@@ -235,6 +450,7 @@ function SearchError({ onRetry }: { onRetry: () => void }) {
             color: '#fbbf24',
             textTransform: 'uppercase',
           }}
+          maxFontSizeMultiplier={1.4}
         >
           Réessayer
         </Text>
@@ -299,6 +515,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
         <Text
           style={{ fontFamily: 'Extenda', fontSize: 16, lineHeight: 16, letterSpacing: 0.6 }}
           numberOfLines={1}
+          maxFontSizeMultiplier={1.4}
         >
           @{match.pseudo}
         </Text>
@@ -306,6 +523,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
           <Text
             style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)', marginTop: 3 }}
             numberOfLines={1}
+            maxFontSizeMultiplier={1.4}
           >
             {match.displayName}
           </Text>
@@ -314,6 +532,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
           <Text
             style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)', marginTop: 3 }}
             numberOfLines={1}
+            maxFontSizeMultiplier={1.4}
           >
             <Text style={{ fontWeight: '700' }}>
               {CATEGORY_META[match.item.category].label}
