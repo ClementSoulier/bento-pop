@@ -167,7 +167,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés, recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
-| 7 | Page bento public : scale + React Query | Bug + perf | S | rien | 🟡 **prochain**, spécification à écrire |
+| 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | 🟡 **en cours**, spécification écrite, mesures faites · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
 | 10 | Profil éditable (nom, pseudo, Popy) | Appropriation | S | rien | ⬜ |
@@ -420,6 +420,11 @@ Deux défauts trouvés et **non** corrigés, parce qu'ils débordent du chantier
 ---
 
 ## 7. Page bento public : scale et React Query
+
+> **Spécification détaillée : [`UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md`](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md)** (géométrie mesurée sur trois écrans, contrat de données, plan en 4 lots, recette).
+>
+> **La mesure a élargi le constat.** Le recouvrement des CTA n'est pas propre à l'iPhone SE : il vaut 3 pt sur un 17 Pro, 18 sur un 17e et 134 sur un SE. Et `BentoGrid` ne met à l'échelle que les hauteurs, donc la boîte est écrasée de 8 % sur le téléphone le plus courant. L'effort passe de S à M.
+
 
 **Constat.** `u/[pseudo].tsx:322` utilise `scale={0.94}` en dur alors que le composer calcule un scale dynamique (`compose.tsx:110`). Hauteur native de la grille : environ 512pt, soit 481pt à 0.94. Sur un iPhone SE, header profil et grille dépassent la hauteur disponible et les CTA sticky recouvrent la dernière rangée.
 
