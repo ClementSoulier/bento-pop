@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import type { CategoryKey } from '@/supabase/types';
 import { EmptyTile } from './EmptyTile';
-import { GRID_GEOMETRY } from './geometry';
+import { GRID_GEOMETRY, gridBorderWidth } from './geometry';
 import { Tile, type TileData } from './Tile';
 import { TilePulse } from './TilePulse';
 import { SHADOWS } from '@/components/primitives/shadow';
@@ -66,7 +66,9 @@ export function BentoGrid({
   const H_SM = GRID_GEOMETRY.H_SM * scale;
   const GAP = GRID_GEOMETRY.GAP * scale;
   const PAD = GRID_GEOMETRY.PAD * scale;
-  const BORDER = Math.max(3, Math.round(frameBorderWidth * scale));
+  // La même fonction que le modèle de la page publique et que le squelette :
+  // recopié, l'arrondi du cadre dériverait d'un point entre les trois.
+  const BORDER = gridBorderWidth(scale, frameBorderWidth);
   const RADIUS = GRID_GEOMETRY.RADIUS * scale;
 
   const renderTile = (cat: CategoryKey, height: number, size: 'sm' | 'md' | 'lg', rotate: number) => {

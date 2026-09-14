@@ -21,22 +21,54 @@ import { GRID_WIDTH, gridBoxHeight, gridScaleForHeight } from './geometry';
  * Cf. `docs/UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md` §5.1.
  */
 
-/** Barre du haut : `paddingTop` 8 + bouton retour de 36, à taille fixe. */
-export const TOP_BAR_H = 44;
+/**
+ * Cotes de l'écran que le modèle additionne.
+ *
+ * L'écran les importe pour ses styles au lieu de les recopier : c'est ce qui
+ * empêche le modèle de dériver du rendu. Une marge retouchée dans le JSX seul
+ * ferait mentir l'échelle sans que rien ne casse.
+ */
+export const PUBLIC_TOP_BAR = { paddingTop: 8, buttonSize: 36 } as const;
 
 /**
- * En-tête, hors lignes de texte : `paddingTop` 12 + avatar 70 + 8 + 4 +
- * `paddingBottom` 10.
- *
- * 12 et 10 au lieu des 20 et 14 d'avant le chantier : sans ce rabot de 12 pt,
- * la boîte serait plus petite que celle du fil sur 17 Pro et 17e.
+ * `paddingTop` 12 et `paddingBottom` 10, au lieu des 20 et 14 d'avant le
+ * chantier : sans ce rabot de 12 pt, la boîte serait plus petite que celle du
+ * fil sur 17 Pro et 17e.
  */
-export const HEADER_FIXED_H = 104;
+export const PUBLIC_HEADER = {
+  paddingTop: 12,
+  avatarSize: 70,
+  pseudoMarginTop: 8,
+  dateMarginTop: 4,
+  paddingBottom: 10,
+} as const;
 
-/** Ligne du pseudo, Extenda 24, à la taille de police par défaut. Mesurée. */
+export const PUBLIC_CTA = {
+  padding: 16,
+  paddingBottom: 32,
+  borderWidth: 3,
+  paddingVertical: 14,
+} as const;
+
+/** Barre du haut, à taille fixe : `paddingTop` 8 + bouton retour de 36. */
+export const TOP_BAR_H = PUBLIC_TOP_BAR.paddingTop + PUBLIC_TOP_BAR.buttonSize;
+
+/** En-tête, hors lignes de texte : 12 + avatar 70 + 8 + 4 + 10. */
+export const HEADER_FIXED_H =
+  PUBLIC_HEADER.paddingTop +
+  PUBLIC_HEADER.avatarSize +
+  PUBLIC_HEADER.pseudoMarginTop +
+  PUBLIC_HEADER.dateMarginTop +
+  PUBLIC_HEADER.paddingBottom;
+
+/**
+ * Ligne du pseudo, Extenda 24, à la taille de police par défaut. Mesurée, et
+ * posée en `lineHeight` par l'écran : la hauteur ne dépend plus des métriques
+ * de la police.
+ */
 export const PSEUDO_LINE_H = 24;
 
-/** Ligne de date, 13 pt système, à la taille de police par défaut. Mesurée. */
+/** Ligne de date, 13 pt système, à la taille par défaut. Mesurée, posée de même. */
 export const DATE_LINE_H = 16;
 
 /**
@@ -47,9 +79,13 @@ export const DATE_LINE_H = 16;
  * que commence le dégradé, et le contenu qui défile doit s'y fondre avant
  * d'atteindre un bouton.
  */
-export const CTA_FIXED_H = 82;
+export const CTA_FIXED_H =
+  PUBLIC_CTA.padding +
+  PUBLIC_CTA.borderWidth * 2 +
+  PUBLIC_CTA.paddingVertical * 2 +
+  PUBLIC_CTA.paddingBottom;
 
-/** Libellé d'un bouton, Bungee 13, à la taille par défaut : 51 − 34. Mesuré. */
+/** Libellé d'un bouton, Bungee 13, à la taille par défaut : 51 − 34. Mesuré, posé de même. */
 export const CTA_LABEL_LINE_H = 17;
 
 /** Écart minimal entre le bas de la boîte et le haut du bloc de boutons. */

@@ -15,9 +15,9 @@ import { PSEUDO_REGEX, escapeLikePattern, pickExactPseudo } from './pseudo-match
  *   un aller-retour de moins, 89 ms → 46 ms mesurés, et la différence entre
  *   « ce pseudo n'existe pas » et « il n'a rien en ligne » sort gratuitement
  *   de la jointure. `!inner` rendrait zéro ligne dans les deux cas.
- * - **Une panne lève, elle ne devient pas `null`.** `findUserByPseudo` avale
- *   l'erreur : une coupure réseau affichait « Bento introuvable », sur la
- *   page où il est le plus grave de mentir.
+ * - **Une panne lève, elle ne devient pas `null`.** L'ancien chargement, par
+ *   `findUserByPseudo`, avalait l'erreur : une coupure réseau affichait
+ *   « Bento introuvable », sur la page où il est le plus grave de mentir.
  *
  * Client injecté, comme `feed.ts` : c'est la forme de l'URL qu'il faut
  * verrouiller, à commencer par le filtre sur la ressource imbriquée, qui
@@ -152,23 +152,36 @@ export function mapPublicBento(row: PublicBentoRow): NonNullable<PublicBentoResu
  * L'erreur remonte avec son statut HTTP, que `query-client.ts` lit pour ne
  * pas réessayer une 4xx : sans lui, une requête refusée serait retentée deux
  * fois avant d'afficher quoi que ce soit. Une panne réseau arrive avec le
- * statut 0 et reste réessayable.
+ * statut 0 et reste réessayable, de même qu'une requête annulée par `signal`.
+ *
+ * **Aucun réessai caché.** `postgrest-js` 2.105 réessaie de lui-même trois fois
+ * une lecture qui échoue sur le réseau, ou qui reçoit un 503 ou un 520, après
+ * 1, 2 puis 4 s : sept secondes avant de rendre l'erreur, découvertes parce
+ * qu'un test de panne réseau durait sept secondes. Empilées sous le réessai de
+ * React Query, ces tentatives multiplieraient les requêtes et repousseraient
+ * « Connexion perdue » bien au-delà de la borne choisie. Le réessai de cette
+ * requête vit en un seul endroit, `public-bento-query.ts`.
  */
 export async function loadPublicBento(
   client: PublicBentoClient,
   pseudo: string,
+  options: { signal?: AbortSignal } = {},
 ): Promise<PublicBentoResult> {
   const wanted = pseudo.trim();
   if (!PSEUDO_REGEX.test(wanted)) return null;
 
-  const { data, error, status } = await client
+  let request = client
     .from('users')
     .select(PUBLIC_BENTO_SELECT)
     .ilike('pseudo', escapeLikePattern(wanted))
     // Filtre sur la ressource imbriquée, et non `!inner` : un compte sans
     // rien en ligne revient avec `bentos: null` au lieu de disparaître.
     .not('bentos.published_at', 'is', null)
-    .limit(PUBLIC_BENTO_LIMIT);
+    .limit(PUBLIC_BENTO_LIMIT)
+    .retry(false);
+  if (options.signal) request = request.abortSignal(options.signal);
+
+  const { data, error, status } = await request;
 
   if (error) {
     throw Object.assign(new Error(`Public bento load failed: ${error.message}`), { status });

@@ -199,13 +199,18 @@ describe('loadPublicBento, erreurs', () => {
   /**
    * Le cas du métro : plus de réseau du tout. `supabase-js` ne lève pas, il
    * rend une erreur de statut 0, qui doit remonter et rester réessayable.
+   *
+   * Et tout de suite : `postgrest-js` réessaie de lui-même trois fois une
+   * lecture en échec réseau, sept secondes au total, et ce test durait
+   * justement sept secondes avant `.retry(false)`.
    */
-  it('lève sur une panne réseau, avec le statut 0', async () => {
+  it('lève sur une panne réseau, avec le statut 0, sans réessai caché', async () => {
     const dead = await startPostgrestStub();
     const unreachable = dead.url;
     await dead.close();
     const offline = createClient<Database>(unreachable, 'stub-anon-key', STUB_CLIENT_OPTIONS);
 
+    const started = Date.now();
     await assert.rejects(
       () => loadPublicBento(offline, 'dark_hifus'),
       (error: Error & { status?: number }) => {
@@ -214,5 +219,23 @@ describe('loadPublicBento, erreurs', () => {
         return true;
       },
     );
+    assert.ok(Date.now() - started < 500, `${Date.now() - started} ms : réessai caché ?`);
+  });
+
+  /** L'autre réessai caché de `postgrest-js` : un 503 est retenté après une seconde. */
+  it('rend un 503 dès la première réponse, sans le retenter', async () => {
+    reset();
+    stub.enqueue({ message: 'schema cache', code: 'PGRST002', details: null, hint: null }, 503);
+    stub.enqueue([rowFor('dark_hifus')]);
+
+    await assert.rejects(
+      () => loadPublicBento(client, 'dark_hifus'),
+      (error: Error & { status?: number }) => error.status === 503,
+    );
+    assert.equal(stub.requests.length, 1);
+
+    // La réponse piège, qu'un réessai aurait reçue, attend encore dans la
+    // file : la consommer ici, sans quoi elle fausserait le test suivant.
+    assert.equal((await loadPublicBento(client, 'dark_hifus'))?.pseudo, 'dark_hifus');
   });
 });

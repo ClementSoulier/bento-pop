@@ -2,6 +2,7 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { PUBLIC_READS_AUTH_OPTIONS } from './public-reads';
 import type { Database } from './types';
 
 /**
@@ -30,4 +31,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
     persistSession: true,
     detectSessionInUrl: false, // RN n'a pas de fragment URL
   },
+});
+
+/**
+ * Client des lectures publiques, sans session : il n'attend jamais le
+ * renouvellement de celle du client principal. Réservé à ce que n'importe
+ * quel visiteur peut lire, cf. `public-reads.ts`.
+ */
+export const publicSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: PUBLIC_READS_AUTH_OPTIONS,
 });

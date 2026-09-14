@@ -1,7 +1,7 @@
 import { supabase } from '@/supabase/client';
 import { queryClient } from '@/lib/query-client';
+import { refreshPublicViews } from '@/lib/public-bento-query';
 import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
-import { findUserByPseudo } from '@/lib/pseudo';
 import type { CategoryKey } from '@/supabase/types';
 
 
@@ -50,6 +50,7 @@ export async function setBentoSlot(
   if (error) {
     throw new Error(`Slot upsert failed: ${error.message}`);
   }
+  invalidatePublicViews();
 }
 
 /**
@@ -75,7 +76,7 @@ export async function publishBento(bentoId: string): Promise<void> {
     .eq('id', bentoId)
     .is('published_at', null);
   if (error) throw new Error(`Publish failed: ${error.message}`);
-  invalidateFeed();
+  invalidatePublicViews();
 }
 
 /**
@@ -87,9 +88,14 @@ export async function publishBento(bentoId: string): Promise<void> {
  * C'est aussi la seule chose qui rende la dépublication crédible. Du point de
  * vue de la personne qui vient de retirer son bento, le voir toujours en
  * ligne, c'est un geste qui n'a pas marché.
+ *
+ * Les pages publiques en cache sont remises à zéro dans le même geste, et pas
+ * seulement invalidées : cf. `refreshPublicViews`. Appelée par toute mutation
+ * qui change ce qu'un autre écran montre, pour qu'aucune n'en oublie la
+ * moitié.
  */
-function invalidateFeed(): void {
-  void queryClient.invalidateQueries({ queryKey: ['feed'] });
+function invalidatePublicViews(): void {
+  refreshPublicViews(queryClient);
 }
 
 /**
@@ -111,7 +117,7 @@ export async function unpublishBento(bentoId: string): Promise<void> {
     .update({ published_at: null })
     .eq('id', bentoId);
   if (error) throw new Error(`Unpublish failed: ${error.message}`);
-  invalidateFeed();
+  invalidatePublicViews();
 }
 
 /**
@@ -128,6 +134,9 @@ export async function unpublishBento(bentoId: string): Promise<void> {
 export async function deleteOwnAccount(userId: string): Promise<void> {
   const { error } = await supabase.from('users').delete().eq('id', userId);
   if (error) throw new Error(`Account deletion failed: ${error.message}`);
+  // Le bento supprimé ne doit survivre ni dans le fil ni sur sa page publique
+  // en cache, sur l'appareil même où on vient de le supprimer.
+  invalidatePublicViews();
 }
 
 /**
@@ -144,6 +153,7 @@ export async function clearBentoSlot(
     .eq('bento_id', bentoId)
     .eq('category_id', CATEGORY_IDS[category]);
   if (error) throw new Error(`Clear slot failed: ${error.message}`);
+  invalidatePublicViews();
 }
 
 /**
@@ -168,44 +178,4 @@ export async function loadOwnBento(userId: string) {
     .maybeSingle();
   if (error) throw new Error(`Bento load failed: ${error.message}`);
   return data;
-}
-
-/**
- * Charge un bento publié par pseudo (lecture publique via RLS).
- * Retourne `null` si le pseudo n'existe pas ou si le bento n'est pas publié.
- */
-export async function loadPublicBentoByPseudo(pseudo: string) {
-  // Correspondance exacte, cf. `findUserByPseudo` : `_` est un joker
-  // `ilike` autorisé par la contrainte SQL, donc un lien profond
-  // `bentopop://u/buyt_k` affichait le bento de `buyt.k`.
-  const user = (await findUserByPseudo('id, pseudo, display_name, created_at, kind', pseudo)) as
-    | {
-        id: string;
-        pseudo: string;
-        display_name: string | null;
-        created_at: string;
-        kind: string;
-      }
-    | null;
-  if (!user) return null;
-
-  const { data: bento } = await supabase
-    .from('bentos')
-    .select(
-      `
-      id,
-      published_at,
-      is_featured,
-      bento_items (
-        category_id,
-        items ( id, title, subtitle, year, image_url, image_credit, external_source, external_id )
-      )
-      `,
-    )
-    .eq('user_id', user.id)
-    .not('published_at', 'is', null)
-    .maybeSingle();
-  if (!bento) return null;
-
-  return { user, bento };
 }
