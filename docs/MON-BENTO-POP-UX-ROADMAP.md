@@ -167,7 +167,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés, recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
-| 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
+| 7 | Page bento public : scale + React Query | Bug + perf | S | rien | 🟡 **prochain**, spécification à écrire |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
 | 10 | Profil éditable (nom, pseudo, Popy) | Appropriation | S | rien | ⬜ |
@@ -426,6 +426,8 @@ Deux défauts trouvés et **non** corrigés, parce qu'ils débordent du chantier
 Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` maison, donc pas de cache, pas de retry, rechargement complet à chaque visite. `loadPublicBentoByPseudo` fait deux requêtes séquentielles (`bento-actions.ts:135`).
 
 **Proposition.** Reprendre le calcul de scale dynamique du composer, ou rendre la page scrollable. Passer le chargement en `useQuery`. Fusionner les deux requêtes en une jointure.
+
+**Ce que le chantier 6 y ajoute.** La recherche envoie désormais bien plus de monde sur cette page, et par un chemin nouveau : on y arrive depuis un item, donc en s'attendant à voir une case précise. Deux conséquences à cadrer en planification. La page est le point d'arrivée de tout l'onglet « Trouver », donc son coût de chargement est devenu le coût perçu de la recherche. Et la case qui a motivé le clic mériterait peut-être d'être signalée à l'arrivée, ce qui n'était pas un sujet quand on n'y venait que par un pseudo.
 
 **Fait quand** : la grille est entièrement visible sur iPhone SE, et revenir sur un bento déjà consulté est instantané.
 
