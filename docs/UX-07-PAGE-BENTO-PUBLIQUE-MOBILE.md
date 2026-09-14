@@ -4,6 +4,12 @@
 > même sur la production et sur trois tailles d'écran au simulateur. Chantier 7
 > de [`MON-BENTO-POP-UX-ROADMAP.md`](./MON-BENTO-POP-UX-ROADMAP.md).
 >
+> **Révisée le même jour**, après relecture contre le code et livraison du
+> lot 1 : une mesure mal étiquetée (§1.1, §4.2), une invalidation qui ne
+> fermait pas le piège qu'elle décrivait (§6.3) et un test contredit par sa
+> propre formule (§8.1) sont corrigés, onze arbitrages rendus (§11), et les
+> écarts du lot 1 reportés là où ils changent le contrat (§5, §6, §8, §9).
+>
 > Ne pas confondre avec [`UX-01-PAGE-BENTO-PUBLIQUE.md`](./UX-01-PAGE-BENTO-PUBLIQUE.md),
 > qui décrit la page **web** `bento-pop.com/u/<pseudo>`. Ici il s'agit de
 > l'écran `apps/mobile/app/u/[pseudo].tsx`.
@@ -41,14 +47,16 @@ qu'il dérive sa largeur de la même échelle (`feedSideInset`, §5.3 du chantie
 
 Deux conséquences, mesurées en §4 :
 
-- la boîte est **écrasée de 10 %** sur un iPhone 17 Pro, où elle fait 370 pt
+- la boîte est **écrasée de 8 %** sur un iPhone 17 Pro, où elle fait 370 pt
   de large pour 482 de haut là où ses proportions natives en demandent 525 ;
-- elle ne rentre nulle part. Sur les trois tailles d'écran mesurées, les
-  boutons collants recouvrent le bas de la boîte : de 3 pt sur un 17 Pro, 18
-  sur un 17e, **134 sur un iPhone SE**, où la moitié du bento est illisible et
-  où rien ne permet de défiler.
+- elle ne rentre pas. Sur un iPhone SE, les boutons collants recouvrent
+  **118 pt** du bas de la boîte, qui dépasse en plus sous le bord de l'écran,
+  et rien ne permet de défiler. Sur un 17e, le bouton mord le cadre de 2 pt et
+  en masque l'ombre. Sur un 17 Pro, rien de visible : seul le haut du dégradé
+  des boutons, presque transparent, touche la boîte.
 
-La roadmap annonçait le défaut « sur un iPhone SE ». La mesure dit : partout.
+La roadmap annonçait le défaut « sur un iPhone SE ». La mesure dit :
+l'écrasement partout, le recouvrement dès le 17e.
 
 ### 1.2 La règle qui tient tout le chantier
 
@@ -73,12 +81,13 @@ plafonne aussi**.
 | # | Critère | Mesure |
 |---|---|---|
 | 1 | Les six cases sont atteignables et lisibles sur iPhone SE | recette au point |
-| 2 | Aucun bouton ne recouvre la boîte, sur aucune taille d'écran | modèle testé + trois captures |
+| 2 | Rien ne recouvre la boîte au repos tant que le plancher ne s'applique pas, et rien en fin de défilement, sur toute taille d'écran | modèle testé + captures |
 | 3 | La boîte a les proportions natives 361 × 512 | rapport largeur / hauteur mesuré au pixel |
 | 4 | Revenir sur un bento déjà consulté n'affiche aucun chargement | recette, requête réseau comptée |
 | 5 | Un seul aller-retour réseau à l'ouverture | 89 ms → 46 ms mesurés en §4.4 |
 | 6 | Une panne réseau ne dit plus « Bento introuvable » | recette en mode avion |
-| 7 | L'écran tient à la plus grande taille de police système | capture |
+| 7 | L'écran et les tuiles restent lisibles à la plus grande taille de police système | capture |
+| 8 | Les mêmes critères tiennent sur Android | émulateurs Android Studio, §8.6 |
 
 ---
 
@@ -87,11 +96,20 @@ plafonne aussi**.
 **Dedans.**
 
 - `apps/mobile/app/u/[pseudo].tsx` : géométrie, défilement, états, police.
-- Un module de budget vertical testable, sur le modèle de `compose-layout.ts`.
+- Un module de budget vertical testable, sur le modèle de `compose-layout.ts`,
+  et la hauteur réelle de la boîte dans `geometry.ts`.
 - `loadPublicBentoByPseudo` : une requête au lieu de deux, client injecté,
   champs réduits à ce qui est rendu.
-- `useQuery` et l'invalidation du cache par les mutations de `bento-actions.ts`.
+- `useQuery` et la remise à zéro du cache par les mutations de
+  `bento-actions.ts`.
 - Le squelette de chargement de la boîte, partagé avec le fil.
+- Les plafonds de police de `Tile` et `EmptyTile`, donc aussi ceux du fil et du
+  composer : une tuile illisible ne se corrige pas écran par écran (§11).
+- La mesure de `ShareImage` à la plus grande police, et son gel si elle suit la
+  police système.
+- L'échappement du joker `_` dans `checkPseudoAvailability`, puisque le lot 2
+  touche `pseudo.ts`.
+- Android, sur les émulateurs Android Studio (§8.6).
 
 **Dehors.**
 
@@ -102,8 +120,8 @@ plafonne aussi**.
   écran-là qu'on livre aujourd'hui, et le corriger demande de rouvrir le
   budget vertical validé au chantier 2. **Suivi ouvert en §12.**
 - Les 20 usages d'`Extenda` sans plafond de grossissement ailleurs dans l'app.
-  Chantier 11. Seule cette page est traitée, parce qu'on ne livre pas un écran
-  cassé.
+  Chantier 11. Seules cette page et les tuiles sont traitées, parce qu'on ne
+  livre pas un écran cassé.
 - La liste des comptes bloqués. Chantier 11, versée par le chantier 6.
 - Les compteurs de vues et réactions. Chantier 8.
 
@@ -140,7 +158,9 @@ La question était mal posée, pour une raison structurelle : `EmptyTile` reçoi
 la **même hauteur** que `Tile` (`BentoGrid.tsx:76`). Une case vide ne change
 pas d'un point la hauteur de la boîte. **La hauteur de la grille est une
 constante, 512 pt à l'échelle 1, quel que soit son contenu.** Le problème de
-place est donc purement géométrique, et il ne dépend d'aucune donnée.
+place de la boîte est donc purement géométrique, et il ne dépend d'aucune
+donnée. Celui de l'en-tête, si : un pseudo long, ou un `display_name` que le
+chantier 10 remplira, passe à la ligne dès que la police grossit (§5.4).
 
 Le cas reste atteignable : un item validé puis rejeté après publication
 disparaîtrait de la vue anonyme. La fusion de doublons, elle, ne le produit
@@ -168,19 +188,26 @@ Le bas aussi :
 ```
 haut du bloc de boutons = hauteur écran − inset bas − 99
   padding 16 + bouton 51 + paddingBottom 32 = 99
+haut des boutons        = haut du bloc + 16
 ```
 
-Et la boîte, à l'échelle `s`, mesure `502 s + 10` (le cadre de 5 pt ne se met
-pas à l'échelle en dessous de 3, `BentoGrid.tsx:69`). À 0,94 : **481,9 pt**,
-retrouvé au pixel sur les captures après correction du rayon de coin.
+Et la boîte, à l'échelle `s`, mesure `502 s + 2 × max(3, round(5 s))` : le
+cadre se met à l'échelle et s'arrondit au point (`BentoGrid.tsx:69`), soit 5
+de 0,9 à 1,1 et 4 en dessous. À 0,94 : **481,9 pt**, retrouvé au pixel sur les
+captures après correction du rayon de coin.
 
-D'où le recouvrement, qui est une soustraction :
+D'où le recouvrement, qui est une soustraction. Le haut des boutons est relevé
+au pixel sur les captures, colonne x = 150 pt, loin des coins arrondis :
 
-| Appareil | Écran | Bas de la boîte | Haut des boutons | Recouvrement |
-|---|---|---|---|---|
-| iPhone SE (3e gén.) | 375 × 667 | 701,9 | 568 | **−133,9 pt** |
-| iPhone 17e | 390 × 844 | 728,9 | 711 | **−17,9 pt** |
-| iPhone 17 / 17 Pro | 402 × 874 | 743,9 | 741 | **−2,9 pt** |
+| Appareil | Écran | Bas de la boîte | Haut du bloc | Haut des boutons | Sous le bloc | Sous les boutons |
+|---|---|---|---|---|---|---|
+| iPhone SE (3e gén.) | 375 × 667 | 701,9 | 568 | 583,5 | 133,9 pt | **118,4 pt** |
+| iPhone 17e | 390 × 844 | 728,9 | 711 | 726,7 | 17,9 pt | **2,2 pt** |
+| iPhone 17 / 17 Pro | 402 × 874 | 743,9 | 741 | 756,7 | 2,9 pt | **aucun**, 13 pt de dégagement |
+
+La première version de ce tableau appelait « haut des boutons » le haut du
+bloc, 16 pt plus haut, et concluait à un recouvrement sur tous les iPhone. Sur
+un 17 Pro, ce qui touche la boîte est le haut du dégradé, à 3 % d'opacité.
 
 Sur un iPhone SE, la boîte dépasse en plus de 35 pt sous le bord de l'écran :
 sa bordure basse n'existe visuellement pas, et l'arbre d'accessibilité ne
@@ -296,30 +323,35 @@ Un module pur, `src/components/bento/public-layout.ts`, sur le modèle exact de
 testable sous `node:test`.
 
 ```ts
-/** Barre du haut : paddingTop 8 + bouton 36. */
-export const TOP_BAR_H = 44;
-/** En-tête : 12 + avatar 70 + 8 + pseudo 24 + 4 + date 16 + 10. */
-export const HEADER_H = 144;
-/** Boutons collants : padding 16 + bouton 51 + paddingBottom 32. */
-export const CTA_BLOCK_H = 99;
-/** Écart minimal entre la boîte et le bloc de boutons. */
+export const TOP_BAR_H = 44;         // paddingTop 8 + bouton retour 36, taille fixe
+export const HEADER_FIXED_H = 104;   // 12 + avatar 70 + 8 + 4 + 10
+export const PSEUDO_LINE_H = 24;     // Extenda 24, police par défaut
+export const DATE_LINE_H = 16;       // 13 pt système, police par défaut
+export const CTA_FIXED_H = 82;       // padding 16 + bordures 6 + 28 + paddingBottom 32
+export const CTA_LABEL_LINE_H = 17;  // Bungee 13 : 51 − 34
 export const CTA_GAP = 8;
-/**
- * Plancher d'échelle : ce que le fil montre déjà sur un iPhone SE, livré et
- * accepté au chantier 2. En dessous, la page publique montrerait le bento
- * plus petit que le fil sur le même écran, ce qui n'a pas de sens quand il
- * est la seule chose à l'écran.
- */
-export const MIN_SCALE = 0.86;
+export const CONTENT_MAX_FONT_MULTIPLIER = 1.4;
+export const BUTTON_MAX_FONT_MULTIPLIER = 1.2;
+export const MIN_SCALE = feedScale(375);  // 0,8615 : la boîte du fil sur SE
 
-export function publicBentoScale({ width, height, insetTop, insetBottom }): number {
-  const byWidth = feedScale(width);                   // §5.3 du chantier 2
-  const available = height - insetTop - insetBottom
-                  - TOP_BAR_H - HEADER_H - CTA_BLOCK_H - CTA_GAP;
-  const byHeight = available / GRID_HEIGHT;
+export function publicBentoScale(m: PublicLayoutMetrics): number {
+  const byWidth = feedScale(m.width);                         // §5.3 du chantier 2
+  const byHeight = gridScaleForHeight(publicBoxAvailableHeight(m));
   return Math.min(byWidth, Math.max(byHeight, MIN_SCALE));
 }
 ```
+
+Trois écarts à la première version, trouvés en relecture et livrés au lot 1 :
+
+- **la taille de police entre dans le modèle.** `fontScale` est obligatoire ;
+  l'en-tête et les boutons grossissent avec elle, bornés par les plafonds que
+  l'écran pose (§5.4). Sans ça, la promesse de §5.4, « la boîte rétrécit »,
+  était impossible : un en-tête constant ne voit pas la police grossir ;
+- **la boîte ne mesure pas `512 × échelle`.** `gridScaleForHeight` est
+  l'inverse exact de la hauteur rendue, cadre arrondi compris (§4.2). Diviser
+  par 512 se trompait d'au plus 1 pt, dans un sens ou dans l'autre ;
+- **le plancher est l'échelle du fil sur SE, 0,8615, et non 0,86**, qui aurait
+  rendu la boîte du SE 0,5 pt plus étroite que celle du fil.
 
 Trois propriétés, dans cet ordre de priorité :
 
@@ -329,7 +361,9 @@ Trois propriétés, dans cet ordre de priorité :
 2. **jamais recouverte** : `byHeight` est un plafond aussi, calculé sur ce qui
    reste une fois les boutons servis ;
 3. **jamais illisible** : `MIN_SCALE` est un plancher, et c'est lui qui décide
-   quand la page défile.
+   quand la page défile. Un plancher, pas une garantie : sous 374,5 pt de
+   large, 360 dp sur beaucoup d'Android, le fil descend lui-même sous 0,8615
+   et la largeur l'emporte. La boîte n'est jamais plus petite que dans le fil.
 
 La largeur de la boîte se déduit de l'échelle et s'applique en **marge**, pas
 en `width` avec `alignSelf`. La raison est écrite au chantier 2 et a coûté un
@@ -337,46 +371,64 @@ diagnostic en build Release : une largeur posée sur un enfant étiré par son
 parent ne tient pas sur iOS.
 
 **L'en-tête rend 12 pt.** `paddingTop` passe de 20 à 12 et `paddingBottom` de
-14 à 10. Ce n'est pas cosmétique : ces 12 pt sont exactement ce qui fait la
-différence entre une boîte à la taille du fil et une boîte plus petite, sur
-les deux tailles d'écran les plus courantes. Le calcul sans le rabot donne
-0,920 sur un 17 Pro, contre 0,936 pour le fil, soit une boîte 6 pt plus
-étroite que celle du fil sur le même écran.
+14 à 10. Sous ce modèle, ces 12 pt sont ce qui sépare une boîte à la taille du
+fil d'une boîte plus petite, sur les deux tailles d'écran les plus courantes :
+le calcul sans le rabot donne 0,920 sur un 17 Pro, contre 0,936 pour le fil,
+soit une boîte 6 pt plus étroite que celle du fil sur le même écran.
 
-Résultat attendu, à vérifier au point en recette :
+Ce calcul compte les boutons depuis le haut de leur bloc, 16 pt au-dessus des
+boutons eux-mêmes (§4.2). Calée sur le haut visible des boutons, la boîte du
+fil tiendrait sans rabot, avec 7 pt de jaune entre son ombre et les boutons.
+Le rabot est donc un choix de marge et non une contrainte ; il est retenu
+(§11), et cette marge sert aussi aux tailles de police au-dessus du défaut.
+
+Ce que rend le modèle, couvert par les tests du lot 1 et à confirmer au point
+en recette :
 
 | Appareil | Échelle | Boîte | Contrainte active | Défilement |
 |---|---|---|---|---|
 | iPhone 17 / 17 Pro | 0,936 | 338 × 480 | largeur (= le fil) | **aucun** |
 | iPhone 17e | 0,903 | 326 × 463 | largeur (= le fil) | **aucun** |
-| iPhone SE | 0,860 | 311 × 442 | plancher | ~90 pt |
+| iPhone SE | 0,8615 | 311 × 440,5 | plancher (= le fil) | 88 pt |
+| 17 Pro, plus grande police | 0,904 | 326 × 464 | hauteur | **aucun** |
+| SE, plus grande police | 0,8615 | 311 × 440,5 | plancher | ~108 pt |
 
 Sur les grands écrans, `feedScale` plafonne déjà la boîte à 420 pt
 (`MAX_BOX_WIDTH`) : rien à ajouter pour les tablettes.
 
 ### 5.2 La page défile, et presque jamais
 
-Le corps devient un `ScrollView` dont le `contentContainerStyle` réserve
-`CTA_BLOCK_H + CTA_GAP` en bas. Les boutons restent collants par-dessus.
+Le corps devient un `ScrollView` dont le `contentContainerStyle` réserve en bas
+`publicScrollBottomInset(fontScale)`, le bloc de boutons et l'écart. Les
+boutons restent collants par-dessus.
 
 C'est un filet, pas un mode de lecture. Par construction, sur tout écran où
 `byHeight ≥ MIN_SCALE`, le contenu tient et le `ScrollView` ne défile pas d'un
 point. Il ne sert que dans trois cas :
 
-- les écrans où le plancher mord, aujourd'hui l'iPhone SE seul ;
-- les grandes tailles de police système, où l'en-tête grossit (§5.4) ;
+- les écrans où le plancher mord : l'iPhone SE seul parmi les iPhone, et les
+  écrans Android courts, à mesurer (§8.6) ;
+- les grandes tailles de police système sur ces mêmes écrans : l'en-tête
+  grossit, la boîte rétrécit jusqu'au plancher, puis la page défile (§5.4) ;
 - toute future ligne ajoutée à l'en-tête, qui rétrécira la boîte puis fera
-  défiler, au lieu de cacher une rangée.
+  défiler au lieu de cacher une rangée, **à condition d'entrer dans le
+  modèle** : l'écran importe les constantes du module (lot 2), mais rien ne
+  détecte une ligne ajoutée au JSX seul.
 
 **Ce qu'on abandonne, et pourquoi.** La roadmap disait « la grille est
 entièrement visible sur iPhone SE ». La rendre visible sans défiler y demande
-une échelle de **0,68**, soit une boîte de 245 pt de large sur un écran de
-375, avec des tuiles de rangée basse de 62 pt de côté. On préfère 90 pt de
-défilement à un bento illisible ; le critère devient « les six cases sont
+une échelle de **0,69**, soit une boîte de 249 pt de large sur un écran de
+375, avec des tuiles de rangée basse d'environ 69 pt de côté. On préfère 88 pt
+de défilement à un bento illisible ; le critère devient « les six cases sont
 atteignables et lisibles ».
 
+Au repos, sur SE, 64 pt de boîte restent donc sous les boutons. Ils restent
+collants, pour que « Partager » soit visible dès l'arrivée : le critère 2 le
+dit (arbitrage §11). Les boutons dans le flux, ou un bloc compact qui ne
+ferait que réduire le recouvrement à 45 pt, ont été écartés.
+
 **L'alternative écartée** est l'échelle dynamique du composer, calculée sur la
-seule hauteur. Elle produit exactement ce 0,68, et elle reconduit l'écrasement
+seule hauteur. Elle produit exactement ce 0,69, et elle reconduit l'écrasement
 de §4.3 puisqu'elle ne touche pas à la largeur. C'est la réponse que la
 roadmap proposait ; la mesure la disqualifie.
 
@@ -388,6 +440,7 @@ roadmap proposait ; la mesure la disqualifie.
 | Trouvé | la page | la page |
 | Pseudo inconnu | « Bento introuvable » | « Bento introuvable » |
 | Pseudo connu, rien en ligne | « Bento introuvable » | **« @x n'a pas de bento en ligne. »** |
+| Son propre pseudo, rien en ligne | « Bento introuvable » | **« Ton bento n'est pas en ligne. »** + bouton vers le composer |
 | Réseau tombé | « Bento introuvable » | **« Connexion perdue » + Réessayer** |
 
 Le squelette n'est pas un ornement. Un spinner centré n'annonce rien, puis la
@@ -406,6 +459,18 @@ encore » serait faux pour quelqu'un qui vient de retirer le sien.
 L'état d'erreur reprend la forme de `SearchError` (`search.tsx:422`) : une
 phrase, un bouton « Réessayer » qui appelle `refetch`.
 
+**Il doit arriver vite.** La politique globale de `query-client.ts` réessaie
+deux fois, à 1 s puis 2 s, sans délai d'abandon : environ 3 s de squelette en
+mode avion, et rien ne borne l'attente sur le réseau du métro de §4.6, qui
+répond sans répondre. D'où, pour cette requête seule (arbitrage §11) :
+hors ligne, NetInfo (`useIsOffline`, déjà dans l'app) affiche l'erreur sans
+attendre de requête ; sinon chaque tentative abandonne au bout de 5 s, avec un
+seul réessai, soit 11 s au pire.
+
+Sa propre page sans bento en ligne n'est atteignable que par un lien, le
+profil masquant le bouton quand rien n'est en ligne. « @toi n'a pas de bento
+en ligne » ne s'y adresserait à personne.
+
 ### 5.4 La police maximale, qui détruit la page
 
 Relevé au réglage `accessibility-extra-extra-extra-large`, captures à l'appui.
@@ -419,18 +484,35 @@ points de la boîte ; « COMPOSE LE TIEN » est une pastille blanche sans texte.
 sans hauteur bornée, grandit vers le haut jusqu'à recouvrir **l'écran
 entier**. « PARTAGER » devient un aplat noir sur toute la page.
 
-Trois correctifs, tous sur cette page :
+Six correctifs :
 
 - `maxFontSizeMultiplier` sur chaque texte de l'écran, comme le chantier 6 l'a
   fait pour « Trouver » : 1,4 sur les textes de contenu, **1,2 sur les
-  libellés de boutons**, qui décident d'une hauteur ;
+  libellés de boutons**, qui décident d'une hauteur. Les deux valeurs sont
+  exportées par `public-layout.ts` et l'écran les importe : le modèle ne tient
+  que si l'écran applique les mêmes ;
 - `numberOfLines={1}` sur les deux libellés de CTA, dont la rangée est le seul
   bloc qui peut grandir sans plafond ;
+- `numberOfLines={1}` et `adjustsFontSizeToFit` sur le pseudo et sur la ligne
+  de date. Calculé sur la chasse réelle d'Extenda, recalée à 2 % près sur la
+  capture : `@bento_pop_culture`, le plus long pseudo publié, passe sur deux
+  lignes dès la taille xxLarge sur SE, et un pseudo de 20 caractères dès
+  xLarge sur SE et 17e. Le pseudo reste entier, sa police rétrécit juste
+  assez, et l'en-tête garde la hauteur du modèle ;
 - le chevron du bouton retour rendu à taille fixe (`allowFontScaling={false}`) :
-  c'est un glyphe dans une cible de 36 pt, pas du texte à lire.
+  c'est un glyphe dans une cible de 36 pt, pas du texte à lire ;
+- des plafonds dans `Tile` et `EmptyTile`. À la plus grande taille, la pastille
+  « FILM », l'année et les crédits débordent de leur tuile (captures
+  `se-xxxl` et `17pro-xxxl`). Le fil et le composer en profitent ;
+- `ShareImage` mesurée à la plus grande police. Ses textes n'ont aucun plafond,
+  et l'image 1080 × 1920 grossit probablement avec la police de la personne
+  qui partage. Si la capture le confirme, `allowFontScaling={false}` : une
+  image doit sortir identique pour tout le monde.
 
-Le `ScrollView` de §5.2 fait le reste : l'en-tête grossit, la boîte rétrécit
-jusqu'au plancher, puis la page défile.
+La taille de police entre dans le modèle (§5.1) : l'en-tête grossit, la boîte
+rétrécit, et la page ne défile que lorsque le plancher mord. Sur un 17 Pro à
+la plus grande taille, la boîte passe à 0,904 sans défiler ; sur un SE, elle
+reste au plancher et la page défile d'environ 108 pt.
 
 ### 5.5 Signaler la case d'où l'on vient : **non**
 
@@ -483,7 +565,7 @@ les signaux par case donneront un endroit naturel où l'accrocher.
 GET /rest/v1/users
   ?select=pseudo,display_name,kind,bentos(published_at,is_featured,
            bento_items(category_id,items(id,title,subtitle,image_url,image_credit)))
-  &pseudo=ilike.<pseudo>
+  &pseudo=ilike.<pseudo, joker _ échappé>
   &bentos.published_at=not.is.null
   &limit=5
 ```
@@ -497,12 +579,15 @@ bento publié. Elles diffèrent sur le compte qui existe sans rien en ligne :
 rien : p50 46 ms contre 48. Vérifié sur trois comptes non publiés et deux
 comptes sans ligne `bentos`.
 
-**`limit=5` et `pickExactPseudo` restent.** `_` est un joker `ilike` et un
-caractère autorisé dans un pseudo : `bentopop://u/buyt_k` affichait le bento
-de `buyt.k`. Le filtre exact, hors SQL, reste indispensable. Le cas retors est
-couvert : si un pseudo jumeau publié remonte à la place d'un pseudo exact non
-publié, `pickExactPseudo` l'écarte et la page dit correctement qu'il n'y a
-rien. Vérifié sur `dark_hifus`.
+**Le joker `_` est échappé à la source ; `limit=5` et `pickExactPseudo`
+restent en seconde ligne.** `_` est un joker `ilike` et un caractère autorisé
+dans un pseudo : `bentopop://u/buyt_k` affichait le bento de `buyt.k`. Le
+filtre client seul ne suffit pas : sans ordre, `limit=5` peut couper la bonne
+ligne dès que plus de cinq pseudos répondent au joker, et le filtre ne voit
+que ce qui est revenu. Échappé, `ilike.dark\_hifus` ne rend que la
+correspondance exacte, à la casse près. Vérifié contre la production :
+`ilike.dark_hifu_` rend `dark_hifus`, `ilike.dark\_hifu\_` ne rend rien, et
+les douze pseudos à `_` rendent zéro ligne pour leur joker (§8.3).
 
 **Les champs sont ceux que la page rend**, et rien d'autre : −21 % (§4.5).
 `bentos.id` disparaît aussi ; le chantier 8 le rajoutera quand il en aura
@@ -541,21 +626,34 @@ export type PublicBento = {
 /** `null` = ce pseudo n'existe pas. `{ bento: null }` = il n'a rien en ligne. */
 export type PublicBentoResult = { pseudo: string; bento: PublicBento | null } | null;
 
-export function mapPublicBento(row: PublicBentoRow): PublicBentoResult;
+export function mapPublicBento(row: PublicBentoRow): NonNullable<PublicBentoResult>;
 export async function loadPublicBento(
   client: PublicBentoClient,
   pseudo: string,
 ): Promise<PublicBentoResult>;
 ```
 
-Deux règles de mappage, alignées sur `mapFeedRow` :
+Règles de mappage, alignées sur `mapFeedRow` pour qu'un bento absent du fil ne
+s'affiche pas ici, et inversement :
 
 - une case dont la catégorie est inconnue est **ignorée**, pas rendue au
   hasard : un septième `category_id` déployé avant les clients ne doit pas
   écraser une case existante ;
-- une erreur réseau ou PostgREST **remonte**, elle ne devient pas `null`.
-  C'est la correction de §4.6, et c'est ce qui permet à React Query de
-  distinguer `isError` de « pas de résultat ».
+- une case dont l'item est masqué par la RLS (`items: null`) devient **vide**,
+  et le bento reste en ligne. C'est un item en attente ou rejeté après
+  publication, que la RLS ne montre qu'à celui qui l'a proposé ;
+- zéro case lisible, ou un `published_at` nul, se lisent **« rien en
+  ligne »**, comme le fil qui écarte la ligne ;
+- une erreur réseau ou PostgREST **remonte**, elle ne devient pas `null`, et
+  porte son statut HTTP : 0 pour une panne réseau, qui reste réessayable, 4xx
+  pour une requête refusée, que `query-client.ts` ne réessaie pas à condition
+  de la reconnaître. C'est la correction de §4.6, et c'est ce qui permet à
+  React Query de distinguer `isError` de « pas de résultat ».
+
+`PSEUDO_REGEX` et ses bornes passent de `pseudo.ts` à `pseudo-match.ts`, qui ne
+tire pas le client : sans ça, le module ne se chargerait pas sous `node:test`.
+Les types de `packages/supabase-mobile` n'ont pas à changer : une seule
+assertion sur la forme du `select`, comme `feed.ts`.
 
 ### 6.3 Cache et invalidation
 
@@ -577,22 +675,34 @@ qui comptent viennent de son propriétaire, sur cet appareil.
 **Le cache introduit un piège qu'il faut fermer dans le même lot.** Après
 publication, `compose.tsx:99` fait `router.push('/u/<pseudo>')`. Si la
 personne avait déjà ouvert sa propre page avant de publier, elle y avait vu
-« pas de bento en ligne » ; sans invalidation, React Query lui resert cette
-réponse pendant que la requête repart. Elle verrait son bento déclaré absent
-une seconde après l'avoir publié.
+« pas de bento en ligne » ; React Query lui resert cette réponse pendant que
+la requête repart. Elle verrait son bento déclaré absent une seconde après
+l'avoir publié. Le cas fréquent est plus simple : changer une case d'un bento
+en ligne, puis « Voir mon bento », montre l'ancien item avant le nouveau.
+
+**Invalider ne suffit pas.** La première version de cette spéc prescrivait
+`invalidateQueries`. Simulé avec `@tanstack/query-core` 5.100.10, la version
+installée, sur le scénario exact : une requête invalidée pendant que la page
+est démontée reste en cache, et le premier rendu au remontage est `success`
+avec `bento: null`, puis le bento. `resetQueries` rend `pending`, donc le
+squelette, puis le bon contenu.
 
 `bento-actions.ts` n'a que l'`id` de l'utilisateur, pas son pseudo. Toutes ses
 mutations publiques (`publishBento`, `unpublishBento`, `setBentoSlot`,
-`clearBentoSlot`) invalident donc **le préfixe entier** :
+`clearBentoSlot`) remettent donc à zéro **le préfixe entier** :
 
 ```ts
-void queryClient.invalidateQueries({ queryKey: ['public-bento'] });
+void queryClient.resetQueries({ queryKey: ['public-bento'] });
 ```
 
 Grossier et correct : le cache contient au plus quelques entrées de 2 Ko, et
-une invalidation de trop coûte 46 ms. `invalidateFeed()` devient
-`invalidatePublicViews()` et fait les deux, pour qu'aucun futur appel
-n'oublie la moitié.
+une remise à zéro de trop coûte un squelette le temps d'un aller-retour.
+`invalidateFeed()` devient `invalidatePublicViews()` et fait les deux, le fil
+gardant son invalidation, pour qu'aucun futur appel n'oublie la moitié. Un
+test sur `query-core` verrouille le comportement au lot 2.
+
+Réessais et délai d'abandon sont propres à cette requête : un seul réessai,
+5 s par tentative, et l'état hors ligne lu sur NetInfo (§5.3).
 
 ---
 
@@ -601,8 +711,8 @@ n'oublie la moitié.
 | Poste | Avant | Après |
 |---|---|---|
 | Allers-retours à l'ouverture | 2 séquentiels | **1** |
-| Latence médiane mesurée | 89 ms | **46 ms** |
-| Octets par ouverture | 2 530 | **1 991** |
+| Latence médiane mesurée | 89 ms | **46 ms** ; 53 ms au contrôle du lot 1 |
+| Octets par ouverture | 2 530 | **1 991** ; 1 973 en médiane au lot 1, de 1 586 à 2 240 |
 | Ouverture d'un bento déjà vu | 2 requêtes, spinner | **0 requête, 0 spinner** |
 | Images | déjà en cache disque `expo-image` | inchangé |
 
@@ -611,8 +721,10 @@ négligeable. Ce qui se joue ici est le **temps perçu**, pas la facture : la
 recherche répond en 48 ms et la page qu'elle ouvre en met le double, sans
 compter le second aller-retour.
 
-Aucun index à ajouter : `users.pseudo` porte déjà un index unique sur
-`lower(pseudo)`, et la jointure suit une clé étrangère unique.
+Aucun index à ajouter, mais pas pour la raison que la première version donnait :
+l'index unique sur `lower(pseudo)` ne sert pas un `pseudo ILIKE …`, que
+Postgres résout en parcourant `users`. À 75 profils, c'est sans effet ; le
+suivi est ouvert en §12. La jointure, elle, suit une clé étrangère unique.
 
 ---
 
@@ -620,81 +732,131 @@ Aucun index à ajouter : `users.pseudo` porte déjà un index unique sur
 
 ### 8.1 Tests unitaires, `node:test` + `tsx`
 
+Livrés au lot 1 : 53 tests. Treize défauts injectés un à un dans les modules,
+dont la formule qui divisait par 512, un en-tête constant, le plancher à 0,86,
+un pseudo non échappé et une erreur avalée, ont tous été attrapés.
+
 `src/components/bento/public-layout.test.ts` :
 
-1. la somme des constantes vaut le haut de page mesuré, 44 + 144 = 188 ;
-2. sur les métriques d'un iPhone 17 Pro, l'échelle vaut celle du fil à 0,001 près ;
-3. sur un 17e, idem ;
-4. sur un iPhone SE, l'échelle vaut le plancher ;
-5. l'échelle ne dépasse jamais `feedScale`, sur 200 largeurs de 320 à 1024 ;
-6. l'échelle ne descend jamais sous `MIN_SCALE` ;
-7. la boîte plus le bloc de boutons ne dépasse jamais la hauteur disponible
-   **tant que le plancher ne mord pas**, sur les mêmes 200 cas ;
-8. une hauteur absurde (0 sur la première frame de certaines plateformes) rend
-   le plancher, pas une valeur négative ;
-9. faire grandir `HEADER_H` de 20 pt réduit l'échelle et ne recouvre rien.
+1. le modèle retrouve les cotes mesurées : haut de la boîte à 261,9, 247 et
+   219,9 pt sur les trois appareils, bas de la boîte à 743,7 et haut des
+   boutons à 756,7 sur un 17 Pro. La première version de ce test additionnait
+   ses propres constantes, 44 + 144 = 188, sans rien comparer ;
+2. sur un 17 Pro et un 17e, l'échelle est celle du fil, sans défilement ;
+3. sur un iPhone SE, l'échelle est le plancher, qui est la boîte du fil, et la
+   page défile de 80 à 95 pt ;
+4. la boîte a la largeur du fil sur les trois appareils ;
+5. sur 200 largeurs de 320 à 1024, 13 hauteurs, cinq jeux de marges système
+   et huit tailles de police, l'échelle ne dépasse jamais celle du fil ;
+6. et ne descend jamais sous **le plus petit du plancher et de l'échelle du
+   fil**. La première version demandait « jamais sous `MIN_SCALE` », ce que sa
+   propre formule contredit sous 374,5 pt de large ;
+7. la boîte tient au-dessus des boutons, au point près et cadre arrondi
+   compris, tant que la hauteur permet d'atteindre le plancher ; sinon la page
+   défile ;
+8. une fenêtre absurde (0, négative, police `NaN`) rend une échelle finie et
+   positive, et une hauteur nulle rend le plancher ;
+9. une police plus grande ne fait jamais grandir la boîte, la rétrécit sur un
+   17 Pro à la plus grande taille sans défilement, et les plafonds 1,4 et 1,2
+   bornent la croissance.
 
-Le test 9 est le vrai : c'est celui qui cassera le jour où quelqu'un ajoutera
-une ligne à l'en-tête, comme `compose-layout.test.ts` a cassé sur le double
-comptage de la barre d'onglets.
+Le test 9 remplace celui qui faisait grandir `HEADER_H` de 20 pt : un test sur
+une constante ne voit pas une ligne ajoutée au JSX. Ce qui protège l'en-tête,
+désormais, c'est que l'écran importe les constantes du module (lot 2).
 
-`src/lib/public-bento.test.ts` : mappage d'une ligne complète, catégorie
-inconnue ignorée, `bentos: null` distingué de la ligne absente, pseudo jumeau
-écarté par `pickExactPseudo`, ordre des cases indifférent.
+`src/components/bento/geometry.test.ts` : hauteur de boîte de 481,9 pt à
+l'échelle 0,94, cadre arrondi comme `BentoGrid`, et `gridScaleForHeight`
+inverse exact de la hauteur rendue, balayé au quart de point jusqu'à 1 600 pt.
+
+`src/lib/public-bento.test.ts` : mappage d'une ligne complète, crédit d'image
+propagé, `bentos: null` distingué de la ligne absente, brouillon et zéro case
+lisible lus « rien en ligne », case masquée par la RLS rendue vide, catégorie
+inconnue ignorée, ordre des cases indifférent. `pseudo-match.test.ts` couvre
+l'échappement.
 
 ### 8.2 Test d'intégration sur bouchon
 
 `src/lib/public-bento.integration.test.ts`, avec `startPostgrestStub()` et un
 vrai `supabase-js` : c'est le constructeur d'URL réel qu'on veut exercer.
 
-- la méthode est un `GET` sur `/rest/v1/users` ;
-- la chaîne `select` contient la ressource imbriquée avec exactement les
-  champs de §6.1, et **ni `year`, ni `external_source`, ni `external_id`** ;
-- le filtre `bentos.published_at=not.is.null` est présent et porte bien sur la
-  ressource imbriquée ;
-- `limit=5` est présent, le filtre exact étant côté client ;
+- la méthode est un `GET` sur `/rest/v1/users`, une seule requête ;
+- la chaîne `select` vaut exactement les champs de §6.1, et **ni `year`, ni
+  `external_source`, ni `external_id`, ni `created_at`** ;
+- le filtre `bentos.published_at=not.is.null` est présent et porte sur la
+  ressource imbriquée, aucun `published_at` sur `users` ;
+- le pseudo part échappé, `ilike.dark\_hifus`, antislash encodé sur le fil,
+  avec `limit=5` ;
 - un pseudo hors format ne déclenche **aucune** requête ;
-- une réponse 500 **jette**, elle ne rend pas `null`.
+- un compte sans bento rend `{ bento: null }`, un pseudo inconnu `null`, et un
+  jumeau remonté par le joker est écarté ;
+- une réponse 500 **lève**, avec le statut 500 ; une 400 avec le statut 400 ;
+  une panne réseau avec le statut 0.
 
-Le dernier est la régression de §4.6 : c'est lui qui empêche une panne réseau
-de redevenir « Bento introuvable ».
+Les trois derniers sont la régression de §4.6 : ce sont eux qui empêchent une
+panne réseau de redevenir « Bento introuvable ».
 
 ### 8.3 Vérification contre la production
 
-Un script `scripts/check-public-bento.mjs`, sur le modèle de
-`check-search-bentos.mjs`, lancé avec la clé anonyme :
+`scripts/check-public-bento.ts`, lancé par `tsx` avec la clé anonyme. Il
+importe `loadPublicBento` et le pointe sur la production : c'est la fonction
+de l'app qui part, pas une requête recopiée comme dans
+`check-search-bentos.mjs`, et un `fetch` enregistreur compte les
+allers-retours et pèse les réponses. La vérité de terrain est lue en requête
+brute, hors du module.
 
-- les 27 pseudos publiés rendent une ligne avec 6 cases, aucune manquante ;
-- les comptes sans bento publié rendent une ligne avec `bentos: null` ;
-- un pseudo inexistant rend zéro ligne ;
-- les pseudos à `_` et `.` ne se confondent pas deux à deux ;
-- la charge utile médiane est sous 2 100 octets ;
-- p50 sous 100 ms sur les 27.
+- chaque bento en ligne se charge sous son pseudo, avec 6 cases et un seul
+  aller-retour ;
+- la casse du lien ne compte pas ;
+- un compte sans bento en ligne rend son pseudo, sans bento ;
+- un pseudo inconnu rend `null`, un pseudo hors format ne part pas ;
+- aucun pseudo à `_` ne se confond avec sa variante à `.`, et **la base
+  elle-même** rend zéro ligne pour le joker : `pickExactPseudo` masquerait un
+  échappement perdu ;
+- la charge utile médiane est sous 2 100 octets, p50 sous 100 ms.
+
+Relevé du lot 1, le 14 septembre 2026 : tout vert. 27 bentos en ligne, 8
+comptes sans bento éprouvés, 12 pseudos à `_` ; 1 973 octets en médiane, de
+1 586 à 2 240 ; p50 53 ms, p95 139 ms, max 193 ms. Échappement retiré, le
+contrôle du joker tombe sur les douze.
 
 ### 8.4 Recette manuelle, bloquante
 
 Sur simulateur, dev build pointé sur la production. **Trois tailles d'écran,
 la même liste** : iPhone SE (3e gén.), iPhone 17e, iPhone 17 Pro.
 
-1. `bentopop://u/dark_hifus` : les six cases visibles ou atteignables, la
-   bordure basse de la boîte visible, aucun bouton par-dessus. **Capture.**
+1. `bentopop://u/dark_hifus` : sur 17 Pro et 17e, les six cases et la
+   bordure basse visibles sans défiler, rien par-dessus ; sur SE, la rangée
+   basse atteinte en fin de défilement, rien par-dessus. **Capture.**
 2. Rapport largeur / hauteur de la boîte mesuré au pixel : 361 / 512 à 1 % près.
 3. La boîte a la même largeur que dans « La table » sur le même appareil,
    mesurée au pixel sur deux captures.
 4. Depuis « Trouver », taper « inception », ouvrir un résultat, revenir,
-   rouvrir : **aucun squelette la seconde fois**, et zéro requête au journal.
-5. Mode avion, pseudo publié : « Connexion perdue » et un bouton. Le
-   réactiver, taper « Réessayer » : la page se remplit.
+   rouvrir : **aucun squelette la seconde fois**, et zéro requête, comptée à
+   l'inspecteur réseau des React Native DevTools.
+5. Mode avion, pseudo publié : « Connexion perdue » et un bouton, **sans
+   attendre**. Le réactiver, taper « Réessayer » : la page se remplit. Puis un
+   réseau qui ne répond pas : l'erreur arrive en 11 s au plus.
 6. Un pseudo qui existe sans bento en ligne : le bon message.
 7. Un pseudo inexistant : « Bento introuvable ».
 8. Publier depuis le composer après avoir visité sa propre page vide : le
-   bento s'affiche, pas le message d'absence.
+   squelette puis le bento, **jamais** le message d'absence, y compris sur un
+   réseau ralenti, où un mensonge de 50 ms deviendrait visible. Idem en
+   changeant une case puis « Voir mon bento » : jamais l'ancien item.
 9. `content_size accessibility-extra-extra-extra-large` sur les trois
    appareils : le chevron reste dans sa pastille, les deux CTA restent une
-   rangée, la page défile, la boîte reste lisible. **Capture.**
+   rangée, le pseudo tient sur une ligne, la boîte rétrécit ou la page défile,
+   et les tuiles restent lisibles. Idem en `extra-extra-large`, taille
+   ordinaire où `@bento_pop_culture` passait à la ligne. **Capture.**
 10. VoiceOver par `idb ui describe-all` : la boîte n'aspire pas les cases,
     les crédits photo de la rangée basse sont présents sur les trois
     appareils.
+11. Sa propre page sans bento en ligne, ouverte par un lien : « Ton bento
+    n'est pas en ligne. » et le bouton vers le composer.
+12. Une image de partage générée en
+    `accessibility-extra-extra-extra-large`, comparée à celle de la taille par
+    défaut. **Capture des deux.**
+13. Le fil et le composer à la plus grande police, puisque les plafonds de
+    `Tile` les touchent aussi. **Capture.**
 
 Le point 10 est la contre-mesure de §4.2 : aujourd'hui les crédits de la
 rangée basse sont absents de l'arbre sur iPhone SE, ce qui est la signature
@@ -703,9 +865,39 @@ d'un contenu hors écran.
 ### 8.5 Ce qui n'est pas testé, assumé
 
 - Le rendu sur appareil réel, qui accumule maintenant sept chantiers.
-- Les tablettes : `MAX_BOX_WIDTH` s'applique, personne n'a regardé.
+- Les tablettes iOS : l'app ne les prend pas en charge (`supportsTablet:
+  false`). La tablette Android est regardée en §8.6.
 - Le gain de latence sur réseau mobile réel. Mesuré en filaire, extrapolé à un
   RTT.
+
+### 8.6 Android, sur les émulateurs Android Studio
+
+Arbitré en §11 : le plus de cas possible. La première version de cette spéc ne
+prononçait pas le mot, alors que l'app est publiée sur Google Play et que la
+formule de §5.1 y rencontre son seul cas limite : sous 374,5 pt de large, la
+boîte descend avec le fil sous le plancher, et 360 dp est une largeur Android
+courante.
+
+Tout tient avec ce qui est installé, sans téléchargement : l'AVD `Pixel_8`
+(Android 37, 1080 × 2400 px, 411 dp) et l'AVD `Pixel_Tablet` (Android 35). Les
+largeurs se simulent par la densité, que `adb shell wm density reset` rétablit.
+Lancement de l'app : `RECETTE-MOBILE.md` §3.
+
+| Cas | Réglage `adb shell` | Ce qu'il éprouve |
+|---|---|---|
+| 411 dp | défaut | le téléphone Android courant |
+| 384 dp | `wm density 450` | une largeur intermédiaire |
+| 360 dp | `wm density 480` | la boîte sous le plancher, avec le fil |
+| 360 × 640 dp | `wm size 720x1280` puis `wm density 320` | petit écran : plancher et défilement |
+| navigation à trois boutons | `cmd overlay enable com.android.internal.systemui.navbar.threebutton` | la marge basse de la barre de navigation |
+| police 1,3 puis 2,0 | `settings put system font_scale` | plafonds et rétrécissement de §5.4 |
+| tablette | AVD `Pixel_Tablet` | `MAX_BOX_WIDTH`, et une seconde version d'Android |
+| hors ligne | `svc wifi disable` et `svc data disable` | « Connexion perdue » sans attendre |
+
+Sur chaque cas : recettes 1, 2, 3 et 9 ; la 5 sur le cas hors ligne. Sur 411
+et 360 dp, en plus, un relevé des marges que `useSafeAreaInsets` rend
+réellement et de la hauteur de `useWindowDimensions` : c'est le couple dont la
+formule dépend, et il n'a jamais été mesuré sur Android.
 
 ---
 
@@ -713,36 +905,48 @@ d'un contenu hors écran.
 
 Quatre lots. L'arbre compile et la suite passe à la fin de chacun.
 
-### Lot 1 · Les deux modules purs
+### Lot 1 · Les deux modules purs · livré
 
-`public-layout.ts` et ses 9 tests. `public-bento.ts`, son mappage, ses tests
-unitaires et son test d'intégration sur bouchon. Types de
-`packages/supabase-mobile` complétés si nécessaire pour la jointure.
+`public-layout.ts`, les fonctions de hauteur réelle de `geometry.ts`,
+`public-bento.ts`, leurs tests unitaires, le test d'intégration sur bouchon et
+`scripts/check-public-bento.ts`. `PSEUDO_REGEX` et ses bornes passent dans
+`pseudo-match.ts`. Les types de `packages/supabase-mobile` n'ont pas changé.
 
-Aucun écran ne change encore. **Vérification** : suite verte, et
-`check-public-bento.mjs` au vert contre la production.
+Aucun écran ne change. **Vérifié** : 270 tests verts dont 53 nouveaux,
+typecheck et lint propres, treize défauts injectés dans les modules tous
+attrapés par les tests, contrôle de production au vert et capable de tomber
+(§8.3). Commit `0000f74`.
 
 ### Lot 2 · L'écran
 
-`ScrollView`, échelle du module, marge et non largeur, `useQuery`, les quatre
-états, `BentoBoxSkeleton` extrait et partagé avec le fil, `ShareImage` sortie
-du conteneur défilant, invalidation dans `bento-actions.ts`, suppression de
-l'ancien `loadPublicBentoByPseudo`.
+`ScrollView`, échelle du module avec `fontScale`, marge et non largeur, et des
+styles qui importent les constantes du module au lieu de les recopier.
+`useQuery` avec un seul réessai, 5 s par tentative et l'état hors ligne lu sur
+NetInfo. Les états de §5.3, dont le message dédié sur sa propre page.
+`BentoBoxSkeleton` extrait et partagé avec le fil, et `gridBorderWidth` dans
+`BentoGrid` et le squelette. `ShareImage` sortie du conteneur défilant.
+`resetQueries` dans `bento-actions.ts`, avec un test sur `query-core`.
+Suppression de `loadPublicBentoByPseudo` et de `findUserByPseudo`, désormais
+sans appelant, et échappement du joker dans `checkPseudoAvailability`.
 
-**Vérification** : captures des trois appareils, plus les mesures au pixel des
-points 2 et 3 de la recette.
+**Vérification** : captures des trois iPhone et de l'émulateur Android à 411
+et 360 dp, plus les mesures au pixel des points 2 et 3 de la recette.
 
 ### Lot 3 · Ce que la police maximale casse
 
-Plafonds de grossissement, `numberOfLines` sur les CTA, chevron à taille fixe.
-Les trois corrections de détail de §5.6.
+Plafonds de grossissement, `numberOfLines` sur les CTA, pseudo et date sur une
+ligne avec `adjustsFontSizeToFit`, chevron à taille fixe. Plafonds dans `Tile`
+et `EmptyTile`. `ShareImage` mesurée à la plus grande police, et gelée si elle
+la suit. Les trois corrections de détail de §5.6.
 
-**Vérification** : captures des trois appareils au réglage maximal.
+**Vérification** : captures des trois iPhone et d'Android au réglage maximal
+et en xxLarge, le fil et le composer compris.
 
 ### Lot 4 · Recette et mesures
 
-La liste de §8.4 sur les trois appareils, le relevé de latence après
-bascule, la mise à jour de la roadmap et l'ouverture des suivis.
+La liste de §8.4 sur les trois iPhone, la matrice Android de §8.6, le relevé
+de latence après bascule, la mise à jour de la roadmap et l'ouverture des
+suivis.
 
 ---
 
@@ -751,35 +955,48 @@ bascule, la mise à jour de la roadmap et l'ouverture des suivis.
 | # | Critère | Vérifié par |
 |---|---|---|
 | 1 | Six cases atteignables et lisibles sur iPhone SE | recette 1, capture |
-| 2 | Aucun bouton ne recouvre la boîte, sur les trois appareils | modèle testé + recette 1 |
+| 2 | Rien ne recouvre la boîte au repos tant que le plancher ne s'applique pas, ni en fin de défilement | modèle testé + recette 1 |
 | 3 | Proportions natives à 1 % | recette 2 |
 | 4 | Même largeur de boîte que dans le fil | recette 3 |
 | 5 | Retour sur un bento déjà vu : zéro requête, zéro squelette | recette 4 |
-| 6 | Un seul aller-retour, p50 sous 100 ms | §8.3 |
-| 7 | Charge utile sous 2 100 octets | §8.3 |
-| 8 | Panne réseau distinguée de l'absence | recette 5 |
+| 6 | Un seul aller-retour, p50 sous 100 ms | §8.3, vert au lot 1 |
+| 7 | Charge utile sous 2 100 octets | §8.3, vert au lot 1 |
+| 8 | Panne réseau distinguée de l'absence, sans attendre hors ligne et en 11 s au plus sinon | recette 5 |
 | 9 | Pseudo connu sans bento distingué de pseudo inconnu | recette 6 et 7 |
-| 10 | Publier puis arriver sur sa page montre le bento | recette 8 |
-| 11 | Écran tenable à la police maximale | recette 9, capture |
+| 10 | Publier puis arriver sur sa page montre le bento, jamais le message d'absence ni l'ancien item | recette 8 |
+| 11 | Écran et tuiles lisibles à la police maximale, et en xxLarge | recettes 9 et 13, captures |
 | 12 | Crédits de la rangée basse présents dans l'arbre d'accessibilité | recette 10 |
 | 13 | Suite complète verte | CI |
+| 14 | Sa propre page sans bento : message dédié | recette 11 |
+| 15 | Image de partage identique quelle que soit la police | recette 12, captures |
+| 16 | Les critères 1 à 11 tiennent sur la matrice Android | §8.6, captures |
 
 ## 11. Décisions tranchées
 
 | Question | Décision | Raison |
 |---|---|---|
-| Échelle dynamique du composer ? | **non** | calcule sur la seule hauteur, donne 0,68 sur SE et reconduit l'écrasement |
-| Échelle du fil telle quelle ? | **non**, plafonnée aussi par la hauteur | sinon la boîte dépasse de 1 à 2 pt sur les écrans courants |
+| Échelle dynamique du composer ? | **non** | calcule sur la seule hauteur, donne 0,69 sur SE et reconduit l'écrasement |
+| Échelle du fil telle quelle ? | **non**, plafonnée aussi par la hauteur | sinon la boîte passe sous les boutons dès que la police grossit, et sur tout écran court |
 | Page défilante ? | **oui**, mais inactive par construction | filet pour le SE, la police maximale et l'en-tête futur |
-| Plancher d'échelle | **0,86** | ce que le fil montre déjà sur un iPhone SE, livré au chantier 2 |
-| Rogner l'en-tête de 12 pt ? | **oui** | c'est ce qui fait tenir la boîte à la taille du fil |
+| Plancher d'échelle | **`feedScale(375)`, 0,8615** | ce que le fil montre sur un iPhone SE, livré au chantier 2 ; 0,86 aurait rendu la boîte 0,5 pt plus étroite |
+| Rogner l'en-tête de 12 pt ? | **oui**, confirmé en relecture | sans rabot la boîte du fil tient encore, à 7 pt près ; le rabot achète la marge et il est codé. Descendre les boutons, ou ne rien toucher, écartés |
 | `!inner` ou jointure externe ? | **externe** | distingue « pas de bento en ligne » de « pseudo inconnu », même latence |
-| Garder `pickExactPseudo` ? | **oui** | `_` est un joker `ilike` et un caractère de pseudo valide |
+| Garder `pickExactPseudo` ? | **oui**, derrière un échappement à la source | le filtre client ne voit que les lignes revenues, et `limit=5` peut couper la bonne |
 | Champs de la requête | **ceux qui sont rendus** | −21 % d'octets, aucun changement visible |
 | Squelette ou spinner ? | **squelette** | la page est l'arrivée d'une recherche à 48 ms |
-| Invalidation ciblée ou par préfixe ? | **préfixe** | `bento-actions` ne connaît pas le pseudo, et le cache est minuscule |
+| Remise à zéro ciblée ou par préfixe ? | **préfixe, par `resetQueries`** | `bento-actions` ne connaît pas le pseudo ; `invalidateQueries` resert l'ancienne réponse au remontage, simulé |
 | Signaler la case d'arrivée ? | **non** | la ligne de résultat la nomme déjà, et les six seront visibles |
 | Corriger le composer au passage ? | **non** | budget vertical validé au chantier 2, hors périmètre |
+| Taille de police dans le modèle ? | **oui**, `fontScale` obligatoire | un en-tête constant laisse la boîte sous les boutons dès que la police grossit |
+| Hauteur de la boîte | **réelle, cadre arrondi compris** | `512 × échelle` se trompe d'un point, la marge d'un bouton |
+| Délai avant « Connexion perdue » | **immédiat hors ligne (NetInfo), sinon 5 s par tentative et un réessai** | 11 s au pire ; la politique globale ne bornait rien. 10 s sans réessai, ou rien, écartés |
+| Pseudo long à police agrandie | **une ligne, `adjustsFontSizeToFit`** | pseudo entier et en-tête à la hauteur du modèle ; tronquer, ou mesurer l'en-tête, écartés |
+| Recouvrement au repos sur SE | **accepté, critère 2 reformulé** | boutons collants, « Partager » visible à l'arrivée ; boutons dans le flux, ou bloc compact, écartés |
+| Sa propre page sans bento | **message dédié, bouton vers le composer** | « @toi n'a pas de bento en ligne » ne s'adresse à personne |
+| Plafonds de police des tuiles | **dans `Tile` et `EmptyTile`** | une tuile illisible ne se corrige pas écran par écran ; le fil et le composer en profitent |
+| Image de partage et police système | **mesurer, puis figer si confirmé** | une image doit sortir identique pour tout le monde |
+| Android | **le plus de cas possible, émulateurs Android Studio** | l'app y est publiée, et 360 dp est le seul cas limite de la formule |
+| Joker dans `checkPseudoAvailability` | **corrigé au lot 2** | `pseudo.ts` y est touché, et `escapeLikePattern` existe |
 
 ---
 
@@ -806,5 +1023,10 @@ recherche, fil, lien profond : les quatre chemins existent et aucun n'est
 distingué. Le chantier 8 installe des compteurs ; c'est le moment d'y penser.
 
 **Les plafonds de grossissement restent à poser sur 20 usages d'`Extenda` et
-sur `TopChip`.** Deux écrans traités sur l'ensemble, « Trouver » au chantier 6
-et celui-ci. Chantier 11.
+sur `TopChip`.** Deux écrans et les tuiles traités sur l'ensemble, « Trouver »
+au chantier 6, celui-ci et `Tile`. Chantier 11.
+
+**`pseudo ILIKE` ne profite d'aucun index.** Chaque ouverture parcourt
+`users` : sans effet à 75 profils, à revoir bien avant quelques dizaines de
+milliers, par un index trigramme ou une égalité sur une forme normalisée du
+pseudo.
