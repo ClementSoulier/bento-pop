@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { pickExactPseudo } from './pseudo-match';
+import { PSEUDO_REGEX, escapeLikePattern, pickExactPseudo } from './pseudo-match';
 
 const rows = [
   { pseudo: 'buyt.k' },
@@ -44,5 +44,32 @@ describe('pickExactPseudo', () => {
 
   it('renvoie null sur une liste vide', () => {
     assert.equal(pickExactPseudo([], 'keremasan'), null);
+  });
+});
+
+describe('escapeLikePattern', () => {
+  it('échappe le joker underscore, seul joker qu’un pseudo valide peut porter', () => {
+    assert.equal(escapeLikePattern('dark_hifus'), 'dark\\_hifus');
+    assert.equal(escapeLikePattern('bento_pop_culture'), 'bento\\_pop\\_culture');
+  });
+
+  it('laisse intact un pseudo sans joker', () => {
+    assert.equal(escapeLikePattern('buyt.k'), 'buyt.k');
+    assert.equal(escapeLikePattern('Keremasan'), 'Keremasan');
+  });
+
+  /**
+   * L'antislash doit passer en premier : traité après, il doublerait ceux que
+   * l'échappement de `%` et `_` vient d'ajouter.
+   */
+  it('échappe l’antislash avant les autres jokers', () => {
+    assert.equal(escapeLikePattern('a\\_%'), 'a\\\\\\_\\%');
+  });
+
+  it('ne sert que derrière `PSEUDO_REGEX`, qui exclut `%`, `\\` et `*`', () => {
+    for (const pseudo of ['dark%', 'dark\\', 'dark*']) {
+      assert.equal(PSEUDO_REGEX.test(pseudo), false, pseudo);
+    }
+    assert.equal(PSEUDO_REGEX.test('dark_hifus'), true);
   });
 });

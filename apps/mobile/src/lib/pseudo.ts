@@ -1,13 +1,9 @@
 import { supabase } from '@/supabase/client';
-import { pickExactPseudo } from '@/lib/pseudo-match';
+import { PSEUDO_MAX, PSEUDO_MIN, PSEUDO_REGEX, pickExactPseudo } from '@/lib/pseudo-match';
 
-/**
- * Règles de validation du pseudo, alignées avec la contrainte SQL
- * `users.pseudo_format` (cf. migration initiale).
- */
-export const PSEUDO_REGEX = /^[A-Za-z0-9_.]{3,20}$/;
-export const PSEUDO_MIN = 3;
-export const PSEUDO_MAX = 20;
+// Les règles vivent dans `pseudo-match.ts`, chargeable sans client Supabase :
+// `public-bento.ts` en a besoin sous `node:test`. Réexportées pour les écrans.
+export { PSEUDO_MAX, PSEUDO_MIN, PSEUDO_REGEX };
 
 export type PseudoCheck =
   | { status: 'idle' }
