@@ -29,7 +29,8 @@ de mise à jour ajoutés juste avant
 |---|---|---|
 | Migrations SQL du projet mobile | Supabase hébergé | **Appliquées** |
 | Back-office et landing | Coolify | **À déployer**, le code est sur `main` |
-| App mobile 1.2.0 | TestFlight et canal interne | à construire, remplace la 0.2.0 |
+| App mobile 1.2.0 | TestFlight et canal interne | **envoyée** le 13/09 à 22 h 25, iOS build 10, Android versionCode 12 |
+| Mise en revue App Store | App Store Connect | geste manuel, volontairement |
 | Mise en revue App Store | App Store Connect | Geste manuel, volontairement |
 
 ## Le versionnage : pourquoi on est passé directement en 1.2.0
@@ -70,6 +71,33 @@ devra viser la runtime `1.2.0`.
 ```bash
 curl -s "https://itunes.apple.com/lookup?id=6768764158" | grep -o '"version":"[^"]*"'
 ```
+
+## Les mises à jour à distance publiées
+
+| Date | Runtime | Contenu | Portée |
+|---|---|---|---|
+| 13/09, 20 h 09 | `0.2.0` | chantier 5 | build 0.2.0 de TestFlight uniquement, **orpheline** depuis le passage en 1.2.0 |
+
+La 1.2.0 embarque le même code, elle n'a donc besoin d'aucune mise à jour pour
+être à jour. La prochaine devra viser la runtime **`1.2.0`** :
+
+```bash
+npx eas-cli update --branch production --environment production --message "…"
+```
+
+Vérifier ce que le serveur sert réellement, plutôt que de le supposer, en
+l'interrogeant comme le ferait l'app :
+
+```bash
+curl -s "https://u.expo.dev/eecbef8a-0943-4bec-b592-59e4b5016e5f" \
+  -H "expo-runtime-version: 1.2.0" -H "expo-platform: ios" \
+  -H "expo-channel-name: production" -H "expo-protocol-version: 1" \
+  -H "expo-api-version: 1" -H "expo-expect-signature: false" \
+  -H "accept: multipart/mixed"
+```
+
+C'est ce contrôle qui a confirmé que `extra.SUPABASE_URL` du manifeste pointe
+bien sur le bon projet, le piège le plus coûteux du dépôt.
 
 ## Les valeurs de `app_config`
 
@@ -138,8 +166,8 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 3 | Recherche d'item : suggestions, autofocus, haptique | Complétion | M | rien | 🟡 fusionné (PR #50) · DoD 9 remplis / 1 partiel · reste l'haptique et VoiceOver sur appareil · [spec](./UX-03-RECHERCHE-ITEM.md) |
 | 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 fusionné (PR #51) · DoD 9 remplis / 1 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
-| 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | 🟡 4 lots livrés, recette faite · reste la migration des privilèges de colonne à appliquer · [spec](./UX-05-BROUILLON-PUBLIE.md) |
-| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ⬜ **prochain** |
+| 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
+| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | 🟡 **prochain**, spécification à écrire |
 | 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
