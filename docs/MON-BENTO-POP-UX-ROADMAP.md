@@ -29,9 +29,8 @@ de mise à jour ajoutés juste avant
 |---|---|---|
 | Migrations SQL du projet mobile | Supabase hébergé | **Appliquées** |
 | Back-office et landing | Coolify | **À déployer**, le code est sur `main` |
-| App mobile 1.2.0 | TestFlight et canal interne | **envoyée** le 13/09 à 22 h 25, iOS build 10, Android versionCode 12 |
+| App mobile 1.2.0 | TestFlight et canal interne | **livrée** le 13/09 à 22 h 25, iOS build 10, Android versionCode 12, les deux soumissions ont abouti |
 | Mise en revue App Store | App Store Connect | geste manuel, volontairement |
-| Mise en revue App Store | App Store Connect | Geste manuel, volontairement |
 
 ## Le versionnage : pourquoi on est passé directement en 1.2.0
 
@@ -167,8 +166,8 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 fusionné (PR #51) · DoD 9 remplis / 1 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
-| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | 🟡 **prochain**, spécification à écrire |
-| 7 | Page bento public : scale + React Query | Bug + perf | S | rien | ⬜ |
+| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés, recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
+| 7 | Page bento public : scale + React Query | Bug + perf | S | rien | 🟡 **prochain**, spécification à écrire |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
 | 10 | Profil éditable (nom, pseudo, Popy) | Appropriation | S | rien | ⬜ |
@@ -392,16 +391,31 @@ Dans les deux cas : ajouter « Dépublier mon bento » dans le profil. Le correc
 
 ## 6. Onglet « Trouver » : recherche par item
 
-**Constat.** `search.tsx` ne cherche que par préfixe de pseudo (`apps/mobile/app/(tabs)/search.tsx:44`). On ne connaît pas les pseudos des autres, c'est le paradoxe de l'annuaire. Pire : la requête ne filtre pas les users sans bento publié, donc on peut taper « Voir » et arriver sur « Bento introuvable » (`u/[pseudo].tsx:365`).
+**Spécification** : [`UX-06-TROUVER.md`](./UX-06-TROUVER.md), écrite le 13 septembre 2026 à partir de mesures sur la production.
 
-**Proposition.** Le chantier 2 ayant absorbé la découverte passive dans « La table », cet onglet se concentre sur la recherche active, en deux entrées :
+**Constat.** `search.tsx` ne cherche que par préfixe de pseudo (`apps/mobile/app/(tabs)/search.tsx:47`). On ne connaît pas les pseudos des autres, c'est le paradoxe de l'annuaire. Pire : la requête ne filtre pas les users sans bento publié, donc on peut taper « Voir » et arriver sur « Bento introuvable » (`u/[pseudo].tsx:348`).
 
-- la **recherche par item** : « qui a mis Interstellar dans sa case film ? ». La donnée est déjà là dans `bento_items`, c'est le geste social naturel ;
-- la recherche par pseudo, avec un `inner join` sur les bentos publiés pour supprimer les résultats morts.
+**Ce que la mesure a changé au cadrage.** Trois chiffres, et ils déplacent le chantier.
 
-**À cadrer en planification** : sous quelle forme afficher un résultat. Le post plein format de « La table » est trop lourd pour une liste de résultats, et `MiniBentoCard` aura été supprimé. Une variante compacte est à concevoir, ou à récupérer dans l'historique git.
+- **46 des 72 comptes, soit 64 %, mènent à « Bento introuvable ».** Le cul-de-sac n'est pas un cas limite, c'est la majorité des résultats. Même classe de défaut que le bouton mort du chantier 5, à une échelle vingt fois supérieure.
+- **126 des 137 items posés ne sont que dans un seul bento.** La recherche par item n'est donc pas un outil d'affinité à ce volume, mais un moyen d'atteindre une personne qu'on ne saurait pas nommer. Un résultat unique est une réussite, et l'écran ne doit pas être dessiné pour en afficher douze.
+- **51 % du catalogue validé n'est dans aucun bento publié.** Autocompléter sur le catalogue enverrait une recherche sur deux dans le vide.
 
-**Fait quand** : on peut trouver quelqu'un sans connaître son pseudo, et aucun résultat de recherche ne mène à un cul-de-sac.
+D'où la règle qui tient le chantier entier : **on ne propose que ce qui mène quelque part.** Elle couvre les trois points d'un coup, le filtre sur les bentos publiés, la recherche restreinte aux items réellement posés, et les suggestions limitées aux items partagés.
+
+**Deux corrections qui n'étaient pas prévues.** Le préfixe rate `dark_hifus` quand on tape `hifus`, alors que 19 % des pseudos contiennent un `_` : passage en sous-chaîne. Et ni la sous-chaîne ni la similarité ne dominent l'autre, mesuré : union des deux, seuil de similarité relevé de 0,15 à 0,3.
+
+**La question ouverte est tranchée.** La forme du résultat n'est ni le post plein format (614 pt, deux résultats ne tiennent pas à l'écran) ni `MiniBentoCard` (dessiné pour un carrousel, et muet sur la raison du résultat). C'est la ligne existante avec une ligne de plus, `Film · Inception`, qui tient dans la place déjà vide sous le pseudo : la hauteur ne bouge pas.
+
+**L'audit des autres culs-de-sac est clos.** Les six navigations vers `/u/[pseudo]` ont été relues : `search.tsx:202` est la seule non protégée. Le fil ne sert que des bentos publiés, le composer et le profil ont été protégés au chantier 5.
+
+**Livré le 13 septembre 2026.** Recette sur simulateur, sur les données de production. La démonstration tient en une requête : taper « bento » correspond à 20 pseudos, dont 19 sans bento publié, et l'écran en affiche **un**. Latence p50 de 48 ms sur 37 requêtes, pour un budget de 200. 212 tests verts.
+
+Trois défauts trouvés en recette et corrigés dans la foulée : les titres longs occupaient une rangée entière de puces, et à la plus grande taille de police système le titre se rognait en « TROUV » pendant que le bloc de suggestions dépassait l'écran sans pouvoir défiler.
+
+Deux défauts trouvés et **non** corrigés, parce qu'ils débordent du chantier, tous deux versés au chantier 11 : bloquer quelqu'un est une porte à sens unique, la page qui porte le bouton « Débloquer » n'étant plus atteignable une fois le blocage posé ; et 20 usages d'`Extenda` plus `TopChip` n'ont aucun plafond de grossissement, ce qui les casse à la plus grande taille système.
+
+**Fait quand** : on peut trouver quelqu'un sans connaître son pseudo, et aucun résultat de recherche ne mène à un cul-de-sac. **Fait.**
 
 ---
 
@@ -412,6 +426,8 @@ Dans les deux cas : ajouter « Dépublier mon bento » dans le profil. Le correc
 Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` maison, donc pas de cache, pas de retry, rechargement complet à chaque visite. `loadPublicBentoByPseudo` fait deux requêtes séquentielles (`bento-actions.ts:135`).
 
 **Proposition.** Reprendre le calcul de scale dynamique du composer, ou rendre la page scrollable. Passer le chargement en `useQuery`. Fusionner les deux requêtes en une jointure.
+
+**Ce que le chantier 6 y ajoute.** La recherche envoie désormais bien plus de monde sur cette page, et par un chemin nouveau : on y arrive depuis un item, donc en s'attendant à voir une case précise. Deux conséquences à cadrer en planification. La page est le point d'arrivée de tout l'onglet « Trouver », donc son coût de chargement est devenu le coût perçu de la recherche. Et la case qui a motivé le clic mériterait peut-être d'être signalée à l'arrivée, ce qui n'était pas un sujet quand on n'y venait que par un pseudo.
 
 **Fait quand** : la grille est entièrement visible sur iPhone SE, et revenir sur un bento déjà consulté est instantané.
 
@@ -464,6 +480,13 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 - ~~Le crédit image en `rgba(255,255,255,0.5)` sur photo (`Tile.tsx:283`) est sous le seuil de contraste~~. La recette du chantier 2 a montré qu'il se superpose en plus au sous-titre, les deux occupant la même bande basse de la tuile. **Arbitré : accepté tel quel** (cf. D8 de la spec du chantier 2). La mention légale CC-BY-SA reste présente, ce qui est l'obligation ; corriger toucherait `Tile`, donc trois écrans.
 - Faute dans le menu de signalement : « Confirme-tu ? » (`u/[pseudo].tsx:427`).
 - Les états de chargement sont des `ActivityIndicator` centrés : les remplacer par des squelettes de tuiles sur featured et bento public. *Traité pour « La table » par le chantier 2 ; reste la page bento public.*
+
+---
+
+**Versé par le chantier 6, le 13 septembre 2026.**
+
+- **Le texte ne plafonne son grossissement nulle part.** 20 usages d'`Extenda` dans l'app n'ont pas de `maxFontSizeMultiplier`, plus `TopChip` : à la plus grande taille de police système, les titres se rognent en débordant de l'écran. Seul `app/(tabs)/search.tsx` a été traité, parce qu'on ne livre pas un écran au titre cassé.
+- **Bloquer quelqu'un est une porte à sens unique.** La boîte de dialogue promet « Tu peux annuler à tout moment depuis ce menu », or ce menu vit sur `/u/[pseudo]`, filtrée du fil comme de la recherche. Il n'existe aucune liste des comptes bloqués. Le correctif est une ligne « Comptes bloqués » dans le profil.
 
 ---
 

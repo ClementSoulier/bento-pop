@@ -412,6 +412,48 @@ export type Database = {
           picks: number;
         }>;
       };
+      /**
+       * Recherche de l'onglet « Trouver » : pseudos et items, en un appel.
+       *
+       * Ne renvoie **que** des bentos publiés, ce qui est le coeur du
+       * chantier 6 : au 13 septembre 2026, 46 des 72 comptes n'en avaient
+       * aucun et menaient tous à « Bento introuvable ».
+       */
+      search_bentos: {
+        Args: { q: string; lim?: number };
+        Returns: Array<{
+          bento_id: string;
+          pseudo: string;
+          display_name: string | null;
+          is_featured: boolean;
+          /** `'pseudo'` ou `'item'`. Typé `string` : le SQL ne contraint pas. */
+          match_kind: string;
+          /** Renseignés uniquement quand `match_kind` vaut `'item'`. */
+          item_id: string | null;
+          item_title: string | null;
+          category_id: number | null;
+          score: number;
+        }>;
+      };
+      /**
+       * Items présents dans **au moins deux** bentos publiés. Sert de bloc
+       * de suggestions avant la frappe : ce sont exactement les recherches
+       * qui ramènent plus d'une personne.
+       *
+       * Pas d'`image_url` dans la signature : le bloc n'affiche pas
+       * d'images, et l'exposer inviterait à en afficher sans repasser par
+       * la décision (cf. `docs/UX-06-TROUVER.md` §6.2).
+       */
+      shared_items: {
+        Args: { lim?: number };
+        Returns: Array<{
+          id: string;
+          title: string;
+          category_id: number;
+          /** Nombre de bentos publiés contenant cet item. Toujours >= 2. */
+          picks: number;
+        }>;
+      };
       admin_delete_user: {
         Args: { target_id: string; reason: string; admin_email: string };
         /** Type du profil supprimé, pour savoir s'il faut aussi purger `auth`. */

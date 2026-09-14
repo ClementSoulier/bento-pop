@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { keepPrefixMatches, pickExactPseudo } from './pseudo-match';
+import { pickExactPseudo } from './pseudo-match';
 
 const rows = [
   { pseudo: 'buyt.k' },
@@ -44,27 +44,5 @@ describe('pickExactPseudo', () => {
 
   it('renvoie null sur une liste vide', () => {
     assert.equal(pickExactPseudo([], 'keremasan'), null);
-  });
-});
-
-describe('keepPrefixMatches', () => {
-  it('garde les vrais préfixes', () => {
-    assert.deepEqual(keepPrefixMatches(rows, 'buyt'), [
-      { pseudo: 'buyt.k' },
-      { pseudo: 'buytak' },
-    ]);
-  });
-
-  it('ignore la casse', () => {
-    assert.deepEqual(keepPrefixMatches(rows, 'DARK_'), [{ pseudo: 'Dark_Hifus' }]);
-  });
-
-  it('écarte ce que le joker avait ramené en trop', () => {
-    // `ilike('pseudo', 'dark_%')` remonte aussi `darkahifus`.
-    assert.deepEqual(keepPrefixMatches(rows, 'dark_h'), [{ pseudo: 'Dark_Hifus' }]);
-  });
-
-  it('laisse tout passer sur une requête vide', () => {
-    assert.equal(keepPrefixMatches(rows, '   ').length, rows.length);
   });
 });
