@@ -13,6 +13,30 @@ L'app pointe sur un proxy local qui relaie les lectures vers Supabase et
 bloque tout le reste. On obtient les vraies données, le vrai rendu, les vraies
 images, sans compte anonyme créé ni écriture possible.
 
+**Jamais une build pointée sur la production.** Sans session, l'app appelle
+`signInAnonymously` dès son lancement : une build pointée sur la production y
+crée un compte anonyme avant qu'on ait pu vérifier sa cible. D'où l'ordre :
+compiler sans lancer, vérifier la cible compilée (§4, « L'URL Supabase est
+compilée dans l'app »), fermer l'app partout, puis lancer Metro, installer et
+lancer. `expo run:ios` et `expo run:android` lancent l'app sitôt compilée : ils
+ne conviennent que si les variables visent le proxy sans doute possible.
+
+```bash
+# iOS, depuis apps/mobile/ios
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:8098 EXPO_PUBLIC_SUPABASE_ANON_KEY=recette \
+  xcodebuild -workspace MonBentoPop.xcworkspace -scheme MonBentoPop \
+  -configuration Debug -sdk iphonesimulator -destination 'id=<UDID>' build
+
+# Android, depuis apps/mobile
+export EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:8098 EXPO_PUBLIC_SUPABASE_ANON_KEY=recette
+CI=1 npx expo prebuild --platform android --no-install
+(cd android && ./gradlew :app:assembleDebug --console=plain)
+
+# Metro, avec les mêmes variables
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:8098 EXPO_PUBLIC_SUPABASE_ANON_KEY=recette \
+  npx expo start --dev-client --port 8081
+```
+
 Sont relayés : tous les `GET`, et les `POST` vers les fonctions RPC de la liste
 blanche (`search_items`, `find_similar_items`, `popular_items`), qui sont
 `stable` en SQL donc en lecture. Tout le reste répond 405. Pour une recette qui
@@ -177,8 +201,13 @@ FAIL=/rest/v1/bentos TARGET=... KEY=... node apps/mobile/scripts/readonly-proxy.
 FAIL=/rest/v1/rpc/popular_items TARGET=... KEY=... node apps/mobile/scripts/readonly-proxy.mjs
 ```
 
-Compter environ trois secondes de squelette avant l'erreur : React Query
-retente deux fois.
+Avec `FAIL`, qui répond 500, compter environ trois secondes de squelette avant
+l'erreur : React Query retente deux fois, et `postgrest-js` ne réessaie pas un
+500. **Ce chiffre ne vaut que pour `FAIL`.** Une vraie panne réseau, un 503 ou
+un 520 déclenchent en plus, sous chaque tentative, trois réessais cachés de
+`postgrest-js` après 1, 2 puis 4 s : environ 24 s calculées avant l'erreur d'un
+écran resté à la politique globale, et 10 à 12 s mesurées sur la page bento
+publique, qui les coupe (chantier 7).
 
 ### « Search failed: undefined », ou une RPC qui ne répond pas en recette
 
@@ -228,6 +257,19 @@ Le seul contrôle qui fait foi :
 ```bash
 APP=$(find ~/Library/Developer/Xcode/DerivedData/MonBentoPop-* -name "*.app" -type d | grep simulator | head -1)
 strings "$APP/EXConstants.bundle/app.config" | grep -o "127.0.0.1:8098\|ggjgktbcqumfxrixcdyx"
+```
+
+Le même contrôle sur l'app **installée**, qui peut venir d'une autre
+compilation, et sur Android, où la configuration est dans l'APK :
+
+```bash
+D=$(xcrun simctl get_app_container <UDID> com.bentopop.mobile app)
+strings "$D/EXConstants.bundle/app.config" | grep -o "127.0.0.1:8098\|ggjgktbcqumfxrixcdyx"
+
+unzip -p apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk assets/app.config \
+  | grep -o "127.0.0.1:8098\|ggjgktbcqumfxrixcdyx"
+adb pull "$(adb shell pm path com.bentopop.mobile | head -1 | tr -d '\r' | sed 's/^package://')" /tmp/installe.apk
+unzip -p /tmp/installe.apk assets/app.config | grep -o "127.0.0.1:8098\|ggjgktbcqumfxrixcdyx"
 ```
 
 Second contrôle, côté données cette fois : la clé de session dans
@@ -302,8 +344,103 @@ cette build partent avec.
 
 `expo-image`, `expo-haptics` et consorts ne se chargent pas par rechargement à
 chaud. Le projet est en génération native continue : ni `ios/` ni `android/`
-n'est versionné, `expo run:*` les régénère. Penser à les supprimer après la
-recette pour ne pas les commiter par accident.
+n'est versionné, `expo run:*` les régénère. Les deux dossiers sont ignorés par
+git (`apps/mobile/.gitignore`) : les garder d'une recette à l'autre évite une
+compilation native, les supprimer force une génération propre.
+
+### Une session périmée et `/auth` en 503 figent tout le client principal
+
+Rencontré au chantier 7, puis mesuré. Une recette avec `FAKE_AUTH=1` laisse
+dans l'app une session factice d'une heure. Relancée plus tard sans
+`FAKE_AUTH`, l'app trouve cette session périmée et veut la renouveler ; le
+proxy répond 503, `auth-js` réessaie en tenant sa file d'attente, et **toutes
+les requêtes du client principal attendent**, lectures comprises.
+
+Mesuré sur l'émulateur : des boucles de 8 tentatives sur 25,5 s, enchaînées
+sans pause. Au lancement, la lecture de session attend le délai de 8 s de
+`session.init`, l'inscription anonyme qui suit est refusée, et l'app s'ouvre
+sans session sur l'accueil. Chaque lecture du client principal attend ensuite
+la boucle en cours, alors que le proxy relaie normalement ce qu'il reçoit.
+LogBox affiche une « Console Error » sans message, levée par
+`_recoverAndRefresh` dans `GoTrueClient.js`.
+
+La page bento publique n'y est plus sensible, elle lit par un client sans
+session (`UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md` §6.4). Pour le reste, relancer
+le proxy avec `FAKE_AUTH=1`, qui répond au renouvellement, ou retirer la
+session factice, app arrêtée. Vérifier d'abord que la clé porte le compte
+factice `00000000-0000-4000-8000-0000000000fa` : une clé `sb-<ref>-auth-token`
+d'un autre projet est une vraie session.
+
+```bash
+# iOS : la clé sb-127-auth-token du manifest.json d'AsyncStorage
+xcrun simctl terminate <UDID> com.bentopop.mobile
+D=$(xcrun simctl get_app_container <UDID> com.bentopop.mobile data)
+M="$D/Library/Application Support/com.bentopop.mobile/RCTAsyncLocalStorage_V1/manifest.json"
+python3 -c "import json; print(json.load(open('$M')).get('sb-127-auth-token'))"
+python3 -c "import json; m = json.load(open('$M')); m.pop('sb-127-auth-token'); json.dump(m, open('$M', 'w'))"
+
+# Android : la ligne du même nom dans la base RKStorage
+adb shell am force-stop com.bentopop.mobile
+adb exec-out run-as com.bentopop.mobile cat databases/RKStorage > /tmp/RKStorage
+sqlite3 /tmp/RKStorage "select value from catalystLocalStorage where key = 'sb-127-auth-token'"
+sqlite3 /tmp/RKStorage "delete from catalystLocalStorage where key = 'sb-127-auth-token'"
+adb push /tmp/RKStorage /data/local/tmp/RKStorage.bentopop
+adb shell chmod 644 /data/local/tmp/RKStorage.bentopop
+adb shell run-as com.bentopop.mobile cp /data/local/tmp/RKStorage.bentopop databases/RKStorage
+adb shell rm /data/local/tmp/RKStorage.bentopop
+```
+
+Pour reproduire la panne exprès, le chantier 7 a servi une session factice de
+30 s, déjà périmée pour `auth-js` qui renouvelle 90 s avant l'expiration, et un
+503 sur `grant_type=refresh_token`, dans une copie du proxy.
+
+### Une app restée ouverte se raccroche au nouveau Metro
+
+Un dev client resté ouvert sur un simulateur ou un émulateur se reconnecte
+seul au Metro qu'on démarre, et exécute aussitôt le bundle avec la cible pour
+laquelle il a été compilé. Fermer l'app sur tous les appareils allumés **avant** de lancer Metro :
+
+```bash
+xcrun simctl terminate <UDID> com.bentopop.mobile
+adb shell am force-stop com.bentopop.mobile
+```
+
+### Suspendre le proxy : viser le processus qui écoute
+
+Pour simuler un réseau qui accepte les connexions sans jamais répondre, on
+suspend le proxy. `pgrep -f readonly-proxy.mjs | head -1` désigne souvent le
+shell parent, dont la ligne de commande contient aussi le nom du script : le
+proxy continue alors de répondre. Viser le processus qui écoute le port, et
+vérifier son état :
+
+```bash
+P=$(lsof -nP -iTCP:8098 -sTCP:LISTEN -t)
+kill -STOP $P && ps -o stat= -p $P    # T : suspendu
+kill -CONT $P
+```
+
+### `adb reverse` passe outre le mode hors ligne de l'émulateur
+
+`adb shell svc wifi disable` et `svc data disable` coupent le réseau de
+l'émulateur : NetInfo dit hors ligne, et l'app montre ses états hors ligne.
+Mais les connexions redirigées par `adb reverse` passent toujours, et le proxy
+continue de répondre. Pour l'état hors ligne, se fier à ce que NetInfo
+déclenche ; pour un réseau qui ne répond pas, suspendre le proxy.
+
+### Android ignore `color: 'transparent'` sur un `Text`
+
+Un texte de gabarit rendu transparent pour donner sa hauteur à un os de
+squelette reste invisible sur iOS, et s'affiche en clair sur Android. Rendre
+l'os par un fond, et le texte par `opacity: 0`. Vu au chantier 7 sur la date du
+squelette de la page publique.
+
+### `uiautomator dump` compte en pixels
+
+Les `bounds` sont en pixels physiques, pas en dp : diviser par 2,625 à 420 dpi
+(411 dp de large, le réglage du Pixel 8), par 3 à 480 dpi (360 dp). Les marges
+système se lisent dans `adb shell dumpsys window`, aux lignes `InsetsSource`.
+Un relevé prend une à deux secondes, ce qui borne la précision d'un
+chronométrage fait par l'arbre.
 
 ---
 
@@ -312,6 +449,11 @@ recette pour ne pas les commiter par accident.
 ```bash
 pkill -f readonly-proxy; pkill -f "expo start"
 xcrun simctl shutdown all
-adb emu kill
+adb reverse --remove-all; adb emu kill
+# facultatif : repartir d'une génération native propre à la prochaine recette
 rm -rf apps/mobile/ios apps/mobile/android
 ```
+
+Après une recette en `FAKE_AUTH=1`, retirer la session factice des appareils
+(§4) : sinon la recette suivante, sans `FAKE_AUTH`, tombe sur une session
+périmée et un client principal figé.

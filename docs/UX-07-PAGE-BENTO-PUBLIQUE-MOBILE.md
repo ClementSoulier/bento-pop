@@ -10,6 +10,12 @@
 > propre formule (§8.1) sont corrigés, onze arbitrages rendus (§11), et les
 > écarts du lot 1 reportés là où ils changent le contrat (§5, §6, §8, §9).
 >
+> **Révisée à la livraison du lot 2**, le même soir. L'écran a révélé deux
+> attentes que la spéc ignorait : les réessais cachés de `postgrest-js`
+> (§5.3, §6.2) et l'attente de l'authentification, levée par un client sans
+> session (§6.4). Écarts, mesures et arbitrages du lot 2 reportés en §8, §9
+> et §11, suivis ouverts en §12.
+>
 > Ne pas confondre avec [`UX-01-PAGE-BENTO-PUBLIQUE.md`](./UX-01-PAGE-BENTO-PUBLIQUE.md),
 > qui décrit la page **web** `bento-pop.com/u/<pseudo>`. Ici il s'agit de
 > l'écran `apps/mobile/app/u/[pseudo].tsx`.
@@ -105,6 +111,10 @@ plafonne aussi**.
 - Le squelette de chargement de la boîte, partagé avec le fil.
 - Les plafonds de police de `Tile` et `EmptyTile`, donc aussi ceux du fil et du
   composer : une tuile illisible ne se corrige pas écran par écran (§11).
+- Les titres de `Tile` coupés au milieu d'un mot sur Android, ajoutés au lot 3
+  pour la même raison (§5.6).
+- Un client Supabase sans session pour la lecture de la page, ajouté au lot 2
+  (§6.4).
 - La mesure de `ShareImage` à la plus grande police, et son gel si elle suit la
   police système.
 - L'échappement du joker `_` dans `checkPseudoAvailability`, puisque le lot 2
@@ -439,9 +449,9 @@ roadmap proposait ; la mesure la disqualifie.
 | Chargement | `ActivityIndicator` centré | **squelette de boîte**, à la place et à la taille exactes |
 | Trouvé | la page | la page |
 | Pseudo inconnu | « Bento introuvable » | « Bento introuvable » |
-| Pseudo connu, rien en ligne | « Bento introuvable » | **« @x n'a pas de bento en ligne. »** |
-| Son propre pseudo, rien en ligne | « Bento introuvable » | **« Ton bento n'est pas en ligne. »** + bouton vers le composer |
-| Réseau tombé | « Bento introuvable » | **« Connexion perdue » + Réessayer** |
+| Pseudo connu, rien en ligne | « Bento introuvable » | **« Rien en ligne »**, puis « @x n'a pas de bento en ligne. » |
+| Son propre pseudo, rien en ligne | « Bento introuvable » | **« Rien en ligne »**, puis « Ton bento n'est pas en ligne. » et « Reprendre mon bento », vers le composer |
+| Réseau tombé | « Bento introuvable » | **« Connexion perdue »**, puis « Le bento de @x n'a pas pu se charger. » et « Réessayer » |
 
 Le squelette n'est pas un ornement. Un spinner centré n'annonce rien, puis la
 page saute. Un squelette aux dimensions exactes de la boîte fait de l'arrivée
@@ -460,12 +470,21 @@ L'état d'erreur reprend la forme de `SearchError` (`search.tsx:422`) : une
 phrase, un bouton « Réessayer » qui appelle `refetch`.
 
 **Il doit arriver vite.** La politique globale de `query-client.ts` réessaie
-deux fois, à 1 s puis 2 s, sans délai d'abandon : environ 3 s de squelette en
-mode avion, et rien ne borne l'attente sur le réseau du métro de §4.6, qui
-répond sans répondre. D'où, pour cette requête seule (arbitrage §11) :
-hors ligne, NetInfo (`useIsOffline`, déjà dans l'app) affiche l'erreur sans
-attendre de requête ; sinon chaque tentative abandonne au bout de 5 s, avec un
-seul réessai, soit 11 s au pire.
+deux fois, à 1 s puis 2 s, sans délai d'abandon. La première version en
+déduisait environ 3 s de squelette en mode avion : **c'est faux**, découvert
+au lot 2. Sous chaque tentative, `postgrest-js` 2.105.4 réessaie de lui-même
+trois fois un `GET` tombé en réseau ou reçu en 503 ou 520, après 1, 2 puis
+4 s : 7 s par tentative, donc environ 24 s en mode avion, calcul à confirmer
+par une mesure (§12). Et rien ne borne l'attente sur le réseau du métro de
+§4.6, qui répond sans répondre. D'où, pour cette requête seule (arbitrage
+§11) : hors ligne, NetInfo (`useIsOffline`, déjà dans l'app) affiche l'erreur
+sans attendre de requête ; sinon chaque tentative abandonne au bout de 5 s,
+avec un seul réessai et aucun réessai caché (§6.2), soit 11 s au pire. Mesuré
+au lot 2 sur un proxy suspendu : 10 à 12 s.
+
+Au retour du réseau, une page restée sur « Connexion perdue » se recharge
+seule, sans attendre qu'on touche « Réessayer » : en 4 s environ sur
+l'émulateur Android (arbitrage §11).
 
 Sa propre page sans bento en ligne n'est atteignable que par un lien, le
 profil masquant le bouton quand rien n'est en ligne. « @toi n'a pas de bento
@@ -554,6 +573,12 @@ les signaux par case donneront un endroit naturel où l'accrocher.
 - **La barre du haut change après le chargement** : « Options » n'apparaît
   qu'une fois `state.kind === 'found'`. Avec le squelette, la barre est stable
   du premier au dernier frame.
+- **Les titres de tuile coupés au milieu d'un mot, sur Android.** Vu à la
+  recette du lot 2 sur le Pixel 8 à 411 dp : un titre plus long que sa case y
+  passe à la ligne en pleine lettre, « JIMMY PU / NCHLINE », « MERRY-G /
+  O-ROUN… », là où iOS tronque « PUNCHL… ». Le défaut est dans `Tile`, que le
+  lot 3 rouvre, et le fil comme le composer rendent le même composant
+  (arbitrage §11).
 
 ---
 
@@ -630,8 +655,13 @@ export function mapPublicBento(row: PublicBentoRow): NonNullable<PublicBentoResu
 export async function loadPublicBento(
   client: PublicBentoClient,
   pseudo: string,
+  options?: { signal?: AbortSignal },
 ): Promise<PublicBentoResult>;
 ```
+
+Le `signal` porte l'abandon de §6.3 jusqu'au `fetch` : une tentative
+abandonnée ferme vraiment sa requête, au lieu de la laisser courir derrière
+le réessai.
 
 Règles de mappage, alignées sur `mapFeedRow` pour qu'un bento absent du fil ne
 s'affiche pas ici, et inversement :
@@ -648,7 +678,14 @@ s'affiche pas ici, et inversement :
   porte son statut HTTP : 0 pour une panne réseau, qui reste réessayable, 4xx
   pour une requête refusée, que `query-client.ts` ne réessaie pas à condition
   de la reconnaître. C'est la correction de §4.6, et c'est ce qui permet à
-  React Query de distinguer `isError` de « pas de résultat ».
+  React Query de distinguer `isError` de « pas de résultat » ;
+- **aucun réessai caché.** `postgrest-js` 2.105.4 réessaie de lui-même trois
+  fois un `GET` tombé en réseau ou reçu en 503 ou 520, après 1, 2 puis 4 s, et
+  `supabase-js` n'expose aucun réglage global. La requête porte donc
+  `.retry(false)` : la politique de réessai est celle de §6.3, sans une
+  seconde cachée dessous. Découvert au lot 2 par un test d'intégration qui
+  prenait 7 s, et verrouillé par deux tests : une panne réseau lève en moins
+  de 500 ms, un 503 ne part qu'une fois.
 
 `PSEUDO_REGEX` et ses bornes passent de `pseudo.ts` à `pseudo-match.ts`, qui ne
 tire pas le client : sans ça, le module ne se chargerait pas sous `node:test`.
@@ -657,12 +694,21 @@ assertion sur la forme du `select`, comme `feed.ts`.
 
 ### 6.3 Cache et invalidation
 
+Tel que livré au lot 2, dans `src/lib/public-bento-query.ts` :
+
 ```ts
-useQuery({
-  queryKey: ['public-bento', pseudo.trim().toLowerCase()],
-  queryFn: () => loadPublicBento(supabase, pseudo),
-  staleTime: 5 * 60 * 1000,
-})
+export function publicBentoQueryOptions(client: PublicBentoClient, pseudo: string) {
+  return {
+    queryKey: ['public-bento', pseudo.trim().toLowerCase()],
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      withAbortTimeout((attempt) => loadPublicBento(client, pseudo, { signal: attempt }), 5000, signal),
+    staleTime: 5 * 60 * 1000,
+    retry: shouldRetryPublicBento, // un seul réessai, jamais sur un refus 4xx
+  };
+}
+
+// app/u/[pseudo].tsx, avec le client sans session de §6.4
+useQuery(publicBentoQueryOptions(publicSupabase, pseudo));
 ```
 
 **La clé est en minuscules.** La recherche par pseudo est insensible à la
@@ -697,12 +743,68 @@ void queryClient.resetQueries({ queryKey: ['public-bento'] });
 
 Grossier et correct : le cache contient au plus quelques entrées de 2 Ko, et
 une remise à zéro de trop coûte un squelette le temps d'un aller-retour.
-`invalidateFeed()` devient `invalidatePublicViews()` et fait les deux, le fil
-gardant son invalidation, pour qu'aucun futur appel n'oublie la moitié. Un
-test sur `query-core` verrouille le comportement au lot 2.
+`invalidateFeed()` devient `invalidatePublicViews()`, qui appelle
+`refreshPublicViews` : le fil garde son invalidation, les pages publiques sont
+remises à zéro, et aucun futur appel n'oublie la moitié. La suppression de
+compte l'appelle aussi (écart validé, §11). Quatre tests sur `query-core`
+verrouillent le comportement, dont celui qui montre qu'une simple invalidation
+resservirait « rien en ligne ».
 
 Réessais et délai d'abandon sont propres à cette requête : un seul réessai,
 5 s par tentative, et l'état hors ligne lu sur NetInfo (§5.3).
+`withAbortTimeout` rejette à l'échéance **puis** annule la tentative : dans
+l'autre ordre, la course rendait l'erreur d'annulation au lieu de celle du
+délai, défaut attrapé par son test au lot 2.
+
+### 6.4 Un client sans session pour les lectures publiques
+
+**Ajouté au lot 2, arbitré en §11.** La recette sur l'émulateur Android a
+affiché « Connexion perdue » sur une page dont les données répondaient.
+
+Le client principal fait attendre **chaque requête**, même publique, la fin
+du renouvellement de sa session : `supabase-js` demande le jeton à
+`auth.getSession()` avant tout `fetch`, et une session stockée expirée, ou à
+moins de 90 s de l'expiration, est d'abord renouvelée. Si l'authentification
+répond en panne (503, réseau), `auth-js` 2.105.4 réessaie après 200 ms,
+400 ms, et ainsi de suite jusqu'à 12,8 s, dans une limite de 30 s, en tenant
+sa file d'attente. Mesuré au lot 2 : des boucles de 8 tentatives sur 25,5 s,
+enchaînées sans pause. Chaque tentative de la page abandonnait à 5 s sans
+avoir rien envoyé, d'où « Connexion perdue » à 11 s.
+
+`publicSupabase` est un second client, créé avec `PUBLIC_READS_AUTH_OPTIONS`
+(`src/supabase/public-reads.ts`) : pas de persistance, pas de renouvellement
+automatique, et une clé de stockage distincte. Deux protections redondantes à
+dessein : sans persistance, le stockage de l'app n'est jamais lu ; persistée
+par erreur, la session serait rangée sous une autre clé que celle du client
+principal.
+
+**Ce que ça change pour le propriétaire.** La page lit ce que lit n'importe
+quel visiteur, sous la RLS anonyme : son auteur la voit comme le public, sans
+les items en attente que la RLS ne montre qu'à lui. C'est aussi ce que la page
+doit montrer.
+
+**Vérifié par un test.** `src/supabase/public-reads.integration.test.ts`, vrai
+`supabase-js` contre un serveur local, avec une session périmée dans le
+stockage et un renouvellement qui répond 503 :
+
+- témoin, avec les options du client principal : quatre renouvellements, puis
+  la lecture, environ 1,4 s après ;
+- avec `PUBLIC_READS_AUTH_OPTIONS` : la lecture seule, en moins de 5 ms, sans
+  appel à l'authentification ;
+- chaque protection tient seule. Retirer la première, la seconde, les deux, ou
+  reprendre les options du client principal : les quatre défauts sont
+  attrapés.
+
+**Vérifié sur appareil**, l'écran rebasculé temporairement sur le client
+principal puis remis à l'identique, sur des pseudos jamais chargés :
+
+| Appareil et scénario | Client sans session | Client principal |
+|---|---|---|
+| iPhone 17e, session de 30 s, renouvellement en 503 | chargée à 0,8 s, et à 0,5 s une fois le code rétabli | « Connexion perdue » à 11,2 s, aucune lecture partie |
+| Pixel 8, session périmée et `/auth` en 503, le scénario qui avait échoué | lecture partie 0,32 s après le lien | « Connexion perdue », aucune lecture partie |
+
+Seule cette page en profite : le fil, la recherche et le profil restent sur le
+client principal, et attendent de la même façon (§12).
 
 ---
 
@@ -774,6 +876,21 @@ lisible lus « rien en ligne », case masquée par la RLS rendue vide, catégori
 inconnue ignorée, ordre des cases indifférent. `pseudo-match.test.ts` couvre
 l'échappement.
 
+Livrés au lot 2 : 38 tests, 308 au total. Onze défauts injectés un à un, dont
+une invalidation à la place de la remise à zéro, un réessai de trop, un refus
+4xx réessayé, le délai d'abandon oublié, l'état hors ligne ignoré, la casse du
+pseudo comptée, le joker non échappé à l'inscription et les options du client
+principal reprises pour la page : tous attrapés. Côté unitaire :
+
+- `src/lib/public-page-state.test.ts` : l'état à montrer, dont « Connexion
+  perdue » tout de suite hors ligne, sa propre page reconnue à la casse près,
+  et une réponse déjà reçue gardée hors ligne ;
+- `src/lib/public-bento-query.test.ts` : la clé en minuscules, la politique de
+  réessai, et sur `query-core` la remise à zéro qui rouvre sur le squelette là
+  où une invalidation resservirait « rien en ligne » ;
+- `src/lib/abort-timeout.test.ts` : l'échéance tenue même quand l'opération
+  ignore le signal, l'annulation du parent relayée, aucun minuteur laissé.
+
 ### 8.2 Test d'intégration sur bouchon
 
 `src/lib/public-bento.integration.test.ts`, avec `startPostgrestStub()` et un
@@ -794,6 +911,21 @@ vrai `supabase-js` : c'est le constructeur d'URL réel qu'on veut exercer.
 
 Les trois derniers sont la régression de §4.6 : ce sont eux qui empêchent une
 panne réseau de redevenir « Bento introuvable ».
+
+Ajoutés au lot 2 :
+
+- dans le même fichier, une panne réseau lève en moins de 500 ms et un 503 ne
+  part qu'une fois : les réessais cachés de §6.2 ;
+- `src/lib/public-bento-query.integration.test.ts`, avec un vrai React Query
+  et un serveur qui accepte les requêtes sans jamais répondre : la tentative
+  abandonne à l'échéance et ferme vraiment sa requête, deux requêtes et une
+  pause précèdent l'erreur, quitter la page annule la requête en cours, et un
+  refus 400 ne part qu'une fois ;
+- `src/lib/pseudo-availability.integration.test.ts` : l'inscription interroge
+  `users` avec le joker échappé, ne compte pas un voisin remonté par le joker,
+  et lève sur une erreur au lieu de trancher ;
+- `src/supabase/public-reads.integration.test.ts` : le client sans session de
+  §6.4.
 
 ### 8.3 Vérification contre la production
 
@@ -821,8 +953,11 @@ contrôle du joker tombe sur les douze.
 
 ### 8.4 Recette manuelle, bloquante
 
-Sur simulateur, dev build pointé sur la production. **Trois tailles d'écran,
-la même liste** : iPhone SE (3e gén.), iPhone 17e, iPhone 17 Pro.
+Sur simulateur, dev build pointé sur le proxy lecture seule de
+[`RECETTE-MOBILE.md`](./RECETTE-MOBILE.md), **jamais sur la production** :
+sans session, l'app se connecte anonymement dès son lancement, et une build
+pointée sur la production y crée un compte. **Trois tailles d'écran, la même
+liste** : iPhone SE (3e gén.), iPhone 17e, iPhone 17 Pro.
 
 1. `bentopop://u/dark_hifus` : sur 17 Pro et 17e, les six cases et la
    bordure basse visibles sans défiler, rien par-dessus ; sur SE, la rangée
@@ -862,6 +997,33 @@ Le point 10 est la contre-mesure de §4.2 : aujourd'hui les crédits de la
 rangée basse sont absents de l'arbre sur iPhone SE, ce qui est la signature
 d'un contenu hors écran.
 
+**Relevé du lot 2**, le 14 septembre 2026, par le proxy. Cotes en points,
+mesurées au pixel, la valeur du modèle entre parenthèses quand elle a été
+comparée :
+
+| Appareil | Boîte, bord gauche et droit | Haut de la boîte | Bordure basse | Haut des boutons | Largeur / hauteur | Défilement |
+|---|---|---|---|---|---|---|
+| iPhone 17 Pro | 32 → 370 | 250,00 | dès 725,00 (725,02) | 757,00 | −0,06 % | aucun |
+| iPhone 17e | 32 → 358 | 235,00 | dès 693,33 | 727,00 | −0,07 % | aucun |
+| iPhone SE | 32 → 343 | 208,00 | 556 → 560 en fin de défilement | 584,00 en fin de défilement | non mesuré | 88,5 (88,47) |
+
+- Points 1 et 3 : faits sur les trois appareils, captures à l'appui, boîte de
+  la largeur du fil partout ; point 2 sur 17 Pro et 17e.
+- Point 4 : zéro requête au retour sur un bento déjà vu, comptée au journal
+  du proxy.
+- Point 5 : le simulateur iOS n'a pas de mode avion. Hors ligne, éprouvé sur
+  Android (§8.6) ; réseau qui ne répond pas, simulé en suspendant le proxy :
+  « Connexion perdue » en 10 à 12 s, et « Réessayer » remplit la page.
+- Points 6 et 7 : `vanhlad` et un pseudo inexistant, les bons messages.
+- Point 10 : pseudo, date et boutons aux cotes du modèle dans l'arbre, crédits
+  de la rangée basse présents sur les trois appareils, SE compris.
+- Squelette aligné au pixel sur la boîte, iOS et Android, et celui du fil
+  intact.
+- Points 8 et 11 : hors de portée du proxy, qui refuse la publication et ne
+  connaît pas de profil public au compte factice. Vérifiés par les tests
+  seulement, ils restent à recetter au lot 4.
+- Points 9, 12 et 13 : lot 3.
+
 ### 8.5 Ce qui n'est pas testé, assumé
 
 - Le rendu sur appareil réel, qui accumule maintenant sept chantiers.
@@ -899,6 +1061,29 @@ et 360 dp, en plus, un relevé des marges que `useSafeAreaInsets` rend
 réellement et de la hauteur de `useWindowDimensions` : c'est le couple dont la
 formule dépend, et il n'a jamais été mesuré sur Android.
 
+**Relevé du lot 2**, sur l'AVD `Pixel_8`, en dp, la valeur du modèle entre
+parenthèses :
+
+| Cas | Barres système, haut et bas | Boîte, bord gauche et droit | Haut de la boîte | Bordure basse | Haut des boutons | Largeur / hauteur |
+|---|---|---|---|---|---|---|
+| 411 dp | 50,29 et 24 | 32 → 379,43 | 238,48 (238,29) | 726,48 (726,41) | 807,24 (807,29) | −0,05 % |
+| 360 dp | 44 et 24 | 32 → 328 | 232,00 | 647,67 (647,61) | 693,00 | +0,03 % |
+
+- Aucun défilement ni recouvrement dans les deux cas, boîte de la largeur du
+  fil, et l'ombre rendue par une élévation.
+- Les barres ont été lues par `dumpsys window`, pas dans l'app : les marges
+  que rend `useSafeAreaInsets` restent à relever au lot 4, même si les cotes,
+  à 0,2 dp du modèle, n'indiquent aucun écart.
+- Hors ligne : « Connexion perdue » sans attendre, puis la page se recharge
+  seule en 4 s environ au retour du réseau. `adb reverse` laisse pourtant
+  passer les requêtes après `svc wifi disable` et `svc data disable` : NetInfo
+  dit hors ligne quand le proxy répond encore.
+- Un défaut trouvé et corrigé : Android ignore `color: 'transparent'` sur un
+  `Text`, et l'os de la date du squelette affichait son texte de gabarit. Il
+  est devenu un fond, avec un texte à opacité nulle qui lui donne sa hauteur.
+- Reste pour le lot 4 : 384 dp, 360 × 640 dp, la navigation à trois boutons,
+  les tailles de police, la tablette, et le relevé des marges dans l'app.
+
 ---
 
 ## 9. Plan de développement
@@ -917,7 +1102,7 @@ typecheck et lint propres, treize défauts injectés dans les modules tous
 attrapés par les tests, contrôle de production au vert et capable de tomber
 (§8.3). Commit `0000f74`.
 
-### Lot 2 · L'écran
+### Lot 2 · L'écran · livré
 
 `ScrollView`, échelle du module avec `fontScale`, marge et non largeur, et des
 styles qui importent les constantes du module au lieu de les recopier.
@@ -929,24 +1114,37 @@ NetInfo. Les états de §5.3, dont le message dédié sur sa propre page.
 Suppression de `loadPublicBentoByPseudo` et de `findUserByPseudo`, désormais
 sans appelant, et échappement du joker dans `checkPseudoAvailability`.
 
-**Vérification** : captures des trois iPhone et de l'émulateur Android à 411
-et 360 dp, plus les mesures au pixel des points 2 et 3 de la recette.
+**Écarts au plan, tous validés (§11)** : aucun réessai caché de `postgrest-js`
+(§6.2) ; rechargement seul au retour du réseau (§5.3) ; remise à zéro du fil et
+des pages publiques après une suppression de compte ; hauteurs de ligne tirées
+du modèle, et « Partager » qui ne grandit plus de 3 pt pendant le partage ;
+client sans session pour la lecture de la page (§6.4). Côté code, l'état à
+montrer vit dans `public-page-state.ts`, la politique de requête dans
+`public-bento-query.ts`, et la vérification de pseudo de l'inscription dans
+`pseudo-availability.ts`, à client injecté pour que son échappement se teste.
+
+**Vérifié** : 308 tests verts dont 38 nouveaux, typecheck et lint propres, onze
+défauts injectés tous attrapés (§8.1), recette des trois iPhone et de
+l'émulateur à 411 et 360 dp (§8.4, §8.6), client sans session éprouvé sur les
+deux plateformes (§6.4). Commit `b36a489`.
 
 ### Lot 3 · Ce que la police maximale casse
 
 Plafonds de grossissement, `numberOfLines` sur les CTA, pseudo et date sur une
 ligne avec `adjustsFontSizeToFit`, chevron à taille fixe. Plafonds dans `Tile`
-et `EmptyTile`. `ShareImage` mesurée à la plus grande police, et gelée si elle
-la suit. Les trois corrections de détail de §5.6.
+et `EmptyTile`, et titres de `Tile` jamais coupés au milieu d'un mot sur
+Android. `ShareImage` mesurée à la plus grande police, et gelée si elle la
+suit. Les corrections de détail qui restent en §5.6.
 
 **Vérification** : captures des trois iPhone et d'Android au réglage maximal
-et en xxLarge, le fil et le composer compris.
+et en xxLarge, le fil et le composer compris, et les titres longs sur Android
+à la taille par défaut.
 
 ### Lot 4 · Recette et mesures
 
-La liste de §8.4 sur les trois iPhone, la matrice Android de §8.6, le relevé
-de latence après bascule, la mise à jour de la roadmap et l'ouverture des
-suivis.
+La liste de §8.4 sur les trois iPhone, dont les points 8 et 11 que le proxy
+n'a pas permis au lot 2, la matrice Android de §8.6, le relevé de latence après
+bascule, la mise à jour de la roadmap et l'ouverture des suivis.
 
 ---
 
@@ -970,6 +1168,8 @@ suivis.
 | 14 | Sa propre page sans bento : message dédié | recette 11 |
 | 15 | Image de partage identique quelle que soit la police | recette 12, captures |
 | 16 | Les critères 1 à 11 tiennent sur la matrice Android | §8.6, captures |
+| 17 | La page se charge avec une session périmée et l'authentification en panne | §6.4, test d'intégration et recette sur les deux plateformes, fait au lot 2 |
+| 18 | Aucun titre de tuile coupé au milieu d'un mot sur Android | lot 3, captures |
 
 ## 11. Décisions tranchées
 
@@ -997,6 +1197,17 @@ suivis.
 | Image de partage et police système | **mesurer, puis figer si confirmé** | une image doit sortir identique pour tout le monde |
 | Android | **le plus de cas possible, émulateurs Android Studio** | l'app y est publiée, et 360 dp est le seul cas limite de la formule |
 | Joker dans `checkPseudoAvailability` | **corrigé au lot 2** | `pseudo.ts` y est touché, et `escapeLikePattern` existe |
+| Libellés des états | **« Rien en ligne »** en titre, « Reprendre mon bento », « Le bento de @x n'a pas pu se charger. » | un titre court, la phrase dessous dit ce qui manque ; « Pas de bento en ligne » répétait la phrase |
+| Réessais cachés de `postgrest-js` sur la page | **coupés, `.retry(false)`** | jusqu'à 7 s de réessais silencieux par tentative, et la borne de 11 s sautait |
+| Rechargement au retour du réseau | **oui, sans toucher « Réessayer »** | sinon « Connexion perdue » attend un geste une fois le réseau revenu ; vérifié sur Android, en 4 s environ |
+| Suppression de compte | **remet aussi à zéro le fil et les pages publiques** | rien du compte supprimé ne reste en cache sur l'appareil |
+| Hauteurs de ligne | **tirées du modèle**, « Partager » compris | le modèle ne tient que si l'écran rend les hauteurs qu'il suppose ; le bouton grandissait de 3 pt pendant le partage |
+| Client des lectures de la page | **sans session, au lot 2** | le client principal faisait attendre la page derrière l'authentification ; le propriétaire voit sa page comme le public |
+| Réessais cachés du fil, de la recherche et de l'inscription | **suivi hors chantier** (§12) | chaque écran aura sa politique et sa recette ; la doc de recette est corrigée tout de suite |
+| Bandeau « Pas de connexion » sur le bouton retour | **chantier 11** | commun à tous les écrans : le corriger ici seulement créerait deux comportements |
+| Espace sous la boîte sur écran haut | **laissé ainsi** | même boîte que dans le fil et même haut de page partout ; 76 dp environ sur Pixel 8, 48 pt calculés sur 17 Pro Max |
+| Titres coupés au milieu d'un mot sur Android | **lot 3, dans `Tile`** | le lot 3 rouvre `Tile` et fait ses captures sur Android ; le fil et le composer en profitent |
+| Client principal bloqué par une authentification en panne | **suivi hors chantier** (§12) | même famille de panne que les réessais cachés ; seules les lectures publiques pourraient changer de client |
 
 ---
 
@@ -1030,3 +1241,32 @@ au chantier 6, celui-ci et `Tile`. Chantier 11.
 `users` : sans effet à 75 profils, à revoir bien avant quelques dizaines de
 milliers, par un index trigramme ou une égalité sur une forme normalisée du
 pseudo.
+
+**Les réessais cachés de `postgrest-js` restent sur le fil, la recherche et
+l'inscription.** Sous chaque tentative de React Query, trois réessais après 1,
+2 puis 4 s pour un `GET` tombé en réseau ou reçu en 503 ou 520. En panne
+réseau, le fil attendrait environ 24 s avant son erreur : trois tentatives de
+7 s et deux pauses, calcul à confirmer par une mesure. `supabase-js` 2.105 ne
+permet pas de les couper globalement, donc `.retry(false)` chargeur par
+chargeur, chaque écran avec sa politique et sa recette. Versé à la roadmap.
+
+**Le client principal attend l'authentification.** Session proche de
+l'expiration et authentification en panne : des boucles de 8 tentatives sur
+25,5 s, enchaînées sans pause, mesurées sur simulateur et sur émulateur.
+Toutes les requêtes de ce client attendent, publiques comprises : au
+démarrage, le profil a attendu 25,5 s. Seule la page publique en est sortie
+(§6.4). Le fil et la recherche pourraient suivre après vérification de leur
+RLS ; les écritures, non. Versé à la roadmap.
+
+**Le bandeau « Pas de connexion » recouvre le bouton retour**, justement dans
+l'état « Connexion perdue ». Le bandeau est commun à tous les écrans.
+Chantier 11.
+
+**Sa propre page sans bento n'est vérifiée que par les tests.** Le proxy de
+recette refuse la publication et ne connaît pas de profil public au compte
+factice : les recettes 8 et 11 restent à faire au lot 4.
+
+**Les sous-titres d'artistes sont en anglais.** « US · Person », « FR · Person
+· French rapper » : des données héritées d'anciens imports, que le code actuel
+ne produit plus, vues sur les cases Artiste pendant la recette. Hors chantier,
+une tâche séparée est proposée pour en mesurer l'ampleur.

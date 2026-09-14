@@ -167,7 +167,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés, recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
-| 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | 🟡 **en cours**, spécification écrite, mesures faites · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
+| 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | 🟡 **en cours**, lots 1 et 2 livrés (modules, écran, états, cache, client sans session), recette iOS et Android du lot 2 faite · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
 | 10 | Profil éditable (nom, pseudo, Popy) | Appropriation | S | rien | ⬜ |
@@ -424,6 +424,8 @@ Deux défauts trouvés et **non** corrigés, parce qu'ils débordent du chantier
 > **Spécification détaillée : [`UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md`](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md)** (géométrie mesurée sur trois écrans, contrat de données, plan en 4 lots, recette).
 >
 > **La mesure a élargi le constat.** Le recouvrement des CTA n'est pas propre à l'iPhone SE : il vaut 3 pt sur un 17 Pro, 18 sur un 17e et 134 sur un SE. Et `BentoGrid` ne met à l'échelle que les hauteurs, donc la boîte est écrasée de 8 % sur le téléphone le plus courant. L'effort passe de S à M.
+>
+> **Lots 1 et 2 livrés le 14 septembre 2026** (`0000f74`, `b36a489`). La boîte a la largeur du fil sur les trois iPhone et l'émulateur Android, ses proportions à 0,07 % près partout où elles ont été mesurées, la page distingue ses états, et un bento déjà vu se rouvre sans requête. La recette a trouvé deux attentes que la spec ignorait : les réessais cachés de `postgrest-js`, coupés sur cette page, et l'attente de l'authentification, levée par un client sans session. Restent le lot 3 (police maximale, titres de tuile coupés sur Android) et le lot 4 (recette complète).
 
 
 **Constat.** `u/[pseudo].tsx:322` utilise `scale={0.94}` en dur alors que le composer calcule un scale dynamique (`compose.tsx:110`). Hauteur native de la grille : environ 512pt, soit 481pt à 0.94. Sur un iPhone SE, header profil et grille dépassent la hauteur disponible et les CTA sticky recouvrent la dernière rangée.
@@ -433,6 +435,12 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 **Proposition.** Reprendre le calcul de scale dynamique du composer, ou rendre la page scrollable. Passer le chargement en `useQuery`. Fusionner les deux requêtes en une jointure.
 
 **Ce que le chantier 6 y ajoute.** La recherche envoie désormais bien plus de monde sur cette page, et par un chemin nouveau : on y arrive depuis un item, donc en s'attendant à voir une case précise. Deux conséquences à cadrer en planification. La page est le point d'arrivée de tout l'onglet « Trouver », donc son coût de chargement est devenu le coût perçu de la recherche. Et la case qui a motivé le clic mériterait peut-être d'être signalée à l'arrivée, ce qui n'était pas un sujet quand on n'y venait que par un pseudo.
+
+**Suivis ouverts par le chantier 7**, hors de son périmètre, détaillés en §12 de la spec :
+
+- **Les réessais cachés de `postgrest-js` restent sur le fil, la recherche et l'inscription.** Trois réessais silencieux après 1, 2 puis 4 s sous chaque tentative de React Query : en panne réseau, le fil attendrait environ 24 s avant son erreur, calcul à confirmer par une mesure. `supabase-js` 2.105 ne permet pas de les couper globalement, donc un réglage et une recette par écran.
+- **Le client principal attend l'authentification.** Session proche de l'expiration et authentification en panne : des boucles de 8 tentatives sur 25,5 s, enchaînées sans pause, pendant lesquelles toutes ses requêtes attendent, lectures comprises. Mesuré au lot 2 ; au démarrage, le profil a attendu 25,5 s. Le fil et la recherche pourraient lire par le client sans session après vérification de leur RLS, les écritures non.
+- **Les sous-titres d'artistes sont en anglais** (« US · Person », « FR · Person · French rapper ») : données héritées d'anciens imports, à mesurer puis corriger à part.
 
 **Fait quand** : la grille est entièrement visible sur iPhone SE, et revenir sur un bento déjà consulté est instantané.
 
@@ -492,6 +500,10 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 
 - **Le texte ne plafonne son grossissement nulle part.** 20 usages d'`Extenda` dans l'app n'ont pas de `maxFontSizeMultiplier`, plus `TopChip` : à la plus grande taille de police système, les titres se rognent en débordant de l'écran. Seul `app/(tabs)/search.tsx` a été traité, parce qu'on ne livre pas un écran au titre cassé.
 - **Bloquer quelqu'un est une porte à sens unique.** La boîte de dialogue promet « Tu peux annuler à tout moment depuis ce menu », or ce menu vit sur `/u/[pseudo]`, filtrée du fil comme de la recherche. Il n'existe aucune liste des comptes bloqués. Le correctif est une ligne « Comptes bloqués » dans le profil.
+
+**Versé par le chantier 7, le 14 septembre 2026.**
+
+- **Le bandeau « Pas de connexion » recouvre le bouton retour.** Sur la page bento publique, il le masque justement dans l'état « Connexion perdue ». Le bandeau est commun à tous les écrans : le corriger sur une seule page créerait deux comportements.
 
 ---
 
