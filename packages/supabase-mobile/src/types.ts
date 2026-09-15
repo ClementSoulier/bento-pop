@@ -77,8 +77,11 @@ export type Database = {
           /**
            * Dernier démarrage de l'app, écrit par le client.
            *
-           * `null` tant que la personne n'a pas ouvert une version
-           * instrumentée. Ne pas confondre avec `auth.users.last_sign_in_at`,
+           * **Toujours `null` à la lecture** depuis la migration
+           * `20260915000000_close_privilege_gaps.sql` : un trigger détourne
+           * les trois colonnes de télémétrie vers `user_telemetry`, que les
+           * clients ne lisent pas. Elles restent écrivables parce que la 1.2.0
+           * les écrit. Ne pas confondre avec `auth.users.last_sign_in_at`,
            * qui vaut la date de création : la session anonyme persiste.
            */
           last_seen_at: string | null;
@@ -358,6 +361,28 @@ export type Database = {
           deleted_by: string;
         };
         Update: Partial<Database['public']['Tables']['user_deletions']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Télémétrie des membres, lue en service-role uniquement : RLS active,
+       * aucune policy, aucun privilège client. Remplie par le trigger
+       * `users_divert_telemetry` à chaque écriture de télémétrie sur `users`.
+       */
+      user_telemetry: {
+        Row: {
+          user_id: string;
+          last_seen_at: string | null;
+          platform: 'ios' | 'android' | null;
+          app_version: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          last_seen_at?: string | null;
+          platform?: 'ios' | 'android' | null;
+          app_version?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['user_telemetry']['Insert']>;
         Relationships: [];
       };
     };

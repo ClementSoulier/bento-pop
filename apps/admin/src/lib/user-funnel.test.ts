@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  attachTelemetry,
   buildOrphanRows,
   buildUserRows,
   computeFunnel,
@@ -162,6 +163,34 @@ describe('buildUserRows', () => {
       rows.map((r) => r.id),
       ['vu', 'recent', 'vieux'],
     );
+  });
+});
+
+describe('attachTelemetry', () => {
+  const seen = { last_seen_at: '2026-09-15T10:00:00Z', platform: 'ios', app_version: '1.2.0' } as const;
+
+  it('prend la télémétrie de la table privée', () => {
+    const [row] = attachTelemetry([profile('a')], [{ user_id: 'a', ...seen }]);
+    assert.equal(row?.last_seen_at, seen.last_seen_at);
+    assert.equal(row?.platform, 'ios');
+    assert.equal(row?.app_version, '1.2.0');
+  });
+
+  /**
+   * Avant la migration, la table privée n'existe pas et `loadTelemetry` rend
+   * une liste vide : les colonnes de `users` doivent rester affichées, sinon
+   * déployer le back-office en premier effacerait la dernière visite de tous.
+   */
+  it('garde les colonnes du profil quand la table privée n\'a rien', () => {
+    const [row] = attachTelemetry([profile('a', { ...seen, platform: 'android' })], []);
+    assert.equal(row?.platform, 'android');
+    assert.equal(row?.last_seen_at, seen.last_seen_at);
+  });
+
+  it('l\'emporte sur les colonnes vidées par le trigger', () => {
+    const rows = attachTelemetry([profile('a'), profile('b')], [{ user_id: 'b', ...seen }]);
+    assert.equal(rows.find((r) => r.id === 'a')?.platform, null);
+    assert.equal(rows.find((r) => r.id === 'b')?.platform, 'ios');
   });
 });
 

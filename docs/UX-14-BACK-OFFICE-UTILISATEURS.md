@@ -352,6 +352,16 @@ sujet, avec sa rétention et son volume. Cf. D6.
 `platform` est contraint plutôt que libre : c'est une valeur fermée, et une
 faute de frappe côté client casserait silencieusement les filtres.
 
+> **Corrigé le 15 septembre 2026 : ces trois colonnes étaient lisibles par
+> tout le monde.** `users_read_all` est `using (true)`, et rien ne restreignait
+> les colonnes : la clé anonyme lisait la dernière visite de chaque membre,
+> mesuré sur la production. Retirer la lecture des colonnes aurait cassé le
+> `select('*')` du profil dans toutes les versions publiées. La migration
+> `20260915000000_close_privilege_gaps.sql` garde donc les colonnes, que la
+> 1.2.0 écrit, et un trigger range leurs valeurs dans `user_telemetry`, sans
+> aucun accès client. Le back-office lit cette table. Cf. la roadmap, ménage
+> en attente.
+
 ### 6.3 Le registre de suppression
 
 ```sql
@@ -451,7 +461,12 @@ l'écran l'explique.
   ce garde-fou serait exploitable par quiconque devine son chemin.
 - La suppression est **irréversible et sans corbeille**. La confirmation est
   donc explicite et récapitule ce qui disparaît.
-- `user_deletions` n'a aucune policy : service-role uniquement.
+- `user_deletions` n'a aucune policy : service-role uniquement. Même régime
+  pour `user_telemetry`, ajoutée le 15 septembre 2026.
+- **Ce que ce paragraphe ne disait pas, et qui manquait** : une policy filtre
+  des lignes, pas des colonnes. Les colonnes ajoutées à `users` étaient donc
+  lisibles par tous et écrivables par leur propriétaire, `kind` compris. Fermé
+  par `20260915000000_close_privilege_gaps.sql`.
 - Le formulaire éditorial écrit dans `users` et `bentos` avec le service-role,
   donc **hors RLS**. Les règles de pseudo doivent être revérifiées côté
   serveur, cf. §5.2 : la base garantit le format et l'unicité, pas la liste de

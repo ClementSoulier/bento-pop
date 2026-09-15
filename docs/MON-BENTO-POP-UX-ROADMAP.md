@@ -163,27 +163,32 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 - **Migration `20260911000000_revalidate_landing_on_publish.sql`** du chantier 1,
   toujours pas appliquée, ainsi que ses deux secrets Vault. Sans elle, la page
   publique se rafraîchit toutes les cinq minutes au lieu d'immédiatement.
-- **Trois failles de privilèges, relevées le 15 septembre 2026**, de la même
-  famille que `is_featured`. **À corriger avant que la 1.2.0 soit publique.**
-  Tâche séparée proposée.
-  - **La télémétrie du chantier 14 est lisible par tout le monde**, mesuré à
-    la clé anonyme : `last_seen_at`, `platform` et `app_version` sortent de
-    `users`, dont la lecture est `using (true)` sans aucun droit par colonne.
-    Une seule ligne remplie ce jour-là, mais chaque membre qui ouvrira la 1.2.0
-    rendra publique l'heure de sa dernière visite. La politique de
-    confidentialité de la landing ne mentionne pas ces données.
-  - **Un membre peut se déclarer créateur invité**, d'après les migrations :
-    `users_update_own` ne restreint aucune colonne, donc `kind = 'editorial'`
-    est à sa portée, et c'est ce champ qui pose l'étiquette d'invité
-    (`feed.ts:153`, `public-bento.ts:139`).
-  - **Un client peut insérer un item déjà validé**, d'après les migrations :
-    `items_insert_authenticated` est `with check (true)`, et le trigger de
-    statut ne force `pending` que pour `external_source = 'user'`. N'importe
-    quel compte anonyme peut donc écrire un titre libre directement dans le
-    catalogue validé, sans passer par la modération.
+- **Quatre failles de privilèges, relevées et corrigées le 15 septembre
+  2026**, de la même famille que `is_featured`. **Migration
+  `20260915000000_close_privilege_gaps.sql` à appliquer avant que la 1.2.0
+  soit publique**, puis le back-office à déployer.
+  - **La télémétrie du chantier 14 était lisible par tout le monde**, mesuré à
+    la clé anonyme sur la production : `last_seen_at`, `platform` et
+    `app_version` sortaient de `users`, dont la lecture est `using (true)`.
+    Retirer la lecture de ces colonnes aurait cassé le `select('*')` du profil
+    dans toutes les versions publiées, mesuré en local : un trigger les range
+    donc dans `user_telemetry`, que seul le back-office lit. La politique de
+    confidentialité de la landing ne mentionne toujours pas ces données.
+  - **Un membre pouvait se déclarer créateur invité** (`kind = 'editorial'`),
+    ou naître ainsi. Les écritures de `users` sont désormais accordées colonne
+    par colonne, exactement celles des versions publiées.
+  - **Un client pouvait insérer un item déjà validé**, titre libre compris.
+    Toute insertion venue de l'API passe désormais par la modération.
+  - **La correction de `is_featured` se contournait** en supprimant puis
+    réinsérant son bento déjà en coup de cœur. L'insertion ne pose plus que
+    `user_id`.
 
-  Les deux dernières sont déduites du code, pas testées : on n'écrit pas en
-  production pour le prouver.
+  Plus deux points d'hygiène : un signalement ne peut plus naître classé, et
+  `admin_merge_items` n'est plus exécutable par les clients. Les trois
+  dernières failles ont été reproduites sur un Supabase local construit depuis
+  les migrations, jamais en production : `apps/mobile/scripts/check-privileges.ts`
+  y rejoue les attaques et tout le parcours de l'app, 11 contrôles en échec
+  avant la migration, 42 sur 42 après.
 
 ---
 
@@ -319,8 +324,9 @@ Chacune coûte moins cher posée une fois que redécouverte à chaque chantier.
    demandera probablement une aussi, selon la connexion retenue. Regrouper ces
    changements dans une même version évite une revue par chantier.
 
-**Trois failles relevées en chemin**, sans rapport avec la liste mais à
-corriger avant elle, cf. [ménage en attente](#ménage-en-attente).
+**Quatre failles relevées en chemin**, sans rapport avec la liste, corrigées
+le même jour et à appliquer en production avant elle, cf.
+[ménage en attente](#ménage-en-attente).
 
 ---
 
@@ -883,7 +889,7 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 **Constat.**
 
 - **Aucun réglage n'existe.** Le seul geste de confidentialité est la dépublication, depuis le chantier 5.
-- **La première atteinte à la confidentialité n'est pas un réglage manquant** : la télémétrie du chantier 14 est lisible par tout le monde, cf. [ménage en attente](#ménage-en-attente).
+- **La première atteinte à la confidentialité n'était pas un réglage manquant** : la télémétrie du chantier 14 était lisible par tout le monde. Corrigée le 15 septembre, migration à appliquer, cf. [ménage en attente](#ménage-en-attente).
 - **Un réglage appliqué par l'interface seule ne protège rien** : l'API se lit avec la clé anonyme embarquée dans l'app.
 
 **Principe commun.** Chaque réglage s'applique en base, dans les policies et les fonctions SQL, jamais seulement dans l'écran. Chacun est prouvé par un test qui tente l'accès interdit à la clé anonyme. Tous se retrouvent au même endroit dans l'app.

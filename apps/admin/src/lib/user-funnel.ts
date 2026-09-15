@@ -24,6 +24,14 @@ export type ProfileRow = {
   app_version: string | null;
 };
 
+/** Une ligne de `user_telemetry`, telle que lue par le service-role. */
+export type TelemetryRow = {
+  user_id: string;
+  last_seen_at: string | null;
+  platform: 'ios' | 'android' | null;
+  app_version: string | null;
+};
+
 /** Le bento d'une personne, s'il existe. */
 export type BentoRow = {
   user_id: string;
@@ -104,6 +112,24 @@ export function computeFunnel(
 export function funnelShare(step: number, installs: number): number {
   if (installs <= 0) return 0;
   return Math.round((step / installs) * 100);
+}
+
+/**
+ * Rattache sa télémétrie à chaque profil.
+ *
+ * Depuis la migration `20260915000000_close_privilege_gaps.sql`, elle ne vit
+ * plus dans `users`, dont les trois colonnes restent vides : un trigger la
+ * range dans `user_telemetry`, que les clients ne lisent pas. La table privée
+ * l'emporte donc. La valeur du profil ne sert que tant que la migration n'est
+ * pas appliquée, pour que le back-office puisse partir avant elle.
+ */
+export function attachTelemetry(profiles: ProfileRow[], telemetry: TelemetryRow[]): ProfileRow[] {
+  const byUser = new Map(telemetry.map((t) => [t.user_id, t]));
+  return profiles.map((p) => {
+    const t = byUser.get(p.id);
+    if (!t) return p;
+    return { ...p, last_seen_at: t.last_seen_at, platform: t.platform, app_version: t.app_version };
+  });
 }
 
 /**
