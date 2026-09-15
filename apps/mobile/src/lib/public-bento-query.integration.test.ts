@@ -57,7 +57,11 @@ async function startSilentServer(): Promise<Silent> {
 async function waitFor(condition: () => boolean, timeoutMs = 4000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (!condition()) {
-    if (Date.now() > deadline) throw new Error('condition jamais atteinte');
+    if (Date.now() > deadline) {
+      throw new Error(
+        `condition jamais atteinte (serveur muet : ${silent.received()} reçues, ${silent.abandoned()} abandonnées)`,
+      );
+    }
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
 }
@@ -88,14 +92,41 @@ function newQueryClient(): QueryClient {
   return client;
 }
 
-function supabaseOn(url: string): PublicBentoClient {
-  return createClient<Database>(url, 'stub-anon-key', STUB_CLIENT_OPTIONS);
+function supabaseOn(url: string, fetchFn?: typeof fetch): PublicBentoClient {
+  return createClient<Database>(url, 'stub-anon-key', {
+    ...STUB_CLIENT_OPTIONS,
+    ...(fetchFn ? { global: { fetch: fetchFn } } : {}),
+  });
+}
+
+/**
+ * Un `fetch` qui garde le signal de chacune de ses requêtes : les tentatives
+ * se comptent côté client.
+ *
+ * Côté serveur, le compte ne tient pas sous forte charge : l'abandon à 60 ms y
+ * part parfois avant que le serveur ait lu la requête, qui n'arrive alors
+ * jamais. Mesuré 2 fois sur 6 avec deux processus `yes` par cœur pendant la
+ * suite : « 0 reçues, 0 abandonnées ».
+ */
+function recordingFetch() {
+  const signals: (AbortSignal | null | undefined)[] = [];
+  const fetchFn: typeof fetch = (input, init) => {
+    signals.push(init?.signal);
+    return fetch(input, init);
+  };
+  return { fetchFn, signals };
 }
 
 describe('page publique, réseau qui ne répond pas', () => {
   it('abandonne la tentative à l’échéance, et annule vraiment la requête', async () => {
-    const before = silent.abandoned();
-    const { queryFn } = publicBentoQueryOptions(supabaseOn(silent.url), 'dark_hifus', TIMEOUT_MS);
+    const receivedBefore = silent.received();
+    const abandonedBefore = silent.abandoned();
+    const { fetchFn, signals } = recordingFetch();
+    const { queryFn } = publicBentoQueryOptions(
+      supabaseOn(silent.url, fetchFn),
+      'dark_hifus',
+      TIMEOUT_MS,
+    );
 
     const started = Date.now();
     await assert.rejects(
@@ -104,7 +135,12 @@ describe('page publique, réseau qui ne répond pas', () => {
     );
     assert.ok(Date.now() - started < TIMEOUT_MS + 300, `${Date.now() - started} ms`);
 
-    await waitFor(() => silent.abandoned() > before);
+    assert.equal(signals.length, 1);
+    assert.equal(signals[0]?.aborted, true, 'requête laissée en cours');
+    // Et le serveur ne garde rien d'ouvert : la requête qui l'a atteint se ferme.
+    await waitFor(
+      () => silent.abandoned() - abandonedBefore === silent.received() - receivedBefore,
+    );
   });
 
   /**
@@ -112,8 +148,12 @@ describe('page publique, réseau qui ne répond pas', () => {
    * par tentative, 11 s ; ici, 60 ms + 1 s + 60 ms.
    */
   it('réessaie une seule fois, puis rend l’erreur', async () => {
-    const receivedBefore = silent.received();
-    const options = publicBentoQueryOptions(supabaseOn(silent.url), 'dark_hifus', TIMEOUT_MS);
+    const { fetchFn, signals } = recordingFetch();
+    const options = publicBentoQueryOptions(
+      supabaseOn(silent.url, fetchFn),
+      'dark_hifus',
+      TIMEOUT_MS,
+    );
     const observer = new QueryObserver(newQueryClient(), options);
 
     const started = Date.now();
@@ -122,7 +162,11 @@ describe('page publique, réseau qui ne répond pas', () => {
     const elapsed = Date.now() - started;
     unsubscribe();
 
-    assert.equal(silent.received() - receivedBefore, 2, 'une tentative et un réessai');
+    assert.equal(signals.length, 2, 'une tentative et un réessai');
+    assert.ok(
+      signals.every((signal) => signal?.aborted),
+      'tentative laissée en cours',
+    );
     assert.ok(observer.getCurrentResult().error instanceof AbortTimeoutError);
     assert.ok(elapsed >= 1000 && elapsed < 2000, `${elapsed} ms`);
   });
