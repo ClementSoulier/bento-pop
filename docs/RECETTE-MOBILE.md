@@ -129,6 +129,31 @@ L'ordre, qui compte :
    proxy, sans profil), le supprimer (`DELETE` sur la même adresse), puis
    vérifier le 404.
 
+### Éprouver des droits d'écriture : le Supabase local, jamais la production
+
+Une policy ou un privilège se prouve en tentant l'écriture interdite, ce qui
+ne se fait pas en production. Le Supabase local, construit depuis les
+migrations du dépôt, sert à ça : Docker Desktop lancé, puis
+
+```bash
+cd apps/mobile
+supabase start -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,supavisor
+supabase db reset --local
+npx tsx scripts/check-privileges.ts
+```
+
+Le script refuse toute cible qui n'est pas `127.0.0.1`. Il rejoue les attaques
+connues et tout le parcours d'écriture de l'app, avec les fonctions de l'app
+quand elles prennent leur client en paramètre. Au 15 septembre 2026 : 42
+contrôles, dont 11 en échec sans `20260915000000_close_privilege_gaps.sql`.
+Toute migration qui touche aux droits doit le laisser vert, et ajouter ses
+propres contrôles.
+
+Deux précautions. Toujours passer par `db reset` avant de mesurer : c'est ce
+qui garantit une base qui reflète exactement les migrations du dépôt, sans
+reste d'une session précédente. Et pour comparer avant et après une
+migration, la sortir du dossier le temps d'un `reset`, puis l'y remettre.
+
 ---
 
 ## 2. iOS

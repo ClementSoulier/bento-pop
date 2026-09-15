@@ -2,12 +2,14 @@ import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import {
+  attachTelemetry,
   buildOrphanRows,
   buildUserRows,
   computeFunnel,
   type AuthAccount,
   type BentoRow,
   type ProfileRow,
+  type TelemetryRow,
 } from '@/lib/user-funnel';
 import { purgeDeletionRegistry } from './actions';
 import { UsersClient } from './UsersClient';
@@ -23,7 +25,8 @@ export const dynamic = 'force-dynamic';
  *     exposée par PostgREST, il n'y a donc pas de jointure possible : c'est
  *     la seule façon de connaître le nombre d'installations, et les comptes
  *     qui n'ont jamais choisi de pseudo ;
- *   - `public.users`, les profils ;
+ *   - `public.users`, les profils, et `user_telemetry`, leur dernière visite,
+ *     rangée à part pour que les clients ne la lisent pas ;
  *   - `bentos` et le compte de leurs cases.
  *
  * Cf. `docs/UX-14-BACK-OFFICE-UTILISATEURS.md`.
@@ -95,10 +98,31 @@ async function listAuthAccounts(mobile: Mobile): Promise<AuthAccount[]> {
 }
 
 async function loadProfiles(mobile: Mobile): Promise<ProfileRow[]> {
-  const { data, error } = await mobile
-    .from('users')
-    .select('id, pseudo, display_name, kind, created_at, last_seen_at, platform, app_version');
+  const [{ data, error }, telemetry] = await Promise.all([
+    mobile
+      .from('users')
+      .select('id, pseudo, display_name, kind, created_at, last_seen_at, platform, app_version'),
+    loadTelemetry(mobile),
+  ]);
   if (error) throw new Error(`Lecture des profils échouée : ${error.message}`);
+  return attachTelemetry(data ?? [], telemetry);
+}
+
+/**
+ * La télémétrie, rangée dans `user_telemetry` depuis la migration
+ * `20260915000000_close_privilege_gaps.sql`.
+ *
+ * Une table encore absente rend une liste vide plutôt qu'une erreur : le
+ * back-office peut ainsi être déployé avant la migration, et continue
+ * d'afficher les colonnes de `users` en attendant. PostgREST signale une table
+ * inconnue par `PGRST205`.
+ */
+async function loadTelemetry(mobile: Mobile): Promise<TelemetryRow[]> {
+  const { data, error } = await mobile
+    .from('user_telemetry')
+    .select('user_id, last_seen_at, platform, app_version');
+  if (error?.code === 'PGRST205') return [];
+  if (error) throw new Error(`Lecture de la télémétrie échouée : ${error.message}`);
   return data ?? [];
 }
 

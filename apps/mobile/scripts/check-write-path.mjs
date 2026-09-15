@@ -79,6 +79,15 @@ const tel=await fetch(`${U}/rest/v1/users?id=eq.${uid}`,{method:'PATCH',headers:
   body:JSON.stringify({last_seen_at:new Date().toISOString(),platform:'ios',app_version:'0.1.0'})});
 ok('écriture de la télémétrie sous RLS', tel.ok, `HTTP ${tel.status}`);
 
+// 5 bis. depuis 20260915000000_close_privilege_gaps.sql, elle ne reste pas
+//        dans `users`, lisible par tous, mais dans `user_telemetry`
+const pub=await (await fetch(`${U}/rest/v1/users?select=platform&id=eq.${uid}`,
+  {headers:{apikey:A,authorization:`Bearer ${A}`}})).json();
+ok('la télémétrie ne se lit pas à la clé anonyme', pub[0]?.platform===null, JSON.stringify(pub[0]));
+const kept=await fetch(`${U}/rest/v1/user_telemetry?select=platform&user_id=eq.${uid}`,{headers:svc});
+const kj=await kept.json();
+ok('elle est rangée dans user_telemetry', kept.ok && kj[0]?.platform==='ios', kept.ok?JSON.stringify(kj[0]):`HTTP ${kept.status}`);
+
 // 6. Ménage complet. Les deux suppressions sont nécessaires : depuis le
 //    retrait de la clé étrangère, supprimer le compte d'authentification ne
 //    cascade plus sur le profil.

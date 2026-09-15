@@ -64,7 +64,10 @@ export function describeApp(os: string, version: string | null | undefined): App
  * personne n'a besoin coûterait un aller-retour réseau à chaque fois.
  *
  * La policy `users_update_own` couvre déjà ce cas, aucune règle à ajouter :
- * l'app modifie sa propre ligne.
+ * l'app modifie sa propre ligne. Les trois colonnes lui sont accordées une à
+ * une, et **la base ne les garde pas dans `users`**, lisible par tous : un
+ * trigger les range dans `user_telemetry`, que seul le back-office lit, et les
+ * remet à `null`. Cf. `20260915000000_close_privilege_gaps.sql`.
  *
  * Renvoie `true` si l'écriture a abouti, pour les tests. Personne en
  * production ne regarde ce retour.
