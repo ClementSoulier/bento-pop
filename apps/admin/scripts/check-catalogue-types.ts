@@ -11,7 +11,7 @@
  *   cd apps/mobile && supabase start && supabase db reset --local
  *   cd ../admin && npx tsx scripts/check-catalogue-types.ts
  *
- * Cf. `docs/UX-15-NOUVELLES-CATEGORIES.md`, lot 1.
+ * Cf. `docs/UX-15-NOUVELLES-CATEGORIES.md`, lots 1 et 2.
  */
 import { execSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
@@ -27,6 +27,7 @@ import {
   validateDrafts,
   type MobileClient,
 } from '../src/lib/catalogue-types';
+import { importStarterList, loadStarterStatuses } from '../src/lib/starter-import';
 
 const status = Object.fromEntries(
   execSync('supabase status -o env', {
@@ -242,6 +243,70 @@ async function main(): Promise<void> {
     g.items.some((i) => i.id === asCreator!.id),
   );
   check('fusionnés, ils sortent de la liste', !mergeError && !stillThere, mergeError?.message);
+
+  console.log('\nListes de départ\n');
+
+  // Un livre que l'équipe aurait déjà saisi, sous une autre casse.
+  const princes = () =>
+    db.from('items').select('id, external_source').eq('type_id', typeId('book')).ilike('title', 'le petit prince');
+  if (((await princes()).data ?? []).length === 0) {
+    await db
+      .from('items')
+      .insert({ type_id: typeId('book'), external_source: 'admin', status: 'validated', title: 'LE PETIT PRINCE' });
+  }
+
+  const statusOf = async (key: string) => (await loadStarterStatuses(db)).find((s) => s.typeKey === key);
+  const bookBefore = await statusOf('book');
+  check(
+    'l’écran compte les candidats et ce qui est déjà là',
+    (bookBefore?.candidates ?? 0) >= 100 && (bookBefore?.alreadyThere ?? 0) >= 1,
+    JSON.stringify(bookBefore),
+  );
+
+  const first = await importStarterList(db, 'book');
+  check(
+    'le premier import crée ce que l’écran annonçait',
+    first.ok && first.value.inserted === bookBefore?.toInsert,
+    first.ok ? JSON.stringify(first.value) : first.error,
+  );
+  const again2 = await importStarterList(db, 'book');
+  check('relancé, il ne crée rien', again2.ok && again2.value.inserted === 0);
+  check(
+    'un titre déjà saisi n’est pas importé une seconde fois',
+    ((await princes()).data ?? []).length === 1,
+  );
+
+  const { data: imported } = await db
+    .from('items')
+    .select('status, category_id, external_source')
+    .eq('type_id', typeId('book'))
+    .like('external_id', 'starter:book:%');
+  // Le trigger d'insertion valide d'office toute source autre que `user` et
+  // `admin` : c'est ici qu'un import mal sourcé se verrait.
+  check(
+    'les importés restent des brouillons, sans case',
+    (imported ?? []).length >= 100 &&
+      (imported ?? []).every(
+        (i) => i.status === 'draft' && i.category_id === null && i.external_source === 'admin',
+      ),
+    `${imported?.length} importés, statuts ${[...new Set((imported ?? []).map((i) => i.status))].join(', ')}`,
+  );
+
+  await db.from('items').update({ title: 'Dune, le cycle' }).eq('external_id', 'starter:book:dune');
+  const afterRename = await importStarterList(db, 'book');
+  check(
+    'un brouillon importé puis renommé ne revient pas',
+    afterRename.ok && afterRename.value.inserted === 0,
+  );
+
+  const dishBefore = await statusOf('dish');
+  const [dishA, dishB] = await Promise.all([importStarterList(db, 'dish'), importStarterList(db, 'dish')]);
+  check(
+    'deux imports lancés en même temps ne doublent rien',
+    dishA.ok && dishB.ok && dishA.value.inserted + dishB.value.inserted === dishBefore?.toInsert,
+    dishA.ok && dishB.ok ? `${dishA.value.inserted} + ${dishB.value.inserted}` : '',
+  );
+  check('après import, rien ne reste à importer', (await statusOf('book'))?.toInsert === 0);
 
   console.log(failures === 0 ? '\nCouche de données conforme.\n' : `\n${failures} échec(s).\n`);
 }

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
-import { loadDuplicateGroups } from '@/lib/catalogue-types';
+import { loadDuplicateGroups, readAll, STATUS_LABELS, type ItemStatus } from '@/lib/catalogue-types';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import {
   CatalogueClient,
@@ -9,6 +9,8 @@ import {
   type DuplicateGroupView,
   type TypeOption,
 } from './CatalogueClient';
+
+type SearchParams = Promise<{ type?: string; statut?: string }>;
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +21,11 @@ export const dynamic = 'force-dynamic';
  *  - « Doublons probables » : items d'un même type au même titre, par exemple
  *    une Personne proposée jadis comme artiste et comme créateur.
  *  - « Tout le catalogue » : tableau filtrable (type + statut) de TOUS les
- *    items, avec la validation des brouillons par lot.
+ *    items, avec la validation des brouillons par lot. `?type=book&statut=draft`
+ *    l'ouvre filtré, depuis les listes de départ de l'écran Types.
  */
-export default async function CataloguePage() {
+export default async function CataloguePage({ searchParams }: { searchParams: SearchParams }) {
+  const { type: typeParam, statut: statusParam } = await searchParams;
   const mobile = createMobileClient();
   if (!mobile) {
     return (
@@ -59,20 +63,31 @@ export default async function CataloguePage() {
     .limit(200);
 
   // 3. TOUT le catalogue (vue d'ensemble filtrable). On récupère tous les
-  //    items quel que soit le statut — y compris les validés historiques /
-  //    importés qui n'ont pas de `validated_at` et n'apparaissaient donc
-  //    nulle part dans l'ancienne vue « récemment traités ».
-  const { data: allItemsRaw } = await mobile
-    .from('items')
-    .select('id, title, subtitle, year, image_url, type_id, status, created_at')
-    .order('created_at', { ascending: false, nullsFirst: false })
-    .limit(2000);
+  //    items quel que soit le statut, y compris les validés historiques ou
+  //    importés qui n'ont pas de `validated_at`. Par pages : Supabase coupe
+  //    une réponse à 1 000 lignes sans le dire, et les listes de départ
+  //    approchent le catalogue de ce seuil.
+  const allItemsRaw = await readAll((from, to) =>
+    mobile
+      .from('items')
+      .select('id, title, subtitle, year, image_url, type_id, status, created_at')
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, to),
+  );
 
   // 3b. Nombre de bentos contenant chaque item (toutes publications confondues).
   //     On agrège côté serveur : une ligne bento_items = un item dans un bento.
-  const { data: allBentoItems } = await mobile.from('bento_items').select('item_id');
+  const allBentoItems = await readAll((from, to) =>
+    mobile
+      .from('bento_items')
+      .select('item_id')
+      .order('bento_id')
+      .order('category_id')
+      .range(from, to),
+  );
   const bentoCountByItem = new Map<string, number>();
-  (allBentoItems ?? []).forEach((bi) => {
+  allBentoItems.forEach((bi) => {
     bentoCountByItem.set(bi.item_id, (bentoCountByItem.get(bi.item_id) ?? 0) + 1);
   });
 
@@ -99,7 +114,7 @@ export default async function CataloguePage() {
     status: 'pending',
   }));
 
-  const allItems: CatalogueFullRow[] = (allItemsRaw ?? []).map((i) => ({
+  const allItems: CatalogueFullRow[] = allItemsRaw.map((i) => ({
     id: i.id,
     title: i.title,
     subtitle: i.subtitle ?? null,
@@ -149,7 +164,16 @@ export default async function CataloguePage() {
           </span>
         </Link>
       ) : null}
-      <CatalogueClient pending={pending} allItems={allItems} types={types} duplicates={duplicates} />
+      <CatalogueClient
+        pending={pending}
+        allItems={allItems}
+        types={types}
+        duplicates={duplicates}
+        initialTypeFilter={types.some((t) => t.key === typeParam) ? (typeParam ?? 'all') : 'all'}
+        initialStatusFilter={
+          statusParam && statusParam in STATUS_LABELS ? (statusParam as ItemStatus) : 'all'
+        }
+      />
     </PageShell>
   );
 }

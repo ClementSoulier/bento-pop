@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
 import { loadItemTypes } from '@/lib/catalogue-types';
+import { loadStarterStatuses } from '@/lib/starter-import';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { TypesClient } from './TypesClient';
 
@@ -26,7 +27,7 @@ export default async function TypesPage() {
     );
   }
 
-  const types = await loadItemTypes(mobile);
+  const [types, starters] = await Promise.all([loadItemTypes(mobile), loadStarterStatuses(mobile)]);
   const active = types.filter((t) => t.active).length;
 
   return (
@@ -39,7 +40,7 @@ export default async function TypesPage() {
         </Link>
       }
     >
-      <TypesClient types={types} />
+      <TypesClient types={types} starters={starters} />
     </PageShell>
   );
 }

@@ -146,7 +146,7 @@ cd ../admin && npx tsx scripts/check-catalogue-types.ts
 
 Les trois scripts refusent toute cible qui n'est pas `127.0.0.1`.
 `check-catalogue-types.ts` rejoue la couche de données du catalogue par type
-du back-office (17 contrôles). L'interface, elle, passe par l'authentification
+du back-office et l'import des listes de départ (25 contrôles). L'interface, elle, passe par l'authentification
 de production : elle ne se clique en local que sur accord explicite de
 Clément, dans une copie jetable (worktree détaché, jamais commitée) où la
 session admin est simulée, toute cible Supabase non locale refusée et le

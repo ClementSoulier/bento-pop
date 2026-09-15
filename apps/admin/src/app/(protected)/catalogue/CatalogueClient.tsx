@@ -59,9 +59,19 @@ type Props = {
   allItems: CatalogueFullRow[];
   types: TypeOption[];
   duplicates: DuplicateGroupView[];
+  /** Filtres d'ouverture du tableau, lus dans l'URL (`?type=book&statut=draft`). */
+  initialTypeFilter: string;
+  initialStatusFilter: ItemStatus | 'all';
 };
 
-export function CatalogueClient({ pending, allItems, types, duplicates }: Props) {
+export function CatalogueClient({
+  pending,
+  allItems,
+  types,
+  duplicates,
+  initialTypeFilter,
+  initialStatusFilter,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -85,7 +95,13 @@ export function CatalogueClient({ pending, allItems, types, duplicates }: Props)
 
       {duplicates.length > 0 ? <DuplicatesSection groups={duplicates} setError={setError} /> : null}
 
-      <CatalogueTable items={allItems} types={types} setError={setError} />
+      <CatalogueTable
+        items={allItems}
+        types={types}
+        setError={setError}
+        initialTypeFilter={initialTypeFilter}
+        initialStatusFilter={initialStatusFilter}
+      />
     </div>
   );
 }
@@ -700,16 +716,20 @@ function CatalogueTable({
   items,
   types,
   setError,
+  initialTypeFilter,
+  initialStatusFilter,
 }: {
   items: CatalogueFullRow[];
   types: TypeOption[];
   setError: (e: string | null) => void;
+  initialTypeFilter: string;
+  initialStatusFilter: ItemStatus | 'all';
 }) {
   const router = useRouter();
   const [validating, startValidating] = useTransition();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<ItemStatus | 'all'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>(initialTypeFilter);
+  const [statusFilter, setStatusFilter] = useState<ItemStatus | 'all'>(initialStatusFilter);
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<SortState>({ key: 'title', dir: 'asc' });
   const [openImageId, setOpenImageId] = useState<string | null>(null);
@@ -772,7 +792,7 @@ function CatalogueTable({
   };
 
   return (
-    <section className="admin-card overflow-hidden">
+    <section id="tout-le-catalogue" className="admin-card scroll-mt-24 overflow-hidden">
       <header className="flex flex-col gap-3 border-b border-admin-border bg-admin-bg/60 px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[13px] font-semibold">

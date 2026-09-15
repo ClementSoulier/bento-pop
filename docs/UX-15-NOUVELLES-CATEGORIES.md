@@ -256,6 +256,8 @@ back-office par exemple, garde le type qu'on lui donne.
   dépôt, un fichier par type, et importées en brouillon par le back-office.
 - **Environ cent candidats par type**, pour atteindre 50 validés après relecture
   par l'équipe.
+- **Chaque liste couvre tout son type** (D14) : une case « Le manga que tu
+  trouves surcoté » cherchera dans Livre, comme « Ton livre préféré ».
 - **Des champs sobres** : titre, et un sous-titre seulement quand il est sûr
   (l'auteur d'un livre, le studio d'un jeu). Une année douteuse est pire qu'une
   année absente.
@@ -480,7 +482,9 @@ des deux doublons.
 > porte (la fiche le dira avant d'essayer). Glitch Productions est posé dans le
 > bento publié d'un utilisateur, case Créateur de contenu : il ne changera pas
 > de type tant que cet utilisateur ne l'aura pas remplacé, le back-office
-> n'ayant aucun geste pour retirer un item du bento de quelqu'un.
+> n'ayant aucun geste pour retirer un item du bento de quelqu'un. **Tranché le
+> même jour par Clément : il reste une Personne**, un studio qui publie ses
+> animations sur YouTube se lisant bien en Créateur de contenu.
 >
 > Les gestes sur les données de production, fusions et retypages, restent faits
 > par l'équipe dans le back-office.
@@ -489,6 +493,58 @@ des deux doublons.
 
 Une liste d'environ cent candidats par nouveau type, importée en brouillon,
 relue par l'équipe jusqu'à 50 validés.
+
+> **Écrit et recetté en local le 15 septembre 2026.** Aucune migration, rien
+> dans l'app, les quatre types restent inactifs (D1).
+>
+> - **Quatre listes larges** (D14), dans `apps/admin/src/lib/starter-lists/` :
+>   110 jeux vidéo, 110 livres, 115 plats et 111 activités, soit 446
+>   candidats saisis en interne. Les livres vont des classiques aux mangas et
+>   aux comics, les plats de la raclette aux goûters cultes, les activités des
+>   loisirs créatifs aux rendez-vous nommés (Japan Expo, Z Event). Sous-titre :
+>   l'auteur d'un livre, le studio de développement d'un jeu, laissé vide au
+>   moindre doute ; aucun pour les plats et les activités ; aucune année.
+> - **Import depuis l'écran Types**, section « Listes de départ » : pour chaque
+>   type, les candidats, ce qui est déjà au catalogue, et un bouton qui importe
+>   le reste en brouillons, sans case. Le résultat s'affiche sous la liste, et
+>   un lien ouvre le catalogue filtré sur les brouillons du type, prêts à être
+>   cochés et validés par lot.
+> - **Rien ne s'importe deux fois.** Un titre déjà au catalogue du type, en titre
+>   ou en alias et quel que soit son statut, reste de côté. Chaque importé
+>   porte un identifiant `starter:<type>:<titre>`, unique en base : un import
+>   relancé, deux imports simultanés ou un brouillon renommé ne créent rien.
+> - **Source `admin`, et pas une source à part** : le trigger
+>   `items_set_status_on_insert` valide d'office toute source autre que `user`
+>   et `admin`. Trouvé par les contrôles locaux : une première version en
+>   source `starter` importait 109 livres déjà validés.
+> - **La page Catalogue lit tout, par pages.** Supabase coupe une réponse à
+>   1 000 lignes sans le dire ; les items (`limit(2000)`) et les placements
+>   (sans limite) y étaient exposés. Vérifié avec 1 148 items locaux : 1 148
+>   annoncés, 1 148 lignes.
+>
+> 81 tests du back-office verts, dont 26 nouveaux : validité des quatre listes
+> (nombre, doublons une fois les titres normalisés, identifiants, typographie)
+> et calcul de ce qu'un import ajoute. `scripts/check-catalogue-types.ts`
+> passe à 25 contrôles, dont 8 sur l'import. `check-privileges.ts` et
+> `check-types.ts` restent verts, typage, lint et `next build` aussi. L'écran
+> Types ne grossit que de 0,66 ko côté navigateur : les listes restent sur le
+> serveur.
+>
+> **Recette de l'interface**, sur accord de Clément, dans la même copie jetable
+> qu'au lot 1 : import des quatre listes (109 livres importés en 144 ms, le
+> livre déjà saisi laissé de côté), bouton « Tout est importé » ensuite, lien
+> de relecture qui ouvre le tableau filtré et défilé jusqu'à lui, 106 livres
+> validés d'un geste sur 109, fiche d'un importé qui affiche « liste de
+> départ » comme source, dix titres à caractères particuliers bien rendus,
+> aucun des 446 titres tronqué dans le tableau. Deux défauts corrigés et
+> remesurés : le message d'import s'affichait en haut de page, hors de vue, et
+> il est désormais sous la liste, sans décaler les lignes (664, 711, 760 et
+> 808 px avant comme après) ; le lien de relecture paraissait sans brouillon à
+> relire, il n'apparaît plus qu'avec leur nombre.
+>
+> **Reste à faire en production**, par l'équipe après redéploiement du
+> back-office : importer les quatre listes, puis relire jusqu'à 50 validés par
+> type (critère 5).
 
 ### Lot 3 · Recette et mesures
 
@@ -539,6 +595,7 @@ versions d'un coup, et le back-office part sur Coolify.
 | D11 | **La recherche élargie est assumée** : « Au menu » de la case Artiste propose aussi les créateurs, et inversement | Clément : « c'est pas que c'est voulu mais c'est assumé. On laisse ce côté permissif, après aux utilisateurs de jouer le jeu et de remplir correctement leurs Bento » |
 | D12 | **Contrôle strict en base** : une case refuse un item d'un autre type | « si un item est de type Lieu il ne doit jamais se retrouver dans une case film, ça c'est sûr à 100 % » ; aucune des 162 cases publiées ne l'enfreint |
 | D13 | **Listes de départ grand public, au goût Bento Pop** | des classiques et des récents que cite la communauté pop culture, en français, titre et sous-titre sûr seulement ; l'équipe coche et ajoute ses incontournables |
+| D14 | **Un type couvre tout son domaine ; l'angle vient de l'intitulé de la case** | Clément, le 15 septembre, sur Livre, puis Plat et Activité : « Ça peut être "Ton livre préféré" ou alors "Le manga que tu trouves surcoté", c'est bien plus large que ce que tu imagines et ça ouvre le champ des possibles. Après, en effet, si c'est trop long pour être dans une case, il faudra repenser l'UI/UX. » |
 
 ---
 
@@ -552,5 +609,9 @@ versions d'un coup, et le back-office part sur Coolify.
 - **Chantier 19** : les mentions d'un épisode ont déjà les types `game` et
   `book` (`apps/admin/src/lib/episodes/schemas.ts:14`), un pont possible vers
   les items de ces types.
+- **Chantier 13, des titres longs dans les cases** (D14) : 12 des 446
+  candidats dépassent 30 caractères, le plus long en compte 41 (« The Legend
+  of Zelda: Tears of the Kingdom »). La tuile d'une case doit les porter, le
+  contenu ne sera pas raccourci pour elle.
 - **Crédits de l'app** : à compléter des sources d'images réellement utilisées,
   au plus tard à l'activation d'un type.

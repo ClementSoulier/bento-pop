@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
 import { loadItemUsage, STATUS_LABELS } from '@/lib/catalogue-types';
+import { isStarterItem } from '@/lib/starter-import';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { ItemEditClient, type ItemDetail } from './ItemEditClient';
 
@@ -26,7 +27,7 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
   const { data: item } = await mobile
     .from('items')
     .select(
-      'id, category_id, type_id, external_source, title, subtitle, year, image_url, image_credit, status, submitted_by, submitted_at, validated_by, validated_at, rejected_by, rejected_at, rejected_reason, merged_into_id, created_at',
+      'id, category_id, type_id, external_source, external_id, title, subtitle, year, image_url, image_credit, status, submitted_by, submitted_at, validated_by, validated_at, rejected_by, rejected_at, rejected_reason, merged_into_id, created_at',
     )
     .eq('id', id)
     .maybeSingle();
@@ -65,7 +66,8 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
     imageUrl: item.image_url,
     imageCredit: item.image_credit,
     status: item.status,
-    externalSource: item.external_source,
+    // La source affichée : un import de liste de départ se lit comme tel.
+    externalSource: isStarterItem(item.external_id) ? 'liste de départ' : item.external_source,
     caseLabel: category?.label_fr ?? null,
     typeId: item.type_id,
     typeLabel: types.find((t) => t.id === item.type_id)?.label ?? '?',
