@@ -550,6 +550,44 @@ relue par l'équipe jusqu'à 50 validés.
 
 §8.4, puis Definition of Done.
 
+> **Recetté le 15 septembre 2026** sur l'iPhone 17 Pro (simulateur) et le
+> Pixel 8 (émulateur), avec les compilations du 14 septembre, qui visent le
+> proxy de lecture, et le code du jour servi par Metro. Méthode arbitrée par
+> Clément : A/B sur le Supabase local pour le pixel, production en lecture pour
+> la recherche élargie. Méthode et pièges dans `RECETTE-MOBILE.md` §1.
+>
+> **Non-régression au pixel, par A/B.** Base locale remise juste avant la
+> migration du lot 0, jeu de données fixe (7 profils éditoriaux, 40 items,
+> 6 bentos publiés, 38 cases), treize captures par plateforme ; puis la
+> migration appliquée sur les mêmes lignes, l'app réinstallée à neuf, et la
+> même série, comparée pixel à pixel.
+>
+> - **Identiques au pixel sur les deux plateformes** : lancement, composer
+>   vide, « La table », « Trouver » et sa recherche, page publique d'un bento
+>   complet, image de partage (3240 × 5760 sur iPhone, 2835 × 5040 sur
+>   Android). Les modales des cases Film, Série, Chanson et Lieu aussi, au
+>   bruit près.
+> - **Seule différence de contenu, celle voulue** : « Au menu » des cases
+>   Artiste et Créateur de contenu passe de 7 artistes ou 7 créateurs aux 12
+>   Personnes les plus choisies, les mêmes dans les deux cases (52 % et 36 % des
+>   pixels de l'écran sur iPhone, 26 % et 10 % sur Android).
+> - **Le bruit, reconnu un par un** : le curseur du champ de recherche capturé
+>   à deux instants de son clignotement (6 × 58 px sur iPhone), le clavier et
+>   une icône de la barre d'état sur Android, et quelques pixels à un écart de
+>   1 sur 255.
+>
+> **La recherche élargie, vue en production** par le proxy de lecture, qui
+> n'a relayé que des lectures et `popular_items` et `search_items`, session
+> factice, aucun compte : dans la case Artiste, « Au menu » mêle Joyca, Joueur
+> du Grenier, Toby Fox et Cyprien Iov aux artistes, et « Squeezie » trouve le
+> vidéaste ; dans la case Créateur de contenu, « Orelsan » trouve le rappeur.
+> Sur iPhone comme sur Android.
+>
+> **Relevé en passant, pour le ménage du catalogue** : des sous-titres hérités
+> des anciens imports, en anglais (« FR · Person · French rapper »), un acteur
+> rangé en artiste (Ryan Reynolds), une casse irrégulière (« imagine
+> dragons »).
+
 **Livraison.** Rien côté app : la migration change la recherche de toutes les
 versions d'un coup, et le back-office part sur Coolify.
 
@@ -557,17 +595,22 @@ versions d'un coup, et le back-office part sur Coolify.
 
 ## 10. Definition of Done
 
-- [ ] Les versions publiées passent `check-privileges.ts` sans échec
-- [ ] `check-types.ts` passe entièrement sur le Supabase local
-- [ ] La recherche d'une case cherche dans son type, vérifié en production en
-      lecture seule
-- [ ] Une case refuse un item d'un autre type
-- [ ] Le back-office crée et active un type, et valide des brouillons par lot
+État au 15 septembre 2026, au soir : sept critères sur neuf. Les deux qui
+restent sont des gestes de l'équipe dans le back-office, une fois redéployé.
+
+- [x] Les versions publiées passent `check-privileges.ts` sans échec (après
+      chaque lot, sur une base remise à zéro)
+- [x] `check-types.ts` passe entièrement sur le Supabase local
+- [x] La recherche d'une case cherche dans son type, vérifié en production en
+      lecture seule (lot 0 à la clé anonyme, lot 3 sur appareil)
+- [x] Une case refuse un item d'un autre type
+- [x] Le back-office crée et active un type, et valide des brouillons par lot
+      (recetté en local aux lots 1 et 2)
 - [ ] Les deux doublons de Personne sont fusionnés
 - [ ] Les quatre nouveaux types ont chacun au moins 50 items validés
-- [ ] Recette au pixel du bento principal sur iPhone et Android
-- [ ] Tests, typage et lint verts sur l'app, le back-office, la landing et le
-      package
+- [x] Recette au pixel du bento principal sur iPhone et Android (lot 3)
+- [x] Tests, typage et lint verts sur l'app, le back-office, la landing et le
+      package (CI de la PR #66 : lint, typage, tests, e2e et build)
 
 ---
 
