@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut au 13 septembre 2026 : chantiers 1 à 5 et 14 livrés, version 1.2.0 en cours d'envoi aux deux stores.** Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 15 septembre 2026 : chantiers 1 à 7 et 14 livrés, prochain le 15.** Les chantiers 6 et 7 sont sur `main`, dans aucune build ni mise à jour à distance. La 1.2.0 n'est publique sur aucun store : l'App Store sert toujours la 1.1, le Play Store la 0.1.0, relevé le 15 septembre. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -78,7 +78,17 @@ curl -s "https://itunes.apple.com/lookup?id=6768764158" | grep -o '"version":"[^
 | 13/09, 20 h 09 | `0.2.0` | chantier 5 | build 0.2.0 de TestFlight uniquement, **orpheline** depuis le passage en 1.2.0 |
 
 La 1.2.0 embarque le même code, elle n'a donc besoin d'aucune mise à jour pour
-être à jour. La prochaine devra viser la runtime **`1.2.0`** :
+le chantier 5. **Elle n'a pas les chantiers 6 et 7**, fusionnés après elle, et
+la runtime `1.2.0` ne sert encore aucune mise à jour : réponse 204 sur iOS
+comme sur Android, relevé le 15 septembre.
+
+Aucune dépendance ni configuration native n'a bougé depuis la build 1.2.0 :
+`package.json`, `app.json` et `pnpm-lock.yaml` n'ont changé depuis que par le
+numéro de version. Les chantiers 6 et 7 peuvent donc partir en mise à jour à
+distance sur cette runtime, ou dans une nouvelle build 1.2.0 avant la mise en
+revue. À trancher.
+
+La prochaine mise à jour devra viser la runtime **`1.2.0`** :
 
 ```bash
 npx eas-cli update --branch production --environment production --message "…"
@@ -153,6 +163,27 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 - **Migration `20260911000000_revalidate_landing_on_publish.sql`** du chantier 1,
   toujours pas appliquée, ainsi que ses deux secrets Vault. Sans elle, la page
   publique se rafraîchit toutes les cinq minutes au lieu d'immédiatement.
+- **Trois failles de privilèges, relevées le 15 septembre 2026**, de la même
+  famille que `is_featured`. **À corriger avant que la 1.2.0 soit publique.**
+  Tâche séparée proposée.
+  - **La télémétrie du chantier 14 est lisible par tout le monde**, mesuré à
+    la clé anonyme : `last_seen_at`, `platform` et `app_version` sortent de
+    `users`, dont la lecture est `using (true)` sans aucun droit par colonne.
+    Une seule ligne remplie ce jour-là, mais chaque membre qui ouvrira la 1.2.0
+    rendra publique l'heure de sa dernière visite. La politique de
+    confidentialité de la landing ne mentionne pas ces données.
+  - **Un membre peut se déclarer créateur invité**, d'après les migrations :
+    `users_update_own` ne restreint aucune colonne, donc `kind = 'editorial'`
+    est à sa portée, et c'est ce champ qui pose l'étiquette d'invité
+    (`feed.ts:153`, `public-bento.ts:139`).
+  - **Un client peut insérer un item déjà validé**, d'après les migrations :
+    `items_insert_authenticated` est `with check (true)`, et le trigger de
+    statut ne force `pending` que pour `external_source = 'user'`. N'importe
+    quel compte anonyme peut donc écrire un titre libre directement dans le
+    catalogue validé, sans passer par la modération.
+
+  Les deux dernières sont déduites du code, pas testées : on n'écrit pas en
+  production pour le prouver.
 
 ---
 
@@ -166,14 +197,130 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 14 | Back-office : utilisateurs, suppression, bentos éditoriaux | Exploitation | L | rien | 🟡 fusionné (PR #51) · DoD 9 remplis / 1 en attente de livraison mobile · [spec](./UX-14-BACK-OFFICE-UTILISATEURS.md) |
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
-| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés, recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
+| 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés (PR #58), recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
-| 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
-| 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
-| 10 | Profil éditable (nom, pseudo, Popy) | Appropriation | S | rien | ⬜ |
-| 11 | Accessibilité et polish | Qualité | S | rien | ⬜ |
-| 12 | Le « pourquoi » par case | Contenu | L | arbitrage modération | ⬜ |
-| 13 | Types de bento (hebdo, thématiques) | Contenu | L | 2 | ⬜ nouveau, à cadrer |
+| 15 | Nouvelles catégories : jeux vidéo, livres, plats, activités | Contenu | L | arbitrage | ⬜ roadmap produit · **prochain** |
+| 11 | Accessibilité et polish | Qualité | S | rien | ⬜ à glisser entre deux chantiers |
+| 16 | Plusieurs bentos par compte | Contenu | L | 5 | ⬜ roadmap produit · planifié avec le 9 |
+| 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ planifié avec le 16, qui touche les mêmes écrans |
+| 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ⬜ roadmap produit, recadré le 15/09 |
+| 17 | Notifications push | Rétention | L | build native | ⬜ roadmap produit |
+| 18 | Publication automatique à la validation | Activation | M | 5 | ⬜ roadmap produit |
+| 8 | Signaux de retour : compteur de vues, relance | Rétention | M | 17 | ⬜ recadré le 15/09, le reste réparti dans les 17, 18 et 22 |
+| 19 | Émissions et podcasts dans « La table » | Contenu | M | 2 | ⬜ roadmap produit |
+| 20 | Recherche « match » par bento | Découverte | M | 6, 16 | ⬜ roadmap produit · avec son réglage de confidentialité |
+| 26 | Paramètres de confidentialité | Confiance | M | 20 | ⬜ réparti dans les 20, 22, 23 et 25 : chaque réglage part avec sa fonctionnalité, l'écran naît avec le 20 |
+| 21 | Profil : tous les bentos d'un compte | Appropriation | L | 16 | ⬜ roadmap produit · absorbe le 10 |
+| 10 | Profil éditable (nom, pseudo, Popy) | Appropriation | S | 21 | ⬜ fondu dans le 21 |
+| 28 | Compte récupérable | Confiance | L | build native | ⬜ ajouté le 15/09, supposé par la roadmap produit |
+| 22 | Likes, commentaires et modération | Engagement | L | 28 | ⬜ roadmap produit |
+| 12 | Le « pourquoi » par case | Contenu | L | 22 | ⬜ après le 22, dont il reprend la modération |
+| 23 | Suivre un compte | Engagement | M | 21, 28 | ⬜ roadmap produit |
+| 24 | Zone de notifications dans l'app | Rétention | M | 22, 23 | ⬜ roadmap produit |
+| 25 | Comptes Instagram et TikTok | Appropriation | L | 21 | ⬜ roadmap produit |
+| 27 | Succès | Rétention | L | 13, 21 | ⬜ roadmap produit |
+
+**Arbitré le 15 septembre 2026 : la roadmap produit passe devant les
+chantiers 8 à 12.** Elle suit l'ordre donné par l'équipe, le 13 y prenant la
+place du bento hebdomadaire, après les 15 et 16 dont il dépend. Les chantiers
+8 à 12 s'y rangent ainsi :
+
+- **le 8** est réparti dans les 17, 18 et 22. Il ne garde que le compteur de
+  vues et la relance des bentos complets jamais publiés, placé après le 18
+  parce que la relance passe par les notifications ;
+- **le 9** est planifié avec le 16, qui touche les mêmes écrans ;
+- **le 10** est fondu dans le 21 ;
+- **le 11**, effort S sans dépendance, se glisse entre deux chantiers ;
+- **le 12** passe après le 22, dont il reprend la modération.
+
+Deux autres arbitrages du même jour : **le chantier 28, compte récupérable**,
+est ajouté avant le 22, et **les réglages de confidentialité partent chacun
+avec leur fonctionnalité** plutôt qu'en un chantier à part.
+
+---
+
+## La roadmap produit du 15 septembre
+
+Donnée par l'équipe le 15 septembre 2026. Chaque sujet sera repris un par un,
+avec sa planification, quand on y arrivera. Cette section dit où chacun est
+rangé, ce que le code et la production en disent déjà, et ce que la liste
+suppose sans le dire. Mesures du 15 septembre, en lecture seule.
+
+| Sujet donné par l'équipe | Chantier | Recoupe |
+|---|---|---|
+| Nouvelles catégories (jeux vidéo, livres, plats, activités), et leur création depuis l'administration | 15 | |
+| Plusieurs bentos par compte : le principal et des hebdomadaires | 16 | 13 |
+| Bento hebdomadaire configuré depuis l'administration | 13, recadré | |
+| Notifications push : un bento à compléter, un bento prêt à être publié | 17 | 8 |
+| Publication automatique après validation des éléments | 18 | 8 |
+| Émissions et podcasts Bento Pop dans le fil, via l'API de la landing | 19 | |
+| Recherche « match » par bento | 20 | 6 |
+| Vue profil avec les différents bentos de l'utilisateur | 21 | 10 |
+| Likes et commentaires, signalement et modération, mails Resend | 22 | 8, 12 |
+| Suivre un créateur | 23 | |
+| Zone de notifications dans l'app | 24 | 8 |
+| Associer Instagram, associer TikTok | 25 | |
+| Paramètres de confidentialité | 26 | |
+| Système de succès | 27 | |
+
+**Ce que la production dit déjà.**
+
+- **27 bentos publiés, tous complets**, dont 3 coups de cœur.
+- **277 items validés, dont 130 proposés par des utilisateurs**, soit 47 %.
+  72 n'ont pas d'image, 26 %.
+- **137 items distincts posés, dont 120 dans un seul bento.** Sur 351 paires
+  de bentos, 31 partagent au moins un item, 3 en partagent deux, aucune plus
+  de trois.
+- **Les catégories sont déjà des données** (`bento_categories`, six lignes),
+  mais le code ne sait dessiner que ces six-là, cf. chantier 15.
+
+**Quatre fondations que la liste suppose sans les nommer.** Aucune n'existe.
+Chacune coûte moins cher posée une fois que redécouverte à chaque chantier.
+
+1. **Un compte qu'on ne perd pas.** Tous les comptes sont anonymes
+   (`session.ts:68`), leur session vit dans le stockage de l'app
+   (`supabase/client.ts:29`) : une réinstallation suffit à perdre le sien, et
+   l'app n'offre aucun moyen de le retrouver sur un autre téléphone. La conversion en
+   compte permanent est prévue en commentaire (`supabase/config.toml:33`),
+   jamais faite. Aujourd'hui, perdre son compte coûte un bento ; demain, des
+   abonnés, des likes, des commentaires, des succès et plusieurs bentos. Un lien
+   Instagram ou TikTok n'y répond pas : s'il servait à se reconnecter, la règle
+   4.8 d'Apple exigerait d'offrir aussi une connexion équivalente à Sign in
+   with Apple. **Non demandé par l'équipe, ajouté le 15 septembre : chantier
+   28, placé avant le 22.**
+2. **Une modération côté serveur.** Aujourd'hui le blocage est une liste de
+   pseudos **stockée sur le téléphone** (`src/state/blocked.ts`), qu'aucun
+   serveur ne connaît et qu'un changement de pseudo contourne. Un signalement
+   ne transmet qu'un pseudo, sans motif ni bento (`u/[pseudo].tsx:687`). Le
+   filtre de texte ne couvre que les pseudos, par motifs non ancrés :
+   `p[uv]t[ae]` refuse « réputation » et « dispute », tolérable pour un pseudo,
+   pas pour un commentaire. Aucune alerte ne prévient l'équipe. Or des
+   commentaires publics exigent, chez Apple (1.2), un filtrage avant
+   publication, un signalement suivi d'une réponse rapide, le blocage des
+   utilisateurs et un contact publié ; chez Google, le signalement des
+   contenus **et des utilisateurs** dans l'app. Et le questionnaire de
+   classification d'âge d'Apple, exigé pour les soumissions depuis septembre
+   2026, interroge désormais sur les fonctions sociales.
+   [`STORE-COMPLIANCE.md`](./STORE-COMPLIANCE.md) date du 11 mai et ne décrit
+   plus l'app.
+3. **Un envoi et un ordonnanceur côté serveur.** Le projet mobile n'a ni tâche
+   planifiée (« le projet n'a pas d'ordonnanceur »,
+   `20260913000000_admin_users.sql:145`), ni Edge Function dans le dépôt, ni
+   webhook, ni Realtime. `pg_net` n'apparaît que dans la migration de
+   revalidation, toujours pas appliquée. Or une sortie datée (13), un push (17,
+   18), un mail (22), une purge (24) et un succès attribué (27) doivent tous
+   agir sans qu'un client ouvre l'app. Le lieu se choisit une fois : Supabase,
+   dont le plan gratuit comprend les Edge Functions et a priori `pg_cron`, ou
+   le serveur Coolify qui héberge déjà le back-office et sa clé de service.
+4. **Une build native.** `expo-notifications` impose une nouvelle build, pas
+   une mise à jour à distance, plus une clé APNs et un compte de service FCM.
+   Une adresse hors de `/u/` aussi : les liens universels ne déclarent que ce
+   chemin (`app.json`, `apple-app-site-association`). Le chantier 28 en
+   demandera probablement une aussi, selon la connexion retenue. Regrouper ces
+   changements dans une même version évite une revue par chantier.
+
+**Trois failles relevées en chemin**, sans rapport avec la liste mais à
+corriger avant elle, cf. [ménage en attente](#ménage-en-attente).
 
 ---
 
@@ -430,7 +577,8 @@ Deux défauts trouvés et **non** corrigés, parce qu'ils débordent du chantier
 > **Lot 3 livré le 15 septembre 2026** (`9907507`). La page, les cases et l'image de partage tiennent à la plus grande police sur les trois iPhone et l'émulateur, et aucun titre de case ne se coupe plus au milieu d'un mot, sur iOS comme sur Android : un premier mot trop large fait rétrécir son titre, mesuré sur les glyphes d'Extenda. La recette a trouvé ce que la spec ignorait : React Native ne plafonne pas la hauteur de ligne sur Android et y arrondit la police au pixel supérieur, iOS coupait aussi les titres, et les cases vides débordaient de leur pointillé.
 >
 > **Lot 4 livré le 15 septembre 2026, chantier clos.** Recette complète : les treize points sur les trois iPhone, quinze cas sur les émulateurs Android dont la tablette, la latence contre la production (p50 45 à 48 ms), et la publication recettée pour de vrai, avec un compte de recette en production passé par un proxy bridé, puis supprimé. Dix-neuf critères sur dix-neuf. Deux défauts trouvés, versés ci-dessous.
-
+>
+> **Fusionné le 15 septembre 2026** (PR #59, `bff9aed`), CI verte. Sur `main`, mais dans aucune build ni mise à jour à distance pour l'instant, cf. [les mises à jour à distance publiées](#les-mises-à-jour-à-distance-publiées).
 
 **Constat.** `u/[pseudo].tsx:322` utilise `scale={0.94}` en dur alors que le composer calcule un scale dynamique (`compose.tsx:110`). Hauteur native de la grille : environ 512pt, soit 481pt à 0.94. Sur un iPhone SE, header profil et grille dépassent la hauteur disponible et les CTA sticky recouvrent la dernière rangée.
 
@@ -440,6 +588,8 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 
 **Ce que le chantier 6 y ajoute.** La recherche envoie désormais bien plus de monde sur cette page, et par un chemin nouveau : on y arrive depuis un item, donc en s'attendant à voir une case précise. Deux conséquences à cadrer en planification. La page est le point d'arrivée de tout l'onglet « Trouver », donc son coût de chargement est devenu le coût perçu de la recherche. Et la case qui a motivé le clic mériterait peut-être d'être signalée à l'arrivée, ce qui n'était pas un sujet quand on n'y venait que par un pseudo.
 
+**Tranché par la spécification.** Le coût de chargement est mesuré : p50 de 45 à 48 ms contre la production, et zéro requête au retour sur un bento déjà vu. La case d'où l'on vient ne sera **pas** signalée (§5.5 de la spec) : la ligne de résultat nomme déjà la case et le titre, et les six cases sont désormais visibles d'un coup. À rouvrir au chantier 8.
+
 **Suivis ouverts par le chantier 7**, hors de son périmètre, détaillés en §12 de la spec :
 
 - **Les réessais cachés de `postgrest-js` restent sur le fil, la recherche et l'inscription.** Trois réessais silencieux après 1, 2 puis 4 s sous chaque tentative de React Query : en panne réseau, le fil attendrait environ 24 s avant son erreur, calcul à confirmer par une mesure. `supabase-js` 2.105 ne permet pas de les couper globalement, donc un réglage et une recette par écran.
@@ -448,63 +598,61 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 - **Une case Artiste s'affiche sans titre** : l'item « [unknown] », un artiste spécial de MusicBrainz, dont `cleanTitle` retire tout ce qui est entre crochets. Donnée à corriger, import à fermer à ces artistes.
 - **En navigation à trois boutons, la barre d'onglets passe sous les boutons système** (Android) : sa hauteur est fixée à 84 dans `app/(tabs)/_layout.tsx`, et la marge basse de 48 dp de cette navigation écrase icônes et libellés. Le composer lit cette hauteur pour son budget vertical, à revérifier avec le correctif. Tâche séparée proposée.
 
-**Fait quand** : la grille est entièrement visible sur iPhone SE, et revenir sur un bento déjà consulté est instantané.
+**Fait quand** : la grille est entièrement visible sur iPhone SE, et revenir sur un bento déjà consulté est instantané. **Fait**, en défilant sur iPhone SE, où la rangée basse s'atteint en fin de page aux trois tailles de police ; le retour sur un bento déjà vu ne fait ni requête ni squelette.
 
 ---
 
-## 8. Signaux de retour
+## 15. Nouvelles catégories : jeux vidéo, livres, plats, activités
 
-**Constat.** Une fois publié, il ne se passe plus rien : pas de compteur de vues, pas de réaction, pas de notification (`expo-notifications` absent des dépendances). Cas le plus dur : un utilisateur qui propose un item au catalogue voit sa publication bloquée (`compose.tsx:57`) sans aucun moyen de savoir quand la modération le débloque, sinon rouvrir l'app au hasard.
+**Demandé.** Quatre catégories d'éléments de plus : jeux vidéo, livres, plats, activités. Et une question de l'équipe : pourquoi pas les créer depuis l'administration ?
 
-**Proposition**, par ordre de rapport effort sur impact :
+**Constat.**
 
-1. **Compteur de vues** : table `bento_views`, affichage sur le profil (« 47 personnes ont ouvert ton bento »). À alimenter aussi depuis la page web du chantier 1.
-2. **Notification item validé** : `expo-notifications` plus un trigger côté modération quand un item passe `pending` vers `validated`. Débloque un cul-de-sac réel.
-3. **Réaction par case** plutôt que like global : « 12 personnes ont le même film ». Un `count` par `item_id` sur `bento_items`, aucune modération supplémentaire à prévoir.
+- **La base est prête, le code ne l'est pas.** Les catégories sont des lignes de `bento_categories` (`key`, `label_fr`, `display_order`, `api_source`, `is_active`), et la migration initiale le promet : « ajouter une catégorie = INSERT, pas de migration de code » (`20260511000000_initial_schema.sql:23`). Mais une case **est** une catégorie : `bento_items` a pour clé `(bento_id, category_id)` (`:112`), et la grille pose chaque catégorie à une place figée (`BentoGrid.tsx:148-160`). Les six clés sont recopiées dans `packages/supabase-mobile` (`CategoryKey`, `CATEGORY_IDS`, `CATEGORY_META`), puis dans l'app (tampons, libellés des cases vides, placeholder de recherche accordé au genre du mot, « 6 cases pop culture » sur l'image de partage), dans le back-office (filtres, `z.enum` des six clés) et sur la page web (« Six cases, six choix : ton film, ta série… »). Une catégorie ajoutée en base serait ignorée partout (`packages/supabase-mobile/src/bento.ts:36-44`, `feed.ts:133`, `apps/landing/src/lib/bento/map.ts:66-76`).
+- **La recherche ne dépend d'aucune API externe.** `search_items` cherche dans le catalogue interne, pour toutes les catégories (`items.ts:47`) ; TMDb et Wikimedia ne servent qu'aux scripts d'illustration du back-office. Une catégorie sans source externe fonctionne donc, pourvu que le catalogue soit amorcé ou que les utilisateurs proposent : 130 des 277 items validés viennent d'eux.
+- **L'image est le vrai coût d'une catégorie.** 72 items sur 277 n'en ont pas. Les affiches de films viennent de TMDb, les pochettes de Cover Art Archive ; Commons, seule source libre, ne fournit ni les unes ni les autres.
 
-**Préparé par le chantier 2.** Le post de « La table » réserve le budget de mise en page d'une barre d'actions (`ACTIONS_HEIGHT = 0`), sans rien rendre : pas d'affordance inerte en attendant. L'ajout des likes et commentaires est un changement de constante, pas une reprise de la mise en page.
+**Les sources possibles**, conditions relevées le 15 septembre, à relire au moment de planifier :
 
-**Fait quand** : un utilisateur qui rouvre l'app une semaine plus tard trouve quelque chose de nouveau qui le concerne.
+| Catégorie | Source réaliste | Ce qui coince |
+|---|---|---|
+| Jeux vidéo | IGDB (Twitch) pour la recherche et les jaquettes, Wikidata pour les titres français | Gratuit « pour un usage non commercial » : un produit d'entreprise doit demander un partenariat, à obtenir par écrit (usage, conservation des items choisis). Jeton côté serveur, 4 requêtes par seconde. Aucune licence sur les jaquettes, qui restent aux éditeurs. |
+| Livres | Open Library pour la recherche ; couvertures de la BnF (API « Service Couvertures », en bêta depuis février 2026), Open Library en secours | Open Library n'est pas fait pour porter un produit à fort trafic. La BnF exige de citer la source et la date. Google Books interdit toute copie durable, incompatible avec un bento enregistré. |
+| Plats | Liste éditoriale amorcée depuis Wikidata (20 850 plats, dont 7 399 avec un libellé français, données CC0), plus les propositions | Photos Commons sous CC BY-SA, à créditer jusque sur l'image de partage, ou illustrations maison. |
+| Activités | Liste éditoriale et propositions | Aucun catalogue exploitable : la classe « loisir » de Wikidata est remplie de courses hippiques et d'étapes cyclistes. |
 
----
+**Proposition.**
 
-## 9. Onboarding : pseudo au moment de publier
+- Chaque catégorie décrite par sa ligne en base, et le code qui la lit au lieu de la connaître : libellé, tampon, article (« ton », « ta »), couleur. L'app les charge au démarrage, les six actuelles embarquées pour le hors-ligne.
+- Une source d'amorçage et d'images par catégorie, d'après le tableau ci-dessus.
+- Dans l'administration, créer une catégorie de **catalogue interne** (libellé, tampon, article, ordre, active ou non) sans nouvelle version de l'app. Brancher une source externe reste un développement.
 
-**Constat.** Parcours actuel : splash, CGU, pseudo, mécanique, composer. On exige un identifiant unique, avec check réseau, avant que l'utilisateur ait vu la moindre valeur.
+**À trancher quand on y arrive.**
 
-Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `mechanics.tsx:116` actif 2) et l'écran pseudo annonce « ÉTAPE 2 / 3 », mais l'écran CGU s'intercale sans être compté. Le parcours réel fait quatre écrans.
+- **Où vont les nouvelles catégories ?** Le bento principal a six cases, une par catégorie, et 27 personnes l'ont publié ainsi. Leur ajouter des cases change un objet déjà partagé ; réserver les nouvelles catégories aux bentos hebdomadaires (13) ne touche à rien de publié.
+- La source et la licence des images, catégorie par catégorie.
+- Plats et activités : liste éditoriale de départ, propositions des utilisateurs, ou les deux ?
+- Ce que l'administration peut créer seule.
 
-**Proposition.** Laisser composer la case film dès l'entrée, demander le pseudo au moment de publier, quand il y a quelque chose à perdre. Le pseudo peut être pré-généré (`generatePseudoSuggestions` existe déjà dans `apps/mobile/src/lib/pseudo.ts`) et modifiable ensuite.
-
-**Attention.** La gate CGU est une obligation App Store Guideline 1.2 (cf. `docs/STORE-COMPLIANCE.md`), elle doit rester avant toute contribution publique. Et `terms_accepted_at` est posé dans l'`INSERT` de la ligne `users` (`pseudo.tsx:66`), donc décaler la création du profil implique de revoir ce couplage. À cadrer en planification, dépend du chantier 5.
-
-**Fait quand** : un nouvel utilisateur peut remplir sa première case sans avoir créé de compte, et la conformité CGU est préservée.
-
----
-
-## 10. Profil éditable
-
-**Constat.** Pas d'édition du `display_name`, pas de changement de pseudo, pas de choix du Popy (dérivé d'un hash du pseudo, `apps/mobile/src/lib/popy-avatar.ts:38`).
-
-**Proposition.** Trois formulaires simples. Le choix du Popy nécessite une colonne `users.avatar` (déjà anticipée en commentaire dans `popy-avatar.ts`). Le changement de pseudo doit gérer la redirection des anciens liens ou au minimum prévenir que l'ancienne URL cassera.
-
-**Fait quand** : l'utilisateur peut personnaliser son identité sans supprimer et recréer son compte.
+**Fait quand** : une case peut demander un jeu vidéo, un livre, un plat ou une activité, la recherche en trouve avec leur visuel, et une catégorie de catalogue interne créée dans le back-office apparaît dans l'app sans nouvelle version.
 
 ---
 
 ## 11. Accessibilité et polish
 
-- La loupe est un **emoji** 🔍 (`search-modal.tsx:238`, `search.tsx:106`) alors que `react-native-svg` et `@expo/vector-icons` sont installés : rendu différent iOS et Android, et lu à voix haute par VoiceOver.
-- Plusieurs titres ont un `lineHeight` inférieur au `fontSize` (`fontSize: 28, lineHeight: 26` dans compose, featured, search) : avec la taille de police système augmentée, les glyphes Extenda se font rogner. Aucun `allowFontScaling={false}` ni `maxFontSizeMultiplier` nulle part dans l'app.
+> **À glisser entre deux chantiers**, arbitré le 15 septembre 2026 : effort S, aucune dépendance.
+
+- La loupe est un **emoji** 🔍 (`search-modal.tsx:457`, `search.tsx:164`) alors que `react-native-svg` et `@expo/vector-icons` sont installés : rendu différent iOS et Android, et lu à voix haute par VoiceOver.
+- Plusieurs titres ont un `lineHeight` inférieur au `fontSize` (`fontSize: 28, lineHeight: 26` dans compose et search ; celui de « La table » est passé à 30) : avec la taille de police système augmentée, les glyphes Extenda se font rogner. Les plafonds de grossissement sont suivis plus bas.
 - ~~Le crédit image en `rgba(255,255,255,0.5)` sur photo (`Tile.tsx:283`) est sous le seuil de contraste~~. La recette du chantier 2 a montré qu'il se superpose en plus au sous-titre, les deux occupant la même bande basse de la tuile. **Arbitré : accepté tel quel** (cf. D8 de la spec du chantier 2). La mention légale CC-BY-SA reste présente, ce qui est l'obligation ; corriger toucherait `Tile`, donc trois écrans.
-- Faute dans le menu de signalement : « Confirme-tu ? » (`u/[pseudo].tsx:427`).
-- Les états de chargement sont des `ActivityIndicator` centrés : les remplacer par des squelettes de tuiles sur featured et bento public. *Traité pour « La table » par le chantier 2 ; reste la page bento public.*
+- ~~Faute dans le menu de signalement : « Confirme-tu ? » (`u/[pseudo].tsx:427`).~~ **Corrigée** par le chantier 7, en « Confirmes-tu ? ».
+- ~~Les états de chargement sont des `ActivityIndicator` centrés : les remplacer par des squelettes de tuiles sur featured et bento public.~~ **Traité**, par le chantier 2 pour « La table » et par le chantier 7 pour la page bento public.
 
 ---
 
 **Versé par le chantier 6, le 13 septembre 2026.**
 
-- **Le texte ne plafonne son grossissement nulle part.** 20 usages d'`Extenda` dans l'app n'ont pas de `maxFontSizeMultiplier`, plus `TopChip` : à la plus grande taille de police système, les titres se rognent en débordant de l'écran. Seul `app/(tabs)/search.tsx` a été traité, parce qu'on ne livre pas un écran au titre cassé.
+- **Le texte ne plafonne son grossissement nulle part.** 20 usages d'`Extenda` dans l'app n'ont pas de `maxFontSizeMultiplier`, plus `TopChip` : à la plus grande taille de police système, les titres se rognent en débordant de l'écran. Seul `app/(tabs)/search.tsx` a été traité, parce qu'on ne livre pas un écran au titre cassé. *Au 15 septembre, le chantier 7 a plafonné la page bento publique et les cases, et figé l'image de partage. Parmi les usages d'`Extenda`, restent sans aucun plafond le composer, le profil, les crédits, l'onboarding (`splash`, `pseudo`, `mechanics`), `PageTitle` et `ItemTile`, plus `TopChip`.*
 - **Bloquer quelqu'un est une porte à sens unique.** La boîte de dialogue promet « Tu peux annuler à tout moment depuis ce menu », or ce menu vit sur `/u/[pseudo]`, filtrée du fil comme de la recherche. Il n'existe aucune liste des comptes bloqués. Le correctif est une ligne « Comptes bloqués » dans le profil.
 
 **Versé par le chantier 7, le 14 septembre 2026.**
@@ -519,6 +667,329 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 
 ---
 
+## 16. Plusieurs bentos par compte
+
+**Demandé.** Qu'un compte puisse avoir plusieurs bentos : son bento Bento Pop principal, plus des bentos hebdomadaires.
+
+**Constat.** « Un bento par user (au MVP, contrainte UNIQUE). Levable plus tard » (`initial_schema.sql:84-88`). Lever la contrainte tient en une ligne ; ce qu'elle garantit en silence, non.
+
+- **`ensureBento` créerait un bento à chaque écriture.** Il cherche le bento du compte avec `maybeSingle()` et en crée un s'il ne trouve rien (`bento-actions.ts:12-29`). Avec deux bentos, `maybeSingle()` rend une erreur que la fonction ignore : chaque case remplie ajouterait un bento. Le composer, la recherche et le profil l'appellent avant chaque écriture.
+- **La page publique afficherait « Rien en ligne ».** Sa requête reçoit le bento en objet parce que `user_id` est unique (`public-bento.ts:35-36`) ; sans la contrainte, PostgREST rend un tableau.
+- **Tout passe par le pseudo** : le lien partagé `bento-pop.com/u/<pseudo>`, la navigation dans l'app, le signalement (sans identifiant de bento), la purge de la page web, le sitemap, et la landing qui prend le premier bento venu (`firstBento`, `raw[0]` sans tri, `apps/landing/src/lib/bento/queries.ts:89-92`).
+- **Les compteurs compteraient des bentos, pas des gens** : `popular_items`, `shared_items`, l'entonnoir du back-office. `search_bentos` dédoublonne par bento, donc une personne y sortirait une fois par bento.
+- **Une case est une catégorie** : un bento hebdomadaire ne pourrait pas demander deux films.
+- **Le back-office crée exactement un bento par profil éditorial** (`utilisateurs/nouveau/actions.ts`), sans moyen d'en ajouter un.
+- **Aucune policy ne limite le nombre de bentos** qu'un membre peut insérer : sans la contrainte, il faudra une autre garde.
+
+**Proposition.**
+
+- Un type de bento (principal, hebdomadaire) et le lien vers son édition ; unicité du principal par compte, et d'un bento par compte et par édition.
+- `bento_items` indexé par position de case, la catégorie venant du modèle de l'édition.
+- `/u/<pseudo>` continue d'afficher le bento principal, donc aucun lien en circulation ne casse. Les autres bentos vivent sous `/u/<pseudo>/…` : les liens universels actuels couvrent ce chemin, il n'a simplement pas de route dans l'app.
+- Chaque requête qui prenait « le » bento d'un compte nomme désormais lequel, et un test verrouille chacune.
+
+**À trancher quand on y arrive.**
+
+- L'adresse d'un bento hebdomadaire, et ce que partage le bouton « Partager ».
+- Un signalement vise-t-il un bento ou un compte ?
+- Dépublier le bento principal dépublie-t-il le reste ?
+
+**Fait quand** : un compte publie son bento principal et un bento hebdomadaire, chacun à son adresse, et tous les liens déjà partagés affichent toujours le bento principal.
+
+---
+
+## 9. Onboarding : pseudo au moment de publier
+
+**Constat.** Parcours actuel : splash, CGU, pseudo, mécanique, composer. On exige un identifiant unique, avec check réseau, avant que l'utilisateur ait vu la moindre valeur.
+
+Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `mechanics.tsx:116` actif 2) et l'écran pseudo annonce « ÉTAPE 2 / 3 », mais l'écran CGU s'intercale sans être compté. Le parcours réel fait quatre écrans.
+
+**Proposition.** Laisser composer la case film dès l'entrée, demander le pseudo au moment de publier, quand il y a quelque chose à perdre. Le pseudo peut être pré-généré (`generatePseudoSuggestions` existe déjà dans `apps/mobile/src/lib/pseudo.ts`) et modifiable ensuite.
+
+**Attention.** La gate CGU est une obligation App Store Guideline 1.2 (cf. `docs/STORE-COMPLIANCE.md`), elle doit rester avant toute contribution publique. Et `terms_accepted_at` est posé dans l'`INSERT` de la ligne `users` (`pseudo.tsx:66`), donc décaler la création du profil implique de revoir ce couplage. À cadrer en planification, dépend du chantier 5.
+
+**Planifié avec le chantier 16**, arbitré le 15 septembre 2026. Les deux touchent l'entrée dans le composer et le moment de publier : l'un décale la demande de pseudo jusqu'à la publication, l'autre fait de la publication un geste par bento. Les planifier ensemble évite de reprendre deux fois les mêmes écrans.
+
+**Fait quand** : un nouvel utilisateur peut remplir sa première case sans avoir créé de compte, et la conformité CGU est préservée.
+
+---
+
+## 13. Bento hebdomadaire
+
+> **Recadré le 15 septembre 2026 par la roadmap produit.** Il s'appelait « Types de bento (hebdo, thématiques) » et commençait par lever la contrainte `unique (user_id)` : c'est désormais le chantier 16, dont celui-ci dépend.
+
+**Demandé.** Un système de bento hebdomadaire, configuré depuis l'administration : un titre, de 2 à 6 cases avec chacune un nom et une catégorie, une date de sortie.
+
+**Constat.**
+
+- **Un utilisateur, un bento, pour toujours.** Une fois les six cases remplies, il n'y a plus rien à composer, et le fil n'a plus rien de neuf à montrer de la part de quelqu'un qui a déjà publié. Les 27 bentos publiés sont complets.
+- **La grille ne sait dessiner que six cases** : trois rangées de 1, 2 et 3 cases (`geometry.ts`, hauteur 512), chaque place liée à sa catégorie (`BentoGrid.tsx:148-160`). Ce dessin existe en trois exemplaires : `BentoGrid` dans l'app, qui sert aussi l'image de partage, la grille de la page web, et son aperçu 1200×630. Deux, trois, quatre et cinq cases font quatre mises en page à dessiner, et à coder trois fois.
+- **Le fil est prêt pour une étiquette.** Un post reçoit un `ribbon` (libellé, couleur, `components/feed/ribbon.ts:45`) : « BENTO DE LA SEMAINE » est une entrée de plus.
+- **Rien ne sait agir à une date.** Montrer une édition à partir de sa sortie se fait à la lecture, sans ordonnanceur ; prévenir à cette heure-là, non (fondation 3).
+
+**Proposition.**
+
+- Une table des éditions (titre, sortie, statut) et une table de leurs cases (position, nom, catégorie). Dans le back-office : créer, prévisualiser la grille, programmer.
+- Dans l'app, l'édition en cours à côté du bento principal, et la suivante annoncée sans être dévoilée.
+- Dans « La table », l'étiquette et le titre de l'édition.
+- Les grilles de 2 à 5 cases dessinées par la direction artistique avant tout développement.
+
+**À trancher quand on y arrive.**
+
+- Une édition se remplit-elle seulement pendant sa semaine, ou à tout moment ? Et les éditions passées ?
+- La sortie : un jour et une heure de Paris, ou un jour ?
+- Le nom de la case (« Le film qui t'a fait pleurer ») remplace-t-il le tampon de catégorie ?
+- Une édition peut-elle être liée à une émission (19) ?
+
+**Fait quand** : l'équipe programme une édition dans le back-office, elle sort à sa date sans nouvelle version de l'app, et quelqu'un qui a déjà publié son bento a une raison de revenir composer.
+
+---
+
+## 17. Notifications push
+
+**Demandé.** Deux notifications : un nouveau bento à compléter, et un bento prêt à être publié parce que tous ses éléments sont validés.
+
+**Constat.**
+
+- **Rien n'existe** : ni `expo-notifications`, ni table de jetons, ni envoi côté serveur. Pas même pour la modération : un item proposé est validé ou refusé sans que son auteur le sache (« pas de notification user en V1 », `apps/admin/src/app/(protected)/catalogue/actions.ts:102`).
+- **Le besoin est mesuré** : au chantier 5, 15 bentos complets et non bloqués n'étaient pas publiés, leur dernière case remplie depuis 26 jours en médiane.
+- **Il faut une nouvelle build**, pas une mise à jour à distance, ainsi qu'une clé APNs, un compte de service FCM, et sur Android 13 et au-delà une autorisation demandée à l'exécution. Le service d'envoi d'Expo est gratuit, jusqu'à 600 notifications par seconde.
+- **Apple, règle 4.5.4** : l'app ne doit pas dépendre des notifications, et une notification promotionnelle exige un consentement explicite dans l'app et un moyen de s'en retirer. « Un nouveau bento à compléter » s'en approche.
+
+**Proposition.**
+
+- Une table des jetons par compte et par appareil, purgée quand Expo répond `DeviceNotRegistered` aux accusés de réception.
+- Un seul point d'envoi côté serveur (fondation 3).
+- La demande d'autorisation au moment où elle a un sens, par exemple juste après avoir proposé un item, plutôt qu'au premier lancement.
+- Un réglage par type de notification (26), et un tap qui ouvre le bon écran.
+
+**À trancher quand on y arrive.**
+
+- Où vit l'envoi : Supabase, ou le serveur Coolify du back-office ?
+- Quand demander l'autorisation, et quelles notifications sont actives par défaut.
+- Un compte anonyme perdu laisse des jetons orphelins : acceptable avant la fondation 1 ?
+
+**Fait quand** : sur iOS et Android, en build de production, quelqu'un qui l'a autorisé est prévenu de la sortie d'une édition et de la validation de ses items, arrive au bon écran d'un tap, et peut couper chaque type.
+
+---
+
+## 18. Publication automatique à la validation
+
+**Demandé.** Publier automatiquement un bento dès que ses éléments sont validés.
+
+**Constat.**
+
+- **Le blocage n'existe que dans l'app** : bouton « En attente de validation », désactivé, dès qu'une case porte un item en attente (`compose.tsx:51`, `compose-cta.ts:86`). Aucune règle en base : `can_publish_bento` est annoncé depuis le 28 mai (`20260528120000_catalog_status_and_moderation.sql:205`) et n'existe pas.
+- **L'état n'est relu qu'à l'ouverture du composer** (`compose.tsx:65-69`) : il faut revenir dans l'app, au bon onglet, pour découvrir qu'on peut publier.
+- **Un item refusé passerait inaperçu**, d'après le code : son auteur continue de le voir, la case ne compte plus comme en attente, et le bento peut sortir avec une case que les visiteurs voient vide. `rejected_reason` existe, l'app ne le lit nulle part. À confirmer en recette.
+- Le chantier 5 a retenu l'option A, et sa promesse : l'utilisateur sait à tout instant si ce qu'il voit est public. Publier à sa place doit la tenir.
+
+**Proposition.**
+
+- Le bouton désactivé devient « Publier dès que c'est validé » : l'intention est enregistrée sur le bento.
+- À la validation du dernier item en attente, la base publie le bento et produit l'événement que 17 et 24 transmettront. Une fusion d'items (`admin_merge_items`) vaut validation.
+- Un refus annule l'intention et prévient l'auteur, motif compris.
+
+**À trancher quand on y arrive.**
+
+- Automatique pour tous, ou seulement sur demande ? La demande explicite est la seule qui tienne la promesse du chantier 5.
+- Et si l'utilisateur modifie son bento pendant l'attente ?
+- « Ton bento est prêt » (17) ou « ton bento est publié » : l'un remplace l'autre selon le choix précédent.
+
+**Fait quand** : quelqu'un qui a proposé un item appuie une fois sur « Publier », et son bento sort à la validation sans qu'il rouvre l'app, en le sachant.
+
+---
+
+## 8. Signaux de retour
+
+> **Recadré le 15 septembre 2026 par la roadmap produit.** La notification d'item validé part au chantier 17, avec la publication automatique du 18. La réaction par case croise les likes demandés au 22, où se tranchera like du bento ou like par case. **Le chantier 8 ne garde que le compteur de vues et la relance des bentos complets jamais publiés** : 15 au chantier 5, leur dernière case remplie depuis 26 jours en médiane. Placé après le 18, parce que la relance passe par les notifications.
+
+**Constat.** Une fois publié, il ne se passe plus rien : pas de compteur de vues, pas de réaction, pas de notification (`expo-notifications` absent des dépendances). Cas le plus dur : un utilisateur qui propose un item au catalogue voit sa publication bloquée (`compose-cta.ts:86`) sans aucun moyen de savoir quand la modération le débloque, sinon rouvrir l'app au hasard.
+
+**Proposition**, par ordre de rapport effort sur impact :
+
+1. **Compteur de vues** : table `bento_views`, affichage sur le profil (« 47 personnes ont ouvert ton bento »). À alimenter aussi depuis la page web du chantier 1.
+2. ~~**Notification item validé** : `expo-notifications` plus un trigger côté modération quand un item passe `pending` vers `validated`. Débloque un cul-de-sac réel.~~ **Parti aux chantiers 17 et 18.**
+3. ~~**Réaction par case** plutôt que like global : « 12 personnes ont le même film ». Un `count` par `item_id` sur `bento_items`, aucune modération supplémentaire à prévoir.~~ **Parti au chantier 22**, où se tranchera like du bento ou like par case.
+4. **Relance des bentos complets jamais publiés**, ajoutée au recadrage : elle passera par les notifications du chantier 17.
+
+**Préparé par le chantier 2.** Le post de « La table » réserve le budget de mise en page d'une barre d'actions (`ACTIONS_HEIGHT = 0`), sans rien rendre : pas d'affordance inerte en attendant. L'ajout des likes et commentaires est un changement de constante, pas une reprise de la mise en page.
+
+**Légué par le chantier 7.** Signaler, à l'arrivée sur une page bento, la case d'où l'on vient a été écarté pour l'instant (§5.5 de sa spec), avec rendez-vous ici : les signaux par case lui donneront un endroit naturel où s'accrocher. `TilePulse` existe et `BentoGrid` accepte déjà `pulse`, il manque un paramètre de route et une prop.
+
+**Fait quand** : le propriétaire d'un bento sait combien de personnes l'ont ouvert, et quelqu'un qui a rempli toutes ses cases sans publier est relancé. *Avant le recadrage : un utilisateur qui rouvre l'app une semaine plus tard trouve quelque chose de nouveau qui le concerne, promesse que portent désormais les chantiers 17, 22 et 24.*
+
+---
+
+## 19. Émissions et podcasts dans « La table »
+
+**Demandé.** Faire entrer dans le fil les épisodes de l'émission et du podcast Bento Pop, via l'API de la landing.
+
+**Constat.**
+
+- **Les épisodes vivent dans l'autre projet Supabase**, celui de la landing, auto-hébergé sur `supabase.bento-pop.com` : `landing_show_episodes` (identifiant YouTube) et `landing_podcast_episodes` (identifiant Spotify, Deezer ou Apple), saisis à la main dans le back-office. **34 sont en ligne, 17 émissions et 17 podcasts**, à raison d'environ deux de chaque par mois depuis janvier 2026, relevé sur les pages publiques.
+- **La landing n'a aucune API de lecture.** Sa seule route est `POST /api/revalidate`, protégée par jeton. L'app ne connaît aucun épisode : « La table » ne lit que les bentos.
+- **Passer par la landing est aussi la bonne réponse technique.** La règle « publié mais daté dans le futur » n'est appliquée que par le code de la landing (`apps/landing/src/content/episodes.ts:195`), pas par la RLS : lire sa base depuis l'app montrerait les épisodes programmés avant leur sortie.
+- Les vignettes d'émission viennent de YouTube (`i.ytimg.com`), sans coût d'egress pour nous ; celles des podcasts sont dans le Storage de la landing.
+- `mentions` liste déjà les œuvres citées dans un épisode (type, titre, lien, visuel) : un pont possible vers les items des bentos.
+
+**Proposition.**
+
+- Une route de lecture sur la landing, qui réutilise `getShowEpisodes` et `getPodcastEpisodes`, ne rend que les champs affichés, se met en cache, et que le back-office purge à chaque enregistrement.
+- Un second type de post dans le fil : vignette, titre, durée, et un tap qui ouvre YouTube ou la plateforme du podcast. Le fil est dessiné pour des bentos : la hauteur estimée par type de post est à reprendre dans `components/feed/layout.ts`.
+
+**À trancher quand on y arrive.**
+
+- Tout l'historique, ou seulement les sorties à venir ? 34 épisodes contre 27 bentos : verser l'historique ferait de « La table » un fil d'émissions.
+- Ouvrir YouTube ou Spotify, ou une fiche dans l'app ?
+- Rangé à sa date, ou épinglé en tête la semaine de sa sortie ?
+- Relier un épisode à l'édition hebdomadaire qu'il lance (13) ?
+
+**Fait quand** : un épisode publié dans le back-office apparaît dans « La table » à sa date de sortie et pas avant, sans nouvelle version de l'app, et s'ouvre en un tap.
+
+---
+
+## 20. Recherche « match » par bento
+
+**Demandé.** Une recherche « match » par bento.
+
+**Constat.**
+
+- **Le signal est encore mince**, mesuré le 15 septembre : 137 items distincts posés, dont 120 dans un seul bento. Sur 351 paires de bentos, 31 partagent au moins un item, 3 en partagent deux, aucune plus de trois. 19 bentos sur 27 auraient un « match », presque toujours sur un seul item.
+- **La brique existe** : `search_bentos` trouve déjà les bentos qui contiennent un item (chantier 6), en 48 ms au p50.
+- **Le bento hebdomadaire devrait changer la donne.** Six catégories larges dispersent les choix ; une même case posée à tout le monde la même semaine devrait les rapprocher. C'est une hypothèse, à mesurer sur les premières éditions.
+
+**Proposition.** Depuis un bento, « Ils ont les mêmes goûts » : les bentos qui partagent le plus d'items à case égale, un item rare pesant plus qu'un item que tout le monde a. Une fonction SQL.
+
+**Son réglage de confidentialité part avec lui** (arbitré le 15 septembre, cf. chantier 26) : la visibilité dans la recherche, appliquée par `search_bentos` et par la fonction de match, pas par l'écran. C'est aussi le chantier où naît l'écran des réglages.
+
+**À trancher quand on y arrive.**
+
+- Un match, c'est le même item dans la même case, ou n'importe où dans le bento ?
+- Sur le bento principal, sur les éditions, ou partout ?
+- À partir de combien d'items communs montre-t-on un résultat ?
+- Attendre quelques éditions hebdomadaires, pour que le chantier ait de quoi matcher ?
+
+**Fait quand** : depuis n'importe quel bento, un tap montre ceux qui lui ressemblent le plus en disant pourquoi, dans le budget de latence de « Trouver », et un compte retiré de la recherche n'apparaît ni dans « Trouver » ni dans les matchs, vérifié à la clé anonyme.
+
+---
+
+## 26. Paramètres de confidentialité
+
+> **Arbitré le 15 septembre 2026 : pas de chantier à part.** Chaque réglage part avec sa fonctionnalité, qui ne sort pas sans lui : la visibilité dans la recherche avec le 20, l'approbation des abonnés avec le 23, likes et commentaires avec le 22, les liens sociaux avec le 25. L'écran naît avec le 20. Cette section reste la référence commune des quatre réglages.
+
+**Demandé.** Visibilité dans la recherche ; accepter d'être suivi, ou seulement sur validation ; accepter likes et commentaires ; visibilité des profils TikTok et Instagram.
+
+**Constat.**
+
+- **Aucun réglage n'existe.** Le seul geste de confidentialité est la dépublication, depuis le chantier 5.
+- **La première atteinte à la confidentialité n'est pas un réglage manquant** : la télémétrie du chantier 14 est lisible par tout le monde, cf. [ménage en attente](#ménage-en-attente).
+- **Un réglage appliqué par l'interface seule ne protège rien** : l'API se lit avec la clé anonyme embarquée dans l'app.
+
+**Principe commun.** Chaque réglage s'applique en base, dans les policies et les fonctions SQL, jamais seulement dans l'écran. Chacun est prouvé par un test qui tente l'accès interdit à la clé anonyme. Tous se retrouvent au même endroit dans l'app.
+
+**À trancher avec le chantier 20**, qui crée l'écran.
+
+- « Visibilité dans la recherche » couvre-t-elle les moteurs de recherche, donc un `noindex` sur la page web du chantier 1 ?
+- Les valeurs par défaut.
+- Un compte entièrement privé, bento visible des seuls abonnés : dans le périmètre ?
+
+**Fait quand** : chaque réglage est respecté par l'API elle-même, prouvé par un test à la clé anonyme, et l'utilisateur les retrouve tous au même endroit.
+
+---
+
+## 21. Profil : tous les bentos d'un compte
+
+**Demandé.** Une nouvelle vue profil, avec les différents bentos de l'utilisateur.
+
+**Constat.**
+
+- **L'onglet profil est le tableau de bord de son propre compte** : Popy, pseudo, état de publication, liens vers son bento, crédits, export des données, dépublication, suppression (`app/(tabs)/profile.tsx`). Rien n'y est public.
+- **La page d'un autre est la page d'un bento** : `/u/<pseudo>`, avec le Popy, le pseudo et « bento publié le … », plus « Partager » et le menu signaler ou bloquer (`app/u/[pseudo].tsx`).
+- **Le chantier 10 y est fondu**, arbitré le 15 septembre : éditer nom, pseudo et Popy se fera depuis cette vue.
+
+**Proposition.** `/u/<pseudo>` devient le profil : l'identité (Popy, pseudo, nom, puis abonnés, liens sociaux et succès), le bento principal en tête, les éditions ensuite. Même adresse, donc les liens partagés et leurs aperçus restent valables. Son propre profil est la même vue, avec les réglages. La page web du chantier 1 suit.
+
+**À trancher quand on y arrive.**
+
+- `/u/<pseudo>` devient-il le profil, ou reste-t-il le bento principal avec un lien vers le profil ?
+- Comment montrer un bento dans une liste, sachant que `MiniBentoCard` a été retirée au chantier 2 ?
+- Le changement de pseudo hérité du chantier 10 : rediriger les anciens liens, ou prévenir qu'ils casseront ?
+
+**Fait quand** : depuis n'importe quel pseudo, on voit tous les bentos publiés de la personne, un lien partagé il y a trois mois montre toujours son bento principal, et chacun peut modifier son nom, son pseudo et son Popy sans recréer son compte.
+
+---
+
+## 10. Profil éditable
+
+**Constat.** Pas d'édition du `display_name`, pas de changement de pseudo, pas de choix du Popy (dérivé d'un hash du pseudo, `apps/mobile/src/lib/popy-avatar.ts:38`).
+
+**Proposition.** Trois formulaires simples. Le choix du Popy nécessite une colonne `users.avatar` (déjà anticipée en commentaire dans `popy-avatar.ts`). Le changement de pseudo doit gérer la redirection des anciens liens ou au minimum prévenir que l'ancienne URL cassera.
+
+**Fondu dans le chantier 21**, arbitré le 15 septembre 2026. La vue profil demandée par l'équipe est l'endroit naturel de ces trois formulaires. Un changement de pseudo contourne aussi le blocage, qui retient des pseudos (fondation 2 de la roadmap produit).
+
+**Fait quand** : l'utilisateur peut personnaliser son identité sans supprimer et recréer son compte.
+
+---
+
+## 28. Compte récupérable
+
+> **Ajouté le 15 septembre 2026.** Non demandé par l'équipe : c'est la première des quatre fondations que la roadmap produit suppose. Placé avant le chantier 22, pour que likes, commentaires et abonnés tiennent à un compte qu'on ne perd pas.
+
+**Constat.**
+
+- **Tous les comptes sont anonymes.** Le premier lancement crée le compte (`session.ts:68`), et sa session vit dans le stockage de l'app (`supabase/client.ts:29`) : désinstaller l'app efface la session, et le lancement suivant crée un compte neuf, au bento vide. Rien, dans l'app, ne permet de retrouver son compte sur un autre téléphone.
+- **La perte est déjà arrivée en recette.** Un jeton de rafraîchissement invalide vide la session, l'app relance une connexion anonyme et l'utilisateur repart avec un nouvel identifiant, donc un bento vide (constaté au chantier 3). Le chantier 14 a trouvé pire : pendant les réessais de rafraîchissement, l'app ne montre plus rien.
+- **La conversion est prévue depuis mai, jamais faite** : `apps/mobile/supabase/config.toml:30-35` la décrit, par `updateUser`, identifiant préservé.
+- **Supabase la permet sans migration**, d'après sa documentation relevée le 15 septembre : `updateUser` rattache un email ou un téléphone au compte connecté, `linkIdentity` une identité Apple ou Google, y compris par jeton natif. Le rattachement manuel est désactivé par défaut et s'active dans la configuration du projet. Si l'identité appartient déjà à un autre compte, l'appel échoue, et c'est à l'app de décider quelles données garder.
+- **`deleteOwnAccount` laisse le compte d'authentification orphelin** (chantier 14) : une fois une identité rattachée, supprimer son compte devra aussi l'effacer.
+
+**Proposition.** Un écran « Garder mon compte », proposé au moment où il y a quelque chose à perdre, par exemple après la première publication, qui rattache une connexion au compte anonyme sans changer d'identifiant. Et, sur un téléphone neuf, « J'ai déjà un compte », qui retrouve l'ancien.
+
+**À trancher quand on y arrive.**
+
+- Quelle connexion : Apple, Google, email ? Proposer Google sur iOS pour se connecter oblige à proposer aussi une connexion équivalente à Sign in with Apple (règle 4.8). L'email demande un envoi de mail, que le chantier 22 installe avec Resend.
+- Sur un téléphone neuf, l'app a déjà créé un compte anonyme au lancement : on l'abandonne, ou on fusionne ce qu'il contient ?
+- Proposer le rattachement, ou l'exiger avant de commenter ou de suivre quelqu'un ?
+
+**Fait quand** : quelqu'un qui réinstalle l'app ou change de téléphone retrouve, en se reconnectant, son pseudo, ses bentos et son identifiant, et supprimer son compte efface aussi l'identité rattachée.
+
+---
+
+## 22. Likes, commentaires et modération
+
+**Demandé.** Liker et commenter un bento ; signaler et modérer, avec un mail envoyé par Resend pour une modération rapide depuis l'administration.
+
+**Constat.**
+
+- **Ni like, ni commentaire, ni compteur.** Le fil a réservé la place d'une barre d'actions, `ACTIONS_HEIGHT = 0` (`components/feed/layout.ts:79`), pour que son ajout soit un changement de constante.
+- **La modération actuelle ne tiendra pas des commentaires** (fondation 2) : blocage sur le téléphone, signalement sans motif ni cible précise, filtre réservé aux pseudos, aucune alerte.
+- **Le bannissement du back-office supprime la ligne `users` directement** (`reports/actions.ts`), sans passer par `admin_delete_user` : ni motif au registre des suppressions, ni suppression du compte d'authentification.
+- **Aucun envoi de mail dans le dépôt**, ni Resend ni autre. L'offre gratuite de Resend couvre 3 000 mails par mois et 100 par jour, largement de quoi alerter une équipe, mais exige un domaine vérifié : des enregistrements SPF et DKIM sur un sous-domaine de `bento-pop.com`.
+- **3 signalements** en quatre mois, au comptage du 13 septembre.
+- Le chantier 8 proposait une réaction par case plutôt qu'un like global. Et « commentaires sur les bentos des autres » était hors périmètre : il ne l'est plus.
+
+**Proposition.**
+
+- Likes : une table (bento, compte), un compteur, le cœur dans la barre réservée.
+- Commentaires : texte court, filtré avant publication, supprimable par le propriétaire du bento, signalable, invisible pour qui a bloqué son auteur.
+- Blocage et signalement côté serveur : le blocage devient une table, le signalement porte un motif et sa cible (bento, commentaire, compte).
+- Resend : un mail à l'équipe par signalement, avec le lien vers l'écran de modération, où masquer prend un geste. Envoyé depuis le serveur, clé en variable d'environnement **runtime** sur Coolify, jamais `NEXT_PUBLIC_`.
+- Un interrupteur dans `app_config` pour couper les commentaires sans nouvelle version.
+
+**Son réglage de confidentialité part avec lui** (cf. chantier 26) : accepter ou non likes et commentaires, appliqué par les policies de la base. **Placé après le chantier 28**, pour que likes et commentaires tiennent à un compte qu'on ne perd pas à la réinstallation.
+
+**À trancher quand on y arrive.**
+
+- Like du bento entier, ou par case ?
+- Modération a priori (validé avant d'être visible) ou a posteriori (visible, puis signalé) ? Apple exige au minimum un filtrage avant publication.
+- Qui reçoit les mails, et quel délai de réponse l'équipe s'engage à tenir.
+- Réponses, mentions, emojis ?
+
+**Fait quand** : on peut aimer et commenter un bento, signaler un commentaire ou son auteur, l'équipe reçoit un mail qui mène à l'écran où masquer le commentaire prend un geste, et un compte qui refuse les commentaires n'en reçoit aucun, vérifié à la clé anonyme.
+
+---
+
 ## 12. Le « pourquoi » par case
 
 **Constat.** Un bento est une image. Rien n'explique pourquoi ces six choix.
@@ -527,20 +998,95 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 
 **Arbitrage nécessaire.** C'est du texte libre utilisateur : charge de modération, obligations UGC Apple 1.2, stockage, affichage dans la grille déjà dense. À trancher avant toute implémentation.
 
+**Placé après le chantier 22**, arbitré le 15 septembre 2026. Filtrer un texte libre, le signaler, prévenir l'équipe : c'est la modération que les commentaires doivent installer. Le « pourquoi » par case la reprend, plutôt que d'en construire une seconde.
+
 ---
 
-## 13. Types de bento (hebdo, thématiques)
+## 23. Suivre un compte
 
-**Constat.** Un utilisateur, un bento, pour toujours : la table `bentos` porte une contrainte `unique` sur `user_id` (`20260511000000_initial_schema.sql:88`). Une fois les six cases remplies, il n'y a plus rien à composer, et le fil n'a plus rien de neuf à montrer de la part de quelqu'un qui a déjà publié.
+**Demandé.** Suivre un créateur, avec la notion d'abonnés et d'abonnements sur le profil.
 
-**Proposition.** Plusieurs types de bento coexistant dans « La table » : le bento de référence actuel, plus des bentos datés (le bento de la semaine, un bento thématique lié à une émission). Le fil est déjà conçu pour : l'étiquette du post est exposée en prop `ribbon`, pas en booléen `isFeatured`, donc un nouveau type est un libellé et une couleur.
+**Constat.** Rien n'existe. Deux contraintes du modèle : les profils éditoriaux du chantier 14 n'ont pas de compte, ils peuvent être suivis mais ne suivront personne et ne recevront rien ; et un blocage stocké sur le téléphone ne peut rien interdire à un abonné.
 
-**À cadrer avant toute implémentation** : lever la contrainte `unique (user_id)` et ce que cela implique sur `/u/[pseudo]` (quel bento la page publique montre-t-elle ?), sur l'image de partage, sur les liens déjà en circulation. C'est un changement de modèle, pas un écran.
+**Proposition.** Une table d'abonnements (abonné, suivi, accepté ou en attente), les compteurs sur le profil (21), les bentos des comptes suivis dans « La table », et le blocage qui retire l'abonnement.
 
-**Fait quand** : quelqu'un qui a déjà publié son bento a une raison de revenir composer.
+**Son réglage de confidentialité part avec lui** (cf. chantier 26) : accepter d'être suivi par tous, ou seulement sur validation, appliqué par la base au moment de l'abonnement.
+
+**À trancher quand on y arrive.**
+
+- Un fil « Abonnements » séparé, ou un filtre de « La table » ?
+- Des compteurs publics ?
+- Suivre les profils éditoriaux ?
+
+**Fait quand** : on suit un compte en un tap depuis son profil, ses nouveaux bentos arrivent dans le fil de ses abonnements, et un compte qui exige l'approbation voit les demandes et y répond.
+
+---
+
+## 24. Zone de notifications dans l'app
+
+**Demandé.** Une zone de notifications dans l'app : un nouveau bento d'un compte suivi, un nouveau like ou commentaire sur un de ses bentos.
+
+**Constat.** Rien n'existe, ni table ni Realtime. La cloche du back-office est un bouton sans action (`apps/admin/src/components/AppShell/Topbar.tsx:32-38`), sans rapport avec l'app.
+
+**Proposition.** Une table de notifications (destinataire, type, auteur, cible, lue ou non), alimentée par la base au moment de l'événement : la même source que les push (17). Regroupement (« 12 personnes ont aimé ton bento »), pastille de non-lus, purge au-delà d'une durée à fixer. Lecture au retour dans l'app plutôt qu'en temps réel : Realtime n'est pas ouvert, et le plan gratuit le plafonne à 200 connexions simultanées.
+
+**À trancher quand on y arrive.**
+
+- Un onglet, ou une cloche en tête de « La table » ? Les libellés de la barre d'onglets se tronquent déjà sur Android (chantier 11).
+- Les validations et refus d'items (18) y entrent-ils ?
+- Combien de temps garder une notification ?
+
+**Fait quand** : chaque like, commentaire et nouveau bento d'un compte suivi apparaît dans la zone, regroupé, avec un compteur de non-lus exact.
+
+---
+
+## 25. Comptes Instagram et TikTok
+
+**Demandé.** Associer son compte Instagram et son compte TikTok : photo de profil, et lien sur le profil.
+
+**Constat côté plateformes**, documentation officielle relevée le 15 septembre.
+
+- **Instagram n'offre plus rien aux comptes personnels.** L'API Basic Display s'est arrêtée le 4 décembre 2024. La seule restante, « Instagram API with Instagram Login », ne sert que les comptes professionnels (Business ou Creator), et l'ouvrir au public exige l'App Review de Meta et une vérification d'entreprise. Pour un compte personnel, le seul chemin conforme est un pseudo saisi à la main : sans photo, et sans preuve qu'il appartient à la personne.
+- **TikTok le permet, sous conditions.** Login Kit donne la photo et le nom affiché (`user.info.basic`), le pseudo et le lien du profil (`user.info.profile`). Mais sa revue exige une app **déjà publiée** sur les stores et une vidéo de démonstration ; hors revue, dix comptes de test au plus. L'adresse de la photo semble signée, donc temporaire : à recopier chez nous.
+- **Apple, règle 5.1.1** : pas de jeton de réseau social conservé hors de l'appareil, et un moyen de délier dans l'app. Lire le profil, puis jeter le jeton.
+- **Apple, règle 4.8** : tant que ces comptes ne servent pas à se connecter, rien n'oblige à ajouter Sign in with Apple. C'est une lecture de la règle, pas une confirmation d'Apple.
+
+**Constat côté app.** Le visage d'un compte est son Popy, dérivé du pseudo (`popy-avatar.ts`). Une photo importée est une image d'utilisateur, à modérer comme le reste (22).
+
+**Proposition.** TikTok par Login Kit, la photo recopiée dans le Storage, le jeton jeté. Instagram par pseudo saisi, avec une connexion vérifiée pour les comptes professionnels seulement si l'App Review l'accepte. Délier efface photo et lien.
+
+**Son réglage de confidentialité part avec lui** (cf. chantier 26) : la visibilité des liens Instagram et TikTok, appliquée par la base et non par l'écran.
+
+**À trancher quand on y arrive.**
+
+- La photo remplace-t-elle le Popy, ou s'y ajoute-t-elle ? Le Popy porte l'identité visuelle du produit.
+- Instagram : accepter un pseudo non vérifié, donc qu'on puisse afficher @darkhifus sans l'être ?
+- Garder une copie de la photo TikTok : les conditions développeur de TikTok interdisent de constituer des bases de profils (III.3.h), lecture juridique à faire.
+
+**Fait quand** : quelqu'un relie son TikTok en quelques taps, son profil montre sa photo et un lien qui ouvre TikTok, délier efface les deux, et un lien masqué ne sort pas de l'API, vérifié à la clé anonyme.
+
+---
+
+## 27. Succès
+
+**Demandé.** Un système de succès, par exemple trois bentos complétés, ou dix fois le même item dans des bentos différents.
+
+**Constat.** Rien n'existe. Les deux exemples supposent plusieurs bentos par compte (16) et un rythme d'éditions (13) : « dix fois le même item dans des bentos différents » demande au moins dix bentos, soit le principal et neuf semaines d'éditions.
+
+**Proposition.** La règle de chaque succès écrite dans le code, son texte et son visuel éditables ; l'attribution faite par la base au moment du geste ; rétroactifs au lancement pour les comptes existants ; visibles sur le profil (21), annoncés par la zone de notifications (24). Les visuels : des Popys, par la direction artistique.
+
+**À trancher quand on y arrive.**
+
+- Des règles figées dans le code, ou paramétrables depuis l'administration ?
+- Publics sur le profil, ou privés ?
+- Ce qu'on accepte de laisser tricher, par exemple créer des bentos pour cumuler.
+
+**Fait quand** : un succès se débloque au geste qui le mérite, s'affiche sur le profil, et les comptes existants reçoivent ceux qu'ils méritaient déjà.
 
 ---
 
 ## Hors périmètre de cette roadmap
 
-Reste hors scope tant que ce n'est pas explicitement demandé : auth avec mot de passe (« claim » de compte), messagerie, commentaires sur les bentos des autres, plusieurs bentos par utilisateur, internationalisation.
+Reste hors scope tant que ce n'est pas explicitement demandé : auth avec mot de passe, messagerie, internationalisation.
+
+**Sortis de cette liste le 15 septembre 2026**, parce que l'équipe les a demandés : les commentaires sur les bentos des autres (chantier 22) et plusieurs bentos par utilisateur (chantier 16). Le « claim » de compte en sort aussi, sans mot de passe : c'est le chantier 28, ajouté le même jour.
