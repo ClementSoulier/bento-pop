@@ -163,7 +163,49 @@ contrôles.
 Deux précautions. Toujours passer par `db reset` avant de mesurer : c'est ce
 qui garantit une base qui reflète exactement les migrations du dépôt, sans
 reste d'une session précédente. Et pour comparer avant et après une
-migration, la sortir du dossier le temps d'un `reset`, puis l'y remettre.
+migration, `supabase db reset --local --version <horodatage d'avant>`, puis
+`supabase migration up --local` : la migration s'applique sur les mêmes
+lignes, sans sortir de fichier du dossier.
+
+### Prouver au pixel qu'une migration ne change pas l'écran : l'A/B local
+
+Une fois la migration en production, aucune capture d'avant n'existe plus. Le
+chantier 15, lot 3, a comparé l'avant et l'après sur le Supabase local, avec
+**une seule compilation par plateforme**, pointée sur le proxy de lecture, et
+le proxy tourné vers la base locale (`TARGET` et `KEY` tirés de
+`supabase status -o env`, `FAKE_AUTH=1` pour le composer « 0 / 6 ») :
+
+1. base remise juste avant la migration, jeu de données fixe inséré en SQL
+   (profils `editorial`, horodatages et identifiants fixes pour des tris
+   identiques) ;
+2. barre d'état figée, app réinstallée à neuf, série de captures A ;
+3. `migration up`, app réinstallée à neuf, **même série**, captures B ;
+4. comparaison pixel à pixel de chaque paire, avec l'image des pixels changés.
+
+Le bruit rencontré, à reconnaître avant de conclure : le curseur d'un champ
+capturé à deux instants de son clignotement, le clavier Android, une icône de
+la barre d'état Android malgré le mode démo, et des pixels à un écart de 1
+sur 255. Tout le reste est un vrai changement.
+
+```bash
+# barre d'état figée, puis rendue
+xcrun simctl status_bar <UDID> override --time 9:41 --batteryState charged --batteryLevel 100 \
+  --wifiBars 3 --cellularBars 4
+xcrun simctl status_bar <UDID> clear
+adb shell settings put global sysui_demo_allowed 1
+adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941
+adb shell am broadcast -a com.android.systemui.demo -e command exit
+```
+
+Les dates relatives du fil (« il y a 12 h ») changent à l'heure pile : prendre
+A et B dans la même heure.
+
+**L'image de partage se récupère sans l'envoyer nulle part.** Toucher
+« Partager » l'écrit avant d'ouvrir la feuille de partage : sur iOS dans
+`tmp/ReactNative/*.jpg` du conteneur de données de l'app
+(`xcrun simctl get_app_container <UDID> com.bentopop.mobile data`), sur Android
+dans `cache/ReactNative-snapshot-image*.jpg`, par
+`adb exec-out run-as com.bentopop.mobile cat <chemin>`.
 
 ---
 
@@ -395,6 +437,17 @@ Pour saisir un texte fiable : n'utiliser que des lettres hors `a q z w m`, ou
 passer par l'interface (les puces de suggestion du champ pseudo remplissent le
 champ sans clavier). Et dans tous les cas, **relire la capture** avant de
 valider : l'écran affichait bien « Invalide ».
+
+Pour n'importe quel texte, « Squeezie » compris : le poser dans le
+presse-papiers du simulateur, puis coller par l'interface. Un appui long sur
+le champ fait paraître « Paste », qu'on touche. Sur Android,
+`adb shell input text` tape juste, lettres comprises.
+
+```bash
+printf "Squeezie" | xcrun simctl pbcopy <UDID>
+idb ui tap --udid <UDID> --duration 1.2 <x du champ> <y du champ>
+# puis toucher « Paste », trouvé par idb ui describe-all
+```
 
 ### `idb ui text` fait disparaître le clavier logiciel
 
