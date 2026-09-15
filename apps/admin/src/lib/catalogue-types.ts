@@ -20,6 +20,15 @@ export type MobileClient = SupabaseClient<Database>;
 
 export type ItemStatus = 'draft' | 'pending' | 'validated' | 'rejected' | 'merged';
 
+/** Les statuts tels que le back-office les écrit. */
+export const STATUS_LABELS: Record<ItemStatus, string> = {
+  validated: 'validé',
+  pending: 'en attente',
+  draft: 'brouillon',
+  rejected: 'rejeté',
+  merged: 'fusionné',
+};
+
 /** Un type, avec ce qu'en dit le catalogue. */
 export type ItemTypeRow = {
   id: number;
@@ -27,7 +36,7 @@ export type ItemTypeRow = {
   label: string;
   order: number;
   active: boolean;
-  /** Clés des cases du bento principal qui portent ce type. */
+  /** Intitulés des cases du bento principal qui portent ce type. */
   cases: string[];
   counts: { validated: number; pending: number; draft: number };
 };
@@ -70,6 +79,12 @@ export function validateItemTypeInput(input: ItemTypeInput): Result<ItemTypeInpu
   return { ok: true, value: { key, label, order: input.order } };
 }
 
+/** « A », « A et B », « A, B et C ». */
+function joinFr(words: readonly string[]): string {
+  if (words.length <= 1) return words.join('');
+  return `${words.slice(0, -1).join(', ')} et ${words[words.length - 1]}`;
+}
+
 /**
  * Un type porté par une case du bento principal ne se désactive pas : la
  * recherche de cette case ne rendrait plus rien, dans toutes les versions de
@@ -77,7 +92,9 @@ export function validateItemTypeInput(input: ItemTypeInput): Result<ItemTypeInpu
  */
 export function deactivationBlocker(type: Pick<ItemTypeRow, 'cases'>): string | null {
   if (type.cases.length === 0) return null;
-  return `Porté par la case ${type.cases.join(', ')} du bento principal : désactiver ce type viderait sa recherche.`;
+  return type.cases.length === 1
+    ? `Porté par la case ${type.cases[0]} du bento principal : le désactiver viderait sa recherche.`
+    : `Porté par les cases ${joinFr(type.cases)} du bento principal : le désactiver viderait leur recherche.`;
 }
 
 // ─── Doublons probables ────────────────────────────────────────────────
@@ -151,13 +168,14 @@ export function findDuplicateGroups(items: readonly DuplicateCandidate[]): Dupli
 
 // ─── Changer le type d'un item ─────────────────────────────────────────
 
-export type ItemUsage = { bentoId: string; caseKey: string; caseTypeId: number };
+export type ItemUsage = { bentoId: string; caseKey: string; caseLabel: string; caseTypeId: number };
 
 /**
  * Les cases qui empêchent de passer un item à un autre type.
  *
  * La base refuse qu'un item posé dans une case d'un autre type en change
- * (`items_check_type_change`). On le dit avant d'essayer, et on dit où.
+ * (`items_check_type_change`). On le dit avant d'essayer, et on dit où. Une
+ * fusion n'y change rien : elle ne réunit que des items du même type.
  */
 export function retypeBlockers<T extends ItemUsage>(usage: readonly T[], newTypeId: number): T[] {
   return usage.filter((u) => u.caseTypeId !== newTypeId);
@@ -166,7 +184,7 @@ export function retypeBlockers<T extends ItemUsage>(usage: readonly T[], newType
 /** Traduit les refus de la base en phrases de back-office. */
 export function explainTypeError(error: { code?: string; message: string }): string {
   if (error.code === '23514' && error.message.includes('posé dans une case')) {
-    return 'Cet item est posé dans une case d’un autre type : retire-le de ces bentos, ou fusionne-le, avant de changer son type.';
+    return 'Cet item est posé dans une case d’un autre type : retire-le de ces bentos avant de changer son type.';
   }
   if (error.code === '23514' && error.message.includes('pas du type de la case')) {
     return 'Cet item n’est pas du type de la case.';
@@ -203,7 +221,7 @@ export async function loadItemTypes(client: MobileClient): Promise<ItemTypeRow[]
       .from('item_types')
       .select('id, key, label_fr, display_order, is_active')
       .order('display_order'),
-    client.from('bento_categories').select('key, type_id').order('id'),
+    client.from('bento_categories').select('label_fr, type_id').order('id'),
     readAll((from, to) =>
       client.from('items').select('type_id, status').order('id').range(from, to),
     ),
@@ -218,7 +236,7 @@ export async function loadItemTypes(client: MobileClient): Promise<ItemTypeRow[]
       label: t.label_fr,
       order: t.display_order,
       active: t.is_active,
-      cases: (cases ?? []).filter((c) => c.type_id === t.id).map((c) => c.key),
+      cases: (cases ?? []).filter((c) => c.type_id === t.id).map((c) => c.label_fr),
       counts: {
         validated: mine.filter((i) => i.status === 'validated').length,
         pending: mine.filter((i) => i.status === 'pending').length,
@@ -279,10 +297,10 @@ export async function setItemTypeActive(
   if (!active) {
     const { data: cases } = await client
       .from('bento_categories')
-      .select('key')
+      .select('label_fr')
       .eq('type_id', id)
       .order('id');
-    const blocker = deactivationBlocker({ cases: (cases ?? []).map((c) => c.key) });
+    const blocker = deactivationBlocker({ cases: (cases ?? []).map((c) => c.label_fr) });
     if (blocker) return { ok: false, error: blocker };
   }
   const { error } = await client.from('item_types').update({ is_active: active }).eq('id', id);
@@ -293,12 +311,14 @@ export async function setItemTypeActive(
 export async function loadItemUsage(client: MobileClient, itemId: string): Promise<ItemUsage[]> {
   const [{ data: rows }, { data: cases }] = await Promise.all([
     client.from('bento_items').select('bento_id, category_id').eq('item_id', itemId),
-    client.from('bento_categories').select('id, key, type_id'),
+    client.from('bento_categories').select('id, key, label_fr, type_id'),
   ]);
   const caseById = new Map((cases ?? []).map((c) => [c.id, c]));
   return (rows ?? []).flatMap((r) => {
     const c = caseById.get(r.category_id);
-    return c ? [{ bentoId: r.bento_id, caseKey: c.key, caseTypeId: c.type_id }] : [];
+    return c
+      ? [{ bentoId: r.bento_id, caseKey: c.key, caseLabel: c.label_fr, caseTypeId: c.type_id }]
+      : [];
   });
 }
 
@@ -318,7 +338,7 @@ export async function changeItemType(
   if (blockers.length > 0) {
     return {
       ok: false,
-      error: `Posé dans ${blockers.length} case${blockers.length > 1 ? 's' : ''} d’un autre type : retire-le de ces bentos, ou fusionne-le, avant de changer son type.`,
+      error: `Posé dans ${blockers.length} case${blockers.length > 1 ? 's' : ''} d’un autre type : retire-le de ces bentos avant de changer son type.`,
     };
   }
   const { error } = await client

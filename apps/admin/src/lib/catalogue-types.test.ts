@@ -45,8 +45,19 @@ describe('validateItemTypeInput', () => {
 });
 
 describe('deactivationBlocker', () => {
-  it('bloque un type porté par une case du bento principal', () => {
-    assert.match(deactivationBlocker({ cases: ['artist', 'creator'] }) ?? '', /artist, creator/);
+  it('bloque un type porté par une case du bento principal, nommée par son intitulé', () => {
+    assert.equal(
+      deactivationBlocker({ cases: ['Film'] }),
+      'Porté par la case Film du bento principal : le désactiver viderait sa recherche.',
+    );
+  });
+
+  it('accorde le message quand plusieurs cases portent le type', () => {
+    assert.equal(
+      deactivationBlocker({ cases: ['Artiste musical', 'Créateur de contenu'] }),
+      'Porté par les cases Artiste musical et Créateur de contenu du bento principal : le désactiver viderait leur recherche.',
+    );
+    assert.match(deactivationBlocker({ cases: ['A', 'B', 'C'] }) ?? '', /les cases A, B et C du/);
   });
 
   it('laisse désactiver un type sans case', () => {
@@ -126,8 +137,8 @@ describe('findDuplicateGroups', () => {
 describe('retypeBlockers', () => {
   it('ne garde que les cases d’un autre type que le nouveau', () => {
     const usage = [
-      { bentoId: 'b1', caseKey: 'creator', caseTypeId: 3 },
-      { bentoId: 'b2', caseKey: 'series', caseTypeId: 2 },
+      { bentoId: 'b1', caseKey: 'creator', caseLabel: 'Créateur de contenu', caseTypeId: 3 },
+      { bentoId: 'b2', caseKey: 'series', caseLabel: 'Série', caseTypeId: 2 },
     ];
     assert.deepEqual(
       retypeBlockers(usage, 2).map((u) => u.bentoId),
@@ -139,13 +150,13 @@ describe('retypeBlockers', () => {
 
 describe('explainTypeError', () => {
   it('traduit les deux refus de la base', () => {
-    assert.match(
-      explainTypeError({
-        code: '23514',
-        message: "Cet item est posé dans une case d'un autre type.",
-      }),
-      /retire-le de ces bentos/,
-    );
+    const posed = explainTypeError({
+      code: '23514',
+      message: "Cet item est posé dans une case d'un autre type.",
+    });
+    assert.match(posed, /retire-le de ces bentos/);
+    // Une fusion ne réunit que des items du même type : elle ne débloque rien.
+    assert.doesNotMatch(posed, /fusionne/);
     assert.match(
       explainTypeError({ code: '23514', message: "Cet item n'est pas du type de la case." }),
       /pas du type de la case/,

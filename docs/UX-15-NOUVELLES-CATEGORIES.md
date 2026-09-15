@@ -431,17 +431,59 @@ des deux doublons.
 > - **Fiche d'un item** : changement de type, avec la liste des bentos qui le
 >   bloquent affichée avant d'essayer ; fusion dans un autre item du même type.
 >
-> La logique vit dans `apps/admin/src/lib/catalogue-types.ts` : 15 tests des
+> La logique vit dans `apps/admin/src/lib/catalogue-types.ts` : 16 tests des
 > fonctions pures, et `scripts/check-catalogue-types.ts`, 17 contrôles de la
 > couche de données contre le Supabase local, dont le refus de retyper un item
-> posé et la fusion d'un artiste et d'un créateur au même nom. 54 tests du
-> back-office verts, typage, lint et `next build` verts. **L'interface n'a pas
-> été cliquée en local** : l'accès au back-office passe par l'authentification
-> de production. À recetter après déploiement sur Coolify.
+> posé et la fusion d'un artiste et d'un créateur au même nom. 55 tests du
+> back-office verts, typage, lint et `next build` verts.
 >
-> Les gestes sur les données de production, fusions et retypages (Arcane, une
-> série, ou Glitch Productions, un studio, tous deux rangés en créateurs),
-> restent faits par l'équipe dans le back-office.
+> **Recetté en local le 15 septembre 2026**, sur accord de Clément : une copie
+> jetable du back-office, jamais commitée, avec une session admin simulée,
+> branchée sur le Supabase local seulement et ouverte sur ce Mac seulement,
+> pilotée par Chrome sans interface sur un catalogue de test (24 items, 3
+> bentos). Tous les parcours passent : compteurs par type exacts, désactivation
+> refusée pour un type porté par une case, création et clé en double, trois
+> brouillons validés d'un geste (un brouillon coché puis masqué par un filtre
+> n'est pas emporté), fusion depuis l'encart et depuis la fiche, retypage
+> refusé tant que l'item est posé puis accepté, similaires d'une proposition
+> cherchés dans son type. Aucune erreur serveur, aucune régression sur les
+> pages voisines.
+>
+> **Douze défauts d'interface corrigés** dans la foulée, chacun remesuré :
+>
+> - pastilles d'état sans bordure (la règle globale `button { border: none }`
+>   annule `border-2`), et estompées pour les types verrouillés ;
+> - raison du verrou dans l'infobulle d'un bouton désactivé, que Safari
+>   n'affiche pas ;
+> - clés techniques (`artist, creator`) au lieu des intitulés des cases, et
+>   « la case » au singulier pour deux cases ;
+> - un ordre qui acceptait des lettres, refusé par « Inputs invalides » ;
+> - tout le tableau décalé de 13 px, et la ligne grandie de 3 px, dès qu'une
+>   ligne changeait ;
+> - bouton de création actif sur une clé invalide, clé en double découverte
+>   après le dialogue de confirmation ;
+> - ordre proposé qui ne suivait pas après une création, exemple de clé
+>   (`board_game`) pris pour une vraie ;
+> - titres d'un groupe de doublons décalés de 19 px selon « garder » ou
+>   « fusionner » ;
+> - statuts en anglais dans la recherche, la fusion, le fil d'Ariane et la
+>   traçabilité ;
+> - un retypage bloqué qui conseillait de fusionner, alors qu'une fusion ne
+>   réunit que des items du même type ;
+> - pseudo et case collés dans la liste des bentos qui bloquent ;
+> - bandeau de brouillon qui promettait la visibilité dès la validation, faux
+>   pour un type inactif.
+>
+> **Relevé en production le même jour**, à la clé anonyme et en lecture seule :
+> Arcane n'est posé dans aucun bento publié, il pourra passer en Série depuis
+> sa fiche une fois le back-office redéployé, si aucun bento en cours ne le
+> porte (la fiche le dira avant d'essayer). Glitch Productions est posé dans le
+> bento publié d'un utilisateur, case Créateur de contenu : il ne changera pas
+> de type tant que cet utilisateur ne l'aura pas remplacé, le back-office
+> n'ayant aucun geste pour retirer un item du bento de quelqu'un.
+>
+> Les gestes sur les données de production, fusions et retypages, restent faits
+> par l'équipe dans le back-office.
 
 ### Lot 2 · Les catalogues de départ
 
