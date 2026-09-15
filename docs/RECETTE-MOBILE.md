@@ -2,8 +2,9 @@
 
 > Mode d'emploi pour faire tourner `apps/mobile` sur simulateur iOS et
 > émulateur Android, avec de vraies données de production et sans rien y
-> écrire. Écrit après la recette du chantier 2, où la moitié du temps est
-> partie dans les pièges listés en §4 plutôt que dans la recette elle-même.
+> écrire, sauf l'exception arbitrée d'un compte de recette (§1). Écrit après
+> la recette du chantier 2, où la moitié du temps est partie dans les pièges
+> listés en §4 plutôt que dans la recette elle-même.
 
 ---
 
@@ -38,9 +39,11 @@ EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:8098 EXPO_PUBLIC_SUPABASE_ANON_KEY=rec
 ```
 
 Sont relayés : tous les `GET`, et les `POST` vers les fonctions RPC de la liste
-blanche (`search_items`, `find_similar_items`, `popular_items`), qui sont
-`stable` en SQL donc en lecture. Tout le reste répond 405. Pour une recette qui
-a besoin d'une autre fonction :
+blanche (`search_items`, `find_similar_items`, `popular_items`, et depuis le
+chantier 7 `search_bentos` et `shared_items`, celles de « Trouver »), qui sont
+`stable` en SQL donc en lecture. Tout le reste répond 405, et chaque refus
+s'écrit au journal du proxy. Pour une recette qui a besoin d'une autre
+fonction :
 
 ```bash
 RPC_ALLOW=search_items,ma_fonction TARGET=… KEY=… node …/readonly-proxy.mjs
@@ -79,6 +82,47 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=recette \
 
 Les identifiants viennent de `apps/landing/.env`, qui porte déjà la clé
 anonyme du projet mobile pour la page publique.
+
+### Recetter un parcours qui publie : l'exception, arbitrée à chaque fois
+
+Publier son bento et arriver sur sa page, ou ouvrir sa propre page sans bento,
+ne se recette qu'avec un vrai compte qui écrit. Au chantier 7, lot 4, c'est
+fait **en production**, sur arbitrage explicite, par
+`apps/mobile/scripts/recette-write-proxy.mjs`, qui prend la place du proxy de
+lecture sur le port 8098 : les apps compilées gardent leur cible.
+
+Ses garde-fous, éprouvés au `curl` avant tout lancement, sans rien créer : une
+seule inscription, et 503 aux suivantes ; les écritures du seul compte de
+recette, reconnu au jeton, et 405 à toute autre ; quatre routes
+d'authentification ; un fichier coupe-circuit qui gèle tout ; un journal où
+chaque écriture est marquée. Il retarde aussi à la demande la lecture de la
+page, pour le réseau ralenti.
+
+```bash
+cd apps/mobile && set -a && . ./.env && set +a
+TARGET="$EXPO_PUBLIC_SUPABASE_URL" KEY="$EXPO_PUBLIC_SUPABASE_ANON_KEY" \
+READONLY_FLAG=/tmp/recette-coupe-circuit DELAY_FILE=/tmp/recette-retard \
+  node scripts/recette-write-proxy.mjs
+```
+
+L'ordre, qui compte :
+
+1. arrêter l'app sur **tous** les appareils, et ne garder qu'un appareil
+   allumé avec elle : n'importe quelle app qui démarre sans session s'inscrit,
+   et prendrait la place du compte de recette ;
+2. retirer de cet appareil la session `sb-127-auth-token` d'une recette
+   `FAKE_AUTH` (§4) ;
+3. choisir un pseudo sans `a q z w m` si on le tape par `idb` (§4), et vérifier
+   par une lecture qu'il est libre et hors des motifs bloqués ;
+4. remplir les cases **par les suggestions** du catalogue, jamais par
+   « Proposer », qui créerait un item ;
+5. garder le bento publié le moins longtemps possible : il apparaît en tête du
+   fil de tout le monde. 2 min 21 s au chantier 7 ;
+6. supprimer le compte dans l'app, « Supprimer mon compte », poser le
+   coupe-circuit, arrêter le proxy, puis relire avec la clé anonyme que profil,
+   bento et cases ont disparu ;
+7. supprimer enfin le compte d'authentification anonyme, que l'app laisse
+   orphelin, au tableau de bord Supabase : profil **puis** authentification.
 
 ---
 
@@ -214,12 +258,16 @@ publique, qui les coupe (chantier 7).
 PostgREST expose les fonctions SQL en `POST`, pas en `GET`. Une fonction absente
 de `RPC_ALLOW` répond donc 405 et l'écran affiche une erreur réseau, alors que
 la base va très bien. Le journal du proxy le dit : chaque ligne porte désormais
-la méthode et le poids de la réponse.
+la méthode et le poids de la réponse, et chaque refus sa propre ligne.
 
 ```
 200 POST /rest/v1/rpc/search_items 245o
-405 POST /rest/v1/rpc/ma_fonction
+405 POST /rest/v1/rpc/ma_fonction refusé
 ```
+
+Jusqu'au chantier 7, les refus ne s'écrivaient pas : la recherche de
+« Trouver », par `search_bentos`, restait vide en recette sans aucune trace au
+journal. Ses deux fonctions sont désormais dans la liste par défaut.
 
 C'est aussi le moyen de **mesurer l'egress d'un parcours** : additionner la
 colonne de droite sur la durée de la recette.
@@ -424,8 +472,61 @@ kill -CONT $P
 `adb shell svc wifi disable` et `svc data disable` coupent le réseau de
 l'émulateur : NetInfo dit hors ligne, et l'app montre ses états hors ligne.
 Mais les connexions redirigées par `adb reverse` passent toujours, et le proxy
-continue de répondre. Pour l'état hors ligne, se fier à ce que NetInfo
-déclenche ; pour un réseau qui ne répond pas, suspendre le proxy.
+continue de répondre. Pour un réseau qui ne répond pas, suspendre le proxy.
+
+**Pour l'état hors ligne aussi.** Au chantier 7, lot 4, la page publique
+ouverte réseau coupé s'est remplie : sa requête est passée par `adb reverse`
+avant que NetInfo ne signale la coupure, et une réponse arrivée l'emporte sur
+l'état hors ligne. L'essai n'éprouvait rien. Couper le réseau, suspendre le
+proxy, attendre le bandeau « Pas de connexion », puis seulement ouvrir la page.
+
+### `adb reverse` saute quand on change la navigation système
+
+Après `cmd overlay enable …navbar.threebutton`, l'app relancée affichait
+« Unable to load script » : `adb reverse --list` montrait toujours les
+redirections, mais plus rien ne passait. Les recréer suffit :
+
+```bash
+adb reverse --remove-all && adb reverse tcp:8081 tcp:8081 && adb reverse tcp:8098 tcp:8098
+```
+
+### Une tablette en paysage ouvre l'app en boîte aux lettres
+
+L'app est verrouillée en portrait. Sur l'AVD `Pixel_Tablet`, en paysage, elle
+tourne dans une fenêtre de 600 × 800 dp au milieu de l'écran, et une bulle
+d'aide du système, « See and do more », la recouvre au premier lancement :
+toucher « Got it », qui n'est pas dans l'arbre de `uiautomator`, au centre
+bas de la bulle. Les coordonnées de balayage doivent tomber dans la fenêtre,
+et les captures se recadrent sur elle. Pour la voir en plein écran portrait :
+
+```bash
+adb shell settings put system accelerometer_rotation 0
+adb shell settings put system user_rotation 1      # 0 et accelerometer_rotation 1 pour revenir
+```
+
+### Voir ce qui s'affiche entre deux captures : enregistrer l'écran
+
+Un squelette de 50 ms, ou un ancien item le temps d'un rendu, passent entre
+deux captures. L'enregistrement du simulateur n'écrit une image que quand
+l'écran change, donc toutes les étapes y sont, et `ffmpeg` les sort une à une :
+
+```bash
+xcrun simctl io <UDID> recordVideo --codec h264 --force /tmp/v.mp4 &   # puis kill -INT
+ffmpeg -i /tmp/v.mp4 -vsync vfr -vf scale=402:874 /tmp/images/%04d.png
+```
+
+Une planche de ces images suffit à lire la séquence. Les horodatages de
+`showinfo` n'y sont pas fiables : la durée d'un état se lit au journal du
+proxy.
+
+### Le type d'un élément dans `idb` dit ce qu'entend VoiceOver
+
+`idb ui describe-all` rend un `role` par élément : `AXButton` pour un bouton
+annoncé comme tel, `AXGenericElement` pour un élément sans rôle. Au
+chantier 7, les boutons des états sans bento de la page publique sortaient en
+`AXGenericElement` alors qu'ils déclarent `accessibilityRole="button"`, comme
+« Retour », qui sort en `AXButton`. Relever le `role`, pas seulement le
+libellé.
 
 ### Android ignore `color: 'transparent'` sur un `Text`
 
@@ -542,3 +643,8 @@ rm -rf apps/mobile/ios apps/mobile/android
 Après une recette en `FAKE_AUTH=1`, retirer la session factice des appareils
 (§4) : sinon la recette suivante, sans `FAKE_AUTH`, tombe sur une session
 périmée et un client principal figé.
+
+Remettre aussi ce que la recette a changé sur les émulateurs : police,
+densité, taille, navigation par gestes, réseau, rotation. Désinstaller l'app
+d'un AVD où elle n'était pas. Et après un compte de recette en production
+(§1), vérifier que profil et compte d'authentification sont supprimés.

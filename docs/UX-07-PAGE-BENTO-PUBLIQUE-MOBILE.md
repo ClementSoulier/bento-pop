@@ -16,6 +16,12 @@
 > session (§6.4). Écarts, mesures et arbitrages du lot 2 reportés en §8, §9
 > et §11, suivis ouverts en §12.
 >
+> **Close le 15 septembre 2026**, lots 3 et 4 livrés. La police maximale a
+> révélé trois comportements de React Native que la spéc ignorait (§5.4), et la
+> recette complète, faite sur les trois iPhone, onze cas Android, une tablette
+> et un compte de recette en production, a tenu les dix-neuf critères (§10).
+> Relevés en §7, §8.4 et §8.6, arbitrages en §11, suivis en §12.
+>
 > Ne pas confondre avec [`UX-01-PAGE-BENTO-PUBLIQUE.md`](./UX-01-PAGE-BENTO-PUBLIQUE.md),
 > qui décrit la page **web** `bento-pop.com/u/<pseudo>`. Ici il s'agit de
 > l'écran `apps/mobile/app/u/[pseudo].tsx`.
@@ -864,9 +870,9 @@ client principal, et attendent de la même façon (§12).
 | Poste | Avant | Après |
 |---|---|---|
 | Allers-retours à l'ouverture | 2 séquentiels | **1** |
-| Latence médiane mesurée | 89 ms | **46 ms** ; 53 ms au contrôle du lot 1 |
-| Octets par ouverture | 2 530 | **1 991** ; 1 973 en médiane au lot 1, de 1 586 à 2 240 |
-| Ouverture d'un bento déjà vu | 2 requêtes, spinner | **0 requête, 0 spinner** |
+| Latence médiane mesurée | 89 ms | **46 ms** ; 53 ms au contrôle du lot 1, 45 à 48 ms au lot 4 |
+| Octets par ouverture | 2 530 | **1 991** ; 1 973 en médiane aux lots 1 et 4, de 1 586 à 2 240 |
+| Ouverture d'un bento déjà vu | 2 requêtes, spinner | **0 requête, 0 squelette**, relevé image par image au lot 4 |
 | Images | déjà en cache disque `expo-image` | inchangé |
 
 À 27 bentos publiés et un cache de 5 minutes, l'egress de cette page est
@@ -1037,6 +1043,10 @@ comptes sans bento éprouvés, 12 pseudos à `_` ; 1 973 octets en médiane, de
 1 586 à 2 240 ; p50 53 ms, p95 139 ms, max 193 ms. Échappement retiré, le
 contrôle du joker tombe sur les douze.
 
+Relevé du lot 4, le 15 septembre 2026, avec le code des lots 2 et 3 : tout
+vert, trois passages. p50 48, 46 puis 45 ms ; p95 151, 105 puis 128 ms ; max
+158 ms. Charge utile inchangée, 1 973 octets en médiane, de 1 586 à 2 240.
+
 ### 8.4 Recette manuelle, bloquante
 
 Sur simulateur, dev build pointé sur le proxy lecture seule de
@@ -1136,6 +1146,76 @@ taille de police :
   vides, elles, tiennent désormais dans leur pointillé.
 - Point 10 : non repris, aucune propriété d'accessibilité n'a changé.
 
+**Relevé du lot 4**, le 15 septembre 2026, la liste entière sur les trois
+iPhone, avec le code des lots 2 et 3. Cotes en points, mesurées au pixel, la
+valeur du modèle entre parenthèses ; sur SE, le bas de la boîte et les boutons
+en fin de défilement :
+
+| Appareil | Police | Haut de la boîte | Bas de la boîte | Haut des boutons | Largeur / hauteur | Défilement |
+|---|---|---|---|---|---|---|
+| iPhone 17 Pro | défaut | 250,00 (250,00) | 729,67 (730,02) | 757,00 (757,00) | −0,06 % | aucun |
+| iPhone 17 Pro | xxLarge | 259,67 (259,40) | 729,33 (729,60) | 753,33 (753,60) | −0,15 % | aucun |
+| iPhone 17 Pro | maximum | 266,33 (266,00) | 729,33 (729,60) | 753,33 (753,60) | −0,14 % | aucun |
+| iPhone 17e | défaut | 235,00 (235,00) | 697,67 (698,33) | 727,00 (727,00) | −0,07 % | aucun |
+| iPhone 17e | xxLarge | 244,67 (244,40) | 699,33 (699,60) | 723,33 (723,60) | +0,24 % | aucun |
+| iPhone 17e | maximum | 251,33 (251,00) | 699,33 (699,60) | 723,33 (723,60) | +0,25 % | aucun |
+| iPhone SE | défaut | 208,00 (208,00) | 560,00 (560,00) | 584,00 (584,00) | +0,13 % | 88,5 |
+| iPhone SE | xxLarge | 218,00 (217,40) | 556,50 (556,60) | 580,50 (580,60) | +0,13 % | 101,3 |
+| iPhone SE | maximum | 224,50 (224,00) | 556,50 (556,60) | 580,50 (580,60) | +0,13 % | 107,9 |
+
+- Points 1 à 3 : les six cases visibles sans défiler sur 17 Pro et 17e, la
+  rangée basse atteinte en fin de défilement sur SE, rien par-dessus. Le
+  rapport du SE, non mesuré aux lots précédents, se lit en fin de défilement,
+  bords haut et bas dans la même capture. La boîte a au pixel la largeur du
+  fil : 338, 326 et 311 pt.
+- Point 4 : « inception » dans « Trouver », @keremasan ouvert, fermé,
+  rouvert, sur 17 Pro. Une requête à la première ouverture, zéro à la
+  seconde. Image par image dans l'enregistrement de l'écran, six images de
+  squelette à la première ouverture, aucune à la seconde : la page glisse déjà
+  remplie.
+- Point 5 : proxy suspendu, sur les trois iPhone à la fois. « Connexion
+  perdue » en 10,7 s sur 17 Pro, 10,9 s sur 17e, 10,8 s sur SE ; « Réessayer »
+  remplit la page en 0,4 à 0,5 s. Le hors ligne, que le simulateur ne sait pas
+  faire, est éprouvé sur Android (§8.6).
+- Points 6 et 7 : `vanhlad` et `zz_personne_42`, les bons messages sur les
+  trois.
+- Points 8 et 11 : un compte de recette créé en production (arbitrage §11),
+  par `scripts/recette-write-proxy.mjs`, sur le 17 Pro, tous les autres
+  appareils éteints ou l'app fermée.
+  - point 11 : sa page ouverte par le lien, sans bento puis avec un bento
+    complet non publié. « Rien en ligne », « Ton bento n'est pas en ligne. »,
+    et « Reprendre mon bento » ramène au composer ;
+  - point 8 : la page vide revisitée juste avant, pour que le cache la garde,
+    puis « Publier mon bento » avec la lecture de la page retardée de 1,5 s,
+    1 618 ms au journal. Enregistrement : composer, « Publication… »,
+    squelette, bento ; aucune image « Rien en ligne » ;
+  - puis le film changé, Inception pour Fight Club, et « Voir mon bento
+    public » au même retard : squelette, puis Fight Club. Inception n'apparaît
+    sur aucune image ;
+  - quatorze écritures relayées en tout, que le journal du proxy détaille :
+    inscription, profil, bento, sept cases, publication, suppression,
+    déconnexion. Bento public 2 min 21 s, de 12:21:57 à 12:24:18, heure de
+    Paris ;
+  - suppression par « Supprimer mon compte » : profil, bento et cases relus
+    vides avec la clé anonyme, tête du fil redevenue celle d'avant,
+    `bento-pop.com/u/recettesept` en 404. La réinscription que l'app tente
+    aussitôt est refusée par le proxy. Reste le compte d'authentification
+    anonyme `f8c7589c-5885-4377-93a7-68e60338d5e8`, sans données, à supprimer
+    au tableau de bord Supabase.
+- Point 9 : chevron dans sa pastille, boutons sur une rangée, pseudo sur une
+  ligne et tuiles lisibles, aux trois tailles sur les trois appareils.
+- Point 10 : 31 éléments dans l'arbre sur les trois, les six étiquettes, et
+  les crédits de la rangée basse présents, SE compris. **Un défaut trouvé** :
+  « Réessayer » et « Reprendre mon bento », les boutons des états sans bento,
+  sont exposés sans rôle (`AXGenericElement`), quand « Retour », sur le même
+  écran, est un bouton (`AXButton`). Les deux déclarent
+  `accessibilityRole="button"`. Quatre pistes écartées sur appareil, un essai
+  chacune : la police du texte enfant, une bordure, la prop `role`, l'ombre
+  des autres boutons. Cause non établie, versé en §12.
+- Point 12 : l'image de partage identique à l'octet près à la taille par
+  défaut et à la plus grande, 3 240 × 5 760 px.
+- Point 13 : le fil lisible aux trois tailles. Le composer, inchangé, cf. §12.
+
 ### 8.5 Ce qui n'est pas testé, assumé
 
 - Le rendu sur appareil réel, qui accumule maintenant sept chantiers.
@@ -1226,6 +1306,54 @@ parenthèses :
   d'@arpago, seule dont un titre rétrécit, garde « MEGALOVANIA » entier, sur
   Android comme sur iOS.
 
+**Relevé du lot 4**, la matrice entière, sur les AVD `Pixel_8` (Android 37) et
+`Pixel_Tablet` (Android 15), en dp. La valeur du modèle entre parenthèses ;
+les marges sont celles que `useSafeAreaInsets` rend dans l'app. Sur Android,
+l'ombre de la boîte est une élévation : son bas est la fin de la bordure.
+
+| Cas | Marges, haut et bas | Haut de la boîte | Bas de la boîte | Haut des boutons | Largeur / hauteur | Boîte du fil et de la page |
+|---|---|---|---|---|---|---|
+| 411 dp | 50,29 et 24 | 238,48 (238,29) | 731,43 (731,41) | 807,24 (807,29) | −0,04 % | 347,43 et 347,43 |
+| 411 dp, police 1,3 | 50,29 et 24 | 250,67 (250,29) | 743,62 (743,41) | 803,81 (803,89) | −0,04 % | 347,43 et 347,43 |
+| 411 dp, police 2,0 | 50,29 et 24 | 254,86 (254,29) | 747,81 (747,41) | 803,81 (803,89) | −0,04 % | 347,43 et 347,43 |
+| 384 dp | 46,93 et 24,18 | 235,38 (234,93) | 688,36 (687,92) | 746,31 (746,16) | +0,19 % | 320 et 320 |
+| 384 dp, police 2,0 | 46,93 et 24,18 | 251,38 (250,93) | 704,36 (703,92) | 742,76 (742,76) | +0,19 % | 320 et 320 |
+| 360 dp | 44 et 24 | 232,00 (232,00) | 651,67 (651,61) | 693,00 (693,00) | +0,03 % | 296 et 296 |
+| 360 dp, police 2,0 | 44 et 24 | 248,33 (248,00) | 665,67 (665,60) en fin de défilement | 689,33 (689,60) | même échelle | 296 et 296 |
+| 360 × 640 dp | 35 et 24 | 223,00 (223,00) | 509,00 (509,00) en fin de défilement | 533,00 (533,00) | même échelle | 296 et 296 |
+| 360 × 640 dp, police 2,0 | 35 et 24 | 239,50 (239,00) | 505,50 (505,60) en fin de défilement | 529,50 (529,60) | même échelle | 296 et 296 |
+| trois boutons | 50,29 et 48 | 238,48 (238,29) | 731,43 (731,41) | 783,24 (783,29) | −0,04 % | 347,43 et 347,43 |
+| trois boutons, police 2,0 | 50,29 et 48 | 254,86 (254,29) | 747,81 (747,41) | 779,81 (779,89) | −0,04 % | 347,43 et 347,43 |
+| tablette en portrait, 800 × 1 280 | 36 et 32 | 224,00 (224,00) | 820,00 (820,04) | 1 165,00 (1 165,00) | −0,05 % | 420 et 420 |
+| tablette en portrait, police 2,0 | 36 et 32 | 240,50 (240,00) | 836,50 (836,04) | 1 161,50 (1 161,60) | −0,05 % | 420 et 420 |
+| tablette en paysage, fenêtre 600 × 800 | 36 et 32 | 224,00 (224,00) | 661,00 (661,00) en fin de défilement | 685,00 (685,00) | même échelle que SE | 420 et 311 |
+| tablette en paysage, police 2,0 | 36 et 32 | 240,50 (240,00) | 657,50 (657,60) en fin de défilement | 681,50 (681,60) | même échelle que SE | 420 et 311 |
+
+- Marges : relevées pour la première fois dans l'app, elles valent à 411 dp
+  ce que `dumpsys window` lisait au lot 2. La navigation à trois boutons porte
+  la marge basse à 48 dp, et la page la suit, au dixième de dp.
+- Recette 1 : aucun recouvrement au repos là où le plancher ne mord pas, et
+  la rangée basse atteinte en fin de défilement partout ailleurs.
+- Recette 3 : même largeur au pixel dans le fil et sur la page, dans les onze
+  cas de téléphone et sur la tablette en portrait, où la boîte atteint
+  `MAX_BOX_WIDTH`. En paysage, l'app verrouillée en portrait tourne dans une
+  fenêtre de 600 × 800 dp : un écran court, où la hauteur impose le plancher.
+  La boîte y fait 311 dp, celle du fil 420, et la page défile de 3,5 dp. C'est
+  la formule de §5.1 telle quelle, arbitrée en §11.
+- Recette 5, hors ligne : wifi et données coupés, proxy suspendu, bandeau
+  « Pas de connexion » affiché, puis le lien : « Connexion perdue » dès le
+  premier relevé de l'arbre, 2,1 s après le lien relevé compris. Le réseau
+  rétabli, la page se remplit seule en 3,8 s. Un premier essai, proxy actif,
+  s'est rempli malgré la coupure : la requête passe par `adb reverse`, sa
+  réponse arrive avant que NetInfo ne signale la coupure, et la règle 1 de
+  `publicPageState` la garde. Conforme, mais l'essai n'éprouvait pas la
+  règle 2 (`RECETTE-MOBILE.md` §4).
+- Recette 9 : chevron, boutons sur une rangée, pseudo et tuiles lisibles à la
+  police 2,0 dans tous les cas.
+- Trouvé en passant, hors de l'écran : en navigation à trois boutons, les
+  boutons système recouvrent les libellés de la barre d'onglets, fixée à 84 de
+  haut quelle que soit la marge (§12).
+
 ---
 
 ## 9. Plan de développement
@@ -1299,37 +1427,54 @@ aux polices 1,0, 1,3 et 2,0 (§8.6), titres des 27 bentos sur SE, 17 Pro et
 Android comparés au pixel avant et après, image de partage identique à
 l'octet sur les deux plateformes. Commits `0dc470a` (test) et `9907507`.
 
-### Lot 4 · Recette et mesures
+### Lot 4 · Recette et mesures · livré
 
 La liste de §8.4 sur les trois iPhone, dont les points 8 et 11 que le proxy
 n'a pas permis au lot 2, la matrice Android de §8.6, le relevé de latence après
 bascule, la mise à jour de la roadmap et l'ouverture des suivis.
 
+**Écarts au plan, tous validés (§11)** : les points 8 et 11 recettés avec un
+compte de recette en production, par un proxy qui n'accepte qu'une inscription
+et les écritures de ce compte ; le hors ligne d'Android éprouvé proxy
+suspendu ; la tablette dans ses deux orientations. Aucun changement de l'app :
+`scripts/recette-write-proxy.mjs` est ajouté, et `readonly-proxy.mjs` relaie
+les deux fonctions de « Trouver » et journalise ses refus.
+
+**Vérifié** : les treize points de §8.4, les points 4, 8, 11 et 12 sur le
+17 Pro et les autres sur les trois iPhone, quinze cas sur les émulateurs
+(§8.6), la latence contre la production (§8.3), et les dix-neuf critères de
+§10. Deux défauts trouvés, versés en §12 : les boutons
+des états sans bento n'ont pas de rôle pour VoiceOver, et la barre d'onglets
+passe sous la navigation à trois boutons d'Android.
+
 ---
 
 ## 10. Definition of Done
 
-| # | Critère | Vérifié par |
-|---|---|---|
-| 1 | Six cases atteignables et lisibles sur iPhone SE | recette 1, capture |
-| 2 | Rien ne recouvre la boîte au repos tant que le plancher ne s'applique pas, ni en fin de défilement | modèle testé + recette 1 |
-| 3 | Proportions natives à 1 % | recette 2 |
-| 4 | Même largeur de boîte que dans le fil | recette 3 |
-| 5 | Retour sur un bento déjà vu : zéro requête, zéro squelette | recette 4 |
-| 6 | Un seul aller-retour, p50 sous 100 ms | §8.3, vert au lot 1 |
-| 7 | Charge utile sous 2 100 octets | §8.3, vert au lot 1 |
-| 8 | Panne réseau distinguée de l'absence, sans attendre hors ligne et en 11 s au plus sinon | recette 5 |
-| 9 | Pseudo connu sans bento distingué de pseudo inconnu | recette 6 et 7 |
-| 10 | Publier puis arriver sur sa page montre le bento, jamais le message d'absence ni l'ancien item | recette 8 |
-| 11 | Écran et tuiles lisibles à la police maximale, et en xxLarge | recettes 9 et 13, captures |
-| 12 | Crédits de la rangée basse présents dans l'arbre d'accessibilité | recette 10 |
-| 13 | Suite complète verte | CI |
-| 14 | Sa propre page sans bento : message dédié | recette 11 |
-| 15 | Image de partage identique quelle que soit la police | recette 12, captures |
-| 16 | Les critères 1 à 11 tiennent sur la matrice Android | §8.6, captures |
-| 17 | La page se charge avec une session périmée et l'authentification en panne | §6.4, test d'intégration et recette sur les deux plateformes, fait au lot 2 |
-| 18 | Aucun titre de tuile coupé au milieu d'un mot, sur Android comme sur iOS | lot 3, 27 bentos sur trois appareils, captures comparées au pixel |
-| 19 | Cases vides lisibles et dans leur pointillé à toute police | lot 3, captures |
+État au 15 septembre 2026, recette du lot 4 faite : **dix-neuf critères sur
+dix-neuf**.
+
+| # | Critère | Vérifié par | État |
+|---|---|---|---|
+| 1 | Six cases atteignables et lisibles sur iPhone SE | recette 1, capture | ✅ rangée basse en fin de défilement, aux trois tailles de police |
+| 2 | Rien ne recouvre la boîte au repos tant que le plancher ne s'applique pas, ni en fin de défilement | modèle testé + recette 1 | ✅ trois iPhone, quinze cas Android |
+| 3 | Proportions natives à 1 % | recette 2 | ✅ de −0,15 à +0,25 % sur iPhone, de −0,05 à +0,19 % sur Android |
+| 4 | Même largeur de boîte que dans le fil | recette 3 | ✅ au pixel sur les trois iPhone et les onze cas de téléphone Android ; en paysage sur tablette, plus étroite par construction (§8.6, §11) |
+| 5 | Retour sur un bento déjà vu : zéro requête, zéro squelette | recette 4 | ✅ requêtes comptées, images de l'enregistrement relues |
+| 6 | Un seul aller-retour, p50 sous 100 ms | §8.3, vert au lot 1 | ✅ p50 45 à 48 ms au lot 4 |
+| 7 | Charge utile sous 2 100 octets | §8.3, vert au lot 1 | ✅ 1 973 octets en médiane |
+| 8 | Panne réseau distinguée de l'absence, sans attendre hors ligne et en 11 s au plus sinon | recette 5 | ✅ 10,7 à 10,9 s sur iPhone, immédiat hors ligne sur Android |
+| 9 | Pseudo connu sans bento distingué de pseudo inconnu | recette 6 et 7 | ✅ |
+| 10 | Publier puis arriver sur sa page montre le bento, jamais le message d'absence ni l'ancien item | recette 8 | ✅ compte de recette en production, réseau ralenti, enregistrement relu |
+| 11 | Écran et tuiles lisibles à la police maximale, et en xxLarge | recettes 9 et 13, captures | ✅ la page et le fil ; le composer, hors périmètre, en §12 |
+| 12 | Crédits de la rangée basse présents dans l'arbre d'accessibilité | recette 10 | ✅ trois iPhone, SE compris |
+| 13 | Suite complète verte | CI | ✅ 374 tests en local ; la CI la rejoue à la PR |
+| 14 | Sa propre page sans bento : message dédié | recette 11 | ✅ compte de recette en production |
+| 15 | Image de partage identique quelle que soit la police | recette 12, captures | ✅ à l'octet près, sur iOS et Android |
+| 16 | Les critères 1 à 11 tiennent sur la matrice Android | §8.6, captures | ✅ quinze cas, avec la réserve du critère 4 en paysage |
+| 17 | La page se charge avec une session périmée et l'authentification en panne | §6.4, test d'intégration et recette sur les deux plateformes, fait au lot 2 | ✅ |
+| 18 | Aucun titre de tuile coupé au milieu d'un mot, sur Android comme sur iOS | lot 3, 27 bentos sur trois appareils, captures comparées au pixel | ✅ |
+| 19 | Cases vides lisibles et dans leur pointillé à toute police | lot 3, captures | ✅ |
 
 ## 11. Décisions tranchées
 
@@ -1375,6 +1520,10 @@ bascule, la mise à jour de la roadmap et l'ouverture des suivis.
 | Case vide à police agrandie | **deux lignes au plus, qui rétrécissent**, et police réduite là où la case est trop basse | « CRÉATEUR DE CONTENU » passait sur trois lignes et le cercle sortait du pointillé dès 1,3 sur Android |
 | Test instable du lot 2 | **tentatives comptées côté client** | sous charge, l'abandon partait avant que le serveur lise la requête : 3 échecs sur 9 |
 | Commit du lot 3 | **en fin de lot** | code, réparation du test et spéc ensemble, une fois la règle des titres appliquée et vérifiée |
+| Recettes 8 et 11, qui demandent d'écrire | **compte de recette en production**, par un proxy qui n'accepte qu'une inscription et les écritures de ce compte | seul moyen de publier pour de vrai ; bento public 2 min 21 s, profil supprimé dans l'app, compte d'authentification à supprimer au tableau de bord. Supabase local, ou les tests seuls, écartés |
+| Hors ligne sur l'émulateur | **réseau coupé et proxy suspendu** | proxy actif, `adb reverse` laisse passer la requête et sa réponse l'emporte : l'essai n'éprouve pas « Connexion perdue » |
+| Tablette en paysage | **boîte au plancher, plus étroite que le fil, laissée ainsi** | l'app verrouillée en portrait y tourne dans 600 × 800 dp, un écran court : la formule de §5.1 s'applique telle quelle. En portrait, 420 dp comme le fil |
+| Commit du lot 4 | **en fin de lot** | relevés, spéc, roadmap et outillage de recette ensemble |
 
 ---
 
@@ -1429,9 +1578,13 @@ RLS ; les écritures, non. Versé à la roadmap.
 l'état « Connexion perdue ». Le bandeau est commun à tous les écrans.
 Chantier 11.
 
-**Sa propre page sans bento n'est vérifiée que par les tests.** Le proxy de
-recette refuse la publication et ne connaît pas de profil public au compte
-factice : les recettes 8 et 11 restent à faire au lot 4.
+**Le compte d'authentification de la recette reste à supprimer.** Les
+recettes 8 et 11, faites au lot 4 avec un compte de recette en production
+(§8.4), ont supprimé son profil par l'app, qui laisse le compte
+d'authentification anonyme orphelin, sans aucune donnée :
+`f8c7589c-5885-4377-93a7-68e60338d5e8`. Il se supprime au tableau de bord
+Supabase : l'app ne le peut pas, et la recette n'avait pas de droit
+d'administration.
 
 **Les sous-titres d'artistes sont en anglais.** « US · Person », « FR · Person
 · French rapper » : des données héritées d'anciens imports, que le code actuel
@@ -1458,7 +1611,28 @@ artistes.
 n'apparaît que si un item est masqué par la RLS, et aucun des 27 bentos
 publiés n'en a. Même règle et même code que la case du composer, recettée.
 
-**Les titres du composer ne sont vérifiés que par les tests.** Le compte
-factice de la recette a un bento vide et le proxy refuse les écritures : la
-largeur que passe le composer est contrôlée contre ses cases vides mesurées,
-pas sur un titre rendu. À faire au lot 4 si un compte de recette le permet.
+**La règle du premier mot n'est vérifiée dans le composer que par les
+tests.** Le compte de recette du lot 4 y a rendu six titres, Inception,
+Breaking Bad, Hans Zimmer, Billie jean, Joyca et Angers, sans coupure, mais
+aucun n'a de premier mot plus large que sa case. La largeur que passe le
+composer reste contrôlée contre ses cases vides mesurées.
+
+**Les boutons des états sans bento n'ont pas de rôle pour VoiceOver.**
+« Réessayer » et « Reprendre mon bento » sortent en `AXGenericElement` dans
+l'arbre d'accessibilité, sur iPhone 17 Pro, alors que « Retour », sur le même
+écran, sort en `AXButton`, et que les deux déclarent
+`accessibilityRole="button"` (`StateMessage` et `TopBar`, dans
+`app/u/[pseudo].tsx`). VoiceOver lit donc le libellé sans dire « bouton ».
+Quatre pistes écartées sur appareil, en rechargement à chaud, un écran
+d'erreur neuf à chaque essai : un texte enfant à police figée, une bordure, la
+prop `role` à la place d'`accessibilityRole`, l'ombre `SHADOWS.stamp` des
+boutons qui fonctionnent. La cause n'est pas établie ; à reprendre sur l'écran
+lui-même, puis à vérifier sur les autres `Pressable` de l'app.
+
+**En navigation à trois boutons, la barre d'onglets passe sous les boutons
+système** (Android). Sa hauteur est fixée à 84 dans `app/(tabs)/_layout.tsx` :
+la marge basse de 48 dp de cette navigation, contre 24 en gestes, écrase icône
+et libellé sous la barre de navigation, sur le composer comme sur le fil.
+Mesurée identique au pixel dans les deux modes. Le composer lit cette hauteur
+pour son budget vertical, `compose-layout.ts` : la corriger demande de le
+revérifier. Une tâche séparée est proposée.
