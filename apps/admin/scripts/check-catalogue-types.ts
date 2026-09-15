@@ -77,8 +77,8 @@ async function main(): Promise<void> {
     types.length >= 9 && types.filter((t) => !t.active).length >= 4,
   );
   check(
-    'Personne porte les cases artist et creator',
-    person?.cases.join(',') === 'artist,creator',
+    'Personne porte les cases Artiste musical et Créateur de contenu',
+    person?.cases.join(',') === 'Artiste musical,Créateur de contenu',
     person?.cases.join(','),
   );
 

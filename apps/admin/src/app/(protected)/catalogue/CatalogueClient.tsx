@@ -17,6 +17,7 @@ import {
   type WikiImageCandidate,
 } from './actions';
 import { createDraftItem } from './[id]/actions';
+import { STATUS_LABELS } from '@/lib/catalogue-types';
 
 export type CatalogueItemRow = {
   id: string;
@@ -146,7 +147,7 @@ function Toolbar({ types, setError }: { types: TypeOption[]; setError: (e: strin
                       }}
                     >
                       <span className="rounded border border-admin-border bg-admin-bg px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.12em] text-admin-muted">
-                        {m.status}
+                        {STATUS_META[m.status].label}
                       </span>
                       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
                         {m.typeLabel}
@@ -477,11 +478,11 @@ function PendingRow({
    + statut, plus une recherche locale sur titre/sous-titre. */
 
 const STATUS_META: Record<ItemStatus, { label: string; cls: string }> = {
-  validated: { label: 'validé', cls: 'bg-bento-yellow text-bento-ink' },
-  pending: { label: 'en attente', cls: 'bg-bento-red/15 text-bento-red' },
-  draft: { label: 'brouillon', cls: 'bg-admin-bg text-admin-muted' },
-  rejected: { label: 'rejeté', cls: 'bg-admin-bg text-admin-muted line-through' },
-  merged: { label: 'fusionné', cls: 'bg-admin-bg text-admin-muted' },
+  validated: { label: STATUS_LABELS.validated, cls: 'bg-bento-yellow text-bento-ink' },
+  pending: { label: STATUS_LABELS.pending, cls: 'bg-bento-red/15 text-bento-red' },
+  draft: { label: STATUS_LABELS.draft, cls: 'bg-admin-bg text-admin-muted' },
+  rejected: { label: STATUS_LABELS.rejected, cls: 'bg-admin-bg text-admin-muted line-through' },
+  merged: { label: STATUS_LABELS.merged, cls: 'bg-admin-bg text-admin-muted' },
 };
 
 const STATUS_FILTERS: { key: ItemStatus | 'all'; label: string }[] = [
@@ -971,13 +972,14 @@ function DuplicatesSection({
       <ul className="flex flex-col divide-y divide-admin-border">
         {groups.map((g) => (
           <li key={g.items.map((i) => i.id).join(':')} className="flex items-start gap-4 px-4 py-3">
-            <span className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+            {/* Largeurs fixes : les titres d'un groupe, et d'un groupe à l'autre, s'alignent. */}
+            <span className="mt-0.5 w-[96px] shrink-0 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
               {g.typeLabel}
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               {g.items.map((i, index) => (
                 <div key={i.id} className="flex items-center gap-2 text-[13px]">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-admin-muted">
+                  <span className="w-[72px] shrink-0 font-mono text-[9px] uppercase tracking-[0.12em] text-admin-muted">
                     {index === 0 ? 'garder' : 'fusionner'}
                   </span>
                   <Link href={`/catalogue/${i.id}`} className="truncate font-semibold underline-offset-2 hover:underline">

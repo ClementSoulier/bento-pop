@@ -9,6 +9,11 @@ import {
 } from '@/lib/catalogue-types';
 import { createTypeAction, setTypeActiveAction, updateTypeAction } from './actions';
 
+const ORDER_ERROR = 'Ordre : un entier de 0 à 999.';
+
+/** Un champ d'ordre ne garde que des chiffres : « abc » ne s'y tape pas. */
+const digitsOnly = (value: string) => value.replace(/\D/g, '');
+
 export function TypesClient({ types }: { types: ItemTypeRow[] }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -47,8 +52,24 @@ export function TypesClient({ types }: { types: ItemTypeRow[] }) {
         </div>
       </section>
 
-      <NewTypeForm nextOrder={Math.max(0, ...types.map((t) => t.order)) + 1} setError={setError} />
+      <NewTypeForm
+        nextOrder={Math.max(0, ...types.map((t) => t.order)) + 1}
+        existingKeys={types.map((t) => t.key)}
+        setError={setError}
+      />
     </div>
+  );
+}
+
+function StatePill({ active }: { active: boolean }) {
+  return (
+    <span
+      className={`inline-block rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.12em] ${
+        active ? 'bg-bento-yellow text-bento-ink' : 'bg-admin-bg text-admin-muted'
+      }`}
+    >
+      {active ? 'actif' : 'inactif'}
+    </span>
   );
 }
 
@@ -57,10 +78,14 @@ function TypeRow({ type, setError }: { type: ItemTypeRow; setError: (e: string |
   const [pending, startTransition] = useTransition();
   const [label, setLabel] = useState(type.label);
   const [order, setOrder] = useState(String(type.order));
-  const dirty = label.trim() !== type.label || order.trim() !== String(type.order);
+  const dirty = label.trim() !== type.label || order !== String(type.order);
   const blocker = type.active ? deactivationBlocker(type) : null;
 
   const onSave = () => {
+    if (!/^\d{1,3}$/.test(order)) {
+      setError(ORDER_ERROR);
+      return;
+    }
     setError(null);
     startTransition(async () => {
       const res = await updateTypeAction({ id: type.id, label, order: Number(order) });
@@ -102,12 +127,12 @@ function TypeRow({ type, setError }: { type: ItemTypeRow; setError: (e: string |
         <input
           className="admin-input h-[30px] w-[64px] py-0 font-mono text-[12px]"
           value={order}
-          onChange={(e) => setOrder(e.target.value)}
+          onChange={(e) => setOrder(digitsOnly(e.target.value))}
           inputMode="numeric"
           maxLength={3}
         />
       </td>
-      <td className="px-2 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+      <td className="px-2 py-2 text-admin-muted">
         {type.cases.length > 0 ? type.cases.join(' · ') : 'aucune'}
       </td>
       <td className="px-2 py-2 text-center font-mono text-[11px]">{type.counts.validated}</td>
@@ -115,27 +140,31 @@ function TypeRow({ type, setError }: { type: ItemTypeRow; setError: (e: string |
       <td className="px-2 py-2 text-center font-mono text-[11px]">{type.counts.draft}</td>
       <td className="px-4 py-2">
         <div className="flex items-center justify-end gap-2">
-          {dirty ? (
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={pending}
-              className="admin-btn admin-btn-primary admin-btn-sm"
-            >
-              Enregistrer
-            </button>
-          ) : null}
+          {/* Toujours rendu, masqué tant que rien ne change : la ligne ne bouge pas à la saisie. */}
           <button
             type="button"
-            onClick={onToggle}
-            disabled={pending || blocker !== null}
-            title={blocker ?? undefined}
-            className={`rounded-full border-2 border-bento-ink px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] disabled:cursor-not-allowed disabled:opacity-60 ${
-              type.active ? 'bg-bento-yellow text-bento-ink' : 'bg-admin-bg text-admin-muted'
-            }`}
+            onClick={onSave}
+            disabled={pending || !dirty}
+            className={`admin-btn admin-btn-primary admin-btn-sm h-[30px] py-0 ${dirty ? '' : 'invisible'}`}
           >
-            {type.active ? 'actif' : 'inactif'}
+            Enregistrer
           </button>
+          {blocker ? (
+            <span title={blocker} className="cursor-help">
+              <StatePill active={type.active} />
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onToggle}
+              disabled={pending}
+              aria-pressed={type.active}
+              title={type.active ? 'Désactiver ce type' : 'Activer ce type'}
+              className="rounded-full transition hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              <StatePill active={type.active} />
+            </button>
+          )}
         </div>
       </td>
     </tr>
@@ -144,9 +173,11 @@ function TypeRow({ type, setError }: { type: ItemTypeRow; setError: (e: string |
 
 function NewTypeForm({
   nextOrder,
+  existingKeys,
   setError,
 }: {
   nextOrder: number;
+  existingKeys: readonly string[];
   setError: (e: string | null) => void;
 }) {
   const router = useRouter();
@@ -155,13 +186,16 @@ function NewTypeForm({
   const [label, setLabel] = useState('');
   const [order, setOrder] = useState(String(nextOrder));
 
-  const check = validateItemTypeInput({ key, label, order: Number(order) });
+  const check = validateItemTypeInput({
+    key,
+    label,
+    order: order === '' ? Number.NaN : Number(order),
+  });
+  const taken = existingKeys.includes(key.trim());
+  const hint = key.length === 0 ? null : taken ? 'Cette clé de type existe déjà.' : check.ok ? null : check.error;
 
   const onCreate = () => {
-    if (!check.ok) {
-      setError(check.error);
-      return;
-    }
+    if (!check.ok || taken) return;
     if (
       !confirm(
         `Créer le type « ${check.value.label} » (clé ${check.value.key}) ?\n\nLa clé ne pourra plus être modifiée. Le type naît inactif.`,
@@ -178,6 +212,7 @@ function NewTypeForm({
       }
       setKey('');
       setLabel('');
+      setOrder(String(check.value.order + 1));
       router.refresh();
     });
   };
@@ -196,7 +231,7 @@ function NewTypeForm({
             className="admin-input w-[180px] font-mono"
             value={key}
             onChange={(e) => setKey(e.target.value.toLowerCase())}
-            placeholder="board_game"
+            placeholder="manga"
             maxLength={20}
           />
         </label>
@@ -208,7 +243,7 @@ function NewTypeForm({
             className="admin-input w-[220px]"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Jeu de société"
+            placeholder="Manga"
             maxLength={40}
           />
         </label>
@@ -219,7 +254,7 @@ function NewTypeForm({
           <input
             className="admin-input w-[80px] font-mono"
             value={order}
-            onChange={(e) => setOrder(e.target.value)}
+            onChange={(e) => setOrder(digitsOnly(e.target.value))}
             inputMode="numeric"
             maxLength={3}
           />
@@ -227,16 +262,14 @@ function NewTypeForm({
         <button
           type="button"
           onClick={onCreate}
-          disabled={pending || key.length === 0 || label.trim().length === 0}
+          disabled={pending || !check.ok || taken}
           className="admin-btn admin-btn-primary"
         >
           {pending ? 'Création…' : 'Créer, inactif'}
         </button>
       </div>
-      {key.length > 0 && !check.ok ? (
-        <div className="border-t border-admin-border px-4 py-2 text-[12px] text-admin-muted">
-          {check.error}
-        </div>
+      {hint ? (
+        <div className="border-t border-admin-border px-4 py-2 text-[12px] text-admin-muted">{hint}</div>
       ) : null}
     </section>
   );

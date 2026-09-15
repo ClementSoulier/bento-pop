@@ -146,8 +146,11 @@ cd ../admin && npx tsx scripts/check-catalogue-types.ts
 
 Les trois scripts refusent toute cible qui n'est pas `127.0.0.1`.
 `check-catalogue-types.ts` rejoue la couche de données du catalogue par type
-du back-office (17 contrôles), que l'authentification de production empêche
-de cliquer en local.
+du back-office (17 contrôles). L'interface, elle, passe par l'authentification
+de production : elle ne se clique en local que sur accord explicite de
+Clément, dans une copie jetable (worktree détaché, jamais commitée) où la
+session admin est simulée, toute cible Supabase non locale refusée et le
+serveur ouvert sur `127.0.0.1` seulement. Aucun compte n'est créé pour ça.
 `check-privileges.ts` rejoue les attaques connues et tout le parcours
 d'écriture de l'app, avec les fonctions de l'app quand elles prennent leur
 client en paramètre : au 15 septembre 2026, 42 contrôles, dont 11 en échec

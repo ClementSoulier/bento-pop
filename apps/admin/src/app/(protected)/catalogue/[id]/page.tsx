@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
-import { loadItemUsage } from '@/lib/catalogue-types';
+import { loadItemUsage, STATUS_LABELS } from '@/lib/catalogue-types';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { ItemEditClient, type ItemDetail } from './ItemEditClient';
 
@@ -114,7 +114,7 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
 
   return (
     <PageShell
-      crumbs={`Catalogue · ${detail.typeLabel} · ${detail.status}`}
+      crumbs={`Catalogue · ${detail.typeLabel} · ${STATUS_LABELS[detail.status]}`}
       title={detail.title}
     >
       <ItemEditClient item={detail} types={types} placements={placements} />

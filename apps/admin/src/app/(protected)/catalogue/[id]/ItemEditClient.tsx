@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { retypeBlockers, type ItemUsage } from '@/lib/catalogue-types';
+import { retypeBlockers, STATUS_LABELS, type ItemUsage } from '@/lib/catalogue-types';
 import { mergeItems, searchAnyItems, type AnyItemMatch } from '../actions';
 import {
   addAlias,
@@ -198,7 +198,7 @@ function DraftBanner({ item, setError }: { item: ItemDetail; setError: (e: strin
   return (
     <div className="admin-card flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
       <span>
-        <strong>Brouillon.</strong> Invisible dans l&apos;app tant qu&apos;il n&apos;est pas validé.
+        <strong>Brouillon.</strong> Invisible dans l&apos;app : un brouillon ne sort dans aucune recherche.
       </span>
       <button
         type="button"
@@ -281,18 +281,16 @@ function TypeSection({
         {blockers.length > 0 ? (
           <div className="border-t border-admin-border bg-admin-bg/40 px-6 py-3 text-[12px]">
             <p className="mb-2">
-              Posé dans {blockers.length} case{blockers.length > 1 ? 's' : ''} d&apos;un autre type. Retire-le de ces
-              bentos, ou fusionne-le, avant de changer son type :
+              Posé dans {blockers.length} case{blockers.length > 1 ? 's' : ''} d&apos;un autre type : retire-le de ces
+              bentos avant de changer son type.
             </p>
             <ul className="flex flex-col gap-1">
               {blockers.map((b) => (
-                <li key={`${b.bentoId}:${b.caseKey}`}>
+                <li key={`${b.bentoId}:${b.caseKey}`} className="flex items-baseline gap-2">
                   <Link href={`/bentos/${b.bentoId}`} className="font-semibold underline-offset-2 hover:underline">
                     @{b.pseudo}
-                  </Link>{' '}
-                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
-                    case {b.caseKey}
-                  </span>
+                  </Link>
+                  <span className="text-admin-muted">case {b.caseLabel}</span>
                 </li>
               ))}
             </ul>
@@ -372,7 +370,7 @@ function MergeSection({ item, setError }: { item: ItemDetail; setError: (e: stri
             {matches.map((m) => (
               <li key={m.id} className="flex items-center gap-3 px-4 py-2 text-[13px]">
                 <span className="rounded border border-admin-border bg-admin-bg px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.12em] text-admin-muted">
-                  {m.status}
+                  {STATUS_LABELS[m.status]}
                 </span>
                 <Link href={`/catalogue/${m.id}`} className="flex-1 truncate font-semibold underline-offset-2 hover:underline">
                   {m.title}
@@ -608,7 +606,7 @@ function AuditSection({ item }: { item: ItemDetail }) {
       </h2>
       <div className="admin-card px-4 py-3 text-[12px]">
         <dl className="grid grid-cols-[110px_1fr] gap-y-2">
-          <Row label="Status" value={item.status} />
+          <Row label="Statut" value={STATUS_LABELS[item.status]} />
           <Row label="Type" value={item.typeLabel} />
           <Row label="Case d'origine" value={item.caseLabel ?? 'aucune'} />
           <Row label="Source" value={item.externalSource} />
