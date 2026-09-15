@@ -14,7 +14,10 @@ const RIBBON_BORDER = 7;
 
 type FeedPostProps = {
   bento: FeedBento;
-  /** Largeur de la boîte, cf. `feedBoxWidth`. Sert au cadrage de l'étiquette. */
+  /**
+   * Largeur de la boîte, cf. `feedBoxWidth`. Sert au cadrage de l'étiquette,
+   * et aux titres des cases, cf. `BentoGrid.width`.
+   */
   width: number;
   /** Marge de chaque côté, cf. `feedSideInset`. */
   sideInset: number;
@@ -72,6 +75,7 @@ export function FeedPost({ bento, width, sideInset, scale, onPress, now }: FeedP
           <BentoGrid
             items={bento.slots}
             scale={scale}
+            width={width}
             readOnly
             frameBorderWidth={ribbon ? RIBBON_BORDER : GRID_GEOMETRY.BORDER}
           />

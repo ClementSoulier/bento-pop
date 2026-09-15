@@ -65,6 +65,26 @@ export function gridBorderWidth(scale: number, borderWidth: number = GRID_GEOMET
   return Math.max(3, Math.round(borderWidth * scale));
 }
 
+/**
+ * Largeur d'une case dans une boîte de largeur donnée, cadre de la boîte
+ * compris : la boîte moins son cadre et sa marge intérieure, partagée entre
+ * les cases de la rangée et leurs écarts. Le film est seul sur la sienne,
+ * série et artiste sont deux, les trois dernières trois.
+ *
+ * La boîte ne mesure pas toujours `GRID_WIDTH × scale` : le composer calcule
+ * son échelle sur la hauteur et garde toute la largeur de l'écran, et l'image
+ * de partage étire la sienne sur ses 920 pt.
+ */
+export function gridTileWidth(
+  boxWidth: number,
+  scale: number,
+  tilesInRow: 1 | 2 | 3,
+  borderWidth: number = GRID_GEOMETRY.BORDER,
+): number {
+  const inner = boxWidth - gridBorderWidth(scale, borderWidth) * 2 - GRID_GEOMETRY.PAD * scale * 2;
+  return (inner - GRID_GEOMETRY.GAP * scale * (tilesInRow - 1)) / tilesInRow;
+}
+
 /** Hauteur rendue de la boîte à une échelle donnée, cadre compris. */
 export function gridBoxHeight(scale: number, borderWidth: number = GRID_GEOMETRY.BORDER): number {
   return GRID_SCALABLE_HEIGHT * scale + gridBorderWidth(scale, borderWidth) * 2;

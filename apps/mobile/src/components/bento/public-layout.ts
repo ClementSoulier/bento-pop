@@ -1,4 +1,5 @@
 import { feedScale } from '@/components/feed/layout';
+import { fontScaleFor } from './font-scaling';
 import { GRID_WIDTH, gridBoxHeight, gridScaleForHeight } from './geometry';
 
 /**
@@ -92,8 +93,9 @@ export const CTA_LABEL_LINE_H = 17;
 export const CTA_GAP = 8;
 
 /**
- * Plafonds de grossissement de la police système, à poser tels quels en
- * `maxFontSizeMultiplier` sur les textes de l'écran (spéc §5.4).
+ * Plafonds de grossissement de la police système des textes de l'écran
+ * (spéc §5.4) : en `maxFontSizeMultiplier` sur un texte dont seule la taille
+ * compte, par `fontScaleFor` sur un texte dont la hauteur de ligne compte.
  *
  * Le modèle ne tient que si l'écran les applique : ce sont eux qui bornent la
  * croissance de l'en-tête et des boutons. Les libellés de boutons plafonnent
@@ -134,14 +136,6 @@ export type PublicLayoutMetrics = {
   fontScale: number;
 };
 
-/** Multiplicateur que React Native applique réellement à un texte plafonné. */
-function appliedFontScale(fontScale: number, max: number): number {
-  // Une valeur absurde se lit comme la taille par défaut, pas comme un
-  // en-tête de hauteur nulle.
-  if (!Number.isFinite(fontScale) || fontScale <= 0) return 1;
-  return Math.min(fontScale, max);
-}
-
 /**
  * Hauteur de l'en-tête à une taille de police donnée.
  *
@@ -152,12 +146,25 @@ function appliedFontScale(fontScale: number, max: number): number {
  */
 export function publicHeaderHeight(fontScale: number): number {
   const lines = PSEUDO_LINE_H + DATE_LINE_H;
-  return HEADER_FIXED_H + lines * appliedFontScale(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
+  return HEADER_FIXED_H + lines * fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
+}
+
+/**
+ * Hauteur d'un libellé de bouton à une taille de police donnée : sa ligne,
+ * plafonnée comme le texte.
+ *
+ * L'écran la pose sur le conteneur du libellé « Partager », qui garde cette
+ * hauteur quand l'indicateur de partage remplace le texte. Posée à 17 pt fixes
+ * au lot 2, elle écrasait le libellé dès que la police grossissait :
+ * `adjustsFontSizeToFit` le rétrécissait jusqu'à n'en laisser qu'un trait.
+ */
+export function publicCtaLabelHeight(fontScale: number): number {
+  return CTA_LABEL_LINE_H * fontScaleFor(fontScale, BUTTON_MAX_FONT_MULTIPLIER);
 }
 
 /** Hauteur du bloc de boutons collants à une taille de police donnée. */
 export function publicCtaBlockHeight(fontScale: number): number {
-  return CTA_FIXED_H + CTA_LABEL_LINE_H * appliedFontScale(fontScale, BUTTON_MAX_FONT_MULTIPLIER);
+  return CTA_FIXED_H + publicCtaLabelHeight(fontScale);
 }
 
 /**

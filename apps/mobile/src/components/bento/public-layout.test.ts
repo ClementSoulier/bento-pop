@@ -5,11 +5,14 @@ import { GRID_WIDTH, gridBoxHeight, gridScaleForHeight } from './geometry';
 import {
   BUTTON_MAX_FONT_MULTIPLIER,
   CONTENT_MAX_FONT_MULTIPLIER,
+  CTA_FIXED_H,
+  CTA_LABEL_LINE_H,
   MIN_SCALE,
   TOP_BAR_H,
   publicBentoScale,
   publicBoxAvailableHeight,
   publicCtaBlockHeight,
+  publicCtaLabelHeight,
   publicHeaderHeight,
   publicScrollOverflow,
   publicSideInset,
@@ -240,6 +243,24 @@ describe('la taille de police système', () => {
   it('rend les hauteurs mesurées à la taille par défaut', () => {
     assert.equal(publicHeaderHeight(1), 144);
     assert.equal(publicCtaBlockHeight(1), 99);
+  });
+
+  /**
+   * Le conteneur du libellé « Partager » avait 17 pt fixes : à toute police
+   * au-dessus du défaut, le texte n'y tenait plus et rétrécissait jusqu'à un
+   * trait. Sa hauteur suit maintenant la ligne, au même plafond que le texte.
+   */
+  it('donne au libellé de bouton la hauteur de sa ligne, plafonnée comme le texte', () => {
+    assert.equal(publicCtaLabelHeight(1), CTA_LABEL_LINE_H);
+    assert.ok(publicCtaLabelHeight(1.118) > CTA_LABEL_LINE_H);
+    assert.equal(publicCtaLabelHeight(LARGEST_FONT), CTA_LABEL_LINE_H * BUTTON_MAX_FONT_MULTIPLIER);
+    for (const fontScale of FONT_SCALES) {
+      assert.equal(
+        publicCtaBlockHeight(fontScale),
+        CTA_FIXED_H + publicCtaLabelHeight(fontScale),
+        `police ${fontScale}`,
+      );
+    }
   });
 });
 

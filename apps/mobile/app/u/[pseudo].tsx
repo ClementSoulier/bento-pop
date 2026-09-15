@@ -15,8 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { BentoBoxSkeleton, BentoGrid, SKELETON_BONE, ShareImage } from '@/components/bento';
-import { CATEGORY_META } from '@/components/bento/categories';
+import { fontScaleFor } from '@/components/bento/font-scaling';
 import {
+  BUTTON_MAX_FONT_MULTIPLIER,
+  CONTENT_MAX_FONT_MULTIPLIER,
   CTA_LABEL_LINE_H,
   DATE_LINE_H,
   PSEUDO_LINE_H,
@@ -25,6 +27,7 @@ import {
   PUBLIC_TOP_BAR,
   TOP_BAR_H,
   publicBentoScale,
+  publicCtaLabelHeight,
   publicScrollBottomInset,
   publicSideInset,
 } from '@/components/bento/public-layout';
@@ -95,6 +98,7 @@ export default function PublicBentoScreen() {
             isOwn={state.isOwn}
             scale={scale}
             sideInset={sideInset}
+            boxWidth={width - sideInset * 2}
             fontScale={fontScale}
           />
         ) : state.kind === 'loading' ? (
@@ -170,7 +174,10 @@ function TopBar({ optionsFor }: { optionsFor: string | null }) {
           SHADOWS.stamp,
         ]}
       >
-        <Text style={{ fontSize: 16, fontWeight: '800' }}>‹</Text>
+        {/* Un glyphe dans une cible de 36 pt, pas un texte à lire : grossi, il sortait de sa pastille. */}
+        <Text allowFontScaling={false} style={{ fontSize: 16, fontWeight: '800' }}>
+          ‹
+        </Text>
       </Pressable>
       {optionsFor ? <BlockReportMenu pseudo={optionsFor} /> : null}
     </View>
@@ -183,6 +190,12 @@ type Pastille = 'guest' | 'featured' | null;
  * Avatar, pseudo et ligne de date. Ses cotes et ses hauteurs de ligne viennent
  * du modèle : c'est ce qui garantit que l'échelle calculée correspond à ce qui
  * est rendu.
+ *
+ * Le modèle compte une ligne pour le pseudo et une pour la date : les deux
+ * restent sur une ligne, quitte à rétrécir. Sans ça, `@bento_pop_culture`
+ * passait sur quatre lignes à la plus grande police, coupé au milieu. Pas de
+ * `minimumFontScale` : React Native 0.86 le lit sans l'appliquer, la police
+ * rétrécit donc autant qu'il le faut pour tenir.
  *
  * `dateLine` nul pendant le chargement : la ligne garde sa hauteur exacte, en
  * os, pour que la boîte n'ait pas à bouger quand la date arrive.
@@ -198,9 +211,14 @@ function ProfileHeader({
 }) {
   const popy = popyForPseudo(pseudo);
   const avatar = PUBLIC_HEADER.avatarSize;
+  // Taille et hauteur de ligne appliquées par l'écran, au plafond du modèle :
+  // `maxFontSizeMultiplier` ne plafonne pas la hauteur de ligne sur Android,
+  // cf. `fontScaleFor`.
+  const { fontScale } = useWindowDimensions();
+  const textScale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
   const dateStyle = {
-    fontSize: 13,
-    lineHeight: DATE_LINE_H,
+    fontSize: 13 * textScale,
+    lineHeight: DATE_LINE_H * textScale,
     marginTop: PUBLIC_HEADER.dateMarginTop,
   } as const;
 
@@ -210,6 +228,7 @@ function ProfileHeader({
         alignItems: 'center',
         paddingTop: PUBLIC_HEADER.paddingTop,
         paddingBottom: PUBLIC_HEADER.paddingBottom,
+        paddingHorizontal: 16,
       }}
     >
       <View style={{ position: 'relative' }}>
@@ -234,10 +253,13 @@ function ProfileHeader({
         {pastille ? <PastilleBadge kind={pastille} /> : null}
       </View>
       <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        allowFontScaling={false}
         style={{
           fontFamily: 'Extenda',
-          fontSize: 24,
-          lineHeight: PSEUDO_LINE_H,
+          fontSize: 24 * textScale,
+          lineHeight: PSEUDO_LINE_H * textScale,
           letterSpacing: 1,
           marginTop: PUBLIC_HEADER.pseudoMarginTop,
           textTransform: 'uppercase',
@@ -259,13 +281,23 @@ function ProfileHeader({
           }}
         >
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            allowFontScaling={false}
             style={{ fontSize: dateStyle.fontSize, lineHeight: dateStyle.lineHeight, opacity: 0 }}
           >
             bento publié le 00 septembre 0000
           </Text>
         </View>
       ) : (
-        <Text style={[dateStyle, { color: 'rgba(10,10,10,0.65)' }]}>{dateLine}</Text>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          allowFontScaling={false}
+          style={[dateStyle, { color: 'rgba(10,10,10,0.65)' }]}
+        >
+          {dateLine}
+        </Text>
       )}
     </View>
   );
@@ -298,7 +330,9 @@ function PastilleBadge({ kind }: { kind: 'guest' | 'featured' }) {
         isGuest ? "Bento invité, composé par l'équipe" : "Coup de cœur de l'équipe"
       }
     >
+      {/* Un glyphe dans une pastille de 26 pt : à taille fixe, comme le chevron. */}
       <Text
+        allowFontScaling={false}
         style={{
           color: isGuest ? '#fbbf24' : '#ffffff',
           fontSize: 14,
@@ -340,12 +374,15 @@ function FoundPage({
   isOwn,
   scale,
   sideInset,
+  boxWidth,
   fontScale,
 }: {
   bento: PublicBento;
   isOwn: boolean;
   scale: number;
   sideInset: number;
+  /** Largeur de la boîte entre ses deux marges, cf. `BentoGrid.width`. */
+  boxWidth: number;
   fontScale: number;
 }) {
   const shareImageRef = useRef<View>(null);
@@ -389,11 +426,11 @@ function FoundPage({
         />
         {/* Marge et non largeur, cf. `publicSideInset`. */}
         <View style={{ marginHorizontal: sideInset }}>
-          <BentoGrid items={bento.slots} scale={scale} readOnly />
+          <BentoGrid items={bento.slots} scale={scale} width={boxWidth} readOnly />
         </View>
       </ScrollView>
 
-      <CtaBar isOwn={isOwn} sharing={sharing} onShare={onShare} />
+      <CtaBar isOwn={isOwn} sharing={sharing} onShare={onShare} fontScale={fontScale} />
 
       {/*
         ShareImage rendue HORS de la zone visible via `translateX`, pas via
@@ -426,20 +463,28 @@ function FoundPage({
 /**
  * Boutons collants. Leurs cotes viennent du modèle, qui réserve leur hauteur
  * sous la boîte.
+ *
+ * Les libellés plafonnent à 1,2 et restent sur une ligne, quitte à rétrécir :
+ * sans plafond, à la plus grande police, la rangée montait jusqu'à recouvrir
+ * l'écran entier.
  */
 function CtaBar({
   isOwn,
   sharing,
   onShare,
+  fontScale,
 }: {
   isOwn: boolean;
   sharing: boolean;
   onShare: () => void;
+  fontScale: number;
 }) {
+  // Appliquée par l'écran, comme l'en-tête : cf. `fontScaleFor`.
+  const textScale = fontScaleFor(fontScale, BUTTON_MAX_FONT_MULTIPLIER);
   const label = {
     fontFamily: 'Bungee',
-    fontSize: 13,
-    lineHeight: CTA_LABEL_LINE_H,
+    fontSize: 13 * textScale,
+    lineHeight: CTA_LABEL_LINE_H * textScale,
     letterSpacing: 1,
     textTransform: 'uppercase',
   } as const;
@@ -477,7 +522,9 @@ function CtaBar({
             SHADOWS.stamp,
           ]}
         >
-          <Text style={label}>{isOwn ? 'Modifier' : 'Compose le tien'}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false} style={label}>
+            {isOwn ? 'Modifier' : 'Compose le tien'}
+          </Text>
         </Pressable>
         <Pressable
           disabled={sharing}
@@ -504,13 +551,21 @@ function CtaBar({
           {/*
             L'indicateur tient dans la hauteur du libellé : plus haut de 3 pt, il
             faisait grandir le bouton, donc monter tout le bloc, le temps du
-            partage.
+            partage. Hauteur plafonnée comme le texte : à 17 pt fixes, le
+            libellé n'y tenait plus dès que la police grossissait.
           */}
-          <View style={{ height: CTA_LABEL_LINE_H, justifyContent: 'center' }}>
+          <View style={{ height: publicCtaLabelHeight(fontScale), justifyContent: 'center' }}>
             {sharing ? (
               <ActivityIndicator size="small" color="#fbbf24" />
             ) : (
-              <Text style={[label, { color: '#fbbf24' }]}>Partager</Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                allowFontScaling={false}
+                style={[label, { color: '#fbbf24' }]}
+              >
+                Partager
+              </Text>
             )}
           </View>
         </Pressable>
@@ -519,7 +574,16 @@ function CtaBar({
   );
 }
 
-/** Titre, phrase et, au besoin, un bouton : la forme commune des états sans bento. */
+/**
+ * Titre, phrase et, au besoin, un bouton : la forme commune des états sans
+ * bento.
+ *
+ * Le titre tient en deux lignes et rétrécit plutôt que de couper un mot : en
+ * Extenda 36, « CONNEXION » est à la limite de la largeur d'un écran étroit
+ * dès qu'il grossit. Sur Android, la coupure simple est ce qui déclenche ce
+ * rétrécissement : sinon le mot s'y coupe au milieu, et le titre, tenant
+ * encore en deux lignes, ne rétrécit pas.
+ */
 function StateMessage({
   title,
   body,
@@ -529,20 +593,30 @@ function StateMessage({
   body: string;
   action?: { label: string; accessibilityLabel: string; onPress: () => void };
 }) {
+  const { fontScale } = useWindowDimensions();
+  const bodyScale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
   return (
     <View
       style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}
     >
-      <Text style={{ fontFamily: 'Extenda', fontSize: 36, textAlign: 'center', letterSpacing: 1 }}>
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        textBreakStrategy="simple"
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+        style={{ fontFamily: 'Extenda', fontSize: 36, textAlign: 'center', letterSpacing: 1 }}
+      >
         {title}
       </Text>
       <Text
+        // Hauteur de ligne comprise : appliquée par l'écran, cf. `fontScaleFor`.
+        allowFontScaling={false}
         style={{
           marginTop: 12,
-          fontSize: 15,
+          fontSize: 15 * bodyScale,
           color: 'rgba(10,10,10,0.7)',
           textAlign: 'center',
-          lineHeight: 21,
+          lineHeight: 21 * bodyScale,
         }}
       >
         {body}
@@ -561,6 +635,8 @@ function StateMessage({
           }}
         >
           <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={BUTTON_MAX_FONT_MULTIPLIER}
             style={{
               fontFamily: 'Bungee',
               fontSize: 12,
@@ -600,7 +676,7 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
         onPress: () => {
           Alert.alert(
             'Signaler ce bento',
-            `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirme-tu ?`,
+            `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirmes-tu ?`,
             [
               { text: 'Annuler', style: 'cancel' },
               {
@@ -656,6 +732,8 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
       style={{ marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6 }}
     >
       <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={BUTTON_MAX_FONT_MULTIPLIER}
         style={{
           fontFamily: 'Bungee',
           fontSize: 10,
@@ -669,6 +747,3 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
     </Pressable>
   );
 }
-
-// Suppress unused import (CATEGORY_META gardé pour cohérence future)
-void CATEGORY_META;

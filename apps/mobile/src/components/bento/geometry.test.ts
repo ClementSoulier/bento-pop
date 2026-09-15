@@ -4,9 +4,11 @@ import {
   GRID_GEOMETRY,
   GRID_HEIGHT,
   GRID_SCALABLE_HEIGHT,
+  GRID_WIDTH,
   gridBorderWidth,
   gridBoxHeight,
   gridScaleForHeight,
+  gridTileWidth,
 } from './geometry';
 
 /** Cadre épaissi des posts à ruban dans le fil, `FeedPost.tsx`. */
@@ -38,6 +40,46 @@ describe('gridBoxHeight', () => {
     assert.equal(gridBorderWidth(0.1), 3, 'plancher à 3');
     assert.equal(gridBorderWidth(338 / 361, RIBBON_BORDER), 7);
     assert.ok(Math.abs(gridBoxHeight(311 / 361) - 440.47) < 0.01, `${gridBoxHeight(311 / 361)}`);
+  });
+});
+
+describe('gridTileWidth', () => {
+  it('partage la boîte entre cadre, marge, cases et écarts', () => {
+    for (const [width, scale] of [
+      [361, 1],
+      [343, 0.6544],
+      [920, 2.5],
+    ] as const) {
+      const border = gridBorderWidth(scale);
+      const pad = GRID_GEOMETRY.PAD * scale;
+      const gap = GRID_GEOMETRY.GAP * scale;
+      for (const tiles of [1, 2, 3] as const) {
+        const total = gridTileWidth(width, scale, tiles) * tiles + gap * (tiles - 1);
+        assert.ok(Math.abs(total + (border + pad) * 2 - width) < 1e-9, `${width} pt, ${tiles}`);
+      }
+    }
+  });
+
+  /**
+   * Relevé sur l'émulateur Android, page publique à 411 dp, échelle 0,9624 :
+   * cases de 254 à 255 px à 2,625 px le dp pour les petites, 395 pour les
+   * moyennes.
+   */
+  it('retrouve les cases mesurées sur la page publique d’Android', () => {
+    const scale = 0.9624;
+    assert.ok(Math.abs(gridTileWidth(GRID_WIDTH * scale, scale, 3) - 254.67 / 2.625) < 0.1);
+    assert.ok(Math.abs(gridTileWidth(GRID_WIDTH * scale, scale, 2) - 395 / 2.625) < 0.1);
+  });
+
+  /**
+   * Le composer d'un iPhone SE garde les 343 pt de l'écran pour une échelle de
+   * 0,6544 : ses petites cases mesurent 102,1 à 102,3 pt, cadre d'une case
+   * légèrement tournée, contre 66,3 si la boîte faisait `GRID_WIDTH × scale`.
+   */
+  it('retrouve les cases du composer, plus larges que son échelle', () => {
+    const scale = 0.6544;
+    assert.ok(Math.abs(gridTileWidth(343, scale, 3) - 102.2) < 0.5);
+    assert.ok(Math.abs(gridTileWidth(GRID_WIDTH * scale, scale, 3) - 66.3) < 0.05);
   });
 });
 

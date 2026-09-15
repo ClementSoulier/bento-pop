@@ -1,7 +1,15 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import type { CategoryKey } from '@/supabase/types';
 import { CATEGORY_META } from './categories';
 import { GRID_GEOMETRY } from './geometry';
+import {
+  EMPTY_TILE_BORDER,
+  EMPTY_TILE_PADDING,
+  TILE_LINE,
+  emptyTileConf,
+  emptyTileLabelScale,
+} from './tile-text';
+import { emptyTileLabelFit } from './tile-title';
 
 type EmptyTileProps = {
   cat: CategoryKey;
@@ -15,6 +23,8 @@ type EmptyTileProps = {
    */
   readOnly?: boolean;
   onPress?: () => void;
+  /** Cf. `Tile.allowFontScaling`. */
+  allowFontScaling?: boolean;
 };
 
 /**
@@ -37,26 +47,42 @@ export function EmptyTile({
   rotate = 0,
   readOnly = false,
   onPress,
+  allowFontScaling = true,
 }: EmptyTileProps) {
   const meta = CATEGORY_META[cat];
-  const s = Math.max(0.7, scale);
-  const circleSize = Math.round(36 * s);
-  const plusSize = Math.round(20 * s);
-  const labelSize = Math.max(8, Math.round(10 * s));
+  const conf = emptyTileConf(scale);
+  const labelFit = emptyTileLabelFit(meta.label);
+  // Le libellé applique lui-même la police système, hauteur de ligne comprise,
+  // sans dépasser ce que la case permet : cf. `emptyTileLabelScale`. Figé à 1
+  // quand la grille ne suit pas le système.
+  const { fontScale } = useWindowDimensions();
+  const labelScale = allowFontScaling
+    ? emptyTileLabelScale(height, scale, fontScale, {
+        lines: labelFit.numberOfLines,
+        withCircle: !readOnly,
+      })
+    : 1;
+  const labelStyle = {
+    fontFamily: 'Bungee',
+    fontSize: conf.label * labelScale,
+    lineHeight: conf.label * TILE_LINE.emptyLabel * labelScale,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  } as const;
 
   const frame = {
     height,
     width: '100%',
     // Tint jaune léger pour bien se détacher du cream de la BentoFrame
     backgroundColor: '#fff4d8',
-    borderWidth: 2,
+    borderWidth: EMPTY_TILE_BORDER,
     borderStyle: 'dashed',
     borderColor: 'rgba(10,10,10,0.45)',
     borderRadius: GRID_GEOMETRY.TILE_RADIUS,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6 * s,
-    padding: 8,
+    gap: conf.gap,
+    padding: EMPTY_TILE_PADDING,
     transform: [{ rotate: `${rotate}deg` }],
   } as const;
 
@@ -68,13 +94,10 @@ export function EmptyTile({
         style={{ ...frame, borderColor: 'rgba(10,10,10,0.22)', backgroundColor: '#f6ecd4' }}
       >
         <Text
-          style={{
-            fontFamily: 'Bungee',
-            fontSize: labelSize,
-            letterSpacing: 1.2,
-            color: 'rgba(10,10,10,0.35)',
-            textTransform: 'uppercase',
-          }}
+          numberOfLines={labelFit.numberOfLines}
+          adjustsFontSizeToFit={labelFit.adjustsFontSizeToFit}
+          allowFontScaling={false}
+          style={[labelStyle, { color: 'rgba(10,10,10,0.35)' }]}
         >
           {meta.label}
         </Text>
@@ -92,9 +115,9 @@ export function EmptyTile({
     >
       <View
         style={{
-          width: circleSize,
-          height: circleSize,
-          borderRadius: circleSize / 2,
+          width: conf.circle,
+          height: conf.circle,
+          borderRadius: conf.circle / 2,
           backgroundColor: '#fbbf24',
           borderWidth: 2,
           borderColor: '#0a0a0a',
@@ -102,16 +125,26 @@ export function EmptyTile({
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontSize: plusSize, fontWeight: '800', color: '#0a0a0a', lineHeight: plusSize + 2 }}>+</Text>
+        {/* Un glyphe dans un cercle de taille fixe : grossi, il en sortait. */}
+        <Text
+          allowFontScaling={false}
+          style={{
+            fontSize: conf.plus,
+            fontWeight: '800',
+            color: '#0a0a0a',
+            lineHeight: conf.plus + 2,
+          }}
+        >
+          +
+        </Text>
       </View>
       <Text
-        style={{
-          fontFamily: 'Bungee',
-          fontSize: labelSize,
-          letterSpacing: 1.2,
-          color: '#0a0a0a',
-          textTransform: 'uppercase',
-        }}
+        // Deux lignes au plus, qui rétrécissent plutôt que de tronquer un
+        // libellé : cf. `emptyTileLabelFit`.
+        numberOfLines={labelFit.numberOfLines}
+        adjustsFontSizeToFit={labelFit.adjustsFontSizeToFit}
+        allowFontScaling={false}
+        style={[labelStyle, { color: '#0a0a0a' }]}
       >
         {meta.label}
       </Text>
