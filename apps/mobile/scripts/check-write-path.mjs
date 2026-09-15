@@ -90,9 +90,13 @@ ok('elle est rangée dans user_telemetry', kept.ok && kj[0]?.platform==='ios', k
 
 // 6. Ménage complet. Les deux suppressions sont nécessaires : depuis le
 //    retrait de la clé étrangère, supprimer le compte d'authentification ne
-//    cascade plus sur le profil.
-await fetch(`${U}/auth/v1/admin/users/${uid}`,{method:'DELETE',headers:svc});
-await fetch(`${U}/rest/v1/users?id=eq.${uid}`,{method:'DELETE',headers:svc});
+//    cascade plus sur le profil. Le profil d'abord, qui emporte bento et
+//    télémétrie : un échec entre les deux laisse une installation sans pseudo,
+//    et non un profil sans compte, qui passerait pour un vrai membre.
+const delProfile=await fetch(`${U}/rest/v1/users?id=eq.${uid}`,{method:'DELETE',headers:svc});
+ok('profil de sonde supprimé', delProfile.ok, `HTTP ${delProfile.status}`);
+const delAuth=await fetch(`${U}/auth/v1/admin/users/${uid}`,{method:'DELETE',headers:svc});
+ok("compte d'authentification de sonde supprimé", delAuth.ok, `HTTP ${delAuth.status}`);
 
 // 7. Tout est revenu à sa place.
 //
