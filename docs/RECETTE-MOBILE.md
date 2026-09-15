@@ -442,6 +442,91 @@ système se lisent dans `adb shell dumpsys window`, aux lignes `InsetsSource`.
 Un relevé prend une à deux secondes, ce qui borne la précision d'un
 chronométrage fait par l'arbre.
 
+### Un seul `uiautomator dump` à la fois
+
+Deux relevés simultanés échouent, « UiAutomation already registered » dans
+`adb logcat`, et rendent un arbre vide. Juste après une modification du code,
+le premier lancement de l'app peut aussi rester noir plus de 12 s, le temps du
+bundle : attendre un libellé de l'écran plutôt qu'un délai fixe.
+
+### Un lien envoyé pendant le démarrage de l'app se perd
+
+Relancer l'app par `am start -n …/.MainActivity`, attendre 12 s, puis envoyer
+`am start -d bentopop://u/<pseudo>` : l'app restait sur le composer, quatre
+fois sur quatre, cause non établie. Un démarrage à froid par le lien lui-même
+ouvre bien la page, en 20 s sur le dev client. Dans
+un script de recette, attendre un libellé du premier écran avant d'envoyer un
+lien, ou ouvrir d'abord une page témoin.
+
+### `adb shell` vide une boucle `while read`
+
+Il lit l'entrée standard : dans `while read P; do adb …; done < liste`, le
+premier appel avale le reste de la liste, et la boucle s'arrête après une
+itération sans erreur. Lire la liste d'avance dans un tableau, ou passer
+`</dev/null` à chaque commande `adb`.
+
+### Changer la taille de police système
+
+```bash
+xcrun simctl ui <UDID> content_size accessibility-extra-extra-extra-large   # 3,571 ; extra-extra-large : 1,235
+adb shell settings put system font_scale 2.0
+```
+
+Puis **relancer l'app** : un changement à chaud laisse des mises en page
+périmées, l'image de partage la première. Remettre `large`, `1.0` et
+`adb shell wm density reset` en fin de recette.
+
+### Sur iPhone SE, la rangée basse de la page publique est sous les boutons
+
+Au repos, les boutons collants la recouvrent : c'est le recouvrement accepté
+du chantier 7. Pour lire les cases du bas, où les titres sont les plus
+serrés, capturer après deux balayages vers le haut.
+
+### Sur Android, `maxFontSizeMultiplier` ne plafonne pas la hauteur de ligne
+
+React Native 0.86 plafonne la police, `toPixelFromSP(fontSize,
+maxFontSizeMultiplier)`, mais convertit `lineHeight` sans plafond
+(`TextAttributeProps.kt`), et selon la courbe non linéaire d'Android 14 : à
+la taille 2,0, 24 devient 36 et 16 devient 28. Un texte à hauteur de ligne
+posée grossit donc plus que son plafond ne le laisse croire ; l'en-tête de la
+page publique dépassait son modèle de 8,6 dp. Remède du chantier 7 :
+`allowFontScaling={false}` et un facteur appliqué par l'écran, `fontScaleFor`.
+
+### Android arrondit la taille de police au pixel supérieur
+
+`TextAttributeProps.setFontSize` fait `ceil(toPixelFromDIP(fontSize))` : un
+titre de 11,57 dp passe à 31 px sur un écran à 2,625 px par dp, soit 2 % de
+plus que demandé. Tout calcul de largeur de texte doit prendre la taille
+arrondie, cf. `tileTitleScale`.
+
+### `minimumFontScale` n'a aucun effet
+
+Le rendu Fabric de React Native 0.86 le lit sans l'appliquer :
+`adjustsFontSizeToFit` rétrécit jusqu'à `minimumFontSize`, 4 pt par défaut.
+Sur Android, il ne rétrécit en outre que si le texte dépasse son nombre de
+lignes ou sa hauteur : un mot coupé en pleine lettre, qui tient dans ses
+lignes, ne déclenche rien.
+
+### Comparer les captures au pixel, avant et après
+
+Pour montrer qu'un changement ne touche que ce qu'il doit, recadrer les mêmes
+captures avant et après et en faire la différence, avec `PIL` :
+`ImageChops.difference`, seuil 40, puis `getbbox()`. La zone qui change se lit
+en coordonnées. Au chantier 7, sur 27 bentos et trois appareils, seules les
+cases de titre prévues par le calcul ont bougé.
+
+### Un test qui échoue une fois sur dix
+
+Le reproduire sous charge plutôt que de relancer jusqu'au vert :
+
+```bash
+for c in $(seq 1 $(( $(sysctl -n hw.ncpu) * 2 ))); do (yes > /dev/null &); done
+npm test > suite.log 2>&1; pkill -x yes
+```
+
+Au chantier 7, trois échecs sur neuf passages ont désigné le test, et un
+message d'échec enrichi de ses compteurs en a donné la cause.
+
 ---
 
 ## 5. Après la recette

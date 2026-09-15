@@ -533,6 +533,52 @@ rétrécit, et la page ne défile que lorsque le plancher mord. Sur un 17 Pro à
 la plus grande taille, la boîte passe à 0,904 sans défiler ; sur un SE, elle
 reste au plancher et la page défile d'environ 108 pt.
 
+**Livré au lot 3**, avec quatre écarts que la recette a imposés, arbitrés en
+§11 :
+
+- **Les hauteurs de ligne sont appliquées par l'écran.** Sur Android, React
+  Native 0.86 plafonne la police mais pas `lineHeight`, converti sans plafond
+  et selon la courbe non linéaire d'Android 14 : à la taille 2,0, l'en-tête
+  dépassait le modèle de 8,6 dp, et les lignes d'un titre de case
+  s'écartaient jusqu'à son étiquette. Les textes dont la hauteur compte
+  passent `allowFontScaling={false}` et multiplient eux-mêmes taille et
+  hauteur de ligne par `fontScaleFor`, le facteur du modèle
+  (`font-scaling.ts`). Les autres gardent `maxFontSizeMultiplier`.
+- **Les cases plafonnent à 1,2, et non 1,4.** À 1,4, l'étiquette « SON »
+  touchait le titre sur un SE, et iOS coupait « MERRY / -GO- » sur un 17 Pro.
+  Une case ne pouvant pas grandir, `tile-text.ts` calcule la place entre
+  l'étiquette et le titre, et fait grossir moins le texte là où la case est
+  trop basse, dans le composer d'un petit téléphone : 4 pt au moins entre les
+  deux.
+- **Aucun titre ne se coupe au milieu d'un mot, sur les deux plateformes.** Un
+  mot seul reste sur une ligne et rétrécit. Plusieurs mots tiennent en deux
+  lignes ; un premier mot plus large que la case, qui s'y coupait faute d'une
+  autre coupure avant lui, fait rétrécir le titre juste assez
+  (`tileTitleScale`). La largeur se calcule sur les glyphes d'Extenda
+  (`extenda-metrics.ts`), sans crénage puisque la police ne crène qu'en
+  resserrant, dans la largeur réelle de la case que chaque écran passe à la
+  grille, et à la police qu'Android arrondit au pixel supérieur. Sur les 27
+  bentos publiés, la coupure touchait 3 cases sur 162 sur iPhone SE et 17 Pro,
+  sans trait d'union, « KICKSTAR / T », et 4 sur Android, par césure,
+  « KICK- / START » ; à la plus grande police, 6 à 9 par appareil. La première
+  version du correctif ne traitait qu'Android, où elle remplaçait la coupure
+  brute par cette césure. Les mots suivants passent à la ligne, et un mot trop
+  large en dernière ligne se tronque, « JIMMY / PUNCHLI… ».
+- **La case vide tient sur deux lignes.** Dès la taille 1,3 sur Android,
+  « CRÉATEUR DE CONTENU » passait sur trois lignes et le cercle « + » sortait
+  du pointillé, presque aussi sur le 17e en xxLarge. Le libellé tient sur deux
+  lignes au plus, rétrécit au lieu de se tronquer, et grossit moins là où la
+  case est trop basse (`emptyTileLabelScale`). À la taille par défaut, le
+  composer d'un iPhone SE reste identique au pixel près.
+
+Le reste comme prévu. L'image de partage suivait bien la police : figée, elle
+sort identique à l'octet près à la taille par défaut et à la plus grande, sur
+iOS (3 240 × 5 760 px) comme sur Android (2 835 × 5 040 px). Le conteneur du
+libellé « Partager », figé à 17 pt, écrasait le libellé jusqu'au trait : il
+prend la hauteur plafonnée du modèle (`publicCtaLabelHeight`). L'en-tête
+prend 16 pt de marge de chaque côté, dans lesquels pseudo et date rétrécissent,
+et le titre des états sans bento tient en deux lignes qui rétrécissent.
+
 ### 5.5 Signaler la case d'où l'on vient : **non**
 
 C'était la question ouverte de la roadmap. Depuis le chantier 6, on arrive sur
@@ -578,7 +624,12 @@ les signaux par case donneront un endroit naturel où l'accrocher.
   passe à la ligne en pleine lettre, « JIMMY PU / NCHLINE », « MERRY-G /
   O-ROUN… », là où iOS tronque « PUNCHL… ». Le défaut est dans `Tile`, que le
   lot 3 rouvre, et le fil comme le composer rendent le même composant
-  (arbitrage §11).
+  (arbitrage §11). **Livré au lot 3, et sur iOS aussi**, qui coupait de même un
+  premier mot trop large : cf. §5.4.
+
+**État** : `ShareImage` hors du `ScrollView` et barre du haut stable au lot 2 ;
+« Confirmes-tu ? », `void CATEGORY_META` et les titres de tuile au lot 3.
+L'index du `forEach` avait disparu avec la réécriture du lot 2.
 
 ---
 
@@ -891,6 +942,33 @@ principal reprises pour la page : tous attrapés. Côté unitaire :
 - `src/lib/abort-timeout.test.ts` : l'échéance tenue même quand l'opération
   ignore le signal, l'annulation du parent relayée, aucun minuteur laissé.
 
+Livrés au lot 3 : 66 tests, 374 au total.
+
+- `src/components/bento/font-scaling.test.ts` lit l'arbre syntaxique des
+  écrans, comme une règle de lint, et échoue avec le numéro de ligne du texte
+  en faute : chaque texte de la page plafonné ou mis à l'échelle par l'écran,
+  aucune hauteur de ligne laissée à la plateforme, les plafonds pris dans le
+  modèle, l'en-tête et les boutons sur une ligne ; dans `Tile` et `EmptyTile`,
+  les textes à l'échelle de la case, le titre qui mesure son premier mot dans
+  la largeur de la case et à la police arrondie d'Android ; chaque grille de
+  l'app qui reçoit la largeur de sa boîte ; l'image de partage figée partout.
+  Un plafond oublié ne se voit qu'à la plus grande police, que personne n'a
+  pendant le développement ;
+- `tile-text.test.ts` : la place entre étiquette et titre, et autour du
+  contenu d'une case vide, jamais sous le minimum sur 12 échelles de grille,
+  3 tailles de case et 12 tailles de police ; rien ne change à la taille par
+  défaut ; le plafond de 1,4 chevaucherait sur un SE ; trois lignes de libellé
+  ne tenaient pas à 360 dp ;
+- `tile-title.test.ts` : la mise en lignes d'un titre et d'un libellé, et
+  `tileTitleScale` sur les coupures relevées, « KICKSTART », « TELEGRAPH »,
+  « MEGALOVANIA » et « SLEEPLESS », avec l'arrondi au pixel d'Android ;
+- `extenda-metrics.test.ts` relit le fichier de la police : chaque largeur de
+  la table, tous les caractères qu'un titre en capitales peut afficher, et
+  les 10 920 paires de crénage toutes négatives, ce qui fait de la mesure une
+  majoration ;
+- `geometry.test.ts` : la largeur d'une case, retrouvée sur la page publique
+  d'Android et dans le composer d'un SE, plus large que son échelle.
+
 ### 8.2 Test d'intégration sur bouchon
 
 `src/lib/public-bento.integration.test.ts`, avec `startPostgrestStub()` et un
@@ -926,6 +1004,14 @@ Ajoutés au lot 2 :
   et lève sur une erreur au lieu de trancher ;
 - `src/supabase/public-reads.integration.test.ts` : le client sans session de
   §6.4.
+
+Réparé au lot 3 : « abandonne la tentative à l'échéance » échouait une fois
+sur sept passages, et trois fois sur neuf sous charge, deux processus `yes`
+par cœur. Le serveur muet affichait alors « 0 reçues, 0 abandonnées » :
+l'abandon à 60 ms partait avant qu'il ait lu la requête. Les tentatives se
+comptent désormais côté client, par le signal abandonné de chaque `fetch`, et
+le serveur ne doit garder aucune requête ouverte ; même correction sur
+« réessaie une seule fois ». Six passages sous la même charge : tout vert.
 
 ### 8.3 Vérification contre la production
 
@@ -1024,6 +1110,32 @@ comparée :
   seulement, ils restent à recetter au lot 4.
 - Points 9, 12 et 13 : lot 3.
 
+**Relevé du lot 3**, le 15 septembre 2026, par le proxy, à la plus grande
+taille de police :
+
+| Appareil | Haut de la boîte | Bordure basse | Haut des boutons | Largeur / hauteur | Défilement |
+|---|---|---|---|---|---|
+| iPhone 17 Pro | 266,33 (266,00) | 729,33 (729,60) | 753,33 (753,60) | −0,14 % | aucun |
+| iPhone 17e | 251,33 (251,00) | 699,33 (699,60) | 723,33 (723,60) | +0,25 % | aucun |
+| iPhone SE | 224,50 (224) | 552,50 (552,6) en fin de défilement | 580,50 (580,6) en fin de défilement | non mesuré | oui |
+
+- Point 9 : chevron dans sa pastille, boutons sur une rangée, pseudo sur une
+  ligne, tuiles lisibles, sur les trois appareils. En xxLarge, haut de la
+  boîte à 259,67 pt (259,40) sur 17 Pro et 244,67 (244,4) sur 17e. À la
+  taille par défaut, les cotes du lot 2 au point près.
+- Titres : les 27 bentos publiés relus sur iPhone SE et 17 Pro, et sur
+  Android (§8.6), avant et après la règle du premier mot. Au pixel, seules
+  changent les cases prévues par le calcul, 3 par iPhone, et seulement la
+  zone de leur titre. À la plus grande police, huit bentos relus sur les deux
+  iPhone : aucun mot coupé.
+- Point 12 : l'image de partage suivait la police ; figée, elle sort
+  identique à l'octet près à la taille par défaut et à la plus grande.
+- Point 13 : fil et tuiles lisibles à la plus grande police. Le composer ne
+  l'est pas : « MON / BENT / O », et la grille passe sous la barre d'onglets
+  sans défiler sur SE. Déjà le cas avant ce lot, versé en §12. Ses cases
+  vides, elles, tiennent désormais dans leur pointillé.
+- Point 10 : non repris, aucune propriété d'accessibilité n'a changé.
+
 ### 8.5 Ce qui n'est pas testé, assumé
 
 - Le rendu sur appareil réel, qui accumule maintenant sept chantiers.
@@ -1084,6 +1196,36 @@ parenthèses :
 - Reste pour le lot 4 : 384 dp, 360 × 640 dp, la navigation à trois boutons,
   les tailles de police, la tablette, et le relevé des marges dans l'app.
 
+**Relevé du lot 3**, sur l'AVD `Pixel_8`, en dp, la valeur du modèle entre
+parenthèses :
+
+| Cas | Haut de la boîte | Bordure basse | Haut des boutons | Largeur / hauteur |
+|---|---|---|---|---|
+| 411 dp, police 2,0 | 254,86 (254,29) | 742,86 (742,42) | 803,81 (803,89) | −0,05 % |
+| 411 dp, police 1,3 | 250,67 (250,29) | 738,67 (738,42) | 803,81 | non mesuré |
+| 360 dp, police 2,0 | 248,33 (248) | 664,00 (663,61) | 689,33 (689,6) | +0,03 % |
+
+- À la police 1,0, les cotes du lot 2 au centième près, sur les deux largeurs.
+- À 2,0, avant correction, l'en-tête dépassait le modèle de 8,6 dp et les
+  boutons de 8,8 : React Native n'y plafonne pas la hauteur de ligne. Une
+  division par la taille système ne rattrapait pas la courbe d'Android 14, le
+  pseudo restant à 28,95 dp pour 33,6 ; l'écran applique désormais le
+  facteur lui-même (§5.4).
+- Titres des 27 bentos à 411 dp : avant la règle du premier mot, 4 coupés par
+  césure ; après, au pixel, seules ces 4 cases changent. La première version
+  laissait « TELE- / GRAPH » : réduit pour remplir sa ligne au point près, le
+  titre passait de 30,4 à 31 px de police, arrondi par React Native. Une marge
+  de 0,25 puis 0,5 dp ne suffisait pas, 1 dp si, ce que l'arrondi explique à
+  lui seul. La mesure prend désormais la taille arrondie. À 360 dp, les 27
+  relus : aucun mot coupé ; à la taille 2,0, huit bentos à 411 et 360 dp,
+  aucun non plus.
+- Cases vides du composer, à 360 et 411 dp, polices 1,0, 1,3 et 2,0 : le
+  contenu reste centré, à 0,7 dp au plus du calcul, et à 8,3 dp au moins du
+  pointillé.
+- Image de partage : identique à l'octet près aux polices 1,0 et 2,0. Celle
+  d'@arpago, seule dont un titre rétrécit, garde « MEGALOVANIA » entier, sur
+  Android comme sur iOS.
+
 ---
 
 ## 9. Plan de développement
@@ -1128,7 +1270,7 @@ défauts injectés tous attrapés (§8.1), recette des trois iPhone et de
 l'émulateur à 411 et 360 dp (§8.4, §8.6), client sans session éprouvé sur les
 deux plateformes (§6.4). Commit `b36a489`.
 
-### Lot 3 · Ce que la police maximale casse
+### Lot 3 · Ce que la police maximale casse · livré
 
 Plafonds de grossissement, `numberOfLines` sur les CTA, pseudo et date sur une
 ligne avec `adjustsFontSizeToFit`, chevron à taille fixe. Plafonds dans `Tile`
@@ -1139,6 +1281,23 @@ suit. Les corrections de détail qui restent en §5.6.
 **Vérification** : captures des trois iPhone et d'Android au réglage maximal
 et en xxLarge, le fil et le composer compris, et les titres longs sur Android
 à la taille par défaut.
+
+**Écarts au plan, tous validés (§11)** : hauteurs de ligne appliquées par
+l'écran ; plafond des cases à 1,2 et modèle de la place dans une case ; titres
+entiers sur iOS aussi, par la règle du premier mot ; case vide sur deux lignes
+(§5.4) ; test instable du lot 2 réparé (§8.2). Côté code, les plafonds et leur
+facteur vivent dans `font-scaling.ts`, la place dans une case dans
+`tile-text.ts`, la mise en lignes des titres dans `tile-title.ts`, les largeurs
+d'Extenda dans `extenda-metrics.ts` et la largeur d'une case dans
+`geometry.ts` ; chaque écran passe à `BentoGrid` la largeur de sa boîte.
+
+**Vérifié** : 374 tests verts dont 66 nouveaux, typecheck et lint propres,
+dix-sept défauts injectés un à un tous attrapés, dont l'arrondi Android oublié,
+la largeur de case non transmise et un libellé sur trois lignes. Recette des
+trois iPhone au maximum et en xxLarge (§8.4), de l'émulateur à 411 et 360 dp
+aux polices 1,0, 1,3 et 2,0 (§8.6), titres des 27 bentos sur SE, 17 Pro et
+Android comparés au pixel avant et après, image de partage identique à
+l'octet sur les deux plateformes. Commits `0dc470a` (test) et `9907507`.
 
 ### Lot 4 · Recette et mesures
 
@@ -1169,7 +1328,8 @@ bascule, la mise à jour de la roadmap et l'ouverture des suivis.
 | 15 | Image de partage identique quelle que soit la police | recette 12, captures |
 | 16 | Les critères 1 à 11 tiennent sur la matrice Android | §8.6, captures |
 | 17 | La page se charge avec une session périmée et l'authentification en panne | §6.4, test d'intégration et recette sur les deux plateformes, fait au lot 2 |
-| 18 | Aucun titre de tuile coupé au milieu d'un mot sur Android | lot 3, captures |
+| 18 | Aucun titre de tuile coupé au milieu d'un mot, sur Android comme sur iOS | lot 3, 27 bentos sur trois appareils, captures comparées au pixel |
+| 19 | Cases vides lisibles et dans leur pointillé à toute police | lot 3, captures |
 
 ## 11. Décisions tranchées
 
@@ -1208,6 +1368,13 @@ bascule, la mise à jour de la roadmap et l'ouverture des suivis.
 | Espace sous la boîte sur écran haut | **laissé ainsi** | même boîte que dans le fil et même haut de page partout ; 76 dp environ sur Pixel 8, 48 pt calculés sur 17 Pro Max |
 | Titres coupés au milieu d'un mot sur Android | **lot 3, dans `Tile`** | le lot 3 rouvre `Tile` et fait ses captures sur Android ; le fil et le composer en profitent |
 | Client principal bloqué par une authentification en panne | **suivi hors chantier** (§12) | même famille de panne que les réessais cachés ; seules les lectures publiques pourraient changer de client |
+| Hauteurs de ligne à police agrandie | **appliquées par l'écran**, `allowFontScaling={false}` et `fontScaleFor` | React Native ne plafonne pas `lineHeight` sur Android et suit la courbe d'Android 14 ; corriger par une division ne la rattrapait pas |
+| Plafond de police des cases | **1,2**, et moins là où la case est trop basse | mesuré : à 1,4, l'étiquette touchait le titre sur SE et iOS coupait « MERRY / -GO- » |
+| Premier mot d'un titre plus large que sa case | **le titre rétrécit pour lui**, sur iOS et Android | la coupure touchait 3 à 4 cases sur 162 par appareil, 6 à 9 à la plus grande police ; garder la césure d'Android et consigner iOS, ou laisser tel quel, écartés |
+| Mesure de ce premier mot | **largeurs des glyphes d'Extenda, sans crénage, à la police arrondie d'Android** | synchrone, sans second rendu ; majore le rendu puisque la police ne crène qu'en resserrant, et un titre réduit au point près se coupait encore à 31 px arrondis |
+| Case vide à police agrandie | **deux lignes au plus, qui rétrécissent**, et police réduite là où la case est trop basse | « CRÉATEUR DE CONTENU » passait sur trois lignes et le cercle sortait du pointillé dès 1,3 sur Android |
+| Test instable du lot 2 | **tentatives comptées côté client** | sous charge, l'abandon partait avant que le serveur lise la requête : 3 échecs sur 9 |
+| Commit du lot 3 | **en fin de lot** | code, réparation du test et spéc ensemble, une fois la règle des titres appliquée et vérifiée |
 
 ---
 
@@ -1270,3 +1437,28 @@ factice : les recettes 8 et 11 restent à faire au lot 4.
 · French rapper » : des données héritées d'anciens imports, que le code actuel
 ne produit plus, vues sur les cases Artiste pendant la recette. Hors chantier,
 une tâche séparée est proposée pour en mesurer l'ampleur.
+
+**Le composer ne tient pas à la plus grande police.** Sur iPhone SE, « MON /
+BENT / O » occupe la moitié de l'écran et la grille passe sous la barre
+d'onglets, sans défilement ; sur Android à 411 dp, le bouton « Commence par
+ton film » passe sous la barre d'onglets dès la taille 1,3. Le lot 3 n'y a
+touché que les cases : l'en-tête et le bouton suivent la police comme avant,
+et la capture du SE avant le lot montre déjà la grille cachée. Avec le suivi
+« écrasement du composer » ci-dessus, chantier 11.
+
+**Les libellés de la barre d'onglets se tronquent sur Android à la taille
+2,0** : « COMP… », « LA TA… ». Chantier 11, avec les autres plafonds.
+
+**Une case Artiste de @mame.k. n'a pas de titre.** L'item s'appelle
+« [unknown] », un artiste spécial de MusicBrainz, et `cleanTitle` retire ce
+qui est entre crochets. Les données sont à corriger, et l'import à fermer à ces
+artistes.
+
+**La case vide de consultation n'est vérifiée que par les tests.** Elle
+n'apparaît que si un item est masqué par la RLS, et aucun des 27 bentos
+publiés n'en a. Même règle et même code que la case du composer, recettée.
+
+**Les titres du composer ne sont vérifiés que par les tests.** Le compte
+factice de la recette a un bento vide et le proxy refuse les écritures : la
+largeur que passe le composer est contrôlée contre ses cases vides mesurées,
+pas sur un titre rendu. À faire au lot 4 si un compte de recette le permet.
