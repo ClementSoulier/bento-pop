@@ -1524,6 +1524,8 @@ dix-neuf**.
 | Hors ligne sur l'émulateur | **réseau coupé et proxy suspendu** | proxy actif, `adb reverse` laisse passer la requête et sa réponse l'emporte : l'essai n'éprouve pas « Connexion perdue » |
 | Tablette en paysage | **boîte au plancher, plus étroite que le fil, laissée ainsi** | l'app verrouillée en portrait y tourne dans 600 × 800 dp, un écran court : la formule de §5.1 s'applique telle quelle. En portrait, 420 dp comme le fil |
 | Commit du lot 4 | **en fin de lot** | relevés, spéc, roadmap et outillage de recette ensemble |
+| Boutons des états sans bento sans rôle pour VoiceOver | **suivi chantier 11** (§12) | cause non établie après quatre essais, et susceptible de toucher d'autres `Pressable` de l'app : à étudier sur l'ensemble. Le libellé reste lu. Un correctif dans ce chantier, de durée incertaine, écarté |
+| Compte d'authentification de la recette | **supprimé par le connecteur Supabase**, une fois réautorisé | le compte vérifié comme celui de la recette avant suppression |
 
 ---
 
@@ -1626,8 +1628,9 @@ l'arbre d'accessibilité, sur iPhone 17 Pro, alors que « Retour », sur le mêm
 Quatre pistes écartées sur appareil, en rechargement à chaud, un écran
 d'erreur neuf à chaque essai : un texte enfant à police figée, une bordure, la
 prop `role` à la place d'`accessibilityRole`, l'ombre `SHADOWS.stamp` des
-boutons qui fonctionnent. La cause n'est pas établie ; à reprendre sur l'écran
-lui-même, puis à vérifier sur les autres `Pressable` de l'app.
+boutons qui fonctionnent. La cause n'est pas établie. Chantier 11 : la
+reprendre sur cet écran, puis vérifier le `role` des autres `Pressable` de
+l'app dans `idb`.
 
 **En navigation à trois boutons, la barre d'onglets passe sous les boutons
 système** (Android). Sa hauteur est fixée à 84 dans `app/(tabs)/_layout.tsx` :
