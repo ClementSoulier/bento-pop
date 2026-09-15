@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createItemType, setItemTypeActive, updateItemType } from '@/lib/catalogue-types';
+import { importStarterList } from '@/lib/starter-import';
+import { STARTER_TYPE_KEYS } from '@/lib/starter-lists';
 import { createMobileClient } from '@/lib/supabase/mobile';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -24,6 +26,8 @@ const activeSchema = z.object({
   id: z.number().int().positive(),
   active: z.boolean(),
 });
+
+const importSchema = z.object({ typeKey: z.enum(STARTER_TYPE_KEYS) });
 
 function refresh() {
   revalidatePath('/catalogue/types');
@@ -88,4 +92,23 @@ export async function setTypeActiveAction(input: {
   if (!res.ok) return res;
   refresh();
   return { ok: true };
+}
+
+/**
+ * Importe en brouillons la liste de départ d'un type. Relancé, il ne crée
+ * rien de plus : cf. `lib/starter-import.ts`.
+ */
+export async function importStarterListAction(input: {
+  typeKey: string;
+}): Promise<{ ok: true; inserted: number; alreadyThere: number } | { ok: false; error: string }> {
+  await requireAdmin();
+  const parsed = importSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Inputs invalides' };
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const res = await importStarterList(mobile, parsed.data.typeKey);
+  if (!res.ok) return res;
+  refresh();
+  return { ok: true, ...res.value };
 }

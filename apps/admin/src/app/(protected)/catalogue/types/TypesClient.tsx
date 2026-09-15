@@ -1,20 +1,27 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   deactivationBlocker,
   validateItemTypeInput,
   type ItemTypeRow,
 } from '@/lib/catalogue-types';
-import { createTypeAction, setTypeActiveAction, updateTypeAction } from './actions';
+import type { StarterStatus } from '@/lib/starter-import';
+import {
+  createTypeAction,
+  importStarterListAction,
+  setTypeActiveAction,
+  updateTypeAction,
+} from './actions';
 
 const ORDER_ERROR = 'Ordre : un entier de 0 à 999.';
 
 /** Un champ d'ordre ne garde que des chiffres : « abc » ne s'y tape pas. */
 const digitsOnly = (value: string) => value.replace(/\D/g, '');
 
-export function TypesClient({ types }: { types: ItemTypeRow[] }) {
+export function TypesClient({ types, starters }: { types: ItemTypeRow[]; starters: StarterStatus[] }) {
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -52,12 +59,139 @@ export function TypesClient({ types }: { types: ItemTypeRow[] }) {
         </div>
       </section>
 
+      {starters.length > 0 ? (
+        <StarterSection
+          starters={starters}
+          draftsByType={new Map(types.map((t) => [t.key, t.counts.draft]))}
+        />
+      ) : null}
+
       <NewTypeForm
         nextOrder={Math.max(0, ...types.map((t) => t.order)) + 1}
         existingKeys={types.map((t) => t.key)}
         setError={setError}
       />
     </div>
+  );
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+
+type StarterMessage = { tone: 'ok' | 'error'; text: string };
+
+/**
+ * Les listes de départ des nouveaux types, saisies en interne et importées en
+ * brouillons. Le compte « déjà au catalogue » inclut ce que l'équipe a saisi
+ * elle-même : ces titres ne sont pas importés une seconde fois. Le résultat
+ * d'un import s'affiche dans la section, là où l'on vient de cliquer.
+ */
+function StarterSection({
+  starters,
+  draftsByType,
+}: {
+  starters: StarterStatus[];
+  draftsByType: ReadonlyMap<string, number>;
+}) {
+  const [message, setMessage] = useState<StarterMessage | null>(null);
+
+  return (
+    <section className="admin-card overflow-hidden">
+      <header className="border-b border-admin-border bg-admin-bg/60 px-4 py-3 text-[13px] font-semibold">
+        Listes de départ
+      </header>
+      <p className="border-b border-admin-border px-4 py-2.5 text-[12px] text-admin-muted">
+        Des candidats saisis en interne, importés en brouillons : invisibles dans l&apos;app, à relire
+        et valider depuis le catalogue. Relancer un import ne crée pas de doublon.
+      </p>
+      <ul className="divide-y divide-admin-border">
+        {starters.map((s) => (
+          <StarterRow
+            key={s.typeKey}
+            starter={s}
+            drafts={draftsByType.get(s.typeKey) ?? 0}
+            setMessage={setMessage}
+          />
+        ))}
+      </ul>
+      {/* Sous la liste : les lignes ne bougent pas sous le pointeur quand le message paraît. */}
+      {message ? (
+        <div
+          role="status"
+          className={`border-t border-admin-border px-4 py-2.5 text-[13px] ${
+            message.tone === 'error' ? 'bg-bento-red/10 text-bento-red' : 'bg-bento-yellow/20'
+          }`}
+        >
+          {message.text}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function StarterRow({
+  starter,
+  drafts,
+  setMessage,
+}: {
+  starter: StarterStatus;
+  drafts: number;
+  setMessage: (m: StarterMessage | null) => void;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  const onImport = () => {
+    if (
+      !confirm(
+        `Importer ${plural(starter.toInsert, 'brouillon')} dans ${starter.typeLabel} ?\n\nIls restent invisibles dans l'app jusqu'à leur validation.`,
+      )
+    ) {
+      return;
+    }
+    setMessage(null);
+    startTransition(async () => {
+      const res = await importStarterListAction({ typeKey: starter.typeKey });
+      if (!res.ok) {
+        setMessage({ tone: 'error', text: res.error });
+        return;
+      }
+      setMessage({
+        tone: 'ok',
+        text:
+          `${starter.typeLabel} : ${plural(res.inserted, 'brouillon')} importé${res.inserted > 1 ? 's' : ''}` +
+          (res.alreadyThere > 0 ? `, ${res.alreadyThere} déjà au catalogue.` : '.'),
+      });
+      router.refresh();
+    });
+  };
+
+  return (
+    <li className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[13px]">
+      <span className="w-[120px] shrink-0 font-semibold">{starter.typeLabel}</span>
+      <span className="min-w-[220px] flex-1 font-mono text-[11px] text-admin-muted">
+        {plural(starter.candidates, 'candidat')} · {starter.alreadyThere} déjà au catalogue
+      </span>
+      {drafts > 0 ? (
+        <Link
+          href={`/catalogue?type=${starter.typeKey}&statut=draft#tout-le-catalogue`}
+          className="font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted underline-offset-2 hover:text-admin-ink hover:underline"
+        >
+          Relire {plural(drafts, 'brouillon')}
+        </Link>
+      ) : null}
+      <button
+        type="button"
+        onClick={onImport}
+        disabled={pending || starter.toInsert === 0}
+        className="admin-btn admin-btn-primary admin-btn-sm h-[30px] w-[190px] py-0"
+      >
+        {pending
+          ? 'Import…'
+          : starter.toInsert === 0
+            ? 'Tout est importé'
+            : `Importer ${plural(starter.toInsert, 'brouillon')}`}
+      </button>
+    </li>
   );
 }
 

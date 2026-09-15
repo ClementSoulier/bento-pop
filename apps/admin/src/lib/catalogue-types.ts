@@ -204,7 +204,8 @@ const PAGE_SIZE = 1000;
 
 type Page<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
-async function readAll<T>(page: (from: number, to: number) => Page<T>): Promise<T[]> {
+/** Lit toutes les lignes, page par page. La requête doit avoir un ordre stable. */
+export async function readAll<T>(page: (from: number, to: number) => Page<T>): Promise<T[]> {
   const rows: T[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await page(from, from + PAGE_SIZE - 1);
