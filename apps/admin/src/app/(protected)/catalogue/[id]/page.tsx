@@ -32,11 +32,14 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
   if (!item) notFound();
 
   const [{ data: category }, { data: aliases }, { data: submitter }] = await Promise.all([
-    mobile
-      .from('bento_categories')
-      .select('label_fr, key')
-      .eq('id', item.category_id)
-      .maybeSingle(),
+    // Un item sans case, un livre créé par le back-office, n'a pas de catégorie.
+    item.category_id === null
+      ? Promise.resolve({ data: null })
+      : mobile
+          .from('bento_categories')
+          .select('label_fr, key')
+          .eq('id', item.category_id)
+          .maybeSingle(),
     mobile
       .from('item_aliases')
       .select('id, alias')

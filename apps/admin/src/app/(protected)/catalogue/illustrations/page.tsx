@@ -75,7 +75,7 @@ export default async function IllustrationsPage() {
       title: item.title,
       subtitle: item.subtitle ?? null,
       year: item.year ?? null,
-      categoryLabel: catLabel.get(item.category_id) ?? '?',
+      categoryLabel: (item.category_id === null ? undefined : catLabel.get(item.category_id)) ?? '?',
       bentoCount: bentoCount.get(item.id) ?? 0,
       candidates: [],
     });

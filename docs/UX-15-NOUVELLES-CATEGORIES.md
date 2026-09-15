@@ -223,6 +223,14 @@ film est refusé dans la case Lieu, une Personne acceptée dans la case Artiste.
 Il protège aussi la fusion : `admin_merge_items` ne peut pas reporter un film
 dans une case Personne.
 
+**L'autre porte est fermée aussi**, ajouté en écrivant le lot 0 : changer le
+type d'un item déjà posé dans une case d'un autre type est refusé, « Cet item
+est posé dans une case d'un autre type. » Le catalogue en aura besoin, des
+items ont été proposés dans la mauvaise case : « Arcane », une série, et
+« Glitch Productions », un studio, sont rangés en créateurs, donc Personnes
+après la migration. Les retyper passera par le back-office (lot 1), après les
+avoir retirés des bentos qui les portent ou fusionnés.
+
 ### 5.5 Le type d'un item suit sa case
 
 Un trigger sur `items` pose le type à partir de la case quand l'item en a une.
@@ -348,11 +356,12 @@ les six cases du bento principal.
 
 - `check-privileges.ts` reste vert : c'est la preuve que les versions publiées
   ne cassent pas.
-- **Nouveau `scripts/check-types.ts`**, reprise de la sonde du 15 septembre :
-  neuf types dont quatre inactifs, types des six cases, recherche et « Au menu »
-  par type, proposition typée par sa case, type imposé par la case, refus d'un
-  item d'un autre type, écriture des types et des cases refusée aux clients,
-  fusion de deux Personnes, livre créé sans case.
+- **Nouveau `scripts/check-types.ts`**, 18 contrôles : neuf types dont quatre
+  inactifs, types des six cases, recherche, « Au menu » et anti-doublon par
+  type, proposition typée par sa case, type imposé par la case, refus d'un item
+  d'un autre type, écriture des types et des cases refusée aux clients, fusion
+  de deux Personnes, livre créé sans case, retypage d'un item posé refusé, et
+  permis pour un item jamais posé.
 
 ### 8.3 Contre la production, après application
 
@@ -377,6 +386,15 @@ d'écriture sans nouvel arbitrage.
 Types, types des cases et des items, triggers, recherche par type, privilèges.
 `check-types.ts`. Application en production par le SQL editor, puis lecture
 seule (§8.3).
+
+> **Écrit et vérifié le 15 septembre 2026**, pas encore appliqué.
+> `20260915100000_item_types_and_cases.sql`, appliquée sur une base locale
+> remise à zéro : `check-privileges.ts` 42 sur 42, donc aucune version publiée
+> cassée, et `check-types.ts` 18 sur 18. Les requêtes de contrôle du fichier
+> rendent l'attendu. Les types TypeScript suivent (`items.category_id`
+> facultatif, `type_id`, `item_types`), et six lectures du back-office sont
+> rendues sûres pour un item sans case, sans autre changement de comportement.
+> 374 tests de l'app et 39 du back-office verts, typage et lint verts partout.
 
 ### Lot 1 · Le back-office
 

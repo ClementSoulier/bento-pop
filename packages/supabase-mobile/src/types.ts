@@ -40,6 +40,11 @@ export type UserKind = 'member' | 'editorial';
 export type Database = {
   public: {
     Tables: {
+      /**
+       * Les six cases du bento principal. Le nom est historique : depuis la
+       * migration `20260915100000_item_types_and_cases.sql`, ce qu'est un
+       * item vit dans `item_types`, et chaque case porte un type.
+       */
       bento_categories: {
         Row: {
           id: number;
@@ -49,6 +54,8 @@ export type Database = {
           api_source: ExternalSource;
           is_active: boolean;
           created_at: string;
+          /** Type des items qu'accepte la case. Artiste et Créateur : Personne. */
+          type_id: number;
         };
         Insert: {
           key: CategoryKey;
@@ -105,7 +112,10 @@ export type Database = {
       items: {
         Row: {
           id: string;
-          category_id: number;
+          /** Case d'origine, facultative : un livre n'a pas de case dans le bento principal. */
+          category_id: number | null;
+          /** Ce qu'est l'item, déduit de sa case quand il en a une. */
+          type_id: number;
           external_source: ExternalSource;
           external_id: string | null;
           title: string;
@@ -126,7 +136,9 @@ export type Database = {
           image_credit: string | null;
         };
         Insert: {
-          category_id: number;
+          /** Posée, elle impose le type. Sinon, `type_id` est requis. */
+          category_id?: number | null;
+          type_id?: number;
           external_source: ExternalSource;
           external_id?: string | null;
           title: string;
@@ -383,6 +395,31 @@ export type Database = {
           app_version?: string | null;
         };
         Update: Partial<Database['public']['Tables']['user_telemetry']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Ce qu'est un élément du catalogue, qui décide où l'on cherche.
+       * Distinct de la case qui l'accueille : Artiste et Créateur de contenu
+       * sont deux cases de type Personne. Lisible quand il est actif, écrit
+       * par le seul back-office. Cf. `docs/UX-15-NOUVELLES-CATEGORIES.md`.
+       */
+      item_types: {
+        Row: {
+          id: number;
+          /** Définitive : `film`, `person`, `video_game`… */
+          key: string;
+          label_fr: string;
+          display_order: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          key: string;
+          label_fr: string;
+          display_order?: number;
+          is_active?: boolean;
+        };
+        Update: Partial<Omit<Database['public']['Tables']['item_types']['Insert'], 'key'>>;
         Relationships: [];
       };
     };
