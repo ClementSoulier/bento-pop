@@ -210,7 +210,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés (PR #58), recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
-| 15 | Nouvelles catégories : jeux vidéo, livres, plats, activités | Contenu | L | arbitrage | ⬜ roadmap produit · **prochain** |
+| 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 (migration types et cases) écrit et vérifié en local, à appliquer · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
 | 11 | Accessibilité et polish | Qualité | S | rien | ⬜ à glisser entre deux chantiers |
 | 16 | Plusieurs bentos par compte | Contenu | L | 5 | ⬜ roadmap produit · planifié avec le 9 |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ planifié avec le 16, qui touche les mêmes écrans |
@@ -259,7 +259,7 @@ suppose sans le dire. Mesures du 15 septembre, en lecture seule.
 
 | Sujet donné par l'équipe | Chantier | Recoupe |
 |---|---|---|
-| Nouvelles catégories (jeux vidéo, livres, plats, activités), et leur création depuis l'administration | 15 | |
+| Nouvelles catégories (jeux vidéo, livres, plats, activités), et leur création depuis l'administration | 15, devenu types et cases | |
 | Plusieurs bentos par compte : le principal et des hebdomadaires | 16 | 13 |
 | Bento hebdomadaire configuré depuis l'administration | 13, recadré | |
 | Notifications push : un bento à compléter, un bento prêt à être publié | 17 | 8 |
@@ -614,39 +614,30 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 
 ---
 
-## 15. Nouvelles catégories : jeux vidéo, livres, plats, activités
+## 15. Types d'éléments et cases : jeux vidéo, livres, plats, activités
+
+> **Spécification détaillée : [`UX-15-NOUVELLES-CATEGORIES.md`](./UX-15-NOUVELLES-CATEGORIES.md)**, écrite, réécrite et validée le 15 septembre 2026. La recherche élargie aux Personnes est assumée, une case refuse en base un item d'un autre type, et les listes de départ seront grand public, au goût Bento Pop.
+>
+> **La relecture a déplacé le chantier.** Clément : « il faut qu'on décorrèle la typologie de case et l'intitulé. Créateur de contenu = Personne, Artiste musical = Personne, Mangaka = Personne… Lieu de voyage = Lieu, Lieu de vie = Lieu, Lieu de rêve = Lieu. » Le chantier ne rend plus des catégories pilotables : il sépare **le type** d'un élément, qui décide où l'on cherche, de **la case**, qui porte un intitulé, un tampon et un type.
 
 **Demandé.** Quatre catégories d'éléments de plus : jeux vidéo, livres, plats, activités. Et une question de l'équipe : pourquoi pas les créer depuis l'administration ?
 
+**Arbitré le 15 septembre.**
+
+- **Neuf types au départ**, d'autres créables depuis le back-office : Film, Série, Chanson, Personne, Lieu, Jeu vidéo, Livre, Plat, Activité. Les quatre derniers restent inactifs jusqu'au chantier 13.
+- **Le tampon appartient à la case**, ce qui ouvre les cases personnalisées des éditions hebdomadaires.
+- **Le bento principal garde ses six cases et ses intitulés à l'écran.** Artiste et Créateur de contenu y deviennent deux cases de type Personne.
+- **Le catalogue reste interne** : saisie par l'équipe, propositions modérées, aucune API externe. Seules les images peuvent venir de dehors, avec leur crédit. Les listes de départ se préparent dans le dépôt et se valident dans le back-office.
+- **Pas de couleur par type ni par case** : la palette d'une tuile dépend de l'item, mesuré.
+
 **Constat.**
 
-- **La base est prête, le code ne l'est pas.** Les catégories sont des lignes de `bento_categories` (`key`, `label_fr`, `display_order`, `api_source`, `is_active`), et la migration initiale le promet : « ajouter une catégorie = INSERT, pas de migration de code » (`20260511000000_initial_schema.sql:23`). Mais une case **est** une catégorie : `bento_items` a pour clé `(bento_id, category_id)` (`:112`), et la grille pose chaque catégorie à une place figée (`BentoGrid.tsx:148-160`). Les six clés sont recopiées dans `packages/supabase-mobile` (`CategoryKey`, `CATEGORY_IDS`, `CATEGORY_META`), puis dans l'app (tampons, libellés des cases vides, placeholder de recherche accordé au genre du mot, « 6 cases pop culture » sur l'image de partage), dans le back-office (filtres, `z.enum` des six clés) et sur la page web (« Six cases, six choix : ton film, ta série… »). Une catégorie ajoutée en base serait ignorée partout (`packages/supabase-mobile/src/bento.ts:36-44`, `feed.ts:133`, `apps/landing/src/lib/bento/map.ts:66-76`).
-- **La recherche ne dépend d'aucune API externe.** `search_items` cherche dans le catalogue interne, pour toutes les catégories (`items.ts:47`) ; TMDb et Wikimedia ne servent qu'aux scripts d'illustration du back-office. Une catégorie sans source externe fonctionne donc, pourvu que le catalogue soit amorcé ou que les utilisateurs proposent : 130 des 277 items validés viennent d'eux.
-- **L'image est le vrai coût d'une catégorie.** 72 items sur 277 n'en ont pas. Les affiches de films viennent de TMDb, les pochettes de Cover Art Archive ; Commons, seule source libre, ne fournit ni les unes ni les autres.
+- **`bento_categories` joue deux rôles** : le type d'un item (`items.category_id`) et la case qu'il occupe (`bento_items.category_id`). D'où Joueur du Grenier et lesadpanda en double, artistes et créateurs à la fois, et Squeezie introuvable dans la case Artiste : la recherche y répond « Queen », mesuré en production.
+- **Les versions publiées ne lisent que la case, jamais `items.category_id`**, et appellent la recherche par clé de case. Garder les six cases telles quelles et résoudre case vers type dans les fonctions change donc la recherche de toutes les versions d'un coup, sans mise à jour.
+- **Aucune des 162 cases publiées** ne porte un item d'une autre catégorie que la sienne : imposer en base qu'une case n'accepte que son type ne casse rien.
+- **Éprouvé en brouillon sur le Supabase local** : la migration s'applique, les 42 contrôles de `check-privileges.ts` restent verts, et les 15 contrôles du modèle passent.
 
-**Les sources possibles**, conditions relevées le 15 septembre, à relire au moment de planifier :
-
-| Catégorie | Source réaliste | Ce qui coince |
-|---|---|---|
-| Jeux vidéo | IGDB (Twitch) pour la recherche et les jaquettes, Wikidata pour les titres français | Gratuit « pour un usage non commercial » : un produit d'entreprise doit demander un partenariat, à obtenir par écrit (usage, conservation des items choisis). Jeton côté serveur, 4 requêtes par seconde. Aucune licence sur les jaquettes, qui restent aux éditeurs. |
-| Livres | Open Library pour la recherche ; couvertures de la BnF (API « Service Couvertures », en bêta depuis février 2026), Open Library en secours | Open Library n'est pas fait pour porter un produit à fort trafic. La BnF exige de citer la source et la date. Google Books interdit toute copie durable, incompatible avec un bento enregistré. |
-| Plats | Liste éditoriale amorcée depuis Wikidata (20 850 plats, dont 7 399 avec un libellé français, données CC0), plus les propositions | Photos Commons sous CC BY-SA, à créditer jusque sur l'image de partage, ou illustrations maison. |
-| Activités | Liste éditoriale et propositions | Aucun catalogue exploitable : la classe « loisir » de Wikidata est remplie de courses hippiques et d'étapes cyclistes. |
-
-**Proposition.**
-
-- Chaque catégorie décrite par sa ligne en base, et le code qui la lit au lieu de la connaître : libellé, tampon, article (« ton », « ta »), couleur. L'app les charge au démarrage, les six actuelles embarquées pour le hors-ligne.
-- Une source d'amorçage et d'images par catégorie, d'après le tableau ci-dessus.
-- Dans l'administration, créer une catégorie de **catalogue interne** (libellé, tampon, article, ordre, active ou non) sans nouvelle version de l'app. Brancher une source externe reste un développement.
-
-**À trancher quand on y arrive.**
-
-- **Où vont les nouvelles catégories ?** Le bento principal a six cases, une par catégorie, et 27 personnes l'ont publié ainsi. Leur ajouter des cases change un objet déjà partagé ; réserver les nouvelles catégories aux bentos hebdomadaires (13) ne touche à rien de publié.
-- La source et la licence des images, catégorie par catégorie.
-- Plats et activités : liste éditoriale de départ, propositions des utilisateurs, ou les deux ?
-- Ce que l'administration peut créer seule.
-
-**Fait quand** : une case peut demander un jeu vidéo, un livre, un plat ou une activité, la recherche en trouve avec leur visuel, et une catégorie de catalogue interne créée dans le back-office apparaît dans l'app sans nouvelle version.
+**Fait quand** : un item a un type et une case aussi, la recherche d'une case cherche dans son type sans casser aucune version publiée, le bento principal est inchangé à l'écran, et les quatre nouveaux types ont chacun au moins 50 items validés, saisis en interne.
 
 ---
 
@@ -741,7 +732,7 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 
 **Proposition.**
 
-- Une table des éditions (titre, sortie, statut) et une table de leurs cases (position, nom, catégorie). Dans le back-office : créer, prévisualiser la grille, programmer.
+- Une table des éditions (titre, sortie, statut) et une table de leurs cases (position, intitulé, tampon, genre grammatical, type). Le type vient du chantier 15, qui sépare ce qu'est un élément de la case qui l'accueille : « Ton lieu de rêve » est une case de type Lieu. Dans le back-office : créer, prévisualiser la grille, programmer.
 - Dans l'app, l'édition en cours à côté du bento principal, et la suivante annoncée sans être dévoilée.
 - Dans « La table », l'étiquette et le titre de l'édition.
 - Les grilles de 2 à 5 cases dessinées par la direction artistique avant tout développement.

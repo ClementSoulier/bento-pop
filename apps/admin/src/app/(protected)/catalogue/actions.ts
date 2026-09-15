@@ -149,7 +149,12 @@ export async function getSimilarsForItem(input: { itemId: string }): Promise<
     .maybeSingle();
   if (itemErr || !item) return { ok: false, error: itemErr?.message ?? 'Item introuvable' };
 
-  // 2. Trouve la category_key à partir de l'id (la RPC prend une key)
+  // 2. Trouve la category_key à partir de l'id (la RPC prend une key). Un
+  //    item sans case n'a pas encore de recherche de doublons : elle viendra
+  //    avec le catalogue par type, au lot 1 du chantier 15.
+  if (item.category_id === null) {
+    return { ok: false, error: 'Item sans case : recherche de doublons indisponible' };
+  }
   const { data: category } = await mobile
     .from('bento_categories')
     .select('key')
@@ -239,12 +244,15 @@ export async function suggestImageForItem(input: {
   if (error || !item) return { ok: false, error: error?.message ?? 'Item introuvable' };
 
   // La catégorie sert d'indice de recherche (« Seven film ») : c'est ce
-  // qui écarte les homonymes dès la requête.
-  const { data: category } = await mobile
-    .from('bento_categories')
-    .select('key')
-    .eq('id', item.category_id)
-    .maybeSingle();
+  // qui écarte les homonymes dès la requête. Un item sans case s'en passe.
+  const { data: category } =
+    item.category_id === null
+      ? { data: null }
+      : await mobile
+          .from('bento_categories')
+          .select('key')
+          .eq('id', item.category_id)
+          .maybeSingle();
 
   try {
     const candidates = await findWikimediaImages(item.title, category?.key ?? null);
@@ -279,7 +287,9 @@ export async function searchAnyItems(input: { q: string }): Promise<
   if (error) return { ok: false, error: error.message };
 
   // Fetch categories pour labels
-  const catIds = [...new Set((data ?? []).map((r) => r.category_id))];
+  const catIds = [
+    ...new Set((data ?? []).map((r) => r.category_id).filter((id): id is number => id !== null)),
+  ];
   const { data: cats } = catIds.length
     ? await mobile.from('bento_categories').select('id, label_fr').in('id', catIds)
     : { data: [] as { id: number; label_fr: string }[] };
@@ -288,7 +298,7 @@ export async function searchAnyItems(input: { q: string }): Promise<
   const matches: AnyItemMatch[] = (data ?? []).map((r) => ({
     id: r.id,
     title: r.title,
-    categoryLabel: labelById.get(r.category_id) ?? '?',
+    categoryLabel: (r.category_id === null ? undefined : labelById.get(r.category_id)) ?? '?',
     status: r.status as AnyItemMatch['status'],
   }));
   return { ok: true, matches };

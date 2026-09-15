@@ -140,14 +140,18 @@ cd apps/mobile
 supabase start -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,supavisor
 supabase db reset --local
 npx tsx scripts/check-privileges.ts
+npx tsx scripts/check-types.ts
 ```
 
-Le script refuse toute cible qui n'est pas `127.0.0.1`. Il rejoue les attaques
-connues et tout le parcours d'écriture de l'app, avec les fonctions de l'app
-quand elles prennent leur client en paramètre. Au 15 septembre 2026 : 42
-contrôles, dont 11 en échec sans `20260915000000_close_privilege_gaps.sql`.
-Toute migration qui touche aux droits doit le laisser vert, et ajouter ses
-propres contrôles.
+Les deux scripts refusent toute cible qui n'est pas `127.0.0.1`.
+`check-privileges.ts` rejoue les attaques connues et tout le parcours
+d'écriture de l'app, avec les fonctions de l'app quand elles prennent leur
+client en paramètre : au 15 septembre 2026, 42 contrôles, dont 11 en échec
+sans `20260915000000_close_privilege_gaps.sql`. C'est aussi la preuve qu'une
+migration ne casse pas les versions publiées. `check-types.ts` vérifie le
+modèle type et case du chantier 15 : 18 contrôles. Toute migration qui touche
+aux droits ou au catalogue doit les laisser verts, et ajouter ses propres
+contrôles.
 
 Deux précautions. Toujours passer par `db reset` avant de mesurer : c'est ce
 qui garantit une base qui reflète exactement les migrations du dépôt, sans

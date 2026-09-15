@@ -77,11 +77,14 @@ export default async function CataloguePage() {
     : { data: [] as { id: string; pseudo: string }[] };
   const pseudoById = new Map((authors ?? []).map((u) => [u.id, u.pseudo]));
 
+  // Un item sans case, un livre créé par le back-office, n'a pas de catégorie.
+  const categoryOf = (id: number | null) => (id === null ? undefined : catById.get(id));
+
   const pending: CatalogueItemRow[] = (pendingItems ?? []).map((i) => ({
     id: i.id,
     title: i.title,
-    categoryLabel: catById.get(i.category_id)?.label_fr ?? '?',
-    categoryKey: catById.get(i.category_id)?.key ?? null,
+    categoryLabel: categoryOf(i.category_id)?.label_fr ?? '?',
+    categoryKey: categoryOf(i.category_id)?.key ?? null,
     submittedAt: i.submitted_at ?? i.created_at,
     authorPseudo: i.submitted_by ? (pseudoById.get(i.submitted_by) ?? '(supprimé)') : null,
     status: 'pending',
@@ -93,8 +96,8 @@ export default async function CataloguePage() {
     subtitle: i.subtitle ?? null,
     year: i.year ?? null,
     hasImage: Boolean(i.image_url),
-    categoryLabel: catById.get(i.category_id)?.label_fr ?? '?',
-    categoryKey: catById.get(i.category_id)?.key ?? null,
+    categoryLabel: categoryOf(i.category_id)?.label_fr ?? '?',
+    categoryKey: categoryOf(i.category_id)?.key ?? null,
     status: i.status as CatalogueFullRow['status'],
     bentoCount: bentoCountByItem.get(i.id) ?? 0,
   }));
