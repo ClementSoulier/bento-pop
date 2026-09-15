@@ -122,7 +122,12 @@ L'ordre, qui compte :
    coupe-circuit, arrêter le proxy, puis relire avec la clé anonyme que profil,
    bento et cases ont disparu ;
 7. supprimer enfin le compte d'authentification anonyme, que l'app laisse
-   orphelin, au tableau de bord Supabase : profil **puis** authentification.
+   orphelin : profil **puis** authentification. Au tableau de bord Supabase,
+   ou par l'API d'administration avec `MOBILE_SUPABASE_SERVICE_ROLE_KEY` de
+   `apps/admin/.env`, jamais affichée : relire d'abord le compte
+   (`GET /auth/v1/admin/users/<id>`, anonyme, créé à l'heure du journal du
+   proxy, sans profil), le supprimer (`DELETE` sur la même adresse), puis
+   vérifier le 404.
 
 ---
 

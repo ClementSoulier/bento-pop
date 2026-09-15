@@ -1199,9 +1199,10 @@ en fin de défilement :
   - suppression par « Supprimer mon compte » : profil, bento et cases relus
     vides avec la clé anonyme, tête du fil redevenue celle d'avant,
     `bento-pop.com/u/recettesept` en 404. La réinscription que l'app tente
-    aussitôt est refusée par le proxy. Reste le compte d'authentification
-    anonyme `f8c7589c-5885-4377-93a7-68e60338d5e8`, sans données, à supprimer
-    au tableau de bord Supabase.
+    aussitôt est refusée par le proxy. Le compte d'authentification anonyme,
+    que l'app laisse orphelin, est supprimé ensuite par l'API
+    d'administration, après relecture : anonyme, créé à l'heure du journal,
+    sans profil, sans bento ni signalement. Relu ensuite en 404.
 - Point 9 : chevron dans sa pastille, boutons sur une rangée, pseudo sur une
   ligne et tuiles lisibles, aux trois tailles sur les trois appareils.
 - Point 10 : 31 éléments dans l'arbre sur les trois, les six étiquettes, et
@@ -1468,7 +1469,7 @@ dix-neuf**.
 | 10 | Publier puis arriver sur sa page montre le bento, jamais le message d'absence ni l'ancien item | recette 8 | ✅ compte de recette en production, réseau ralenti, enregistrement relu |
 | 11 | Écran et tuiles lisibles à la police maximale, et en xxLarge | recettes 9 et 13, captures | ✅ la page et le fil ; le composer, hors périmètre, en §12 |
 | 12 | Crédits de la rangée basse présents dans l'arbre d'accessibilité | recette 10 | ✅ trois iPhone, SE compris |
-| 13 | Suite complète verte | CI | ✅ 374 tests en local ; la CI la rejoue à la PR |
+| 13 | Suite complète verte | CI | ✅ 374 tests, CI verte à la PR #59 |
 | 14 | Sa propre page sans bento : message dédié | recette 11 | ✅ compte de recette en production |
 | 15 | Image de partage identique quelle que soit la police | recette 12, captures | ✅ à l'octet près, sur iOS et Android |
 | 16 | Les critères 1 à 11 tiennent sur la matrice Android | §8.6, captures | ✅ quinze cas, avec la réserve du critère 4 en paysage |
@@ -1525,7 +1526,8 @@ dix-neuf**.
 | Tablette en paysage | **boîte au plancher, plus étroite que le fil, laissée ainsi** | l'app verrouillée en portrait y tourne dans 600 × 800 dp, un écran court : la formule de §5.1 s'applique telle quelle. En portrait, 420 dp comme le fil |
 | Commit du lot 4 | **en fin de lot** | relevés, spéc, roadmap et outillage de recette ensemble |
 | Boutons des états sans bento sans rôle pour VoiceOver | **suivi chantier 11** (§12) | cause non établie après quatre essais, et susceptible de toucher d'autres `Pressable` de l'app : à étudier sur l'ensemble. Le libellé reste lu. Un correctif dans ce chantier, de durée incertaine, écarté |
-| Compte d'authentification de la recette | **supprimé par le connecteur Supabase**, une fois réautorisé | le compte vérifié comme celui de la recette avant suppression |
+| Compte d'authentification de la recette | **supprimé par l'API d'administration**, avec la clé de service du back-office | le connecteur Supabase ne pouvait pas être réautorisé à distance ; compte relu avant suppression, anonyme, créé par la recette, sans profil ni données, puis relu en 404 |
+| `PASSATION.md` | **supprimé avant la fusion** | fiche de passation d'une session précédente, sans objet une fois le chantier repris et clos ; il reste dans l'historique git |
 
 ---
 
@@ -1579,14 +1581,6 @@ RLS ; les écritures, non. Versé à la roadmap.
 **Le bandeau « Pas de connexion » recouvre le bouton retour**, justement dans
 l'état « Connexion perdue ». Le bandeau est commun à tous les écrans.
 Chantier 11.
-
-**Le compte d'authentification de la recette reste à supprimer.** Les
-recettes 8 et 11, faites au lot 4 avec un compte de recette en production
-(§8.4), ont supprimé son profil par l'app, qui laisse le compte
-d'authentification anonyme orphelin, sans aucune donnée :
-`f8c7589c-5885-4377-93a7-68e60338d5e8`. Il se supprime au tableau de bord
-Supabase : l'app ne le peut pas, et la recette n'avait pas de droit
-d'administration.
 
 **Les sous-titres d'artistes sont en anglais.** « US · Person », « FR · Person
 · French rapper » : des données héritées d'anciens imports, que le code actuel

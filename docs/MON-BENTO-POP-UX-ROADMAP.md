@@ -167,7 +167,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 4 | `expo-image` sur le reste de l'app | Perf + egress | S | 2 | ✅ **absorbé** par les chantiers 2 et 3, vérifié le 13/09 : les deux seules images distantes de l'app sont sur `expo-image` |
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés, recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
-| 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés sur la branche `feat-ux-07-page-bento`, PR à ouvrir, recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
+| 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 8 | Signaux de retour (vues, item validé, réactions) | Rétention | L | 1 | ⬜ |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ |
 | 10 | Profil éditable (nom, pseudo, Popy) | Appropriation | S | rien | ⬜ |
@@ -447,7 +447,6 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 - **Les sous-titres d'artistes sont en anglais** (« US · Person », « FR · Person · French rapper ») : données héritées d'anciens imports, à mesurer puis corriger à part.
 - **Une case Artiste s'affiche sans titre** : l'item « [unknown] », un artiste spécial de MusicBrainz, dont `cleanTitle` retire tout ce qui est entre crochets. Donnée à corriger, import à fermer à ces artistes.
 - **En navigation à trois boutons, la barre d'onglets passe sous les boutons système** (Android) : sa hauteur est fixée à 84 dans `app/(tabs)/_layout.tsx`, et la marge basse de 48 dp de cette navigation écrase icônes et libellés. Le composer lit cette hauteur pour son budget vertical, à revérifier avec le correctif. Tâche séparée proposée.
-- **Le compte d'authentification anonyme de la recette du lot 4 reste à supprimer**, au tableau de bord Supabase ; son profil et son bento le sont déjà.
 
 **Fait quand** : la grille est entièrement visible sur iPhone SE, et revenir sur un bento déjà consulté est instantané.
 
