@@ -163,10 +163,16 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 - **Migration `20260911000000_revalidate_landing_on_publish.sql`** du chantier 1,
   toujours pas appliquée, ainsi que ses deux secrets Vault. Sans elle, la page
   publique se rafraîchit toutes les cinq minutes au lieu d'immédiatement.
-- **Quatre failles de privilèges, relevées et corrigées le 15 septembre
-  2026**, de la même famille que `is_featured`. **Migration
-  `20260915000000_close_privilege_gaps.sql` à appliquer avant que la 1.2.0
-  soit publique**, puis le back-office à déployer.
+- **Quatre failles de privilèges, relevées, corrigées et fermées en production
+  le 15 septembre 2026**, de la même famille que `is_featured` (PR #61).
+  Migration `20260915000000_close_privilege_gaps.sql` appliquée le jour même :
+  les trois requêtes de contrôle rendent exactement l'attendu, la clé anonyme
+  ne lit plus aucune télémétrie (1 compte l'exposait avant, 0 après) et reçoit
+  « permission denied » sur `user_telemetry`, et la sonde
+  `check-write-path.mjs` passe douze contrôles sur douze, compte de sonde
+  supprimé et compteurs revenus à l'identique (99 comptes, 59 profils,
+  50 bentos). **Reste le back-office à redéployer sur Coolify** : l'ancien lit
+  la télémétrie dans `users`, désormais vide, et affiche « inconnu » partout.
   - **La télémétrie du chantier 14 était lisible par tout le monde**, mesuré à
     la clé anonyme sur la production : `last_seen_at`, `platform` et
     `app_version` sortaient de `users`, dont la lecture est `using (true)`.
@@ -325,7 +331,7 @@ Chacune coûte moins cher posée une fois que redécouverte à chaque chantier.
    changements dans une même version évite une revue par chantier.
 
 **Quatre failles relevées en chemin**, sans rapport avec la liste, corrigées
-le même jour et à appliquer en production avant elle, cf.
+et fermées en production le même jour, cf.
 [ménage en attente](#ménage-en-attente).
 
 ---
@@ -889,7 +895,7 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 **Constat.**
 
 - **Aucun réglage n'existe.** Le seul geste de confidentialité est la dépublication, depuis le chantier 5.
-- **La première atteinte à la confidentialité n'était pas un réglage manquant** : la télémétrie du chantier 14 était lisible par tout le monde. Corrigée le 15 septembre, migration à appliquer, cf. [ménage en attente](#ménage-en-attente).
+- **La première atteinte à la confidentialité n'était pas un réglage manquant** : la télémétrie du chantier 14 était lisible par tout le monde. Fermée en production le 15 septembre, cf. [ménage en attente](#ménage-en-attente).
 - **Un réglage appliqué par l'interface seule ne protège rien** : l'API se lit avec la clé anonyme embarquée dans l'app.
 
 **Principe commun.** Chaque réglage s'applique en base, dans les policies et les fonctions SQL, jamais seulement dans l'écran. Chacun est prouvé par un test qui tente l'accès interdit à la clé anonyme. Tous se retrouvent au même endroit dans l'app.
