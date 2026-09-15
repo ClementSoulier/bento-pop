@@ -16,7 +16,13 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { FeedPost, FeedPostSkeleton, feedBoxWidth, feedScale, feedSideInset } from '@/components/feed';
 import { Sticker, YellowBg } from '@/components/primitives';
-import { PAGE_SIZE, loadFeedPage, type FeedBento, type FeedCursor } from '@/lib/feed';
+import {
+  FEED_QUERY_KEY,
+  PAGE_SIZE,
+  loadFeedPage,
+  type FeedBento,
+  type FeedCursor,
+} from '@/lib/feed';
 import { useBlocked } from '@/state/blocked';
 import { supabase } from '@/supabase/client';
 
@@ -46,7 +52,7 @@ export default function TableTab() {
     fetchNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['feed'],
+    queryKey: FEED_QUERY_KEY,
     initialPageParam: null as FeedCursor | null,
     queryFn: ({ pageParam }) => loadFeedPage(supabase, pageParam),
     getNextPageParam: (lastPage) => lastPage.nextCursor,

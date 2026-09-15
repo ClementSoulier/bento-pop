@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import type { CategoryKey } from '@/supabase/types';
 import { EmptyTile } from './EmptyTile';
-import { GRID_GEOMETRY } from './geometry';
+import { GRID_GEOMETRY, gridBorderWidth, gridTileWidth } from './geometry';
 import { Tile, type TileData } from './Tile';
 import { TilePulse } from './TilePulse';
 import { SHADOWS } from '@/components/primitives/shadow';
@@ -39,6 +39,19 @@ type BentoGridProps = {
    * et l'image de partage rendent des bentos figés.
    */
   pulse?: { cat: CategoryKey; seq: number } | null;
+  /**
+   * `false` pour une grille qui ne suit pas la police système : l'image de
+   * partage, qui doit sortir identique pour tout le monde. Partout ailleurs,
+   * les cases grossissent jusqu'à leur plafond, cf. `font-scaling.ts`.
+   */
+  allowFontScaling?: boolean;
+  /**
+   * Largeur de la boîte, cadre compris, telle que l'écran la pose. Un titre y
+   * mesure son premier mot, cf. `tileTitleScale` ; sans elle, il se couperait
+   * au milieu. Ce n'est pas toujours `GRID_WIDTH × scale`, cf. `gridTileWidth`.
+   * Seule une grille vide, comme celle de l'écran de mécanique, s'en passe.
+   */
+  width?: number;
 };
 
 /**
@@ -60,13 +73,17 @@ export function BentoGrid({
   readOnly = false,
   frameBorderWidth = GRID_GEOMETRY.BORDER,
   pulse = null,
+  allowFontScaling = true,
+  width,
 }: BentoGridProps) {
   const H_FILM = GRID_GEOMETRY.H_FILM * scale;
   const H_MID = GRID_GEOMETRY.H_MID * scale;
   const H_SM = GRID_GEOMETRY.H_SM * scale;
   const GAP = GRID_GEOMETRY.GAP * scale;
   const PAD = GRID_GEOMETRY.PAD * scale;
-  const BORDER = Math.max(3, Math.round(frameBorderWidth * scale));
+  // La même fonction que le modèle de la page publique et que le squelette :
+  // recopié, l'arrondi du cadre dériverait d'un point entre les trois.
+  const BORDER = gridBorderWidth(scale, frameBorderWidth);
   const RADIUS = GRID_GEOMETRY.RADIUS * scale;
 
   const renderTile = (cat: CategoryKey, height: number, size: 'sm' | 'md' | 'lg', rotate: number) => {
@@ -80,19 +97,27 @@ export function BentoGrid({
           rotate={rotate * 0.5}
           readOnly={readOnly}
           onPress={onTap ? () => onTap(cat) : undefined}
+          allowFontScaling={allowFontScaling}
         />
       );
     }
+    const tilesInRow = size === 'lg' ? 1 : size === 'md' ? 2 : 3;
     return (
       <TilePulse trigger={pulse?.cat === cat ? pulse.seq : null}>
         <Tile
           cat={cat}
           data={item}
           height={height}
+          width={
+            width === undefined
+              ? undefined
+              : gridTileWidth(width, scale, tilesInRow, frameBorderWidth)
+          }
           size={size}
           scale={scale}
           rotate={rotate}
           onPress={onTap ? () => onTap(cat) : undefined}
+          allowFontScaling={allowFontScaling}
         />
       </TilePulse>
     );

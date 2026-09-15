@@ -1,14 +1,33 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  PixelRatio,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { CategoryKey } from '@/supabase/types';
 import { CATEGORY_META } from './categories';
+import { TILE_MAX_FONT_MULTIPLIER } from './font-scaling';
 import { PALETTES, type PaletteKey } from './palettes';
+import {
+  TILE_BORDER,
+  TILE_LINE,
+  TILE_STAMP_PADDING_V,
+  TILE_SUBTITLE_GAP,
+  tileConf,
+  tileTextScale,
+  type TileSize,
+} from './tile-text';
+import { tileTitleFit, tileTitleScale } from './tile-title';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { cleanTitle } from '@/lib/text';
 
-export type TileSize = 'sm' | 'md' | 'lg';
+export type { TileSize };
 
 export type TileData = {
   title: string;
@@ -36,6 +55,11 @@ type TileProps = {
   cat: CategoryKey;
   data: TileData;
   height: number;
+  /**
+   * Largeur de la case, cadre compris, que la grille calcule, cf.
+   * `BentoGrid.width`. Le titre y mesure son premier mot.
+   */
+  width?: number;
   size?: TileSize;
   /** Échelle propagée depuis BentoGrid. Sert à scaler proportionnellement
    *  les paddings / stamps / titres pour ne pas avoir une grille qui
@@ -43,26 +67,11 @@ type TileProps = {
   scale?: number;
   rotate?: number;
   onPress?: () => void;
-};
-
-/**
- * Config par taille. `letterSpacing` positif pour aérer la police Extenda
- * Yotta dont le crénage natif est très serré ; sans ça les lettres se
- * touchent (« SEVERANCE », « ORELSAN » illisibles).
- * `initial` = taille de la grosse initiale du fallback visuel (rendue en
- * filigrane derrière le gradient quand pas de photo).
- */
-const SIZE_CONF: Record<TileSize, {
-  title: number;
-  sub: number;
-  pad: number;
-  stamp: number;
-  letterSpacing: number;
-  initial: number;
-}> = {
-  lg: { title: 28, sub: 13, pad: 16, stamp: 9, letterSpacing: 1.2, initial: 140 },
-  md: { title: 17, sub: 11, pad: 12, stamp: 9, letterSpacing: 0.8, initial: 96 },
-  sm: { title: 13, sub: 9.5, pad: 9, stamp: 8, letterSpacing: 0.5, initial: 68 },
+  /**
+   * `false` pour une case qui ne doit pas suivre la police système : celle de
+   * l'image de partage. Cf. `BentoGrid.allowFontScaling`.
+   */
+  allowFontScaling?: boolean;
 };
 
 /** Première lettre du titre — pour le fallback visuel signature. */
@@ -72,7 +81,6 @@ function getInitial(s: string): string {
 }
 
 const RADIUS = 18;
-const BORDER = 2.5;
 
 /**
  * Tile remplie d'un compartiment bento.
@@ -87,23 +95,40 @@ const BORDER = 2.5;
  *
  * Cf. design Claude Design — `Tile` dans `bento-tiles.jsx`.
  */
-export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, onPress }: TileProps) {
+export function Tile({
+  cat,
+  data,
+  height,
+  width,
+  size = 'md',
+  scale = 1,
+  rotate = 0,
+  onPress,
+  allowFontScaling = true,
+}: TileProps) {
   const meta = CATEGORY_META[cat];
   const palette = PALETTES[data.paletteKey ?? 'neutral'];
-  const baseConf = SIZE_CONF[size];
-  // Applique le scale aux dims qui font la mise en page (paddings, fontSize
-  // du titre/sub/stamp). Le `letterSpacing` reste constant (déjà serré).
-  // Plancher à 0.7 pour ne pas avoir de stamps illisibles sur petit écran.
-  const s = Math.max(0.7, scale);
-  const conf = {
-    title: Math.round(baseConf.title * s),
-    sub: Math.round(baseConf.sub * s),
-    pad: Math.round(baseConf.pad * s),
-    stamp: Math.max(7, Math.round(baseConf.stamp * s)),
-    letterSpacing: baseConf.letterSpacing,
-    initial: Math.round(baseConf.initial * s),
-  };
+  // Applique le scale aux dims qui font la mise en page : cf. `tileConf`.
+  const conf = tileConf(size, scale);
   const hasImage = Boolean(data.imageUrl);
+  const title = cleanTitle(data.title);
+  const titleFit = tileTitleFit(title);
+  // L'étiquette, le titre et le sous-titre appliquent eux-mêmes la police
+  // système, hauteurs de ligne comprises, sans dépasser ce que la case permet :
+  // cf. `tileTextScale`. Figée à 1 quand la grille ne suit pas le système.
+  const { fontScale } = useWindowDimensions();
+  const textScale = allowFontScaling ? tileTextScale(height, size, scale, fontScale) : 1;
+  // Le titre rétrécit encore si son premier mot ne tient pas sur la ligne, à
+  // la taille qu'Android arrondit au pixel supérieur : cf. `tileTitleScale`.
+  const titleScale =
+    textScale *
+    tileTitleScale(
+      title,
+      width === undefined ? 0 : width - TILE_BORDER * 2 - conf.pad * 2,
+      conf.title * textScale,
+      conf.letterSpacing,
+      Platform.OS === 'android' ? PixelRatio.get() : undefined,
+    );
 
   // Inner : border + radius + overflow:hidden, SANS padding. Le bg est noir
   // (même couleur que la bordure) pour blender avec celle-ci en cas de
@@ -113,7 +138,7 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
   const innerStyle: ViewStyle = {
     flex: 1,
     borderRadius: RADIUS,
-    borderWidth: BORDER,
+    borderWidth: TILE_BORDER,
     borderColor: '#0a0a0a',
     backgroundColor: '#0a0a0a',
     overflow: 'hidden',
@@ -189,6 +214,8 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
             ]}
           >
             <Text
+              // Un filigrane dimensionné sur la case, pas un texte à lire.
+              allowFontScaling={false}
               style={{
                 fontFamily: 'Extenda',
                 fontSize: conf.initial,
@@ -201,7 +228,7 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
                 marginTop: -conf.initial * 0.15,
               }}
             >
-              {getInitial(cleanTitle(data.title))}
+              {getInitial(title)}
             </Text>
           </View>
         </>
@@ -228,16 +255,18 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
           left: conf.pad,
           backgroundColor: hasImage ? '#0a0a0a' : palette.ink,
           paddingHorizontal: 6,
-          paddingVertical: 2,
+          paddingVertical: TILE_STAMP_PADDING_V,
           borderRadius: 4,
           alignSelf: 'flex-start',
         }}
       >
         <Text
+          allowFontScaling={false}
           style={{
             color: hasImage ? '#ffffff' : palette.colors[0],
             fontFamily: 'Bungee',
-            fontSize: conf.stamp,
+            fontSize: conf.stamp * textScale,
+            lineHeight: conf.stamp * TILE_LINE.stamp * textScale,
             letterSpacing: 1,
           }}
         >
@@ -254,16 +283,18 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
             right: conf.pad,
             backgroundColor: '#e63946',
             paddingHorizontal: 6,
-            paddingVertical: 2,
+            paddingVertical: TILE_STAMP_PADDING_V,
             borderRadius: 4,
             transform: [{ rotate: '4deg' }],
           }}
         >
           <Text
+            allowFontScaling={false}
             style={{
               color: '#ffffff',
               fontFamily: 'Bungee',
-              fontSize: conf.stamp,
+              fontSize: conf.stamp * textScale,
+              lineHeight: conf.stamp * TILE_LINE.stamp * textScale,
               letterSpacing: 1,
             }}
           >
@@ -282,12 +313,26 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
         }}
       >
         <Text
-          numberOfLines={2}
+          // Deux lignes, ou une seule qui rétrécit pour un mot seul : cf.
+          // `tile-title.ts`.
+          numberOfLines={titleFit.numberOfLines}
+          adjustsFontSizeToFit={titleFit.adjustsFontSizeToFit}
+          allowFontScaling={false}
+          // Android, avec ses réglages par défaut, coupe au milieu un mot trop
+          // long pour la ligne (« JIMMY PU / NCHLINE ») et refuse de couper
+          // après un trait d'union (« MERRY-G / O-ROUN… »). Coupure simple et
+          // césure normale : il coupe entre deux mots ou après un trait d'union,
+          // et tronque sa fin comme iOS, « JIMMY / PUNCHLI… », « MERRY- /
+          // GO-ROU… ». Sa césure ne sert qu'à un premier mot plus large que la
+          // ligne, « SLEEP- / LESS », que `tileTitleScale` fait désormais
+          // tenir. Mesuré sur l'émulateur Pixel 8 ; iOS ignore les deux.
+          textBreakStrategy="simple"
+          android_hyphenationFrequency="normal"
           style={{
             color: hasImage ? '#ffffff' : palette.ink,
             fontFamily: 'Extenda',
-            fontSize: conf.title,
-            lineHeight: conf.title * 1.0,
+            fontSize: conf.title * titleScale,
+            lineHeight: conf.title * TILE_LINE.title * titleScale,
             letterSpacing: conf.letterSpacing,
             textTransform: 'uppercase',
             textShadowColor:
@@ -296,15 +341,17 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
             textShadowRadius: 0,
           }}
         >
-          {cleanTitle(data.title)}
+          {title}
         </Text>
         {data.subtitle ? (
           <Text
             numberOfLines={1}
+            allowFontScaling={false}
             style={{
-              marginTop: 4,
+              marginTop: TILE_SUBTITLE_GAP,
               color: hasImage ? 'rgba(255,255,255,0.85)' : palette.ink,
-              fontSize: conf.sub,
+              fontSize: conf.sub * textScale,
+              lineHeight: conf.sub * TILE_LINE.subtitle * textScale,
               fontWeight: '500',
               letterSpacing: 0.3,
               opacity: hasImage ? 1 : 0.85,
@@ -331,6 +378,8 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
         >
           <Text
             numberOfLines={1}
+            allowFontScaling={allowFontScaling}
+            maxFontSizeMultiplier={TILE_MAX_FONT_MULTIPLIER}
             style={{
               color: 'rgba(255,255,255,0.5)',
               fontSize: Math.max(7, conf.stamp - 2),
@@ -346,7 +395,7 @@ export function Tile({ cat, data, height, size = 'md', scale = 1, rotate = 0, on
     </>
   );
 
-  const a11yLabel = `${meta.label} : ${cleanTitle(data.title)}${data.subtitle ? `, ${data.subtitle}` : ''}`;
+  const a11yLabel = `${meta.label} : ${title}${data.subtitle ? `, ${data.subtitle}` : ''}`;
   const inner = onPress ? (
     <Pressable
       onPress={onPress}

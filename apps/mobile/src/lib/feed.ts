@@ -31,6 +31,13 @@ import { relativeDate } from './relative-date';
 export type FeedClient = SupabaseClient<Database>;
 
 /**
+ * Clé du fil dans le cache React Query. Partagée avec les mutations qui
+ * l'invalident (`public-bento-query.ts`) : écrite deux fois à la main, elle
+ * pourrait changer d'un côté et l'invalidation rater en silence.
+ */
+export const FEED_QUERY_KEY = ['feed'] as const;
+
+/**
  * Huit bentos par page : environ 15 Ko mesurés, et cinq écrans de défilement
  * avant l'appel suivant.
  */

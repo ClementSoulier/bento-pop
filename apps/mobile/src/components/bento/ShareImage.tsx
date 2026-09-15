@@ -10,6 +10,10 @@ type ShareImageProps = {
   pseudo: string;
 };
 
+/** Largeur de la carte, et sa marge de chaque côté : la grille a le reste, 920 pt. */
+const CARD_WIDTH = 1080;
+const CARD_PADDING_H = 80;
+
 /**
  * Carte 1080×1920 (format Story Instagram / TikTok / Snapchat — 9:16),
  * prête à être capturée en PNG par `react-native-view-shot` puis partagée.
@@ -36,6 +40,13 @@ type ShareImageProps = {
  *
  * Avant correction, l'échelle 2,6 et un pseudo sur deux lignes portaient
  * le total à 2053pt : le pied de page était déjà rogné.
+ *
+ * **Figée à la police par défaut.** Composée en points pour 1 080 × 1 920,
+ * l'image ne peut pas suivre la police système de la personne qui partage :
+ * à la plus grande taille, l'étiquette passait sur deux lignes, le pseudo
+ * disparaissait, les cases débordaient et le pied de page recouvrait la
+ * grille (capture du chantier 7, lot 3). Chaque texte porte
+ * `allowFontScaling={false}`, et la grille le transmet à ses cases.
  */
 export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, ref) => {
   const safePseudo = pseudo?.trim() || 'anonyme';
@@ -44,11 +55,11 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
       ref={ref}
       collapsable={false}
       style={{
-        width: 1080,
+        width: CARD_WIDTH,
         height: 1920,
         backgroundColor: '#fbbf24',
         overflow: 'hidden',
-        paddingHorizontal: 80,
+        paddingHorizontal: CARD_PADDING_H,
         paddingTop: 80,
         paddingBottom: 60,
       }}
@@ -78,6 +89,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
         }}
       >
         <Text
+          allowFontScaling={false}
           style={{
             color: '#ffffff',
             fontFamily: 'Bungee',
@@ -96,6 +108,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
         120pt et poussait le pied de page hors du cadre.
       */}
       <Text
+        allowFontScaling={false}
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.55}
@@ -119,7 +132,13 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
           justifyContent: 'center',
         }}
       >
-        <BentoGrid items={items} scale={2.5} readOnly />
+        <BentoGrid
+          items={items}
+          scale={2.5}
+          width={CARD_WIDTH - CARD_PADDING_H * 2}
+          readOnly
+          allowFontScaling={false}
+        />
       </View>
 
       {/* ━━━ FOOTER ━━━ */}
@@ -145,6 +164,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
             faire rogner, on la laisse rétrécir un peu.
           */}
           <Text
+            allowFontScaling={false}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.7}
@@ -159,6 +179,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
             {publicBentoLabel(safePseudo)}
           </Text>
           <Text
+            allowFontScaling={false}
             style={{
               fontSize: 22,
               color: 'rgba(10,10,10,0.7)',

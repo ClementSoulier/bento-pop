@@ -1,367 +1,654 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { BentoGrid, type BentoItems, ShareImage } from '@/components/bento';
-import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
-import { CATEGORY_META } from '@/components/bento/categories';
+import { useQuery } from '@tanstack/react-query';
+import { BentoBoxSkeleton, BentoGrid, SKELETON_BONE, ShareImage } from '@/components/bento';
+import { fontScaleFor } from '@/components/bento/font-scaling';
+import {
+  BUTTON_MAX_FONT_MULTIPLIER,
+  CONTENT_MAX_FONT_MULTIPLIER,
+  CTA_LABEL_LINE_H,
+  DATE_LINE_H,
+  PSEUDO_LINE_H,
+  PUBLIC_CTA,
+  PUBLIC_HEADER,
+  PUBLIC_TOP_BAR,
+  TOP_BAR_H,
+  publicBentoScale,
+  publicCtaLabelHeight,
+  publicScrollBottomInset,
+  publicSideInset,
+} from '@/components/bento/public-layout';
 import { SHADOWS, YellowBg } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
-import { shareBentoImage } from '@/lib/share-image';
+import type { PublicBento } from '@/lib/public-bento';
+import { publicBentoQueryOptions } from '@/lib/public-bento-query';
+import { publicPageState } from '@/lib/public-page-state';
 import { submitReport } from '@/lib/report';
+import { shareBentoImage } from '@/lib/share-image';
+import { useIsOffline } from '@/lib/use-is-offline';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
-import { loadPublicBentoByPseudo } from '@/lib/bento-actions';
-
+import { publicSupabase } from '@/supabase/client';
 
 /**
- * Bento public à l'adresse `/u/<pseudo>` — cible des liens de partage et
- * de la découverte par recherche. Lecture seule : pas d'édition possible.
+ * Bento public à l'adresse `/u/<pseudo>` : cible des liens de partage et,
+ * depuis le chantier 6, de toute la recherche. Lecture seule.
  *
- * Cf. design Claude Design — `PublicBentoScreen` dans `screens.jsx`.
+ * Cet écran ne décide rien, il rend. La géométrie vient de
+ * `public-layout.ts`, les données de `public-bento.ts` par
+ * `public-bento-query.ts`, et l'état à montrer de `public-page-state.ts` :
+ * trois modules purs, testés sans appareil. Cf.
+ * `docs/UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md`.
  */
-export default function PublicBento() {
+export default function PublicBentoScreen() {
   const { pseudo: rawPseudo } = useLocalSearchParams<{ pseudo: string }>();
   const pseudo = rawPseudo ?? '';
   const ownPseudo = useSession((s) => s.profile?.pseudo);
-  // Signaler / bloquer ne doit pas apparaître sur son propre bento (n'a
-  // pas de sens et passerait pour un bug). Comparaison case-insensitive
-  // car les URLs peuvent varier.
-  const isOwnBento = Boolean(
-    ownPseudo && pseudo && ownPseudo.toLowerCase() === pseudo.toLowerCase(),
+  const isOffline = useIsOffline();
+
+  // Client sans session : la page ne doit jamais attendre l'authentification,
+  // cf. `supabase/public-reads.ts`.
+  const { data, isError, isFetching, refetch } = useQuery(
+    publicBentoQueryOptions(publicSupabase, pseudo),
   );
-  const shareImageRef = useRef<View>(null);
-  const [sharing, setSharing] = useState(false);
-  const [state, setState] = useState<
-    | { kind: 'loading' }
-    | {
-        kind: 'found';
-        slots: BentoItems;
-        displayName: string | null;
-        publishedAt: string;
-        isFeatured: boolean;
-        isGuest: boolean;
-      }
-    | { kind: 'not-found' }
-  >({ kind: 'loading' });
+  const state = publicPageState({ ownPseudo, data, isError, isFetching, isOffline });
 
+  // De retour en ligne après un échec, la page se recharge d'elle-même : sans
+  // ça, « Connexion perdue » resterait affiché une fois le bandeau hors ligne
+  // disparu. Seulement au retour : relancer à chaque erreur doublerait les
+  // tentatives et repousserait l'écran d'erreur au-delà de sa borne.
+  const wasOffline = useRef(isOffline);
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const result = await loadPublicBentoByPseudo(pseudo);
-      if (cancelled) return;
-      if (!result) {
-        setState({ kind: 'not-found' });
-        return;
-      }
-      const slots: BentoItems = {};
-      result.bento.bento_items.forEach((bi, idx) => {
-        const cat = CATEGORY_BY_ID[bi.category_id];
-        const item = bi.items as
-          | {
-              id: string;
-              title: string;
-              subtitle: string | null;
-              image_url: string | null;
-              image_credit: string | null;
-            }
-          | null;
-        if (!cat || !item) return;
-        slots[cat] = {
-          title: item.title,
-          subtitle: item.subtitle ?? undefined,
-          imageUrl: item.image_url ?? undefined,
-          imageCredit: item.image_credit ?? undefined,
-          paletteKey: paletteKeyForItem(item.id),
-        };
-      });
-      setState({
-        kind: 'found',
-        slots,
-        displayName: result.user.display_name,
-        publishedAt: result.bento.published_at!,
-        isFeatured: result.bento.is_featured,
-        isGuest: result.user.kind === 'editorial',
-      });
-    })().catch(() => {
-      if (!cancelled) setState({ kind: 'not-found' });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [pseudo]);
+    const cameBackOnline = wasOffline.current && !isOffline;
+    wasOffline.current = isOffline;
+    if (cameBackOnline && isError) void refetch();
+  }, [isOffline, isError, refetch]);
 
-  const popy = popyForPseudo(pseudo);
+  const { width, height, fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const scale = publicBentoScale({
+    width,
+    height,
+    insetTop: insets.top,
+    insetBottom: insets.bottom,
+    fontScale,
+  });
+  const sideInset = publicSideInset(width, scale);
 
   return (
     <YellowBg>
       <SafeAreaView style={{ flex: 1 }}>
-        {/* Top bar : retour + signaler */}
-        <View
-          style={{
-            flexDirection: 'row',
-            paddingHorizontal: 16,
-            paddingTop: 8,
-            alignItems: 'center',
-          }}
-        >
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/compose'))}
-            accessibilityRole="button"
-            accessibilityLabel="Retour"
-            style={[
-              {
-                backgroundColor: '#ffffff',
-                borderWidth: 2.5,
-                borderColor: '#0a0a0a',
-                borderRadius: 999,
-                width: 36,
-                height: 36,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-              SHADOWS.stamp,
-            ]}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '800' }}>‹</Text>
-          </Pressable>
-          {state.kind === 'found' && !isOwnBento ? (
-            <BlockReportMenu pseudo={pseudo} />
-          ) : null}
-        </View>
-
-        {state.kind === 'loading' ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color="#0a0a0a" />
-          </View>
+        <TopBar optionsFor={state.kind === 'found' && !state.isOwn ? state.bento.pseudo : null} />
+        {state.kind === 'found' ? (
+          <FoundPage
+            bento={state.bento}
+            isOwn={state.isOwn}
+            scale={scale}
+            sideInset={sideInset}
+            boxWidth={width - sideInset * 2}
+            fontScale={fontScale}
+          />
+        ) : state.kind === 'loading' ? (
+          <LoadingPage pseudo={pseudo} scale={scale} sideInset={sideInset} />
         ) : state.kind === 'not-found' ? (
-          <NotFound pseudo={pseudo} />
-        ) : (
-          <View style={{ flex: 1 }}>
-            {/*
-              ShareImage rendue HORS de la zone visible via `translateX`,
-              pas via `opacity: 0` (iOS optimise les vues transparentes et
-              skip le rendu des <Text> à police custom — pseudo manquait
-              dans le PNG). Avec un transform, la vue est pleinement
-              rendue, juste positionnée à 3000pt à droite.
-              Dimensions explicites 1080×1920 (format Story).
-            */}
-            <View
-              pointerEvents="none"
-              collapsable={false}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: 1080,
-                height: 1920,
-                transform: [{ translateX: 3000 }],
+          <StateMessage
+            title="Bento introuvable"
+            body={`Aucun bento publié à l'adresse @${pseudo}. Il a peut-être été supprimé, ou le pseudo n'existe pas (encore).`}
+          />
+        ) : state.kind === 'nothing-online' ? (
+          state.isOwn ? (
+            <StateMessage
+              title="Rien en ligne"
+              body="Ton bento n'est pas en ligne."
+              action={{
+                label: 'Reprendre mon bento',
+                accessibilityLabel: 'Reprendre mon bento dans le composer',
+                onPress: () => router.replace('/(tabs)/compose'),
               }}
-            >
-              <ShareImage ref={shareImageRef} items={state.slots} pseudo={pseudo} />
-            </View>
-            {/* Header profil */}
-            <View style={{ alignItems: 'center', paddingTop: 20, paddingBottom: 14 }}>
-              <View style={{ position: 'relative' }}>
-                <View
-                  style={[
-                    {
-                      width: 70,
-                      height: 70,
-                      borderRadius: 35,
-                      backgroundColor: '#ffffff',
-                      borderWidth: 3,
-                      borderColor: '#0a0a0a',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                    },
-                    SHADOWS.stamp,
-                  ]}
-                >
-                  <Image source={popy.source} style={{ width: 64, height: 64 }} resizeMode="contain" />
-                </View>
-                {/* Une seule pastille, et « invité » l'emporte : c'est le
-                    même arbitrage que l'étiquette du fil et que la page
-                    publique, cf. `components/feed/ribbon.ts`. Sans elle, cet
-                    écran attribue à une personne réelle une composition
-                    qu'elle n'a pas faite. */}
-                {state.isGuest || state.isFeatured ? (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      bottom: -4,
-                      right: -4,
-                      width: 26,
-                      height: 26,
-                      borderRadius: 13,
-                      backgroundColor: state.isGuest ? '#0a0a0a' : '#e63946',
-                      borderWidth: 2.5,
-                      borderColor: '#0a0a0a',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    accessible
-                    accessibilityLabel={
-                      state.isGuest ? "Bento invité, composé par l'équipe" : "Coup de cœur de l'équipe"
-                    }
-                  >
-                    <Text
-                      style={{
-                        color: state.isGuest ? '#fbbf24' : '#ffffff',
-                        fontSize: 14,
-                        lineHeight: 16,
-                        fontWeight: '800',
-                      }}
-                    >
-                      {state.isGuest ? '◆' : '★'}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text
-                style={{
-                  fontFamily: 'Extenda',
-                  fontSize: 24,
-                  letterSpacing: 1,
-                  marginTop: 8,
-                  textTransform: 'uppercase',
-                }}
-              >
-                @{pseudo}
-              </Text>
-              <Text style={{ fontSize: 13, color: 'rgba(10,10,10,0.65)', marginTop: 4 }}>
-                {state.displayName ? `${state.displayName} · ` : ''}
-                bento publié le {formatDate(state.publishedAt)}
-              </Text>
-            </View>
-
-            {/* Grille bento read-only (pas de onTap) */}
-            <View style={{ paddingHorizontal: 16, flex: 1 }}>
-              <BentoGrid items={state.slots} scale={0.94} readOnly />
-            </View>
-
-            {/* Sticky CTAs bottom */}
-            <View
-              pointerEvents="box-none"
-              style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
-            >
-              <LinearGradient
-                pointerEvents="none"
-                colors={['rgba(251,191,36,0)', '#fbbf24']}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={{ flexDirection: 'row', padding: 16, paddingBottom: 32, gap: 8 }}>
-                <Pressable
-                  onPress={() => router.replace('/(tabs)/compose')}
-                  accessibilityRole="button"
-                  accessibilityLabel={isOwnBento ? 'Modifier mon bento' : 'Compose le tien'}
-                  style={[
-                    {
-                      flex: 1,
-                      backgroundColor: '#ffffff',
-                      borderWidth: 3,
-                      borderColor: '#0a0a0a',
-                      borderRadius: 999,
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      alignItems: 'center',
-                    },
-                    SHADOWS.stamp,
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontFamily: 'Bungee',
-                      fontSize: 13,
-                      letterSpacing: 1,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {isOwnBento ? 'Modifier' : 'Compose le tien'}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  disabled={sharing}
-                  accessibilityRole="button"
-                  accessibilityLabel={sharing ? 'Génération de l\'image en cours' : 'Partager le bento'}
-                  accessibilityState={{ disabled: sharing, busy: sharing }}
-                  onPress={async () => {
-                    if (sharing) return;
-                    setSharing(true);
-                    try {
-                      const imageUrls = Object.values(state.slots)
-                        .map((s) => s.imageUrl)
-                        .filter((u): u is string => Boolean(u));
-                      const outcome = await shareBentoImage(pseudo, shareImageRef, imageUrls);
-                      if (outcome === 'copied') {
-                        Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
-                      } else if (outcome === 'unsupported') {
-                        Alert.alert('Oups', 'Partage non supporté sur ce navigateur.');
-                      }
-                    } finally {
-                      setSharing(false);
-                    }
-                  }}
-                  style={[
-                    {
-                      backgroundColor: '#0a0a0a',
-                      borderWidth: 3,
-                      borderColor: '#0a0a0a',
-                      borderRadius: 999,
-                      paddingVertical: 14,
-                      paddingHorizontal: 22,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: 120,
-                      opacity: sharing ? 0.7 : 1,
-                    },
-                    SHADOWS.stamp,
-                  ]}
-                >
-                  {sharing ? (
-                    <ActivityIndicator size="small" color="#fbbf24" />
-                  ) : (
-                    <Text
-                      style={{
-                        fontFamily: 'Bungee',
-                        fontSize: 13,
-                        letterSpacing: 1,
-                        color: '#fbbf24',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      Partager
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          </View>
+            />
+          ) : (
+            <StateMessage
+              title="Rien en ligne"
+              body={`@${state.pseudo} n'a pas de bento en ligne.`}
+            />
+          )
+        ) : (
+          <StateMessage
+            title="Connexion perdue"
+            body={`Le bento de @${pseudo} n'a pas pu se charger.`}
+            action={{
+              label: 'Réessayer',
+              accessibilityLabel: `Réessayer de charger le bento de @${pseudo}`,
+              onPress: () => void refetch(),
+            }}
+          />
         )}
       </SafeAreaView>
     </YellowBg>
   );
 }
 
-function NotFound({ pseudo }: { pseudo: string }) {
+/**
+ * Barre du haut, à hauteur fixe : « Options » apparaît quand le bento arrive
+ * sans que rien ne bouge en dessous.
+ */
+function TopBar({ optionsFor }: { optionsFor: string | null }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-      <Text style={{ fontFamily: 'Extenda', fontSize: 36, textAlign: 'center', letterSpacing: 1 }}>
-        Bento introuvable
-      </Text>
+    <View
+      style={{
+        height: TOP_BAR_H,
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        paddingTop: PUBLIC_TOP_BAR.paddingTop,
+        alignItems: 'center',
+      }}
+    >
+      <Pressable
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/compose'))}
+        accessibilityRole="button"
+        accessibilityLabel="Retour"
+        style={[
+          {
+            backgroundColor: '#ffffff',
+            borderWidth: 2.5,
+            borderColor: '#0a0a0a',
+            borderRadius: 999,
+            width: PUBLIC_TOP_BAR.buttonSize,
+            height: PUBLIC_TOP_BAR.buttonSize,
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          SHADOWS.stamp,
+        ]}
+      >
+        {/* Un glyphe dans une cible de 36 pt, pas un texte à lire : grossi, il sortait de sa pastille. */}
+        <Text allowFontScaling={false} style={{ fontSize: 16, fontWeight: '800' }}>
+          ‹
+        </Text>
+      </Pressable>
+      {optionsFor ? <BlockReportMenu pseudo={optionsFor} /> : null}
+    </View>
+  );
+}
+
+type Pastille = 'guest' | 'featured' | null;
+
+/**
+ * Avatar, pseudo et ligne de date. Ses cotes et ses hauteurs de ligne viennent
+ * du modèle : c'est ce qui garantit que l'échelle calculée correspond à ce qui
+ * est rendu.
+ *
+ * Le modèle compte une ligne pour le pseudo et une pour la date : les deux
+ * restent sur une ligne, quitte à rétrécir. Sans ça, `@bento_pop_culture`
+ * passait sur quatre lignes à la plus grande police, coupé au milieu. Pas de
+ * `minimumFontScale` : React Native 0.86 le lit sans l'appliquer, la police
+ * rétrécit donc autant qu'il le faut pour tenir.
+ *
+ * `dateLine` nul pendant le chargement : la ligne garde sa hauteur exacte, en
+ * os, pour que la boîte n'ait pas à bouger quand la date arrive.
+ */
+function ProfileHeader({
+  pseudo,
+  pastille,
+  dateLine,
+}: {
+  pseudo: string;
+  pastille: Pastille;
+  dateLine: string | null;
+}) {
+  const popy = popyForPseudo(pseudo);
+  const avatar = PUBLIC_HEADER.avatarSize;
+  // Taille et hauteur de ligne appliquées par l'écran, au plafond du modèle :
+  // `maxFontSizeMultiplier` ne plafonne pas la hauteur de ligne sur Android,
+  // cf. `fontScaleFor`.
+  const { fontScale } = useWindowDimensions();
+  const textScale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
+  const dateStyle = {
+    fontSize: 13 * textScale,
+    lineHeight: DATE_LINE_H * textScale,
+    marginTop: PUBLIC_HEADER.dateMarginTop,
+  } as const;
+
+  return (
+    <View
+      style={{
+        alignItems: 'center',
+        paddingTop: PUBLIC_HEADER.paddingTop,
+        paddingBottom: PUBLIC_HEADER.paddingBottom,
+        paddingHorizontal: 16,
+      }}
+    >
+      <View style={{ position: 'relative' }}>
+        <View
+          style={[
+            {
+              width: avatar,
+              height: avatar,
+              borderRadius: avatar / 2,
+              backgroundColor: '#ffffff',
+              borderWidth: 3,
+              borderColor: '#0a0a0a',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            },
+            SHADOWS.stamp,
+          ]}
+        >
+          <Image source={popy.source} style={{ width: 64, height: 64 }} resizeMode="contain" />
+        </View>
+        {pastille ? <PastilleBadge kind={pastille} /> : null}
+      </View>
       <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        allowFontScaling={false}
         style={{
-          marginTop: 12,
-          fontSize: 15,
-          color: 'rgba(10,10,10,0.7)',
-          textAlign: 'center',
-          lineHeight: 21,
+          fontFamily: 'Extenda',
+          fontSize: 24 * textScale,
+          lineHeight: PSEUDO_LINE_H * textScale,
+          letterSpacing: 1,
+          marginTop: PUBLIC_HEADER.pseudoMarginTop,
+          textTransform: 'uppercase',
         }}
       >
-        Aucun bento publié à l'adresse @{pseudo}. Il a peut-être été supprimé, ou le pseudo n'existe pas (encore).
+        @{pseudo}
       </Text>
+      {dateLine === null ? (
+        // L'os prend la hauteur d'une vraie ligne de date, taille de police
+        // comprise, parce que le texte y est rendu, à opacité nulle. Pas de
+        // `color: 'transparent'` : Android l'ignore et affichait la date factice.
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={{
+            marginTop: PUBLIC_HEADER.dateMarginTop,
+            backgroundColor: SKELETON_BONE,
+            borderRadius: 4,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            allowFontScaling={false}
+            style={{ fontSize: dateStyle.fontSize, lineHeight: dateStyle.lineHeight, opacity: 0 }}
+          >
+            bento publié le 00 septembre 0000
+          </Text>
+        </View>
+      ) : (
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          allowFontScaling={false}
+          style={[dateStyle, { color: 'rgba(10,10,10,0.65)' }]}
+        >
+          {dateLine}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Une seule pastille, et « invité » l'emporte : c'est le même arbitrage que
+ * l'étiquette du fil, cf. `components/feed/ribbon.ts`. Sans elle, cet écran
+ * attribue à une personne réelle une composition qu'elle n'a pas faite.
+ */
+function PastilleBadge({ kind }: { kind: 'guest' | 'featured' }) {
+  const isGuest = kind === 'guest';
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        bottom: -4,
+        right: -4,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: isGuest ? '#0a0a0a' : '#e63946',
+        borderWidth: 2.5,
+        borderColor: '#0a0a0a',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      accessible
+      accessibilityLabel={
+        isGuest ? "Bento invité, composé par l'équipe" : "Coup de cœur de l'équipe"
+      }
+    >
+      {/* Un glyphe dans une pastille de 26 pt : à taille fixe, comme le chevron. */}
+      <Text
+        allowFontScaling={false}
+        style={{
+          color: isGuest ? '#fbbf24' : '#ffffff',
+          fontSize: 14,
+          lineHeight: 16,
+          fontWeight: '800',
+        }}
+      >
+        {isGuest ? '◆' : '★'}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Le squelette tient la place exacte de la page à venir : même en-tête, même
+ * boîte. L'arrivée des données est un remplissage, pas un changement d'écran.
+ */
+function LoadingPage({
+  pseudo,
+  scale,
+  sideInset,
+}: {
+  pseudo: string;
+  scale: number;
+  sideInset: number;
+}) {
+  return (
+    <View style={{ flex: 1 }} accessible accessibilityLabel={`Chargement du bento de @${pseudo}`}>
+      <ProfileHeader pseudo={pseudo} pastille={null} dateLine={null} />
+      <View style={{ marginHorizontal: sideInset }}>
+        <BentoBoxSkeleton scale={scale} />
+      </View>
+    </View>
+  );
+}
+
+function FoundPage({
+  bento,
+  isOwn,
+  scale,
+  sideInset,
+  boxWidth,
+  fontScale,
+}: {
+  bento: PublicBento;
+  isOwn: boolean;
+  scale: number;
+  sideInset: number;
+  /** Largeur de la boîte entre ses deux marges, cf. `BentoGrid.width`. */
+  boxWidth: number;
+  fontScale: number;
+}) {
+  const shareImageRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const onShare = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const imageUrls = Object.values(bento.slots)
+        .map((s) => s.imageUrl)
+        .filter((u): u is string => Boolean(u));
+      const outcome = await shareBentoImage(bento.pseudo, shareImageRef, imageUrls);
+      if (outcome === 'copied') {
+        Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
+      } else if (outcome === 'unsupported') {
+        Alert.alert('Oups', 'Partage non supporté sur ce navigateur.');
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}bento publié le ${formatDate(bento.publishedAt)}`;
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/*
+        Un filet, pas un mode de lecture : partout où le plancher d'échelle ne
+        mord pas, le contenu tient et rien ne défile. `alwaysBounceVertical`
+        désactivé pour que la page ne rebondisse pas quand elle tient.
+      */}
+      <ScrollView
+        alwaysBounceVertical={false}
+        contentContainerStyle={{ paddingBottom: publicScrollBottomInset(fontScale) }}
+      >
+        <ProfileHeader
+          pseudo={bento.pseudo}
+          pastille={bento.isGuest ? 'guest' : bento.isFeatured ? 'featured' : null}
+          dateLine={dateLine}
+        />
+        {/* Marge et non largeur, cf. `publicSideInset`. */}
+        <View style={{ marginHorizontal: sideInset }}>
+          <BentoGrid items={bento.slots} scale={scale} width={boxWidth} readOnly />
+        </View>
+      </ScrollView>
+
+      <CtaBar isOwn={isOwn} sharing={sharing} onShare={onShare} fontScale={fontScale} />
+
+      {/*
+        ShareImage rendue HORS de la zone visible via `translateX`, pas via
+        `opacity: 0` (iOS optimise les vues transparentes et skip le rendu des
+        <Text> à police custom — pseudo manquait dans le PNG). Avec un
+        transform, la vue est pleinement rendue, juste positionnée à 3000pt à
+        droite. Dimensions explicites 1080×1920 (format Story).
+
+        Sœur du `ScrollView` et non enfant : absolue mais dimensionnée, elle
+        n'a rien à faire dans un conteneur défilant.
+      */}
+      <View
+        pointerEvents="none"
+        collapsable={false}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: 1080,
+          height: 1920,
+          transform: [{ translateX: 3000 }],
+        }}
+      >
+        <ShareImage ref={shareImageRef} items={bento.slots} pseudo={bento.pseudo} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Boutons collants. Leurs cotes viennent du modèle, qui réserve leur hauteur
+ * sous la boîte.
+ *
+ * Les libellés plafonnent à 1,2 et restent sur une ligne, quitte à rétrécir :
+ * sans plafond, à la plus grande police, la rangée montait jusqu'à recouvrir
+ * l'écran entier.
+ */
+function CtaBar({
+  isOwn,
+  sharing,
+  onShare,
+  fontScale,
+}: {
+  isOwn: boolean;
+  sharing: boolean;
+  onShare: () => void;
+  fontScale: number;
+}) {
+  // Appliquée par l'écran, comme l'en-tête : cf. `fontScaleFor`.
+  const textScale = fontScaleFor(fontScale, BUTTON_MAX_FONT_MULTIPLIER);
+  const label = {
+    fontFamily: 'Bungee',
+    fontSize: 13 * textScale,
+    lineHeight: CTA_LABEL_LINE_H * textScale,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  } as const;
+
+  return (
+    <View pointerEvents="box-none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(251,191,36,0)', '#fbbf24']}
+        style={StyleSheet.absoluteFill}
+      />
+      <View
+        style={{
+          flexDirection: 'row',
+          padding: PUBLIC_CTA.padding,
+          paddingBottom: PUBLIC_CTA.paddingBottom,
+          gap: 8,
+        }}
+      >
+        <Pressable
+          onPress={() => router.replace('/(tabs)/compose')}
+          accessibilityRole="button"
+          accessibilityLabel={isOwn ? 'Modifier mon bento' : 'Compose le tien'}
+          style={[
+            {
+              flex: 1,
+              backgroundColor: '#ffffff',
+              borderWidth: PUBLIC_CTA.borderWidth,
+              borderColor: '#0a0a0a',
+              borderRadius: 999,
+              paddingVertical: PUBLIC_CTA.paddingVertical,
+              paddingHorizontal: 16,
+              alignItems: 'center',
+            },
+            SHADOWS.stamp,
+          ]}
+        >
+          <Text numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false} style={label}>
+            {isOwn ? 'Modifier' : 'Compose le tien'}
+          </Text>
+        </Pressable>
+        <Pressable
+          disabled={sharing}
+          accessibilityRole="button"
+          accessibilityLabel={sharing ? "Génération de l'image en cours" : 'Partager le bento'}
+          accessibilityState={{ disabled: sharing, busy: sharing }}
+          onPress={onShare}
+          style={[
+            {
+              backgroundColor: '#0a0a0a',
+              borderWidth: PUBLIC_CTA.borderWidth,
+              borderColor: '#0a0a0a',
+              borderRadius: 999,
+              paddingVertical: PUBLIC_CTA.paddingVertical,
+              paddingHorizontal: 22,
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 120,
+              opacity: sharing ? 0.7 : 1,
+            },
+            SHADOWS.stamp,
+          ]}
+        >
+          {/*
+            L'indicateur tient dans la hauteur du libellé : plus haut de 3 pt, il
+            faisait grandir le bouton, donc monter tout le bloc, le temps du
+            partage. Hauteur plafonnée comme le texte : à 17 pt fixes, le
+            libellé n'y tenait plus dès que la police grossissait.
+          */}
+          <View style={{ height: publicCtaLabelHeight(fontScale), justifyContent: 'center' }}>
+            {sharing ? (
+              <ActivityIndicator size="small" color="#fbbf24" />
+            ) : (
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                allowFontScaling={false}
+                style={[label, { color: '#fbbf24' }]}
+              >
+                Partager
+              </Text>
+            )}
+          </View>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Titre, phrase et, au besoin, un bouton : la forme commune des états sans
+ * bento.
+ *
+ * Le titre tient en deux lignes et rétrécit plutôt que de couper un mot : en
+ * Extenda 36, « CONNEXION » est à la limite de la largeur d'un écran étroit
+ * dès qu'il grossit. Sur Android, la coupure simple est ce qui déclenche ce
+ * rétrécissement : sinon le mot s'y coupe au milieu, et le titre, tenant
+ * encore en deux lignes, ne rétrécit pas.
+ */
+function StateMessage({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: { label: string; accessibilityLabel: string; onPress: () => void };
+}) {
+  const { fontScale } = useWindowDimensions();
+  const bodyScale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
+  return (
+    <View
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}
+    >
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        textBreakStrategy="simple"
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+        style={{ fontFamily: 'Extenda', fontSize: 36, textAlign: 'center', letterSpacing: 1 }}
+      >
+        {title}
+      </Text>
+      <Text
+        // Hauteur de ligne comprise : appliquée par l'écran, cf. `fontScaleFor`.
+        allowFontScaling={false}
+        style={{
+          marginTop: 12,
+          fontSize: 15 * bodyScale,
+          color: 'rgba(10,10,10,0.7)',
+          textAlign: 'center',
+          lineHeight: 21 * bodyScale,
+        }}
+      >
+        {body}
+      </Text>
+      {action ? (
+        <Pressable
+          onPress={action.onPress}
+          accessibilityRole="button"
+          accessibilityLabel={action.accessibilityLabel}
+          style={{
+            marginTop: 20,
+            backgroundColor: '#0a0a0a',
+            borderRadius: 999,
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={BUTTON_MAX_FONT_MULTIPLIER}
+            style={{
+              fontFamily: 'Bungee',
+              fontSize: 12,
+              letterSpacing: 1,
+              color: '#fbbf24',
+              textTransform: 'uppercase',
+            }}
+          >
+            {action.label}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -389,7 +676,7 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
         onPress: () => {
           Alert.alert(
             'Signaler ce bento',
-            `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirme-tu ?`,
+            `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirmes-tu ?`,
             [
               { text: 'Annuler', style: 'cancel' },
               {
@@ -420,7 +707,7 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
         onPress: () =>
           Alert.alert(
             'Bloquer cet utilisateur ?',
-            "Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.",
+            'Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.',
             [
               { text: 'Annuler', style: 'cancel' },
               {
@@ -445,6 +732,8 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
       style={{ marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6 }}
     >
       <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={BUTTON_MAX_FONT_MULTIPLIER}
         style={{
           fontFamily: 'Bungee',
           fontSize: 10,
@@ -458,6 +747,3 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
     </Pressable>
   );
 }
-
-// Suppress unused import (CATEGORY_META gardé pour cohérence future)
-void CATEGORY_META;

@@ -15,6 +15,11 @@ import { CTA_GAP, composeBentoScale } from '@/components/bento/compose-layout';
 import { composeCta } from '@/lib/compose-cta';
 import type { CategoryKey } from '@/supabase/types';
 
+/**
+ * Marge de chaque côté de la grille. Elle en fixe la largeur, que les titres
+ * des cases mesurent : cf. `BentoGrid.width`.
+ */
+const GRID_SIDE_PADDING = 16;
 
 /**
  * Composer — écran principal de l'app.
@@ -46,7 +51,7 @@ export default function ComposeTab() {
   const hasPending = Object.values(slots).some((s) => s?.pending);
   const [publishing, setPublishing] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
-  const { height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   const showToast = useToast((s) => s.show);
@@ -199,10 +204,13 @@ export default function ComposeTab() {
         </View>
 
         {/* Grille bento — scale dynamique pour fit l'écran */}
-        <View style={{ paddingHorizontal: 16 }}>
+        <View style={{ paddingHorizontal: GRID_SIDE_PADDING }}>
           <BentoGrid
             items={slots}
             scale={bentoScale}
+            // Toute la largeur de l'écran, et non `GRID_WIDTH × bentoScale` :
+            // l'échelle se calcule ici sur la hauteur.
+            width={screenWidth - GRID_SIDE_PADDING * 2}
             pulse={lastFilled}
             onTap={(cat) =>
               router.push({ pathname: '/search-modal', params: { category: cat } })
