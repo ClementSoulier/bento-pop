@@ -10,6 +10,7 @@ import {
   rejectItem,
   searchAnyItems,
   suggestImageForItem,
+  validateDraftsAction,
   validateItem,
   type AnyItemMatch,
   type SimilarCandidate,
@@ -20,8 +21,8 @@ import { createDraftItem } from './[id]/actions';
 export type CatalogueItemRow = {
   id: string;
   title: string;
-  categoryLabel: string;
-  categoryKey: string | null;
+  typeLabel: string;
+  typeKey: string | null;
   submittedAt: string | null;
   authorPseudo: string | null;
   status: 'pending' | 'validated' | 'rejected';
@@ -37,20 +38,34 @@ export type CatalogueFullRow = {
   subtitle: string | null;
   year: number | null;
   hasImage: boolean;
-  categoryLabel: string;
-  categoryKey: string | null;
+  typeLabel: string;
+  typeKey: string | null;
   status: ItemStatus;
   bentoCount: number;
 };
 
-type Props = { pending: CatalogueItemRow[]; allItems: CatalogueFullRow[] };
+/** Un type proposé aux filtres et à la création, actif ou non. */
+export type TypeOption = { id: number; key: string; label: string; active: boolean };
 
-export function CatalogueClient({ pending, allItems }: Props) {
+/** Un groupe de doublons probables ; le premier item est le canonique proposé. */
+export type DuplicateGroupView = {
+  typeLabel: string;
+  items: { id: string; title: string; status: ItemStatus; bentoCount: number; hasImage: boolean }[];
+};
+
+type Props = {
+  pending: CatalogueItemRow[];
+  allItems: CatalogueFullRow[];
+  types: TypeOption[];
+  duplicates: DuplicateGroupView[];
+};
+
+export function CatalogueClient({ pending, allItems, types, duplicates }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
-      <Toolbar setError={setError} />
+      <Toolbar types={types} setError={setError} />
 
       {error ? (
         <div className="admin-card border-bento-red bg-bento-red/10 px-4 py-3 text-[13px] text-bento-red">
@@ -67,23 +82,21 @@ export function CatalogueClient({ pending, allItems }: Props) {
         ))}
       </Section>
 
-      <CatalogueTable items={allItems} setError={setError} />
+      {duplicates.length > 0 ? <DuplicatesSection groups={duplicates} setError={setError} /> : null}
+
+      <CatalogueTable items={allItems} types={types} setError={setError} />
     </div>
   );
 }
 
 /* ─── Toolbar : recherche cross-status + bouton Nouvel item ─────────── */
 
-const CATEGORY_OPTIONS: { key: 'film' | 'series' | 'artist' | 'track' | 'creator' | 'place'; label: string }[] = [
-  { key: 'film', label: 'Film' },
-  { key: 'series', label: 'Série' },
-  { key: 'artist', label: 'Artiste' },
-  { key: 'track', label: 'Chanson' },
-  { key: 'creator', label: 'Créateur' },
-  { key: 'place', label: 'Lieu' },
-];
+/** Libellé d'un type dans une liste : les inactifs sont signalés. */
+function typeOptionLabel(t: TypeOption): string {
+  return t.active ? t.label : `${t.label} (inactif)`;
+}
 
-function Toolbar({ setError }: { setError: (e: string | null) => void }) {
+function Toolbar({ types, setError }: { types: TypeOption[]; setError: (e: string | null) => void }) {
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<AnyItemMatch[]>([]);
   const [searching, setSearching] = useState(false);
@@ -136,7 +149,7 @@ function Toolbar({ setError }: { setError: (e: string | null) => void }) {
                         {m.status}
                       </span>
                       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
-                        {m.categoryLabel}
+                        {m.typeLabel}
                       </span>
                       <span className="flex-1 truncate font-semibold">{m.title}</span>
                     </Link>
@@ -151,6 +164,9 @@ function Toolbar({ setError }: { setError: (e: string | null) => void }) {
             </span>
           ) : null}
         </div>
+        <Link href="/catalogue/types" className="admin-btn whitespace-nowrap">
+          Types
+        </Link>
         <button
           type="button"
           onClick={() => setShowNew((s) => !s)}
@@ -159,29 +175,31 @@ function Toolbar({ setError }: { setError: (e: string | null) => void }) {
           {showNew ? 'Annuler' : '+ Nouvel item'}
         </button>
       </div>
-      {showNew ? <NewDraftForm setError={setError} onDone={() => setShowNew(false)} /> : null}
+      {showNew ? <NewDraftForm types={types} setError={setError} onDone={() => setShowNew(false)} /> : null}
     </div>
   );
 }
 
 function NewDraftForm({
+  types,
   setError,
   onDone,
 }: {
+  types: TypeOption[];
   setError: (e: string | null) => void;
   onDone: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [title, setTitle] = useState('');
-  const [categoryKey, setCategoryKey] = useState<typeof CATEGORY_OPTIONS[number]['key']>('film');
+  const [typeKey, setTypeKey] = useState<string>(types.find((t) => t.active)?.key ?? types[0]?.key ?? '');
 
   const onSubmit = () => {
-    if (title.trim().length < 1) return;
+    if (title.trim().length < 1 || typeKey === '') return;
     setError(null);
     startTransition(async () => {
       try {
-        await createDraftItem({ categoryKey, title: title.trim() });
+        await createDraftItem({ typeKey, title: title.trim() });
         // createDraftItem redirige côté serveur, mais au cas où on revient
         // ici on force un refresh.
         router.refresh();
@@ -195,13 +213,13 @@ function NewDraftForm({
   return (
     <div className="admin-card flex items-center gap-3 px-4 py-3">
       <select
-        className="admin-input w-[140px]"
-        value={categoryKey}
-        onChange={(e) => setCategoryKey(e.target.value as typeof categoryKey)}
+        className="admin-input w-[180px]"
+        value={typeKey}
+        onChange={(e) => setTypeKey(e.target.value)}
       >
-        {CATEGORY_OPTIONS.map((c) => (
-          <option key={c.key} value={c.key}>
-            {c.label}
+        {types.map((t) => (
+          <option key={t.key} value={t.key}>
+            {typeOptionLabel(t)}
           </option>
         ))}
       </select>
@@ -331,7 +349,7 @@ function PendingRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-admin-muted">
-              {item.categoryLabel}
+              {item.typeLabel}
             </span>
             <Link
               href={`/catalogue/${item.id}`}
@@ -631,7 +649,7 @@ type SortState = { key: SortKey; dir: 'asc' | 'desc' };
 function sortValue(it: CatalogueFullRow, key: SortKey): string | number {
   switch (key) {
     case 'type':
-      return it.categoryLabel.toLowerCase();
+      return it.typeLabel.toLowerCase();
     case 'title':
       return it.title.toLowerCase();
     case 'subtitle':
@@ -679,11 +697,16 @@ function SortHeader({
 
 function CatalogueTable({
   items,
+  types,
   setError,
 }: {
   items: CatalogueFullRow[];
+  types: TypeOption[];
   setError: (e: string | null) => void;
 }) {
+  const router = useRouter();
+  const [validating, startValidating] = useTransition();
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<ItemStatus | 'all'>('all');
   const [q, setQ] = useState('');
@@ -695,7 +718,7 @@ function CatalogueTable({
 
   const query = q.trim().toLowerCase();
   const filtered = items.filter((it) => {
-    if (typeFilter !== 'all' && it.categoryKey !== typeFilter) return false;
+    if (typeFilter !== 'all' && it.typeKey !== typeFilter) return false;
     if (statusFilter !== 'all' && it.status !== statusFilter) return false;
     if (
       query &&
@@ -717,6 +740,36 @@ function CatalogueTable({
     return sort.dir === 'asc' ? r : -r;
   });
 
+  // Seuls les brouillons se valident par lot : on ne garde de la sélection
+  // que ce qui est encore visible et encore brouillon.
+  const draftIds = sorted.filter((it) => it.status === 'draft').map((it) => it.id);
+  const selectedDrafts = draftIds.filter((id) => selected.has(id));
+
+  const toggle = (id: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const onValidateSelection = () => {
+    if (selectedDrafts.length === 0) return;
+    if (!confirm(`Valider ${selectedDrafts.length} brouillon${selectedDrafts.length > 1 ? 's' : ''} ?\n\nIls deviennent cherchables dans l'app dès que leur type est actif et porté par une case.`)) {
+      return;
+    }
+    setError(null);
+    startValidating(async () => {
+      const res = await validateDraftsAction({ itemIds: selectedDrafts });
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setSelected(new Set());
+      router.refresh();
+    });
+  };
+
   return (
     <section className="admin-card overflow-hidden">
       <header className="flex flex-col gap-3 border-b border-admin-border bg-admin-bg/60 px-4 py-3">
@@ -725,6 +778,25 @@ function CatalogueTable({
             Tout le catalogue ({filtered.length}
             {filtered.length !== items.length ? ` / ${items.length}` : ''})
           </span>
+          {draftIds.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelected(new Set(selectedDrafts.length === draftIds.length ? [] : draftIds))}
+                className="rounded-md border border-admin-border bg-admin-bg px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] hover:bg-admin-ink hover:text-bento-cream"
+              >
+                {selectedDrafts.length === draftIds.length ? 'Tout décocher' : `Cocher les ${draftIds.length} brouillons`}
+              </button>
+              <button
+                type="button"
+                onClick={onValidateSelection}
+                disabled={validating || selectedDrafts.length === 0}
+                className="rounded-md border-2 border-bento-ink bg-bento-yellow px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bento-ink hover:-translate-y-0.5 disabled:opacity-50"
+              >
+                {validating ? 'Validation…' : `Valider la sélection (${selectedDrafts.length})`}
+              </button>
+            </div>
+          ) : null}
           <input
             className="admin-input w-[200px] text-[12px]"
             placeholder="Filtrer (titre, sous-titre…)"
@@ -736,13 +808,9 @@ function CatalogueTable({
           <FilterChip active={typeFilter === 'all'} onClick={() => setTypeFilter('all')}>
             Tous types
           </FilterChip>
-          {CATEGORY_OPTIONS.map((c) => (
-            <FilterChip
-              key={c.key}
-              active={typeFilter === c.key}
-              onClick={() => setTypeFilter(c.key)}
-            >
-              {c.label}
+          {types.map((t) => (
+            <FilterChip key={t.key} active={typeFilter === t.key} onClick={() => setTypeFilter(t.key)}>
+              {typeOptionLabel(t)}
             </FilterChip>
           ))}
           <span className="mx-1 h-4 w-px bg-admin-border" />
@@ -769,7 +837,8 @@ function CatalogueTable({
           <table className="w-full border-collapse text-[12px]">
             <thead>
               <tr className="border-b border-admin-border text-left font-mono text-[9px] uppercase tracking-[0.15em] text-admin-muted">
-                <SortHeader label="Type" sortKey="type" sort={sort} onSort={onSort} className="px-4" />
+                <th className="w-8 pl-4 py-2 font-medium" aria-label="Sélection" />
+                <SortHeader label="Type" sortKey="type" sort={sort} onSort={onSort} className="px-2" />
                 <SortHeader label="Titre" sortKey="title" sort={sort} onSort={onSort} />
                 <SortHeader label="Sous-titre" sortKey="subtitle" sort={sort} onSort={onSort} />
                 <SortHeader label="Date" sortKey="date" sort={sort} onSort={onSort} />
@@ -786,8 +855,18 @@ function CatalogueTable({
                 return (
                   <Fragment key={it.id}>
                     <tr className="hover:bg-admin-bg/50">
-                      <td className="px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
-                        {it.categoryLabel}
+                      <td className="w-8 pl-4 py-2">
+                        {it.status === 'draft' ? (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(it.id)}
+                            onChange={() => toggle(it.id)}
+                            aria-label={`Sélectionner le brouillon ${it.title}`}
+                          />
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+                        {it.typeLabel}
                       </td>
                       <td className="max-w-[260px] px-2 py-2">
                         <Link
@@ -835,7 +914,7 @@ function CatalogueTable({
                     </tr>
                     {open ? (
                       <tr>
-                        <td colSpan={8} className="px-4 pb-3">
+                        <td colSpan={9} className="px-4 pb-3">
                           <ImageSuggestionPanel itemId={it.id} setError={setError} />
                         </td>
                       </tr>
@@ -847,6 +926,81 @@ function CatalogueTable({
           </table>
         </div>
       )}
+    </section>
+  );
+}
+
+/* ─── Doublons probables ───────────────────────────────────────────────
+   Items d'un même type au même titre, une fois normalisé. Le premier de
+   chaque groupe est le canonique proposé : validé, puis le plus posé, puis
+   illustré, puis le plus ancien. La fusion reprend `admin_merge_items`. */
+
+function DuplicatesSection({
+  groups,
+  setError,
+}: {
+  groups: DuplicateGroupView[];
+  setError: (e: string | null) => void;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  const onMerge = (group: DuplicateGroupView) => {
+    const [canonical, ...losers] = group.items;
+    if (!canonical || losers.length === 0) return;
+    if (
+      !confirm(
+        `Fusionner ${losers.map((l) => `« ${l.title} »`).join(', ')} dans « ${canonical.title} » ?\n\nLes bentos qui les portent passent au canonique, et leurs titres deviennent des alias.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const res = await mergeItems({ canonicalId: canonical.id, loserIds: losers.map((l) => l.id) });
+      if (!res.ok) setError(res.error);
+      else router.refresh();
+    });
+  };
+
+  return (
+    <section className="admin-card overflow-hidden">
+      <header className="border-b border-admin-border bg-admin-bg/60 px-4 py-3 text-[13px] font-semibold">
+        Doublons probables ({groups.length})
+      </header>
+      <ul className="flex flex-col divide-y divide-admin-border">
+        {groups.map((g) => (
+          <li key={g.items.map((i) => i.id).join(':')} className="flex items-start gap-4 px-4 py-3">
+            <span className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-admin-muted">
+              {g.typeLabel}
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              {g.items.map((i, index) => (
+                <div key={i.id} className="flex items-center gap-2 text-[13px]">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-admin-muted">
+                    {index === 0 ? 'garder' : 'fusionner'}
+                  </span>
+                  <Link href={`/catalogue/${i.id}`} className="truncate font-semibold underline-offset-2 hover:underline">
+                    {i.title}
+                  </Link>
+                  <span className="font-mono text-[10px] text-admin-muted">
+                    {STATUS_META[i.status].label} · {i.bentoCount} bento{i.bentoCount > 1 ? 's' : ''}
+                    {i.hasImage ? ' · image' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => onMerge(g)}
+              disabled={pending}
+              className="shrink-0 rounded-md border-2 border-bento-ink bg-bento-cream px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              Fusionner
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

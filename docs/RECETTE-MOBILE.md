@@ -141,9 +141,13 @@ supabase start -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,
 supabase db reset --local
 npx tsx scripts/check-privileges.ts
 npx tsx scripts/check-types.ts
+cd ../admin && npx tsx scripts/check-catalogue-types.ts
 ```
 
-Les deux scripts refusent toute cible qui n'est pas `127.0.0.1`.
+Les trois scripts refusent toute cible qui n'est pas `127.0.0.1`.
+`check-catalogue-types.ts` rejoue la couche de données du catalogue par type
+du back-office (17 contrôles), que l'authentification de production empêche
+de cliquer en local.
 `check-privileges.ts` rejoue les attaques connues et tout le parcours
 d'écriture de l'app, avec les fonctions de l'app quand elles prennent leur
 client en paramètre : au 15 septembre 2026, 42 contrôles, dont 11 en échec

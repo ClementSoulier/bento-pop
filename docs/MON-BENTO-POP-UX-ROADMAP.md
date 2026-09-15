@@ -210,7 +210,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 5 | Modèle brouillon / publié + dépublication | Confiance | M | rien | ✅ 4 lots livrés (PR #54), recette faite, migration appliquée et faille `is_featured` vérifiée fermée · [spec](./UX-05-BROUILLON-PUBLIE.md) |
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés (PR #58), recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
-| 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 (migration types et cases) écrit et vérifié en local, à appliquer · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
+| 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 livré (PR #63), migration appliquée et vérifiée en production · lot 1 (back-office) écrit et vérifié en local · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
 | 11 | Accessibilité et polish | Qualité | S | rien | ⬜ à glisser entre deux chantiers |
 | 16 | Plusieurs bentos par compte | Contenu | L | 5 | ⬜ roadmap produit · planifié avec le 9 |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ planifié avec le 16, qui touche les mêmes écrans |

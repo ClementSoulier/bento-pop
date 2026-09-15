@@ -387,7 +387,7 @@ Types, types des cases et des items, triggers, recherche par type, privilèges.
 `check-types.ts`. Application en production par le SQL editor, puis lecture
 seule (§8.3).
 
-> **Écrit et vérifié le 15 septembre 2026**, pas encore appliqué.
+> **Livré le 15 septembre 2026** (PR #63, `87376ed`), **appliqué en production le même jour**.
 > `20260915100000_item_types_and_cases.sql`, appliquée sur une base locale
 > remise à zéro : `check-privileges.ts` 42 sur 42, donc aucune version publiée
 > cassée, et `check-types.ts` 18 sur 18. Les requêtes de contrôle du fichier
@@ -395,11 +395,53 @@ seule (§8.3).
 > facultatif, `type_id`, `item_types`), et six lectures du back-office sont
 > rendues sûres pour un item sans case, sans autre changement de comportement.
 > 374 tests de l'app et 39 du back-office verts, typage et lint verts partout.
+>
+> **Vérifié en production.** Les quatre requêtes de contrôle rendent l'attendu :
+> les six cases avec leur type, aucun item sans type ni case incohérente, les
+> quatre nouveaux types inactifs à zéro item, et aucun droit d'écriture client.
+> Relevé ce jour-là : 61 films, 50 séries, 111 Personnes, 65 chansons, 44 lieux,
+> tous statuts confondus. À la clé anonyme : cinq types lisibles, 87 Personnes
+> validées (48 artistes et 39 créateurs d'avant), Amixem trouvé dans la case
+> Artiste en 140 ms et absent de la case Film, « Inception » toujours trouvé en
+> 104 ms. « Au menu » de la case Artiste mêle désormais créateurs et artistes :
+> Joyca (4 choix), Joueur du Grenier (3), Hans Zimmer (3).
 
 ### Lot 1 · Le back-office
 
 Écran « Types », catalogue par type, validation des brouillons par lot, fusion
 des deux doublons.
+
+> **Écrit et vérifié le 15 septembre 2026.** Aucune migration : tout passe par
+> ce que le lot 0 a posé.
+>
+> - **Écran « Types »** (`/catalogue/types`) : liste avec les cases du bento
+>   principal et les compteurs validés, en attente, brouillons ; création d'un
+>   type, inactif à la naissance, clé vérifiée avant la base ; libellé et ordre
+>   modifiables ; activation, refusée pour un type porté par une case.
+> - **Catalogue par type** : filtres et libellés lus dans `item_types`, types
+>   inactifs signalés ; un nouvel item se crée en brouillon dans un type, sans
+>   case d'origine ; la recherche de similaires d'une proposition cherche dans
+>   son type.
+> - **Validation des brouillons par lot**, depuis le tableau, et depuis la fiche
+>   d'un brouillon. Seuls les brouillons passent.
+> - **Encart « Doublons probables »** : items d'un même type au même titre une
+>   fois normalisé, le canonique proposé en tête (validé, puis le plus posé,
+>   puis illustré, puis le plus ancien), fusion en un geste. C'est là que
+>   sortiront lesadpanda et Joueur du Grenier.
+> - **Fiche d'un item** : changement de type, avec la liste des bentos qui le
+>   bloquent affichée avant d'essayer ; fusion dans un autre item du même type.
+>
+> La logique vit dans `apps/admin/src/lib/catalogue-types.ts` : 15 tests des
+> fonctions pures, et `scripts/check-catalogue-types.ts`, 17 contrôles de la
+> couche de données contre le Supabase local, dont le refus de retyper un item
+> posé et la fusion d'un artiste et d'un créateur au même nom. 54 tests du
+> back-office verts, typage, lint et `next build` verts. **L'interface n'a pas
+> été cliquée en local** : l'accès au back-office passe par l'authentification
+> de production. À recetter après déploiement sur Coolify.
+>
+> Les gestes sur les données de production, fusions et retypages (Arcane, une
+> série, ou Glitch Productions, un studio, tous deux rangés en créateurs),
+> restent faits par l'équipe dans le back-office.
 
 ### Lot 2 · Les catalogues de départ
 
