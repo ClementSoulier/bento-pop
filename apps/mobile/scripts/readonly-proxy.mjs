@@ -80,9 +80,13 @@ const FAKE_PSEUDO = 'recette';
  * Fonctions RPC relayables en POST. Toutes sont `language sql stable`
  * dans `apps/mobile/supabase/migrations/`, donc incapables d'écrire.
  * Surchargeable par `RPC_ALLOW=a,b,c` pour une recette ponctuelle.
+ *
+ * `search_bentos` et `shared_items` sont celles de l'onglet « Trouver »
+ * (chantier 6) : absentes, sa recherche échouait en recette sans que rien ne
+ * le dise, jusqu'à ce que les refus soient journalisés (chantier 7, lot 4).
  */
 const RPC_ALLOW = new Set(
-  (process.env.RPC_ALLOW ?? 'search_items,find_similar_items,popular_items')
+  (process.env.RPC_ALLOW ?? 'search_items,find_similar_items,popular_items,search_bentos,shared_items')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
@@ -154,6 +158,7 @@ createServer(async (req, res) => {
     // `message` et non `error` : c'est le champ que lit supabase-js pour
     // construire son `error.message`. Avec `error`, l'app affichait
     // « Search failed: undefined » au lieu de la raison du refus.
+    console.log(405, req.method, url.slice(0, 120), 'refusé');
     return json(res, 405, {
       message: rpc
         ? `rpc ${rpc} hors liste blanche (RPC_ALLOW)`
