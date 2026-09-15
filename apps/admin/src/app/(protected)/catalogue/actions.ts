@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
+import { caseKeyForType, validateDrafts } from '@/lib/catalogue-types';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { STORAGE_CACHE_CONTROL } from '@/lib/storage';
 import { findWikimediaImages } from '@/lib/wikimedia';
@@ -59,7 +60,7 @@ export type WikiImageCandidate = {
 export type AnyItemMatch = {
   id: string;
   title: string;
-  categoryLabel: string;
+  typeLabel: string;
   status: 'draft' | 'pending' | 'validated' | 'rejected' | 'merged';
 };
 
@@ -124,9 +125,10 @@ export async function rejectItem(input: { itemId: string; reason?: string }): Pr
 }
 
 /**
- * Cherche les items validés proches d'un item pending donné, dans la
- * même catégorie. Utilisé pour proposer un merge plutôt qu'une
- * validation en doublon.
+ * Cherche les items validés proches d'un item donné, dans **son type**.
+ * Utilisé pour proposer une fusion plutôt qu'une validation en doublon :
+ * depuis le chantier 15, une Personne proposée comme artiste retrouve aussi
+ * le créateur du même nom.
  *
  * Threshold abaissé à 0.25 (vs 0.4 côté user) pour rattraper des fautes
  * de frappe ou orthographes alternatives que l'admin saura juger.
@@ -141,46 +143,67 @@ export async function getSimilarsForItem(input: { itemId: string }): Promise<
   const mobile = createMobileClient();
   if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
 
-  // 1. Récupère le titre + catégorie de l'item pending
   const { data: item, error: itemErr } = await mobile
     .from('items')
-    .select('title, category_id')
+    .select('id, title, type_id')
     .eq('id', parsed.data.itemId)
     .maybeSingle();
   if (itemErr || !item) return { ok: false, error: itemErr?.message ?? 'Item introuvable' };
 
-  // 2. Trouve la category_key à partir de l'id (la RPC prend une key). Un
-  //    item sans case n'a pas encore de recherche de doublons : elle viendra
-  //    avec le catalogue par type, au lot 1 du chantier 15.
-  if (item.category_id === null) {
-    return { ok: false, error: 'Item sans case : recherche de doublons indisponible' };
+  // La fonction prend une clé de case, dont elle cherche le type : on prend
+  // une case qui porte le type de l'item. Un type sans case, un livre par
+  // exemple, attendra la recherche par type du chantier 13.
+  const caseKey = await caseKeyForType(mobile, item.type_id);
+  if (!caseKey) {
+    return {
+      ok: false,
+      error: 'Type sans case dans le bento principal : recherche de similaires indisponible pour l’instant.',
+    };
   }
-  const { data: category } = await mobile
-    .from('bento_categories')
-    .select('key')
-    .eq('id', item.category_id)
-    .maybeSingle();
-  if (!category) return { ok: false, error: 'Catégorie introuvable' };
 
-  // 3. RPC find_similar_items avec threshold bas
   const { data, error } = await mobile.rpc('find_similar_items', {
     q: item.title,
-    category_key: category.key,
+    category_key: caseKey,
     threshold: 0.25,
-    lim: 5,
+    lim: 6,
   });
   if (error) return { ok: false, error: error.message };
 
-  const candidates: SimilarCandidate[] = (data ?? []).map((r) => ({
-    id: r.id,
-    title: r.title,
-    subtitle: r.subtitle,
-    year: r.year,
-    imageUrl: r.image_url,
-    score: r.score,
-  }));
+  const candidates: SimilarCandidate[] = (data ?? [])
+    .filter((r) => r.id !== item.id)
+    .slice(0, 5)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      subtitle: r.subtitle,
+      year: r.year,
+      imageUrl: r.image_url,
+      score: r.score,
+    }));
 
   return { ok: true, candidates };
+}
+
+/**
+ * Valide des brouillons en une fois, depuis le tableau du catalogue.
+ * Seuls les brouillons passent ; un item refusé ou fusionné ne revient pas par
+ * cette porte. Renvoie le nombre d'items réellement validés.
+ */
+export async function validateDraftsAction(input: {
+  itemIds: string[];
+}): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const admin = await requireAdmin();
+  const parsed = z.object({ itemIds: z.array(z.string().uuid()).min(1).max(500) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Sélection invalide' };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const res = await validateDrafts(mobile, parsed.data.itemIds, admin.userId);
+  if (!res.ok) return res;
+  revalidatePath('/catalogue');
+  revalidatePath('/catalogue/types');
+  return { ok: true, count: res.value };
 }
 
 /**
@@ -238,16 +261,17 @@ export async function suggestImageForItem(input: {
 
   const { data: item, error } = await mobile
     .from('items')
-    .select('title, category_id')
+    .select('title, category_id, type_id')
     .eq('id', parsed.data.itemId)
     .maybeSingle();
   if (error || !item) return { ok: false, error: error?.message ?? 'Item introuvable' };
 
-  // La catégorie sert d'indice de recherche (« Seven film ») : c'est ce
-  // qui écarte les homonymes dès la requête. Un item sans case s'en passe.
-  const { data: category } =
+  // La case d'origine sert d'indice de recherche (« Seven film ») : c'est ce
+  // qui écarte les homonymes dès la requête. Un item sans case prend l'indice
+  // de son type, un livre par exemple.
+  const { data: hint } =
     item.category_id === null
-      ? { data: null }
+      ? await mobile.from('item_types').select('key').eq('id', item.type_id).maybeSingle()
       : await mobile
           .from('bento_categories')
           .select('key')
@@ -255,7 +279,7 @@ export async function suggestImageForItem(input: {
           .maybeSingle();
 
   try {
-    const candidates = await findWikimediaImages(item.title, category?.key ?? null);
+    const candidates = await findWikimediaImages(item.title, hint?.key ?? null);
     return { ok: true, candidates };
   } catch (e) {
     return { ok: false, error: `Recherche Wikimedia : ${(e as Error).message}` };
@@ -264,12 +288,14 @@ export async function suggestImageForItem(input: {
 
 /**
  * Recherche libre dans le catalogue, tous statuts confondus (sauf merged).
- * Utilisé par la search bar de la page /catalogue pour retrouver un item
- * et naviguer vers sa fiche d'édition.
+ * Utilisée par la barre de recherche de /catalogue, et par la fusion d'une
+ * fiche, qui la restreint au type de l'item et s'exclut elle-même.
  */
-export async function searchAnyItems(input: { q: string }): Promise<
-  { ok: true; matches: AnyItemMatch[] } | { ok: false; error: string }
-> {
+export async function searchAnyItems(input: {
+  q: string;
+  typeId?: number;
+  excludeId?: string;
+}): Promise<{ ok: true; matches: AnyItemMatch[] } | { ok: false; error: string }> {
   await requireAdmin();
   const q = input.q.trim();
   if (q.length < 2) return { ok: true, matches: [] };
@@ -277,28 +303,23 @@ export async function searchAnyItems(input: { q: string }): Promise<
   const mobile = createMobileClient();
   if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
 
-  const { data, error } = await mobile
+  let query = mobile
     .from('items')
-    .select('id, title, status, category_id')
+    .select('id, title, status, type_id')
     .neq('status', 'merged')
-    .ilike('title', `%${q}%`)
-    .order('title')
-    .limit(15);
+    .ilike('title', `%${q}%`);
+  if (input.typeId !== undefined) query = query.eq('type_id', input.typeId);
+  if (input.excludeId) query = query.neq('id', input.excludeId);
+  const { data, error } = await query.order('title').limit(15);
   if (error) return { ok: false, error: error.message };
 
-  // Fetch categories pour labels
-  const catIds = [
-    ...new Set((data ?? []).map((r) => r.category_id).filter((id): id is number => id !== null)),
-  ];
-  const { data: cats } = catIds.length
-    ? await mobile.from('bento_categories').select('id, label_fr').in('id', catIds)
-    : { data: [] as { id: number; label_fr: string }[] };
-  const labelById = new Map((cats ?? []).map((c) => [c.id, c.label_fr]));
+  const { data: types } = await mobile.from('item_types').select('id, label_fr');
+  const labelById = new Map((types ?? []).map((t) => [t.id, t.label_fr]));
 
   const matches: AnyItemMatch[] = (data ?? []).map((r) => ({
     id: r.id,
     title: r.title,
-    categoryLabel: (r.category_id === null ? undefined : labelById.get(r.category_id)) ?? '?',
+    typeLabel: labelById.get(r.type_id) ?? '?',
     status: r.status as AnyItemMatch['status'],
   }));
   return { ok: true, matches };

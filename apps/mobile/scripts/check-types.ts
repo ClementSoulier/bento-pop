@@ -68,9 +68,24 @@ async function main(): Promise<void> {
 
   console.log('\nLes types et les cases\n');
 
+  // Les neuf types de la migration, et pas « exactement neuf » : le
+  // back-office en crée d'autres, et un script lancé avant celui-ci aussi.
+  const seeded: Record<string, boolean> = {
+    film: true,
+    series: true,
+    person: true,
+    song: true,
+    place: true,
+    video_game: false,
+    book: false,
+    dish: false,
+    activity: false,
+  };
   check(
-    'neuf types, dont quatre inactifs',
-    types.length === 9 && types.filter((t) => !t.is_active).length === 4,
+    'les neuf types de la migration, les quatre nouveaux inactifs',
+    Object.entries(seeded).every(
+      ([key, active]) => types.find((t) => t.key === key)?.is_active === active,
+    ),
     types.map((t) => `${t.key}${t.is_active ? '' : '°'}`).join(' '),
   );
   const expected: Record<string, string> = {
@@ -87,7 +102,16 @@ async function main(): Promise<void> {
   );
   {
     const { data } = await anon.from('item_types').select('key');
-    check('un visiteur ne lit que les types actifs', data?.length === 5, JSON.stringify(data));
+    const active = types
+      .filter((t) => t.is_active)
+      .map((t) => t.key)
+      .sort();
+    const seen = ((data ?? []) as { key: string }[]).map((t) => t.key).sort();
+    check(
+      'un visiteur ne lit que les types actifs',
+      seen.join(',') === active.join(','),
+      seen.join(', '),
+    );
   }
 
   const create = async (caseKey: string, title: string) => {

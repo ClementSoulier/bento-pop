@@ -1,21 +1,25 @@
 import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
+import { loadDuplicateGroups } from '@/lib/catalogue-types';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import {
   CatalogueClient,
   type CatalogueFullRow,
   type CatalogueItemRow,
+  type DuplicateGroupView,
+  type TypeOption,
 } from './CatalogueClient';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Catalogue maison. Deux blocs :
+ * Catalogue maison, rangé par **type** depuis le chantier 15. Trois blocs :
  *  - « À modérer » : file FIFO (`submitted_at` ASC) des propositions users,
  *    avec les actions valider / refuser / fusionner / image.
+ *  - « Doublons probables » : items d'un même type au même titre, par exemple
+ *    une Personne proposée jadis comme artiste et comme créateur.
  *  - « Tout le catalogue » : tableau filtrable (type + statut) de TOUS les
- *    items, y compris les validés historiques / importés sans `validated_at`
- *    qui n'apparaissaient nulle part avant.
+ *    items, avec la validation des brouillons par lot.
  */
 export default async function CataloguePage() {
   const mobile = createMobileClient();
@@ -30,17 +34,25 @@ export default async function CataloguePage() {
     );
   }
 
-  // 1. Catégories pour les labels (id → key/label)
-  const { data: categories } = await mobile
-    .from('bento_categories')
-    .select('id, key, label_fr');
-  const catById = new Map((categories ?? []).map((c) => [c.id, c]));
+  // 1. Types pour les libellés et les filtres, actifs ou non : on amorce un
+  //    type avant de l'activer.
+  const { data: typeRows } = await mobile
+    .from('item_types')
+    .select('id, key, label_fr, is_active, display_order')
+    .order('display_order');
+  const typeById = new Map((typeRows ?? []).map((t) => [t.id, t]));
+  const types: TypeOption[] = (typeRows ?? []).map((t) => ({
+    id: t.id,
+    key: t.key,
+    label: t.label_fr,
+    active: t.is_active,
+  }));
 
   // 2. Items à modérer
   const { data: pendingItems } = await mobile
     .from('items')
     .select(
-      'id, title, category_id, submitted_by, submitted_at, created_at',
+      'id, title, type_id, submitted_by, submitted_at, created_at',
     )
     .eq('status', 'pending')
     .order('submitted_at', { ascending: true, nullsFirst: false })
@@ -52,7 +64,7 @@ export default async function CataloguePage() {
   //    nulle part dans l'ancienne vue « récemment traités ».
   const { data: allItemsRaw } = await mobile
     .from('items')
-    .select('id, title, subtitle, year, image_url, category_id, status, created_at')
+    .select('id, title, subtitle, year, image_url, type_id, status, created_at')
     .order('created_at', { ascending: false, nullsFirst: false })
     .limit(2000);
 
@@ -77,14 +89,11 @@ export default async function CataloguePage() {
     : { data: [] as { id: string; pseudo: string }[] };
   const pseudoById = new Map((authors ?? []).map((u) => [u.id, u.pseudo]));
 
-  // Un item sans case, un livre créé par le back-office, n'a pas de catégorie.
-  const categoryOf = (id: number | null) => (id === null ? undefined : catById.get(id));
-
   const pending: CatalogueItemRow[] = (pendingItems ?? []).map((i) => ({
     id: i.id,
     title: i.title,
-    categoryLabel: categoryOf(i.category_id)?.label_fr ?? '?',
-    categoryKey: categoryOf(i.category_id)?.key ?? null,
+    typeLabel: typeById.get(i.type_id)?.label_fr ?? '?',
+    typeKey: typeById.get(i.type_id)?.key ?? null,
     submittedAt: i.submitted_at ?? i.created_at,
     authorPseudo: i.submitted_by ? (pseudoById.get(i.submitted_by) ?? '(supprimé)') : null,
     status: 'pending',
@@ -96,10 +105,22 @@ export default async function CataloguePage() {
     subtitle: i.subtitle ?? null,
     year: i.year ?? null,
     hasImage: Boolean(i.image_url),
-    categoryLabel: categoryOf(i.category_id)?.label_fr ?? '?',
-    categoryKey: categoryOf(i.category_id)?.key ?? null,
+    typeLabel: typeById.get(i.type_id)?.label_fr ?? '?',
+    typeKey: typeById.get(i.type_id)?.key ?? null,
     status: i.status as CatalogueFullRow['status'],
     bentoCount: bentoCountByItem.get(i.id) ?? 0,
+  }));
+
+  // 4b. Doublons probables : même type, même titre une fois normalisé.
+  const duplicates: DuplicateGroupView[] = (await loadDuplicateGroups(mobile)).map((g) => ({
+    typeLabel: typeById.get(g.typeId)?.label_fr ?? '?',
+    items: g.items.map((i) => ({
+      id: i.id,
+      title: i.title,
+      status: i.status,
+      bentoCount: i.bentoCount,
+      hasImage: i.hasImage,
+    })),
   }));
 
   // 5. Illustrations proposées par le script `catalog-images` et pas encore
@@ -128,7 +149,7 @@ export default async function CataloguePage() {
           </span>
         </Link>
       ) : null}
-      <CatalogueClient pending={pending} allItems={allItems} />
+      <CatalogueClient pending={pending} allItems={allItems} types={types} duplicates={duplicates} />
     </PageShell>
   );
 }

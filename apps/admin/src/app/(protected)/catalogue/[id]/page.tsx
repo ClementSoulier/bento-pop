@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
+import { loadItemUsage } from '@/lib/catalogue-types';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { ItemEditClient, type ItemDetail } from './ItemEditClient';
 
@@ -25,13 +26,13 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
   const { data: item } = await mobile
     .from('items')
     .select(
-      'id, category_id, external_source, title, subtitle, year, image_url, image_credit, status, submitted_by, submitted_at, validated_by, validated_at, rejected_by, rejected_at, rejected_reason, merged_into_id, created_at',
+      'id, category_id, type_id, external_source, title, subtitle, year, image_url, image_credit, status, submitted_by, submitted_at, validated_by, validated_at, rejected_by, rejected_at, rejected_reason, merged_into_id, created_at',
     )
     .eq('id', id)
     .maybeSingle();
   if (!item) notFound();
 
-  const [{ data: category }, { data: aliases }, { data: submitter }] = await Promise.all([
+  const [{ data: category }, { data: aliases }, { data: submitter }, { data: typeRows }] = await Promise.all([
     // Un item sans case, un livre créé par le back-office, n'a pas de catégorie.
     item.category_id === null
       ? Promise.resolve({ data: null })
@@ -52,7 +53,9 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
           .eq('id', item.submitted_by)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    mobile.from('item_types').select('id, key, label_fr, is_active').order('display_order'),
   ]);
+  const types = (typeRows ?? []).map((t) => ({ id: t.id, key: t.key, label: t.label_fr, active: t.is_active }));
 
   const detail: ItemDetail = {
     id: item.id,
@@ -63,8 +66,9 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
     imageCredit: item.image_credit,
     status: item.status,
     externalSource: item.external_source,
-    categoryLabel: category?.label_fr ?? '?',
-    categoryKey: category?.key ?? null,
+    caseLabel: category?.label_fr ?? null,
+    typeId: item.type_id,
+    typeLabel: types.find((t) => t.id === item.type_id)?.label ?? '?',
     submittedByPseudo: submitter?.pseudo ?? null,
     submittedAt: item.submitted_at,
     validatedAt: item.validated_at,
@@ -100,12 +104,20 @@ export default async function ItemDetailPage({ params }: { params: Params }) {
     }))
     .sort((a, b) => a.pseudo.localeCompare(b.pseudo, 'fr'));
 
+  // Où l'item est posé, case par case, pour dire d'avance ce qui empêche de
+  // changer son type.
+  const pseudoByBento = new Map(usage.map((u) => [u.bentoId, u.pseudo]));
+  const placements = (await loadItemUsage(mobile, id)).map((p) => ({
+    ...p,
+    pseudo: pseudoByBento.get(p.bentoId) ?? '(supprimé)',
+  }));
+
   return (
     <PageShell
-      crumbs={`Catalogue · ${detail.categoryLabel} · ${detail.status}`}
+      crumbs={`Catalogue · ${detail.typeLabel} · ${detail.status}`}
       title={detail.title}
     >
-      <ItemEditClient item={detail} />
+      <ItemEditClient item={detail} types={types} placements={placements} />
       <BentoUsageCard usage={usage} />
     </PageShell>
   );

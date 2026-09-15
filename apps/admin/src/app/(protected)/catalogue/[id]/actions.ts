@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
+import { changeItemType, validateDrafts } from '@/lib/catalogue-types';
 import { createMobileClient } from '@/lib/supabase/mobile';
 import { STORAGE_CACHE_CONTROL } from '@/lib/storage';
 
@@ -31,8 +32,13 @@ const uploadImageSchema = z.object({
 });
 
 const createDraftSchema = z.object({
-  categoryKey: z.enum(['film', 'series', 'artist', 'track', 'creator', 'place']),
+  typeKey: z.string().regex(/^[a-z][a-z0-9_]{2,19}$/),
   title: z.string().trim().min(1).max(200),
+});
+
+const changeTypeSchema = z.object({
+  itemId: z.string().uuid(),
+  typeId: z.number().int().positive(),
 });
 
 /** Met à jour titre/sous-titre/année d'un item. Status inchangé. */
@@ -216,12 +222,11 @@ export async function removeItemImage(input: { itemId: string }): Promise<Action
 
 /**
  * Crée un item `status='draft'` côté admin (item préparé en interne avant
- * publication). Redirige vers la fiche d'édition.
+ * publication), dans un **type**, actif ou non : c'est ainsi qu'on amorce un
+ * type avant de l'activer. Sans case d'origine, puisque le type suffit depuis
+ * le chantier 15. Redirige vers la fiche d'édition.
  */
-export async function createDraftItem(input: {
-  categoryKey: 'film' | 'series' | 'artist' | 'track' | 'creator' | 'place';
-  title: string;
-}): Promise<void> {
+export async function createDraftItem(input: { typeKey: string; title: string }): Promise<void> {
   const admin = await requireAdmin();
   const parsed = createDraftSchema.safeParse(input);
   if (!parsed.success) {
@@ -230,18 +235,19 @@ export async function createDraftItem(input: {
   const mobile = createMobileClient();
   if (!mobile) throw new Error('Supabase mobile non configuré');
 
-  const { data: category } = await mobile
-    .from('bento_categories')
+  const { data: type } = await mobile
+    .from('item_types')
     .select('id')
-    .eq('key', parsed.data.categoryKey)
+    .eq('key', parsed.data.typeKey)
     .maybeSingle();
-  if (!category) throw new Error('Catégorie inconnue');
+  if (!type) throw new Error('Type inconnu');
 
-  // Trigger SQL respecte status posé pour external_source='admin'.
+  // Trigger SQL : le service-role garde le statut posé pour external_source='admin'.
   const { data, error } = await mobile
     .from('items')
     .insert({
-      category_id: category.id,
+      type_id: type.id,
+      category_id: null,
       external_source: 'admin',
       title: parsed.data.title,
       status: 'draft',
@@ -253,4 +259,40 @@ export async function createDraftItem(input: {
 
   revalidatePath('/catalogue');
   redirect(`/catalogue/${data.id}`);
+}
+
+/**
+ * Passe un item à un autre type, par exemple « Arcane », proposée comme
+ * créateur, vers Série. Refusé tant qu'il est posé dans une case d'un autre
+ * type : la fiche le dit avant, la base le garantit.
+ */
+export async function changeItemTypeAction(input: { itemId: string; typeId: number }): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = changeTypeSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Inputs invalides' };
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const res = await changeItemType(mobile, parsed.data.itemId, parsed.data.typeId);
+  if (!res.ok) return res;
+  revalidatePath(`/catalogue/${parsed.data.itemId}`);
+  revalidatePath('/catalogue');
+  revalidatePath('/catalogue/types');
+  return { ok: true };
+}
+
+/** Valide un brouillon depuis sa fiche. */
+export async function validateDraftAction(input: { itemId: string }): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = itemIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'itemId invalide' };
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const res = await validateDrafts(mobile, [parsed.data.itemId], admin.userId);
+  if (!res.ok) return res;
+  if (res.value === 0) return { ok: false, error: 'Cet item n’est plus un brouillon.' };
+  revalidatePath(`/catalogue/${parsed.data.itemId}`);
+  revalidatePath('/catalogue');
+  return { ok: true };
 }

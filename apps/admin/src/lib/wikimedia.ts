@@ -28,7 +28,11 @@ const USER_AGENT = 'BentoPopAdmin/1.0 (https://bento-pop.com; contact@keremaprod
 const THUMB_WIDTH = 1200;
 const TOP_N = 3;
 
-/** Indice ajouté à la requête pour désambiguïser (« Seven film »). */
+/**
+ * Indice ajouté à la requête pour désambiguïser (« Seven film »). Clés de case
+ * pour les items qui en ont une, clés de type pour les autres, depuis le
+ * chantier 15 : un livre créé dans le back-office n'a pas de case.
+ */
 const CATEGORY_HINTS: Record<string, string> = {
   film: 'film',
   series: 'série télévisée',
@@ -36,6 +40,12 @@ const CATEGORY_HINTS: Record<string, string> = {
   track: 'chanson',
   creator: 'vidéaste web',
   place: '',
+  person: '',
+  song: 'chanson',
+  video_game: 'jeu vidéo',
+  book: 'livre',
+  dish: 'plat',
+  activity: '',
 };
 
 export type WikimediaCandidate = {
