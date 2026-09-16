@@ -163,6 +163,11 @@ export type PublicBento = {
 export type PublicBentoRef = {
   id: string;
   slug: string;
+  /**
+   * Le titre de l'édition composée, ou `null` pour un bento libre. C'est lui
+   * qui nomme la pastille : le slug est une adresse, pas un titre.
+   */
+  editionTitle: string | null;
   isFeatured: boolean;
   publishedAt: string;
 };
@@ -241,6 +246,7 @@ export function mapPublicBento(
     .map((b) => ({
       id: b.id,
       slug: b.slug,
+      editionTitle: b.editions?.title ?? null,
       isFeatured: b.is_featured,
       publishedAt: b.published_at,
     }));

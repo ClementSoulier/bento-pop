@@ -30,6 +30,7 @@ import {
   fontScaleFor,
   naturalLineHeight,
 } from './font-scaling';
+import { lineFitScale } from './tile-title';
 
 /** Logo 24 + `paddingTop` 8 + `marginBottom` 14. */
 export const TOP_BAR_H = 46;
@@ -138,6 +139,95 @@ export function composeSelectorHeight(fontScale: number, bentoCount = 1): number
 /** Pastille de sélection et son écart avec la boîte. */
 export const SELECTOR_CHIP_H = 32;
 export const SELECTOR_GAP = 10;
+/** Marge de la bande de sélection, de chaque côté, alignée sur l'en-tête. */
+export const SELECTOR_SIDE = 20;
+
+/**
+ * Plancher du titre du composer, en points : les trois quarts de sa taille
+ * par défaut, 28, comme le plancher des titres de case.
+ *
+ * Le titre tient sur une ligne, que le budget vertical compte au point : il
+ * rétrécit donc au lieu de passer à la ligne. « La semaine du film qui pique »
+ * s'affichait « LA SEMAINE DU FILM Q… » à la recette du 16 septembre ; il
+ * demande 0,80 sur un iPhone 17 Pro et 0,74 sur un iPhone SE. Sous le
+ * plancher, il se tronque : c'est au back-office de refuser un titre qui n'y
+ * tiendrait pas.
+ *
+ * **En points et non en facteur** : agrandi par la police système, un titre
+ * peut rétrécir jusqu'à sa taille par défaut ou presque, au lieu de se
+ * tronquer à la plus grande police alors qu'il tient entier à la normale.
+ */
+export const COMPOSE_TITLE_MIN_FONT_SIZE = 21;
+
+/** Espacement des lettres du titre du composer. */
+export const COMPOSE_TITLE_LETTER_SPACING = -0.3;
+
+/** Marge de l'en-tête du composer, de chaque côté : la ligne du titre en découle. */
+export const COMPOSE_HEADER_SIDE = 20;
+
+/**
+ * Facteur de police du titre du composer : ce qu'il faut pour tenir sur une
+ * ligne, sans descendre sous `COMPOSE_TITLE_MIN_FONT_SIZE` points. Jamais
+ * au-dessus de 1 : un titre ne grossit pas pour remplir sa ligne.
+ *
+ * `pixelRatio` sur Android seulement, pour la raison écrite dans
+ * `tileTitleScale`.
+ */
+export function composeTitleScale(
+  name: string,
+  screenWidth: number,
+  fontSize: number,
+  pixelRatio?: number,
+): number {
+  return Math.max(
+    Math.min(1, COMPOSE_TITLE_MIN_FONT_SIZE / fontSize),
+    lineFitScale(
+      name,
+      screenWidth - COMPOSE_HEADER_SIDE * 2,
+      fontSize,
+      COMPOSE_TITLE_LETTER_SPACING,
+      pixelRatio,
+    ),
+  );
+}
+
+/**
+ * Où faire défiler la bande de sélection pour que la pastille active se voie
+ * en entier, ou `null` si elle se voit déjà.
+ *
+ * - une pastille déjà visible en entier ne fait rien bouger ;
+ * - une pastille qui tient dans le premier écran ramène la bande au début :
+ *   « Mon bento » y est, et c'est le chemin du retour ;
+ * - sinon, le moins de mouvement possible : coupée à gauche, elle se cale
+ *   sur la marge de gauche, coupée à droite sur celle de droite.
+ *
+ * La recette du 16 septembre l'a rendu nécessaire. Taper une édition au bout
+ * de la bande crée son bento, qui prend place juste après « Mon bento » :
+ * la bande restait défilée à droite, la pastille active hors de l'écran, et
+ * plus rien ne disait quel bento on éditait.
+ */
+export function selectorRevealOffset({
+  x,
+  width,
+  offset,
+  viewport,
+}: {
+  /** Position de la pastille dans le contenu de la bande, marge comprise. */
+  x: number;
+  width: number;
+  /** Défilement actuel de la bande. */
+  offset: number;
+  /** Largeur visible de la bande. Zéro tant qu'elle n'est pas mesurée. */
+  viewport: number;
+}): number | null {
+  if (viewport <= 0) return null;
+  const debut = Math.max(0, x - SELECTOR_SIDE);
+  const fin = x + width + SELECTOR_SIDE;
+  if (debut >= offset && fin <= offset + viewport) return null;
+  if (fin <= viewport) return 0;
+  if (debut < offset) return debut;
+  return fin - viewport;
+}
 
 /** En-tête à une taille de police donnée : ce qu'il gagne s'ajoute à `HEADER_H`. */
 export function composeHeaderHeight(fontScale: number): number {

@@ -2,8 +2,6 @@ import {
   CATEGORY_BY_ID,
   MAIN_CASES,
   type CaseMeta,
-  CATEGORY_META,
-  CATEGORY_ORDER,
   paletteKeyForItem,
 } from '@bento-pop/supabase-mobile/bento';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -226,16 +224,22 @@ export function cursorOf(row: FeedRow): FeedCursor | null {
 export function feedAccessibilityLabel(bento: FeedBento, now?: number): string {
   const when = relativeDate(bento.publishedAt, now);
   const parts = [when ? `Bento de @${bento.pseudo}, publié ${when}.` : `Bento de @${bento.pseudo}.`];
-  // Même priorité qu'à l'écran : « invité » d'abord, parce que c'est la seule
-  // information qu'un lecteur ne peut déduire de rien d'autre.
+  // Même priorité qu'à l'écran, cf. `ribbonFor` : « invité » d'abord, parce que
+  // c'est la seule information qu'un lecteur ne peut déduire de rien d'autre,
+  // puis l'édition, qui dit pourquoi la boîte n'a pas les six cases.
   if (bento.isGuest) parts.push("Bento invité, composé par l'équipe.");
+  else if (bento.editionTitle) parts.push(`Édition « ${bento.editionTitle} ».`);
   else if (bento.isFeatured) parts.push("Coup de cœur de l'équipe.");
-  for (const cat of CATEGORY_ORDER) {
-    const slot = bento.slots[cat];
+  // Les cases de CE bento, dans l'ordre de la boîte, chacune nommée par son
+  // intitulé : « Film » pour le principal, la question pour une édition. La
+  // boucle parcourait les six du principal, et un bento d'édition s'annonçait
+  // sans rien de ce qu'il contient, recette du 16 septembre 2026.
+  for (const c of bento.cases) {
+    const slot = bento.slots[c.key];
     // Les cases vides sont omises, sinon VoiceOver énoncerait « Film
     // undefined » sur un bento incomplet.
     if (!slot) continue;
-    parts.push(`${CATEGORY_META[cat].label} : ${slot.title}.`);
+    parts.push(`${c.prompt} : ${slot.title}.`);
   }
   return parts.join(' ');
 }

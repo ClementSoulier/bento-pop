@@ -16,9 +16,15 @@ import {
   composeCtaBlockHeight,
   composeCtaGap,
   composeHeaderHeight,
+  COMPOSE_TITLE_LETTER_SPACING,
+  COMPOSE_TITLE_MIN_FONT_SIZE,
   composeSelectorHeight,
+  composeTitleScale,
+  selectorRevealOffset,
   type ComposeMetrics,
 } from './compose-layout';
+import { extendaTextWidth } from './extenda-metrics';
+import { TITLE_ROUNDING_SLACK } from './tile-title';
 import { CONTROL_MAX_FONT_MULTIPLIER, TITLE_MAX_FONT_MULTIPLIER } from './font-scaling';
 
 /**
@@ -235,5 +241,94 @@ describe('composeSelectorHeight, la bande de sélection', () => {
       // minimum, ce qui est toute la raison de compter la bande ici.
       assert.ok(composeCtaGap(avec) >= CTA_GAP_MIN, name);
     }
+  });
+});
+
+describe('selectorRevealOffset, la pastille active à l’écran', () => {
+  // Géométrie relevée sur iPhone 17 Pro à la recette du 16 septembre : la
+  // bande fait 402 points, « Mon bento » 105 et le bento « rec-deux » 95, avec
+  // 20 de marge et 8 d’écart. L’édition tapée était au bout, bande défilée de
+  // 374 points.
+  const VIEWPORT = 402;
+
+  it('ramène au début le bento qu’on vient de créer, derrière « Mon bento »', () => {
+    // Le défaut de la recette : la pastille active à x = 133 et la bande à
+    // 374, donc hors de l’écran. Revenir à zéro la montre, « Mon bento » avec.
+    assert.equal(selectorRevealOffset({ x: 133, width: 95, offset: 374, viewport: VIEWPORT }), 0);
+  });
+
+  it('ne bouge pas une pastille déjà visible en entier', () => {
+    assert.equal(selectorRevealOffset({ x: 133, width: 95, offset: 0, viewport: VIEWPORT }), null);
+    assert.equal(selectorRevealOffset({ x: 586, width: 170, offset: 374, viewport: VIEWPORT }), null);
+  });
+
+  it('cale sur la marge de droite une pastille coupée à droite', () => {
+    // 586 + 170 + 20 = 776, moins 402.
+    assert.equal(selectorRevealOffset({ x: 586, width: 170, offset: 0, viewport: VIEWPORT }), 374);
+  });
+
+  it('cale sur la marge de gauche une pastille coupée à gauche, hors du premier écran', () => {
+    assert.equal(selectorRevealOffset({ x: 586, width: 170, offset: 700, viewport: VIEWPORT }), 566);
+  });
+
+  it('ne défile jamais au-delà du contenu', () => {
+    // La dernière pastille finit à la largeur du contenu, marge comprise :
+    // l’offset rendu est exactement le défilement maximal.
+    const contenu = 586 + 170 + 20;
+    assert.equal(
+      selectorRevealOffset({ x: 586, width: 170, offset: 0, viewport: VIEWPORT }),
+      contenu - VIEWPORT,
+    );
+    // Et jamais en deçà de zéro.
+    assert.equal(selectorRevealOffset({ x: 10, width: 95, offset: 50, viewport: VIEWPORT }), 0);
+  });
+
+  it('attend que la bande soit mesurée', () => {
+    assert.equal(selectorRevealOffset({ x: 586, width: 170, offset: 0, viewport: 0 }), null);
+  });
+});
+
+describe('composeTitleScale, le titre du composer sur une ligne', () => {
+  // Largeurs d'écran relevées : iPhone 17 Pro 402, iPhone SE 375.
+  it('laisse « Mon bento » et les titres courts à leur taille', () => {
+    for (const nom of ['Mon bento', 'Le duel du samedi', 'Le grand inventaire']) {
+      assert.equal(composeTitleScale(nom, 402, 28), 1, nom);
+      assert.equal(composeTitleScale(nom, 375, 28), 1, nom);
+    }
+  });
+
+  /**
+   * Recette du 16 septembre : « LA SEMAINE DU FILM Q… ». Le titre rétrécit
+   * désormais juste assez pour remplir sa ligne, 362 points sur iPhone 17 Pro.
+   */
+  it('rétrécit un titre d’édition long juste assez pour tenir entier', () => {
+    const nom = 'La semaine du film qui pique';
+    const scale = composeTitleScale(nom, 402, 28);
+    assert.ok(scale < 1 && 28 * scale > COMPOSE_TITLE_MIN_FONT_SIZE, String(scale));
+    const width = extendaTextWidth(nom.toUpperCase(), 28 * scale, COMPOSE_TITLE_LETTER_SPACING);
+    assert.ok(Math.abs(width - (362 - TITLE_ROUNDING_SLACK)) < 1e-9, String(width));
+  });
+
+  it('s’arrête au plancher, sous lequel le titre se tronque', () => {
+    // 0,74 demandé sur iPhone SE, et 0,43 pour un titre de 51 caractères.
+    assert.equal(28 * composeTitleScale('La semaine du film qui pique', 375, 28), COMPOSE_TITLE_MIN_FONT_SIZE);
+    assert.equal(
+      28 * composeTitleScale('Les films qui ont bercé ton enfance et tes vacances', 402, 28),
+      COMPOSE_TITLE_MIN_FONT_SIZE,
+    );
+  });
+
+  /**
+   * Recette du 16 septembre, à la plus grande police : le titre, agrandi à
+   * 33,6 points, se tronquait de nouveau, « LA SEMAINE DU FILM QUI… », alors
+   * qu'il tient entier à la taille normale. Le plancher est en points.
+   */
+  it('laisse un titre agrandi redescendre vers sa taille normale plutôt que de se tronquer', () => {
+    const nom = 'La semaine du film qui pique';
+    const agrandi = 28 * 1.2;
+    const taille = agrandi * composeTitleScale(nom, 402, agrandi);
+    assert.ok(taille >= COMPOSE_TITLE_MIN_FONT_SIZE, String(taille));
+    const width = extendaTextWidth(nom.toUpperCase(), taille, COMPOSE_TITLE_LETTER_SPACING);
+    assert.ok(width <= 362 - TITLE_ROUNDING_SLACK + 1e-9, `${width} pour 362`);
   });
 });

@@ -16,6 +16,7 @@ import { useSession } from '@/state/session';
 import { useBento } from '@/state/bento';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { deleteOwnAccount, editableBentoId, unpublishBento } from '@/lib/bento-actions';
+import { bentoName } from '@/lib/own-bento';
 import { relativeDate } from '@/lib/relative-date';
 import { exportUserData } from '@/lib/data-export';
 import {
@@ -78,7 +79,7 @@ export default function ProfileTab() {
     // Nommer le bento retiré dès qu'un compte en a plusieurs : « mon bento »
     // ne désigne plus rien de précis, et c'est une action qu'on ne veut pas
     // faire sur le mauvais. Chantier 16.
-    const nom = own.length > 1 && current && !current.isPrimary ? ` « ${current.slug} »` : '';
+    const nom = own.length > 1 && current && !current.isPrimary ? ` « ${bentoName(current)} »` : '';
     Alert.alert(
       `Retirer mon bento${nom} du fil ?`,
       'Il disparaît de « La table » et de sa page publique. Tes cases restent en place, tu peux le republier quand tu veux.',

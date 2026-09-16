@@ -16,7 +16,10 @@ test('bento vide : oriente vers la première case, jamais inerte', () => {
   const r = cta([]);
   assert.equal(r.kind, 'open-slot');
   assert.equal(r.disabled, false);
-  assert.equal(r.label, 'Commence par film');
+  // « ton film », et pas « film » : c'était le libellé d'origine, perdu au
+  // lot 4 du chantier 13 et retrouvé à la recette. Ce test l'avait suivi au
+  // lieu de l'attraper ; il redit maintenant l'exigence.
+  assert.equal(r.label, 'Commence par ton film');
   assert.equal(r.kind === 'open-slot' && r.caseKey, CATEGORY_ORDER[0]);
 });
 

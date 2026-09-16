@@ -13,6 +13,19 @@ import type { TileData } from '@/components/bento/Tile';
  * n'est pas persistée, c'est purement décoratif.
  */
 
+/**
+ * Ce que `mapRemoteSlots` lit d'une case, dans la syntaxe de `select()` : la
+ * **seule** liste de colonnes des lectures qui hydratent le composer.
+ *
+ * Il y en avait deux, et elles avaient divergé. Celle du changement de bento,
+ * `loadBentoById`, ne lisait ni `image_credit` ni `status` : à la recette du
+ * 16 septembre, revenir au bento principal par le sélecteur effaçait les
+ * crédits d'image, qu'une photo sous licence CC BY exige, et l'état « en
+ * attente », qui bloque la publication d'une case non modérée.
+ */
+export const REMOTE_SLOT_COLUMNS =
+  'category_id, items ( id, title, subtitle, image_url, image_credit, status )';
+
 type RemoteSlotRow = {
   category_id: number;
   items: unknown;

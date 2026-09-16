@@ -67,6 +67,11 @@ export function EmptyTile({
     lineHeight: conf.label * TILE_LINE.emptyLabel * labelScale,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
+    // Centré ligne à ligne, sous le « + » centré. Sans lui, un libellé sur deux
+    // lignes s'alignait à gauche : « LA SÉRIE QUE TU / CACHES » à la plus
+    // grande police, recette du chantier 13, où les questions passent souvent
+    // à la ligne.
+    textAlign: 'center',
   } as const;
 
   const frame = {

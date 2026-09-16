@@ -35,7 +35,20 @@ export type ComposeCtaInput = {
    * principal, de deux à six pour une édition : c'est ce nombre qui décide
    * quand le bento est complet, et non plus un `CATEGORY_ORDER` en dur.
    */
-  cases: readonly { readonly key: string; readonly prompt: string }[];
+  cases: readonly {
+    readonly key: string;
+    readonly prompt: string;
+    readonly gender?: 'm' | 'f';
+  }[];
+  /**
+   * Les intitulés sont-ils des noms communs ?
+   *
+   * Vrai pour le bento principal, « Film », « Série » : on dit alors « ton
+   * film », « ta série ». Faux pour une édition, dont l'intitulé est une
+   * question qui porte déjà son article : « le film qui t'a fait pleurer ».
+   * Vrai par défaut, le cas historique.
+   */
+  nomsCommuns?: boolean;
   /** Clés des cases actuellement remplies. */
   filled: readonly string[];
   /** Au moins une case référence un item en attente de modération. */
@@ -62,6 +75,7 @@ export function firstEmptyCase(
 
 export function composeCta({
   cases,
+  nomsCommuns = true,
   filled,
   hasPending,
   publishing,
@@ -81,7 +95,16 @@ export function composeCta({
     // film » en dur : une édition ne commence pas forcément par un film, et
     // le mot en dur aurait envoyé sur une case qui n'existe pas.
     const remaining = cases.length - filled.length;
-    const premiere = cases[0]?.prompt.toLowerCase() ?? 'ta première case';
+    // « Commence par ton film » pour un nom commun, avec l'article accordé ;
+    // « Commence par le film qui t'a fait pleurer » pour une question, qui a
+    // déjà le sien. La recette du chantier 13 a montré « Commence par film »,
+    // une régression du lot 4 que le test avait été ajusté pour accepter.
+    const tete = cases[0];
+    const premiere = !tete
+      ? 'ta première case'
+      : nomsCommuns
+        ? `${tete.gender === 'f' ? 'ta' : 'ton'} ${tete.prompt.toLowerCase()}`
+        : tete.prompt.charAt(0).toLowerCase() + tete.prompt.slice(1);
     const label =
       filled.length === 0
         ? `Commence par ${premiere}`

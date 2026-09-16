@@ -121,8 +121,9 @@ export function Tile({
   const textScale = allowFontScaling ? tileTextScale(height, size, scale, fontScale) : 1;
   // Le titre rétrécit encore jusqu'à tenir entier dans ses deux lignes, sans
   // descendre sous `TITLE_MIN_SCALE`, et toujours assez pour que son premier mot
-  // ne se coupe pas au milieu : cf. `tileTitleScale`. La mesure prend la taille
-  // qu'Android arrondit au pixel supérieur.
+  // ne se coupe pas au milieu : cf. `tileTitleScale`. Un mot seul, lui, remplit
+  // sa ligne au plus. La mesure prend la taille qu'Android arrondit au pixel
+  // supérieur.
   const titleScale =
     textScale *
     tileTitleScale(
@@ -316,8 +317,9 @@ export function Tile({
         }}
       >
         <Text
-          // Deux lignes, ou une seule qui rétrécit pour un mot seul : cf.
-          // `tile-title.ts`.
+          // Deux lignes, ou une seule pour un mot seul, à une taille mesurée :
+          // jamais `adjustsFontSizeToFit`, qui combiné à `lineHeight` réduisait
+          // le titre à 5 pt sur iOS. Cf. `tile-title.ts`.
           numberOfLines={titleFit.numberOfLines}
           adjustsFontSizeToFit={titleFit.adjustsFontSizeToFit}
           allowFontScaling={false}

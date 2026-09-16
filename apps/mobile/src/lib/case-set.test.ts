@@ -64,13 +64,21 @@ describe('les correspondances', () => {
 describe('le bouton du composer, sur une édition', () => {
   it('oriente vers la première case et nomme sa question', () => {
     const r = composeCta({
-      cases: EDITION, filled: [], hasPending: false, publishing: false, published: false,
+      cases: EDITION, nomsCommuns: false, filled: [], hasPending: false, publishing: false, published: false,
     });
     assert.equal(r.kind, 'open-slot');
     assert.equal(r.kind === 'open-slot' && r.caseKey, 'ed7_1');
+    // La question garde son article, sans « ton » devant.
+    assert.equal(r.label, 'Commence par le film qui t’a fait pleurer');
     // Le libellé nommait « ton film » en dur : une édition ne commence pas
     // forcément par un film.
     assert.match(r.label, /le film qui t’a fait pleurer/i);
+  });
+
+  it('accorde l’article d’un nom commun au genre', () => {
+    const serie = [{ key: 'series', prompt: 'Série', gender: 'f' as const }];
+    const r = composeCta({ cases: serie, filled: [], hasPending: false, publishing: false, published: false });
+    assert.equal(r.label, 'Commence par ta série');
   });
 
   it('compte les cases de l’édition, pas six', () => {

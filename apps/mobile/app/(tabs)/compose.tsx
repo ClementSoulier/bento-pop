@@ -1,5 +1,15 @@
-import { useCallback, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AppState,
+  Image,
+  PixelRatio,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { router, useFocusEffect } from 'expo-router';
@@ -12,16 +22,22 @@ import { failureFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { editableBentoId, listOwnBentos, publishBento, switchBento } from '@/lib/bento-actions';
+import { bentoRoute } from '@/lib/bento-address';
 import { type Edition, createEditionBento, loadReleasedEditions } from '@/lib/editions';
-import type { OwnBento } from '@/lib/own-bento';
+import { type OwnBento, bentoName } from '@/lib/own-bento';
 import {
   CTA_GAP_MIN,
   PSEUDO_LINE_H,
   STATUS_LINE_H,
+  COMPOSE_HEADER_SIDE,
+  COMPOSE_TITLE_LETTER_SPACING,
   SELECTOR_CHIP_H,
   SELECTOR_GAP,
+  SELECTOR_SIDE,
   TITLE_LINE_H,
   composeBentoScale,
+  composeTitleScale,
+  selectorRevealOffset,
 } from '@/components/bento/compose-layout';
 import {
   CONTROL_MAX_FONT_MULTIPLIER,
@@ -82,21 +98,37 @@ export default function ComposeTab() {
   const showToast = useToast((s) => s.show);
 
   /**
-   * Les éditions sorties, relues à chaque retour sur l'onglet.
+   * Les éditions sorties, relues à chaque retour sur l'onglet **et** à chaque
+   * retour de l'app au premier plan tant que l'onglet est affiché.
+   *
+   * Le second cas est la promesse du chantier : une édition programmée sort
+   * sans relancer l'app. Il manquait, et la recette du 16 septembre l'a
+   * montré au contrôle D : l'app ramenée au premier plan, même processus,
+   * la pastille n'apparaissait qu'après un changement d'onglet.
    *
    * La RLS ne rend que les sorties : l'app n'a donc aucun filtre de date à
    * appliquer, et une édition programmée reste invisible même si quelqu'un
-   * inspecte la requête. Une lecture qui échoue laisse la liste vide, ce qui
-   * ne retire rien à l'écran : les éditions sont un ajout, pas un prérequis.
+   * inspecte la requête. Une lecture qui échoue garde la liste connue : les
+   * éditions sont un ajout, pas un prérequis, et un réseau qui se réveille
+   * au retour de l'app ne doit pas faire disparaître les pastilles.
    */
   const [editions, setEditions] = useState<Edition[]>([]);
   useFocusEffect(
     useCallback(() => {
       let vivant = true;
-      void loadReleasedEditions()
-        .then((liste) => { if (vivant) setEditions(liste); })
-        .catch(() => { if (vivant) setEditions([]); });
-      return () => { vivant = false; };
+      const charger = () => {
+        void loadReleasedEditions()
+          .then((liste) => { if (vivant) setEditions(liste); })
+          .catch(() => {});
+      };
+      charger();
+      const abonnement = AppState.addEventListener('change', (etat) => {
+        if (etat === 'active') charger();
+      });
+      return () => {
+        vivant = false;
+        abonnement.remove();
+      };
     }, []),
   );
 
@@ -117,11 +149,18 @@ export default function ComposeTab() {
   // bouton actif qui ne faisait rien : cf. le commentaire de ce fichier.
   const cta = composeCta({
     cases,
+    // Un bento d'édition porte des questions, pas des noms communs.
+    nomsCommuns: current?.editionId == null,
     filled: filledKeys,
     hasPending,
     publishing,
     published: publishedAt !== null,
   });
+
+  // L'adresse publique du bento qu'on édite, et non celle du compte. Les deux
+  // se confondaient tant qu'un compte n'avait qu'un bento : à la recette du
+  // 16 septembre, publier « Le duel du samedi » ouvrait le bento principal.
+  const adressePublique = pseudo ? bentoRoute(pseudo, current?.slug, current?.isPrimary) : null;
 
   const onPrimary = () => {
     if (cta.kind === 'open-slot') {
@@ -129,7 +168,7 @@ export default function ComposeTab() {
       return;
     }
     if (cta.kind === 'publish') void onPublish();
-    if (cta.kind === 'view-public') router.push(`/u/${pseudo}` as const);
+    if (cta.kind === 'view-public' && adressePublique) router.push(adressePublique);
   };
 
   // Appelée seulement quand `composeCta` a rendu 'publish', donc sur un bento
@@ -156,7 +195,7 @@ export default function ComposeTab() {
       // hydratation, et l'app continuerait d'ignorer qu'elle vient de rendre
       // ce bento public.
       setPublishedAt(new Date().toISOString());
-      router.push(`/u/${pseudo}` as const);
+      if (adressePublique) router.push(adressePublique);
       // Feedback de succès — montré APRÈS le push pour que le toast
       // s'affiche sur la page publique (où l'utilisateur peut partager).
       showToast('Bento publié ! Partage-le 🍱', {
@@ -181,13 +220,29 @@ export default function ComposeTab() {
   // Le bandeau hors ligne descend l'écran : le budget le compte, sinon la boîte
   // passerait sous la barre d'onglets dès qu'il apparaît.
   const offlineInset = useOfflineInset();
+
+  /**
+   * Les éditions sorties que ce compte peut composer, **calculées une fois**.
+   *
+   * Une seule liste pour la hauteur du sélecteur et pour ce qu'il dessine :
+   * deux calculs séparés finiraient par diverger, et la boîte se calculerait
+   * sur une hauteur fausse.
+   *
+   * Vide sans profil. La recette du 16 septembre l'a montré : le sélecteur
+   * proposait les éditions à une session sans profil, et un tap ne pouvait
+   * que renvoyer « Publie d'abord ton bento », puisque `create_edition_bento`
+   * exige un profil. On ne propose pas une action vouée à l'échec.
+   */
+  const editionsAComposer = profile
+    ? editions.filter((e) => !own.some((b) => b.editionId === e.id))
+    : [];
+
   const bentoScale = composeBentoScale({
     // La bande de sélection prend de la place au-dessus de la grille : le
     // modèle la compte, sans quoi la boîte passerait sous le bouton.
     // Ce que le sélecteur affiche : les bentos du compte plus les éditions
-    // sorties qu'il reste à composer. Compter les seuls bentos ferait
-    // calculer la boîte sur une hauteur qui n'est pas la bonne.
-    bentoCount: own.length + editions.filter((e) => !own.some((b) => b.editionId === e.id)).length,
+    // qu'il reste à composer, la même liste que celle qu'il dessine.
+    bentoCount: own.length + editionsAComposer.length,
     screenHeight,
     insetTop: insets.top + offlineInset,
     tabBarHeight,
@@ -198,6 +253,18 @@ export default function ComposeTab() {
   // hauteurs de ligne comprises : ce sont celles que le budget compte.
   const pseudoType = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 10, PSEUDO_LINE_H);
   const titleType = scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 28, TITLE_LINE_H);
+  // Le nom du bento courant, sur une ligne : un titre d'édition long rétrécit
+  // plutôt que de se tronquer, jusqu'au plancher. La hauteur de ligne ne bouge
+  // pas, c'est elle que le budget vertical compte. Cf. `COMPOSE_TITLE_MIN_SCALE`.
+  const nomDuBento = current ? bentoName(current) : 'Mon bento';
+  const titleFontSize =
+    titleType.fontSize *
+    composeTitleScale(
+      nomDuBento,
+      screenWidth,
+      titleType.fontSize,
+      Platform.OS === 'android' ? PixelRatio.get() : undefined,
+    );
   const statusType = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 11, STATUS_LINE_H);
   const onlineType = scaledType(
     fontScale,
@@ -239,7 +306,7 @@ export default function ComposeTab() {
           </View>
 
           {/* Header pseudo + titre + progress */}
-          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+          <View style={{ paddingHorizontal: COMPOSE_HEADER_SIDE, paddingBottom: 12 }}>
             <Text
               allowFontScaling={false}
               numberOfLines={1}
@@ -266,15 +333,17 @@ export default function ComposeTab() {
               style={{
                 fontFamily: 'Extenda',
                 ...titleType,
-                letterSpacing: -0.3,
+                fontSize: titleFontSize,
+                letterSpacing: COMPOSE_TITLE_LETTER_SPACING,
                 color: '#0a0a0a',
                 textTransform: 'uppercase',
               }}
             >
               {/* Le nom du bento courant. « Mon bento » reste le titre du
                   principal, donc l'écran ne change pas tant qu'un compte n'en
-                  a qu'un. Chantier 16. */}
-              {current && !current.isPrimary ? current.slug : 'Mon bento'}
+                  a qu'un. Chantier 16. Un bento d'édition porte le titre de
+                  son édition, et non son slug : cf. `bentoName`. */}
+              {nomDuBento}
             </Text>
             {/* Une seule ligne, deux contenus possibles, la même hauteur : le
                 budget vertical de `compose-layout.ts` est mesuré au point et
@@ -341,7 +410,7 @@ export default function ComposeTab() {
             </View>
           </View>
 
-          <BentoSelector own={own} currentId={current?.id ?? null} editions={editions} />
+          <BentoSelector own={own} currentId={current?.id ?? null} editions={editionsAComposer} />
 
           {/* Grille bento — scale dynamique pour fit l'écran. Tant que la première
               lecture du bento n'a pas répondu, un squelette : un bento vide
@@ -411,6 +480,7 @@ function BentoSelector({
 }: {
   own: OwnBento[];
   currentId: string | null;
+  /** Les éditions à proposer, déjà filtrées par l'écran. */
   editions: Edition[];
 }) {
   const { fontScale } = useWindowDimensions();
@@ -418,9 +488,27 @@ function BentoSelector({
   const showToast = useToast((s) => s.show);
   const [creating, setCreating] = useState<number | null>(null);
 
+  // Ce qu'il faut pour garder la pastille active à l'écran : où est chaque
+  // pastille, ce que la bande laisse voir, et où elle en est. Des refs et non
+  // de l'état : rien de tout cela ne se dessine.
+  const bande = useRef<ScrollView>(null);
+  const pastilles = useRef(new Map<string, { x: number; width: number }>());
+  const vue = useRef({ offset: 0, viewport: 0 });
+  const montrer = useCallback((id: string | null) => {
+    const pastille = id ? pastilles.current.get(id) : undefined;
+    if (!pastille) return;
+    const x = selectorRevealOffset({ ...pastille, ...vue.current });
+    if (x !== null) bande.current?.scrollTo({ x, animated: true });
+  }, []);
+  // Un changement de bento courant, vers une pastille déjà mesurée. Celle
+  // d'un bento qui vient d'être créé ne l'est pas encore : elle se montre
+  // elle-même à sa première mesure, cf. `onLayout` plus bas.
+  useEffect(() => {
+    montrer(currentId);
+  }, [currentId, montrer]);
+
   // Les éditions sorties que ce compte n'a pas encore composées.
-  const composees = new Set(own.map((b) => b.editionId).filter((id): id is number => id !== null));
-  const aComposer = editions.filter((e) => !composees.has(e.id));
+  const aComposer = editions;
 
   // Rien à choisir : ni second bento, ni édition à rejoindre. Le composer
   // garde exactement l'aspect qu'il avait, et `composeSelectorHeight` rend
@@ -446,16 +534,31 @@ function BentoSelector({
   };
   return (
     <ScrollView
+      ref={bande}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+      contentContainerStyle={{ paddingHorizontal: SELECTOR_SIDE, gap: 8 }}
       style={{ marginBottom: SELECTOR_GAP, flexGrow: 0 }}
+      onLayout={(e) => {
+        vue.current.viewport = e.nativeEvent.layout.width;
+      }}
+      // Sans cadence, iOS n'envoie qu'un événement par geste, et la position
+      // lue serait celle du début du défilement.
+      scrollEventThrottle={16}
+      onScroll={(e) => {
+        vue.current.offset = e.nativeEvent.contentOffset.x;
+      }}
     >
       {own.map((bento) => {
         const actif = bento.id === currentId;
         return (
           <Pressable
             key={bento.id}
+            onLayout={(e) => {
+              const { x, width } = e.nativeEvent.layout;
+              pastilles.current.set(bento.id, { x, width });
+              if (actif) montrer(bento.id);
+            }}
             onPress={() => {
               if (actif) return;
               void switchBento(bento.id);
@@ -463,7 +566,11 @@ function BentoSelector({
             accessibilityRole="button"
             accessibilityState={{ selected: actif }}
             accessibilityLabel={
-              bento.isPrimary ? 'Éditer mon bento' : `Éditer le bento ${bento.slug}`
+              bento.isPrimary
+                ? 'Éditer mon bento'
+                : bento.editionTitle
+                  ? `Éditer l’édition ${bento.editionTitle}`
+                  : `Éditer le bento ${bento.slug}`
             }
             style={[
               {
@@ -489,7 +596,7 @@ function BentoSelector({
                 color: actif ? '#fbbf24' : '#0a0a0a',
               }}
             >
-              {bento.isPrimary ? 'Mon bento' : bento.slug}
+              {bentoName(bento)}
             </Text>
           </Pressable>
         );

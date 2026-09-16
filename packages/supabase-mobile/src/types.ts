@@ -329,6 +329,14 @@ export type Database = {
             referencedRelation: 'users';
             referencedColumns: ['id'];
           },
+          {
+            // Chantier 13 : ce qui type `select('…, editions ( title )')`,
+            // la jointure qui nomme un bento d'édition.
+            foreignKeyName: 'bentos_edition_id_fkey';
+            columns: ['edition_id'];
+            referencedRelation: 'editions';
+            referencedColumns: ['id'];
+          },
         ];
       };
       bento_items: {

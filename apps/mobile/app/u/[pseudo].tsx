@@ -206,8 +206,9 @@ export default function PublicBentoScreen() {
  * qu'un deuxième bento n'existe pas. C'est la promesse du §5.4 de la spéc, et
  * `publicOthersStripHeight` rend zéro dans ce cas.
  *
- * Le libellé est le slug, tel quel : c'est l'adresse, et c'est tout ce qu'un
- * bento porte aujourd'hui. Le chantier 13 lui donnera un titre.
+ * Le libellé est le titre de l'édition pour un bento d'édition, chantier 13,
+ * et le slug tel quel pour un bento libre : c'est son adresse, et c'est tout
+ * ce qu'il porte.
  */
 function OtherBentos({
   pseudo,
@@ -233,7 +234,7 @@ function OtherBentos({
           key={other.id}
           onPress={() => router.push(`/u/${pseudo}/${other.slug}` as const)}
           accessibilityRole="button"
-          accessibilityLabel={`Voir le bento ${other.slug} de @${pseudo}`}
+          accessibilityLabel={`Voir le bento ${other.editionTitle ?? other.slug} de @${pseudo}`}
           style={[
             {
               height: OTHERS_CHIP_H * scale,
@@ -258,7 +259,7 @@ function OtherBentos({
               color: '#0a0a0a',
             }}
           >
-            {other.slug}
+            {other.editionTitle ?? other.slug}
           </Text>
         </Pressable>
       ))}
@@ -552,9 +553,13 @@ function FoundPage({
   };
 
   // Le titre de l'édition passe devant la date : sans lui, on ne comprend
-  // pas pourquoi cette boîte n'a pas les cases du bento principal.
-  const quoi = bento.editionTitle ?? 'bento';
-  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}${quoi}, publié le ${formatDate(bento.publishedAt)}`;
+  // pas pourquoi cette boîte n'a pas les cases du bento principal. Le bento
+  // principal garde sa phrase d'origine, sans virgule : la recette du
+  // chantier 13 a relevé « bento, publié le », régression du lot 5.
+  const quoi = bento.editionTitle
+    ? `${bento.editionTitle}, publié le`
+    : 'bento publié le';
+  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}${quoi} ${formatDate(bento.publishedAt)}`;
 
   return (
     <View style={{ flex: 1 }}>

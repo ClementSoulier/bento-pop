@@ -7,7 +7,8 @@
  * - un mot seul n'a aucune autre coupure : plus large que sa case, il se
  *   coupait au milieu sur les deux plateformes, « ARDÈCH / E » sur un iPhone
  *   17 Pro dès la taille de police xxLarge. Il reste sur une ligne, et
- *   rétrécit juste assez pour y tenir ;
+ *   rétrécit juste assez pour y tenir, mesuré comme le reste : cf.
+ *   `tileTitleScale` ;
  * - plusieurs mots se répartissent sur deux lignes. Un premier mot plus large
  *   que la ligne s'y coupait pourtant, faute d'autre coupure avant lui :
  *   « KICKSTAR / T » sur iPhone, « KICK- / START » sur Android. Et ce qui ne
@@ -44,12 +45,20 @@ const BREAKING_HYPHEN = /[-\u2010]/;
  */
 const BREAKS_BETWEEN_CHARACTERS = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/;
 
+/**
+ * Le nombre de lignes d'un titre. **Jamais `adjustsFontSizeToFit`** : sa taille
+ * se mesure, cf. `tileTitleScale`.
+ *
+ * Un mot seul le portait, et rétrécissait sous la main de la plateforme. Sur
+ * iOS, combiné à la hauteur de ligne que la case pose, il réduisait le titre à
+ * la trace : « TITANIC » écrit en 5 pt dans une case de 280, à chaque ouverture
+ * à froid de la page publique, recette du chantier 13 le 16 septembre 2026.
+ * Le piège est décrit dans `RECETTE-MOBILE.md`.
+ */
 export function tileTitleFit(title: string): TileTitleFit {
   const text = title.trim();
   const singleWord = !BREAKING_SPACE.test(text) && !BREAKS_BETWEEN_CHARACTERS.test(text);
-  return singleWord
-    ? { numberOfLines: 1, adjustsFontSizeToFit: true }
-    : { numberOfLines: 2, adjustsFontSizeToFit: false };
+  return { numberOfLines: singleWord ? 1 : 2, adjustsFontSizeToFit: false };
 }
 
 /**
@@ -145,11 +154,43 @@ function wrapTitle(
 }
 
 /**
+ * Facteur à appliquer à une police pour qu'un texte tienne sur **une** ligne
+ * de `lineWidth`, en capitales : 1 s'il y tient déjà. Sans plancher, c'est à
+ * l'appelant d'en poser un.
+ *
+ * Même mesure que `tileTitleScale`, arrondi d'Android compris : c'est elle
+ * qui dimensionne le titre d'une case d'un seul mot, et le titre du composer.
+ */
+export function lineFitScale(
+  text: string,
+  lineWidth: number,
+  fontSize: number,
+  letterSpacing: number,
+  pixelRatio?: number,
+): number {
+  if (lineWidth <= 0 || fontSize <= 0) return 1;
+  const upper = text.trim().normalize('NFC').toUpperCase();
+  const room = lineWidth - TITLE_ROUNDING_SLACK;
+  const rendered = (size: number) =>
+    pixelRatio === undefined ? size : Math.ceil(size * pixelRatio) / pixelRatio;
+  const snapped = (size: number) =>
+    pixelRatio === undefined ? size : (Math.floor(size * pixelRatio) - 0.01) / pixelRatio;
+  const spacing = letterSpacing * [...upper].length;
+  // Largeur des glyphes pour une police de 1, espacement à part.
+  const glyphs = (extendaTextWidth(upper, fontSize, letterSpacing) - spacing) / fontSize;
+  if (glyphs * rendered(fontSize) + spacing <= room) return 1;
+  return Math.max(0, snapped((room - spacing) / glyphs)) / fontSize;
+}
+
+/**
  * Facteur à appliquer à la police d'un titre de plusieurs mots pour qu'il
  * tienne entier en deux lignes de `lineWidth`, sans descendre sous
  * `TITLE_MIN_SCALE`, et pour que son premier mot y tienne quoi qu'il arrive.
- * Vaut 1 quand le titre tient déjà, et pour ceux que `tileTitleFit` règle sans
- * mesure.
+ * Vaut 1 quand le titre tient déjà, et pour les écritures qui se coupent entre
+ * deux caractères, qu'on ne mesure pas.
+ *
+ * Un mot seul n'a qu'une ligne : il rétrécit autant qu'il le faut pour la
+ * remplir au plus, sans plancher, comme le faisait `adjustsFontSizeToFit`.
  *
  * Les deux conditions ne pèsent pas pareil. Un premier mot trop large se
  * **coupe au milieu**, faute de coupure avant lui, « KICKSTAR / T » : le titre
@@ -176,11 +217,7 @@ export function tileTitleScale(
   pixelRatio?: number,
 ): number {
   const text = title.trim();
-  const measured =
-    lineWidth > 0 &&
-    fontSize > 0 &&
-    !tileTitleFit(text).adjustsFontSizeToFit &&
-    !BREAKS_BETWEEN_CHARACTERS.test(text);
+  const measured = lineWidth > 0 && fontSize > 0 && !BREAKS_BETWEEN_CHARACTERS.test(text);
   if (!measured) return 1;
 
   const upper = text.normalize('NFC').toUpperCase();
@@ -191,16 +228,15 @@ export function tileTitleScale(
   /** Le pixel entier en dessous, moins un centième que l'arrondi rattrape. */
   const snapped = (size: number) =>
     pixelRatio === undefined ? size : (Math.floor(size * pixelRatio) - 0.01) / pixelRatio;
+  /** La taille à laquelle ce texte tient sur une ligne : `fontSize` s'il y tient déjà. */
+  const lineSize = (line: string) =>
+    fontSize * lineFitScale(line, lineWidth, fontSize, letterSpacing, pixelRatio);
+
+  // Un mot seul : sa ligne entière, traits d'union et insécables compris.
+  if (tileTitleFit(text).numberOfLines === 1) return lineSize(upper) / fontSize;
 
   // 1. La taille à laquelle le premier mot tient sur sa ligne.
-  const word = firstUnbreakable(upper);
-  const spacing = letterSpacing * [...word].length;
-  // Largeur des glyphes pour une police de 1, espacement à part.
-  const glyphs = (extendaTextWidth(word, fontSize, letterSpacing) - spacing) / fontSize;
-  const wordSize =
-    glyphs * rendered(fontSize) + spacing <= room
-      ? fontSize
-      : Math.max(0, snapped((room - spacing) / glyphs));
+  const wordSize = lineSize(firstUnbreakable(upper));
 
   // 2. La plus grande taille, sous celle-là, à laquelle le titre tient entier.
   const chunks = titleChunks(upper);

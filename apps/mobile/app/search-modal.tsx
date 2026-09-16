@@ -20,6 +20,7 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import {
   CONTENT_MAX_FONT_MULTIPLIER,
   CONTROL_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
   scaledType,
 } from '@/components/bento/font-scaling';
 import { SearchIcon } from '@/components/TabIcons';
@@ -487,11 +488,15 @@ export default function SearchModal() {
           </Text>
         </Pressable>
         {/* Le tampon est une abréviation, « CRÉA » : le lecteur d'écran entend
-            l'intitulé entier. */}
+            l'intitulé entier. Sur une case d'édition, l'intitulé est la
+            question affichée juste en dessous, qui porte le rôle d'en-tête :
+            le tampon ne dit plus que ce qu'on cherche. */}
         <Text
           numberOfLines={1}
-          accessibilityRole="header"
-          accessibilityLabel={`Case ${meta.label}`}
+          accessibilityRole={estBentoPrincipal ? 'header' : 'text'}
+          accessibilityLabel={
+            estBentoPrincipal ? `Case ${meta.label}` : `Case ${meta.stamp.toLowerCase()}`
+          }
           maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
           style={[styles.headerLabel, { flexShrink: 1 }]}
         >
@@ -521,6 +526,21 @@ export default function SearchModal() {
           </Pressable>
         ) : null}
       </View>
+
+      {/* La question d'une case d'édition, en entier et jamais coupée : c'est
+          elle qu'on remplit. La recette du 16 septembre l'a montré, le titre
+          ne disait que « Case · Film », et sur « Le duel du samedi » les deux
+          cases sont des films. Le tampon reste au-dessus, parce que « Celui
+          qui t'a fait rire » ne dit pas, lui, qu'on cherche un film. */}
+      {!estBentoPrincipal && meta.label ? (
+        <Text
+          accessibilityRole="header"
+          maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER}
+          style={styles.question}
+        >
+          {meta.label}
+        </Text>
+      ) : null}
 
       {/* Search input */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 14 }}>
@@ -700,6 +720,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2,
     textTransform: 'uppercase',
+  },
+  question: {
+    fontFamily: 'Bungee',
+    fontSize: 16,
+    lineHeight: 21,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: '#0a0a0a',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
   searchInput: {
     backgroundColor: '#ffffff',
