@@ -133,6 +133,56 @@ begin
     v_ko := v_ko + 1;
   end;
 
+  -- ── 6. Le premier bento d'un compte neuf ────────────────────────────
+  --
+  -- Le contrôle qui manquait. La migration A a posé `slug not null` sans
+  -- défaut, alors que le client ne peut insérer que `user_id` : `ensureBento`
+  -- levait une violation de non-nullité, et tout nouveau venu était bloqué à
+  -- sa première case. Ni la relecture ni les tests applicatifs, qui
+  -- bouchonnent PostgREST, ne l'avaient vu.
+  insert into public.users (id, pseudo, terms_accepted_at)
+  values ('99999999-0000-4000-8000-0000000000c1', 'controle.neuf', now());
+
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', '99999999-0000-4000-8000-0000000000c1', 'role', 'authenticated')::text,
+    true
+  );
+
+  begin
+    -- Exactement ce que fait `ensureBento` : une seule colonne.
+    insert into public.bentos (user_id) values ('99999999-0000-4000-8000-0000000000c1');
+    if (
+      select is_primary and slug is not null
+      from public.bentos where user_id = '99999999-0000-4000-8000-0000000000c1'
+    ) then
+      raise notice 'ok  6a un compte neuf crée son premier bento, principal et adressé';
+      v_ok := v_ok + 1;
+    else
+      raise warning 'KO  6a premier bento créé mais ni principal ni adressé';
+      v_ko := v_ko + 1;
+    end if;
+  exception when others then
+    raise warning 'KO  6a un compte neuf ne peut pas créer son bento : %', sqlerrm;
+    v_ko := v_ko + 1;
+  end;
+
+  begin
+    insert into public.bentos (user_id) values ('99999999-0000-4000-8000-0000000000c1');
+    raise warning 'KO  6b le client a créé un deuxième bento par le chemin du premier';
+    v_ko := v_ko + 1;
+  exception when unique_violation then
+    raise notice 'ok  6b le chemin du premier bento n''en crée pas un deuxième';
+    v_ok := v_ok + 1;
+  end;
+
+  -- On redevient le compte du reste du script.
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_uid, 'role', 'authenticated')::text,
+    true
+  );
+
   -- ── 4. Les compteurs comptent des personnes ─────────────────────────
   select jsonb_object_agg(title, picks) into v_avant from public.shared_items(20);
 
