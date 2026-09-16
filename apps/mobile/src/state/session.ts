@@ -11,7 +11,6 @@ import { withTimeout } from '@/lib/with-timeout';
 
 type Profile = Database['public']['Tables']['users']['Row'];
 
-
 const INIT_TIMEOUT_MS = 8000;
 
 type SessionState = {
@@ -74,10 +73,12 @@ export const useSession = create<SessionState>((set, get) => ({
 
       set({ session, user: session?.user ?? null });
       if (session) {
-        await get().refreshProfile().catch(() => {
-          // refreshProfile non bloquant : profil resté `null`, l'app ouvre
-          // sur l'onboarding ou un state vide.
-        });
+        await get()
+          .refreshProfile()
+          .catch(() => {
+            // refreshProfile non bloquant : profil resté `null`, l'app ouvre
+            // sur l'onboarding ou un state vide.
+          });
 
         // Télémétrie : une fois par lancement, ici et pas dans
         // `refreshProfile`, que le composer rappelle à chaque retour
@@ -107,18 +108,26 @@ export const useSession = create<SessionState>((set, get) => ({
     const userId = get().user?.id;
     if (!userId) {
       set({ profile: null });
+      useBento.getState().markHydrated();
       return;
     }
-    const { data } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    set({ profile: data ?? null });
-    // Si le profil existe, on hydrate aussi le bento (slots déjà créés).
-    if (data) {
-      await hydrateBentoFromRemote(userId);
+    try {
+      const { data } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+      set({ profile: data ?? null });
+      // Si le profil existe, on hydrate aussi le bento (slots déjà créés).
+      if (data) {
+        await hydrateBentoFromRemote(userId);
+        return;
+      }
+    } catch (e) {
+      // Hors ligne, la lecture jette. Le profil déjà connu reste : l'effacer
+      // renverrait à l'inscription quelqu'un qui a un compte. Et le composer
+      // n'a plus rien à attendre, sans quoi il garderait son squelette et son
+      // bouton « Chargement… » pour toujours, cf. `markHydrated`.
+      console.warn('[session] lecture du profil', e);
     }
+    // La lecture a répondu, même pour dire qu'il n'y a rien, ou elle a échoué.
+    useBento.getState().markHydrated();
   },
 
   setProfile: (profile) => set({ profile }),
@@ -141,36 +150,31 @@ export const useSession = create<SessionState>((set, get) => ({
  * persistance de la palette en BDD pour le MVP — c'est purement décoratif).
  */
 async function hydrateBentoFromRemote(userId: string) {
-  const { data } = await supabase
-    .from('bentos')
-    .select(
-      `id,
-       published_at,
-       bento_items (
-         category_id,
-         items ( id, title, subtitle, image_url, image_credit, status )
-       )`,
-    )
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (!data) return;
+  const { data } = await readBento(userId);
+  if (!data) {
+    // Pas encore de bento, ou la lecture a échoué : dans les deux cas elle a
+    // répondu, et le composer ne doit pas attendre plus.
+    useBento.getState().markHydrated();
+    return;
+  }
   // Posé avant les cases : c'est ce qui décide du libellé du CTA, et on ne
   // veut pas d'une frame où le bento est plein mais encore « à publier ».
   useBento.getState().setPublishedAt(data.published_at);
-  if (!data.bento_items) return;
+  if (!data.bento_items) {
+    useBento.getState().markHydrated();
+    return;
+  }
   const slots: ReturnType<typeof useBento.getState>['slots'] = {};
-  data.bento_items.forEach((bi, idx) => {
+  data.bento_items.forEach((bi) => {
     const cat = CATEGORY_BY_ID[bi.category_id];
-    const item = bi.items as
-      | {
-          id: string;
-          title: string;
-          subtitle: string | null;
-          image_url: string | null;
-          image_credit: string | null;
-          status: string;
-        }
-      | null;
+    const item = bi.items as {
+      id: string;
+      title: string;
+      subtitle: string | null;
+      image_url: string | null;
+      image_credit: string | null;
+      status: string;
+    } | null;
     if (!cat || !item) return;
     slots[cat] = {
       title: item.title,
@@ -183,4 +187,28 @@ async function hydrateBentoFromRemote(userId: string) {
     };
   });
   useBento.getState().hydrate(slots);
+}
+
+/**
+ * La lecture elle-même. Son échec ne remonte pas : hors ligne, une exception
+ * ici laissait le composer attendre une réponse qui n'arriverait jamais.
+ */
+async function readBento(userId: string) {
+  try {
+    return await supabase
+      .from('bentos')
+      .select(
+        `id,
+       published_at,
+       bento_items (
+         category_id,
+         items ( id, title, subtitle, image_url, image_credit, status )
+       )`,
+      )
+      .eq('user_id', userId)
+      .maybeSingle();
+  } catch (e) {
+    console.warn('[session] lecture du bento', e);
+    return { data: null };
+  }
 }

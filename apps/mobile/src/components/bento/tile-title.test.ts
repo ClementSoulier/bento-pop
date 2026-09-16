@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
 import { extendaTextWidth } from './extenda-metrics';
 import {
+  TITLE_MIN_SCALE,
   TITLE_ROUNDING_SLACK,
   emptyTileLabelFit,
   firstUnbreakable,
@@ -88,6 +89,38 @@ function androidWidth(word: string, fontSize: number, line: Line): number {
   return extendaTextWidth(word, Math.ceil(fontSize * ratio) / ratio, line.letterSpacing);
 }
 
+/**
+ * Le titre tient-il entier en deux lignes à ce facteur ? La mise en lignes est
+ * refaite ici, sans passer par le modèle : c'est elle que le test vérifie.
+ */
+function fitsWhole(title: string, line: Line, scale: number): boolean {
+  const ratio = line.pixelRatio;
+  const size =
+    ratio === undefined ? line.fontSize * scale : Math.ceil(line.fontSize * scale * ratio) / ratio;
+  const room = line.lineWidth - TITLE_ROUNDING_SLACK;
+  const pieces = title
+    .normalize('NFC')
+    .toUpperCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .flatMap((word) => word.split(/(?<=-)/).map((piece, i) => ({ piece, glued: i > 0 })));
+  const lines: string[] = [];
+  let current = '';
+  for (const { piece, glued } of pieces) {
+    const candidate = current === '' ? piece : glued ? current + piece : `${current} ${piece}`;
+    if (current === '' || extendaTextWidth(candidate, size, line.letterSpacing) <= room) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = piece;
+    }
+  }
+  if (current) lines.push(current);
+  return (
+    lines.length <= 2 && lines.every((l) => extendaTextWidth(l, size, line.letterSpacing) <= room)
+  );
+}
+
 describe('tileTitleScale', () => {
   /**
    * Les coupures relevées sur les 27 bentos publiés : « KICKSTAR / T »,
@@ -105,14 +138,62 @@ describe('tileTitleScale', () => {
     assert.ok(scaleOn('sleepless deathbed - Invent Animate', ANDROID_411_SM) < 1);
   });
 
-  it('ne touche pas un titre dont le premier mot tenait', () => {
-    assert.equal(scaleOn('sleepless deathbed - Invent Animate', IPHONE_17_PRO_SM), 1);
-    assert.equal(scaleOn('Alice in Borderland', IPHONE_17_PRO_SM), 1);
+  it('ne touche pas un titre qui tenait déjà entier', () => {
+    assert.equal(scaleOn('Top Gun', IPHONE_17_PRO_SM), 1);
+    assert.equal(scaleOn('Jaws', IPHONE_17_PRO_SM), 1);
   });
 
-  /** « JIMMY / PUNCHLI… » : le mot trop large tombe en dernière ligne, qui se tronque. */
-  it('ne mesure que le premier mot', () => {
-    assert.equal(scaleOn('Jimmy Punchline', IPHONE_17_PRO_SM), 1);
+  /**
+   * « JIMMY / PUNCHLI… » relevé sur le fil : le mot trop large tombe en
+   * dernière ligne, qui se tronquait. Il rétrécit désormais jusqu'à tenir.
+   */
+  it('rétrécit un titre dont la dernière ligne se tronquait', () => {
+    for (const title of ['Jimmy Punchline', 'Bohemian Rhapsody', 'Alice in Borderland']) {
+      const scale = scaleOn(title, IPHONE_17_PRO_SM);
+      assert.ok(scale < 1 && scale >= TITLE_MIN_SCALE, `${title} : ${scale}`);
+      assert.ok(fitsWhole(title, IPHONE_17_PRO_SM, scale), `${title} tronqué à ${scale}`);
+    }
+  });
+
+  it('rétrécit juste ce qu’il faut : un point de plus et le titre se tronque', () => {
+    const scale = scaleOn('Jimmy Punchline', IPHONE_17_PRO_SM);
+    assert.ok(!fitsWhole('Jimmy Punchline', IPHONE_17_PRO_SM, scale + 0.005));
+  });
+
+  /**
+   * « LE SEIGNEUR DES ANNEAUX : LA COMMUNAUTÉ DE L'ANNEAU » et « GLITCH
+   * PRODUCTIONS » ne tiennent pas en deux lignes, même petits : ils s'arrêtent
+   * au plancher et se tronquent, plutôt que de devenir illisibles.
+   */
+  it('ne descend pas sous le plancher pour un titre qui ne tiendra pas', () => {
+    for (const title of [
+      "Le Seigneur des anneaux : La Communauté de l'anneau",
+      'Glitch Productions',
+    ]) {
+      const scale = scaleOn(title, IPHONE_17_PRO_SM);
+      assert.ok(Math.abs(scale - TITLE_MIN_SCALE) < 1e-9, `${title} : ${scale}`);
+    }
+  });
+
+  /**
+   * Sauf pour le premier mot : coupé au milieu, il abîme plus la case qu'un
+   * titre petit. « MEGALOVANIA » à 73,35 pt de ligne demande 0,71.
+   */
+  it('passe sous le plancher pour que le premier mot ne se coupe pas', () => {
+    const scale = scaleOn('Megalovania X Megalovania', IPHONE_17_PRO_SM);
+    assert.ok(scale < TITLE_MIN_SCALE, String(scale));
+    const { fontSize, letterSpacing, lineWidth } = IPHONE_17_PRO_SM;
+    const width = extendaTextWidth('MEGALOVANIA', fontSize * scale, letterSpacing);
+    assert.ok(width <= lineWidth - TITLE_ROUNDING_SLACK, `${width} pour ${lineWidth}`);
+  });
+
+  it('coupe après un trait d’union, comme la plateforme', () => {
+    // La ligne peut se couper après « MERRY- » ; avec un trait d'union
+    // insécable, « MERRY‑GO‑ROUND » devient un seul mot, qui doit tenir.
+    const coupable = scaleOn('Merry-Go-Round of Life', IPHONE_17_PRO_SM);
+    const insecable = scaleOn('Merry\u2011Go\u2011Round of Life', IPHONE_17_PRO_SM);
+    assert.ok(coupable > insecable, `${coupable} contre ${insecable}`);
+    assert.ok(insecable < TITLE_MIN_SCALE, String(insecable));
   });
 
   it('rétrécit juste assez pour que le premier mot remplisse la ligne, au dixième de point près', () => {
@@ -129,12 +210,14 @@ describe('tileTitleScale', () => {
    */
   it('mesure sur Android la police arrondie au pixel, et s’arrête sur un pixel entier', () => {
     const { lineWidth, fontSize } = ANDROID_411_SM;
+    // Ce titre ne tient pas en deux lignes : il s'arrête au plancher, qui tombe
+    // lui aussi sur le pixel entier en dessous, 25 px pour 25,59 demandés.
     const scale = scaleOn('Telegraph Dow in the Rivers', ANDROID_411_SM);
     const pixels = fontSize * scale * 2.625;
-    assert.equal(Math.ceil(pixels), 30, String(pixels));
+    assert.equal(Math.ceil(pixels), 25, String(pixels));
+    assert.ok(pixels < 25, String(pixels));
+    // Et « TELEGRAPH », qui se coupait en deux, tient sur sa ligne.
     assert.ok(androidWidth('TELEGRAPH', fontSize * scale, ANDROID_411_SM) <= lineWidth);
-    // Un pixel de plus ne tiendrait pas.
-    assert.ok(androidWidth('TELEGRAPH', 31 / 2.625, ANDROID_411_SM) > lineWidth);
   });
 
   it('rétrécit sur Android un premier mot qui ne tient qu’avant l’arrondi', () => {

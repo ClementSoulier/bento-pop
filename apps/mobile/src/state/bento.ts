@@ -64,6 +64,15 @@ type BentoState = {
   publishedAt: string | null;
   /** Écritures parties et non encore confirmées, succès ou échec. */
   pendingWrites: number;
+  /**
+   * La première lecture du bento en base a-t-elle répondu ?
+   *
+   * Sans elle, le composer affiche « 0 / 6 » et « Commence par ton film » en
+   * attendant, c'est-à-dire un bento vide à quelqu'un qui en a un. Mesuré au
+   * chantier 11, relais retardé de 10 s par requête : huit secondes de bento
+   * vide après le garde-fou de démarrage.
+   */
+  hydrated: boolean;
   setSlot: (cat: CategoryKey, data: TileData & { itemId?: string }) => void;
   clearSlot: (cat: CategoryKey) => void;
   reset: () => void;
@@ -72,6 +81,17 @@ type BentoState = {
    * qu'une écriture locale est en vol, cf. le bloc ci-dessus.
    */
   hydrate: (slots: BentoSlots) => void;
+  /**
+   * La lecture a répondu, mais il n'y avait rien à lire, ou elle a échoué.
+   *
+   * Sans elle, le composer restait sur son squelette et son bouton
+   * « Chargement… » **pour toujours** : un compte sans bento, une ligne sans
+   * cases, une panne réseau au démarrage. Relevé au chantier 11 sur l'émulateur
+   * Pixel 8, dont le compte n'avait pas encore de bento. Elle ne touche pas aux
+   * cases : une lecture qui échoue n'est pas une raison d'effacer ce que
+   * l'appareil a déjà.
+   */
+  markHydrated: () => void;
   /**
    * Pose l'état de publication. Volontairement séparé d'`hydrate` : une
    * écriture de case en vol ne dit rien de l'état de publication, donc le
@@ -89,6 +109,7 @@ export const useBento = create<BentoState>((set, get) => ({
   lastFilled: null,
   publishedAt: null,
   pendingWrites: 0,
+  hydrated: false,
   setSlot: (cat, data) =>
     set((s) => ({
       slots: { ...s.slots, [cat]: data },
@@ -100,11 +121,18 @@ export const useBento = create<BentoState>((set, get) => ({
       delete next[cat];
       return { slots: next };
     }),
-  reset: () => set({ slots: {}, lastFilled: null, publishedAt: null, pendingWrites: 0 }),
+  reset: () =>
+    set({ slots: {}, lastFilled: null, publishedAt: null, pendingWrites: 0, hydrated: false }),
   hydrate: (slots) => {
-    if (get().pendingWrites > 0) return;
-    set({ slots });
+    // `hydrated` est posé même quand l'écriture en vol fait ignorer les cases
+    // distantes : la lecture a répondu, c'est tout ce que le composer demande.
+    if (get().pendingWrites > 0) {
+      set({ hydrated: true });
+      return;
+    }
+    set({ slots, hydrated: true });
   },
+  markHydrated: () => set({ hydrated: true }),
   setPublishedAt: (publishedAt) => set({ publishedAt }),
   beginWrite: () => set((s) => ({ pendingWrites: s.pendingWrites + 1 })),
   // `Math.max` plutôt qu'une simple décrémentation : un `endWrite` en trop,

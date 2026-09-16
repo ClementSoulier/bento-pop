@@ -8,12 +8,13 @@
  *   coupait au milieu sur les deux plateformes, « ARDÈCH / E » sur un iPhone
  *   17 Pro dès la taille de police xxLarge. Il reste sur une ligne, et
  *   rétrécit juste assez pour y tenir ;
- * - plusieurs mots tiennent en deux lignes et tronquent leur fin. Un premier
- *   mot plus large que la ligne s'y coupait pourtant, faute d'autre coupure
- *   avant lui : « KICKSTAR / T » sur iPhone, « KICK- / START » sur Android.
- *   Le titre rétrécit alors juste assez pour que ce premier mot tienne, cf.
- *   `tileTitleScale`. Les mots suivants, eux, passent à la ligne, et un mot
- *   trop large en dernière ligne se tronque : « JIMMY / PUNCHLI… » ;
+ * - plusieurs mots se répartissent sur deux lignes. Un premier mot plus large
+ *   que la ligne s'y coupait pourtant, faute d'autre coupure avant lui :
+ *   « KICKSTAR / T » sur iPhone, « KICK- / START » sur Android. Et ce qui ne
+ *   tenait pas dans les deux lignes se tronquait : « JIMMY / PUNCHLI… »,
+ *   « BOHEMIAN / RHAPSO… », 29 des 162 cases publiées. Le titre rétrécit donc
+ *   jusqu'à tenir entier, sans descendre sous `TITLE_MIN_SCALE`, et toujours
+ *   assez pour que son premier mot tienne : cf. `tileTitleScale` ;
  * - les kana, idéogrammes et hangûl se coupent entre deux caractères : deux
  *   lignes, sans rien mesurer.
  *
@@ -73,9 +74,88 @@ export function firstUnbreakable(text: string): string {
 export const TITLE_ROUNDING_SLACK = 0.1;
 
 /**
- * Facteur à appliquer à la police d'un titre de plusieurs mots pour que son
- * premier mot tienne dans `lineWidth`. Vaut 1 s'il y tient déjà, et pour les
- * titres que `tileTitleFit` règle sans mesure.
+ * Plancher du rétrécissement d'un titre qui ne tient pas entier.
+ *
+ * En dessous, il se tronque comme avant. Mesuré sur les 162 cases publiées, fil
+ * et page publique : 29 titres tronqués aujourd'hui, 13 encore à ce plancher, 3
+ * seulement à 0,6, mais une case Chanson d'iPhone 17 Pro y écrirait en 7,2 pt.
+ * Cf. §4.7 et D17 de la spécification du chantier 11.
+ *
+ * Sur Android, le plancher tombe lui aussi sur le pixel entier en dessous, par
+ * la même règle d'arrondi : 0,73 pour une case de 13 pt sur un Pixel 8.
+ */
+export const TITLE_MIN_SCALE = 0.75;
+
+/** Un morceau que la ligne ne peut pas couper, et ce qui le sépare du précédent. */
+type Chunk = {
+  text: string;
+  /** Collé au morceau d'avant : la coupure vient d'un trait d'union, pas d'une espace. */
+  glued: boolean;
+};
+
+/** Le titre découpé là où la ligne peut se couper. */
+function titleChunks(text: string): Chunk[] {
+  const chunks: Chunk[] = [];
+  let current = '';
+  let glued = false;
+  for (const char of text) {
+    if (BREAKING_SPACE.test(char)) {
+      if (current) chunks.push({ text: current, glued });
+      current = '';
+      glued = false;
+      continue;
+    }
+    current += char;
+    if (BREAKING_HYPHEN.test(char)) {
+      chunks.push({ text: current, glued });
+      current = '';
+      glued = true;
+    }
+  }
+  if (current) chunks.push({ text: current, glued });
+  return chunks;
+}
+
+/**
+ * Les lignes que la plateforme composera : le morceau suivant tant qu'il tient
+ * sur la ligne en cours, la ligne d'après sinon. Cette mise en lignes gloutonne
+ * donne le plus petit nombre de lignes possible : si elle en compte deux, la
+ * plateforme y arrivera aussi.
+ */
+function wrapTitle(
+  chunks: readonly Chunk[],
+  room: number,
+  fontSize: number,
+  letterSpacing: number,
+): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const chunk of chunks) {
+    const candidate =
+      line === '' ? chunk.text : chunk.glued ? line + chunk.text : `${line} ${chunk.text}`;
+    if (line === '' || extendaTextWidth(candidate, fontSize, letterSpacing) <= room) {
+      line = candidate;
+      continue;
+    }
+    lines.push(line);
+    line = chunk.text;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/**
+ * Facteur à appliquer à la police d'un titre de plusieurs mots pour qu'il
+ * tienne entier en deux lignes de `lineWidth`, sans descendre sous
+ * `TITLE_MIN_SCALE`, et pour que son premier mot y tienne quoi qu'il arrive.
+ * Vaut 1 quand le titre tient déjà, et pour ceux que `tileTitleFit` règle sans
+ * mesure.
+ *
+ * Les deux conditions ne pèsent pas pareil. Un premier mot trop large se
+ * **coupe au milieu**, faute de coupure avant lui, « KICKSTAR / T » : le titre
+ * rétrécit alors autant qu'il le faut, plancher compris, une case ne montrant
+ * pas un mot cassé. Un mot trop large en dernière ligne, lui, se **tronque**,
+ * « BOHEMIAN / RHAPSO… » : le titre rétrécit jusqu'au plancher, et s'y arrête.
  *
  * La mesure majore le rendu, cf. `extendaTextWidth` : le titre ne rétrécit
  * jamais trop peu. L'espacement des lettres ne suit pas la police : il est mis
@@ -103,20 +183,48 @@ export function tileTitleScale(
     !BREAKS_BETWEEN_CHARACTERS.test(text);
   if (!measured) return 1;
 
-  const word = firstUnbreakable(text.normalize('NFC').toUpperCase());
+  const upper = text.normalize('NFC').toUpperCase();
+  const room = lineWidth - TITLE_ROUNDING_SLACK;
+  /** La police telle que la plateforme la dessinera. */
+  const rendered = (size: number) =>
+    pixelRatio === undefined ? size : Math.ceil(size * pixelRatio) / pixelRatio;
+  /** Le pixel entier en dessous, moins un centième que l'arrondi rattrape. */
+  const snapped = (size: number) =>
+    pixelRatio === undefined ? size : (Math.floor(size * pixelRatio) - 0.01) / pixelRatio;
+
+  // 1. La taille à laquelle le premier mot tient sur sa ligne.
+  const word = firstUnbreakable(upper);
   const spacing = letterSpacing * [...word].length;
   // Largeur des glyphes pour une police de 1, espacement à part.
   const glyphs = (extendaTextWidth(word, fontSize, letterSpacing) - spacing) / fontSize;
-  const room = lineWidth - TITLE_ROUNDING_SLACK;
-  const rendered = (size: number) =>
-    pixelRatio === undefined ? size : Math.ceil(size * pixelRatio) / pixelRatio;
-  if (glyphs * rendered(fontSize) + spacing <= room) return 1;
+  const wordSize =
+    glyphs * rendered(fontSize) + spacing <= room
+      ? fontSize
+      : Math.max(0, snapped((room - spacing) / glyphs));
 
-  const largest = (room - spacing) / glyphs;
-  // Un pixel entier, moins un centième que l'arrondi au pixel supérieur rattrape.
-  const size =
-    pixelRatio === undefined ? largest : (Math.floor(largest * pixelRatio) - 0.01) / pixelRatio;
-  return Math.max(0, size / fontSize);
+  // 2. La plus grande taille, sous celle-là, à laquelle le titre tient entier.
+  const chunks = titleChunks(upper);
+  const fitsWhole = (size: number) => {
+    const drawn = rendered(size);
+    const lines = wrapTitle(chunks, room, drawn, letterSpacing);
+    return (
+      lines.length <= 2 && lines.every((l) => extendaTextWidth(l, drawn, letterSpacing) <= room)
+    );
+  };
+  const floor = fontSize * TITLE_MIN_SCALE;
+  if (wordSize <= floor || fitsWhole(wordSize)) return wordSize / fontSize;
+  if (!fitsWhole(snapped(floor))) return snapped(floor) / fontSize;
+
+  let fits = floor;
+  let over = wordSize;
+  // Vingt-quatre pas : la fourchette de départ vaut un quart de la police, et
+  // il en reste moins d'un millionième de point.
+  for (let step = 0; step < 24; step++) {
+    const middle = (fits + over) / 2;
+    if (fitsWhole(snapped(middle))) fits = middle;
+    else over = middle;
+  }
+  return snapped(fits) / fontSize;
 }
 
 /**
