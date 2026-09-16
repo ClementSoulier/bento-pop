@@ -1,8 +1,13 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import popyContent from '@bento-pop/brand/assets/mascot/popy-content.png';
 import popyMalade from '@bento-pop/brand/assets/mascot/popy-malade.png';
 import { StampButton, YellowBg } from '@/components/primitives';
 import { openStore } from '@/lib/open-store';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
+  scaledType,
+} from '@/components/bento/font-scaling';
 
 /**
  * Écrans bloquants au boot de l'app : maintenance (volontaire, switch BO)
@@ -47,12 +52,22 @@ type BlockerLayoutProps = {
 };
 
 function BlockerLayout({ mascot, title, message, cta }: BlockerLayoutProps) {
+  const { fontScale } = useWindowDimensions();
   return (
     <YellowBg>
-      <View style={styles.container}>
+      {/* Défile quand la police système ne laisse plus tout tenir : le bouton de
+          mise à jour est la seule issue de cet écran. */}
+      <ScrollView contentContainerStyle={styles.container} alwaysBounceVertical={false}>
         <Image source={mascot} style={styles.mascot} resizeMode="contain" />
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.message}>{message}</Text>
+        <Text maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER} style={styles.title}>
+          {title}
+        </Text>
+        <Text
+          allowFontScaling={false}
+          style={[styles.message, scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 17, 24)]}
+        >
+          {message}
+        </Text>
         {cta ? (
           <View style={styles.ctaWrap}>
             <StampButton onPress={cta.onPress} wide>
@@ -60,14 +75,14 @@ function BlockerLayout({ mascot, title, message, cta }: BlockerLayoutProps) {
             </StampButton>
           </View>
         ) : null}
-      </View>
+      </ScrollView>
     </YellowBg>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
@@ -87,10 +102,8 @@ const styles = StyleSheet.create({
   },
   message: {
     fontFamily: 'Fredoka',
-    fontSize: 17,
     color: '#0a0a0a',
     textAlign: 'center',
-    lineHeight: 24,
     maxWidth: 360,
   },
   ctaWrap: {

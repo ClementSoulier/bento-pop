@@ -1,5 +1,14 @@
-import { useState } from 'react';
-import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSession } from '@/state/session';
@@ -8,7 +17,15 @@ import { popyForPseudo } from '@/lib/popy-avatar';
 import { deleteOwnAccount, ensureBento, unpublishBento } from '@/lib/bento-actions';
 import { relativeDate } from '@/lib/relative-date';
 import { exportUserData } from '@/lib/data-export';
-import { SHADOWS, StampButton, YellowBg } from '@/components/primitives';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
+  scaledType,
+} from '@/components/bento/font-scaling';
+import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, StampButton, YellowBg, useToast } from '@/components/primitives';
+import { useBlocked } from '@/state/blocked';
+import { userErrorMessage } from '@/lib/user-error-message';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 const TERMS_URL = 'https://bento-pop.com/mentions-legales';
@@ -24,6 +41,12 @@ export default function ProfileTab() {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
+  const { fontScale } = useWindowDimensions();
+  const blockedPseudos = useBlocked((s) => s.pseudos);
+  const unblock = useBlocked((s) => s.unblock);
+  const showToast = useToast((s) => s.show);
+  // Triés : l'ordre d'un `Set` est celui des blocages, que personne ne connaît.
+  const blocked = useMemo(() => [...blockedPseudos].sort(), [blockedPseudos]);
 
   const onExport = async () => {
     if (!userId) return;
@@ -31,7 +54,8 @@ export default function ProfileTab() {
     try {
       await exportUserData(userId);
     } catch (e) {
-      Alert.alert('Export impossible', (e as Error).message);
+      console.warn('[profil] export', e);
+      Alert.alert('Export impossible', userErrorMessage('export', e));
     } finally {
       setExporting(false);
     }
@@ -61,7 +85,8 @@ export default function ProfileTab() {
               await unpublishBento(bentoId);
               setPublishedAt(null);
             } catch (e) {
-              Alert.alert('Oups', (e as Error).message);
+              console.warn('[profil] retrait du fil', e);
+              Alert.alert('Oups', userErrorMessage('unpublish', e));
             } finally {
               setUnpublishing(false);
             }
@@ -89,7 +114,8 @@ export default function ProfileTab() {
               // Le `Redirect` dans app/index.tsx renverra vers l'onboarding
               router.replace('/');
             } catch (e) {
-              Alert.alert('Oups', (e as Error).message);
+              console.warn('[profil] suppression de compte', e);
+              Alert.alert('Oups', userErrorMessage('delete-account', e));
               setDeleting(false);
             }
           },
@@ -123,7 +149,15 @@ export default function ProfileTab() {
               <Image source={popy.source} style={{ width: 110, height: 110 }} resizeMode="contain" />
             </View>
 
+            {/* Une ligne, qui rétrécit : sur toute la largeur, en Extenda 36, le
+                pseudo se coupait au milieu dès qu'il dépassait la ligne, et dès la
+                taille par défaut, « @BENTO_CULTUR / E ». 8 des 59 pseudos de la
+                production débordent sur un 17 Pro, 16 à 360 dp. */}
             <Text
+              accessibilityRole="header"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER}
               style={{
                 fontFamily: 'Extenda',
                 fontSize: 36,
@@ -132,10 +166,13 @@ export default function ProfileTab() {
                 textTransform: 'uppercase',
               }}
             >
-              @{pseudo || '—'}
+              @{pseudo || '…'}
             </Text>
             {profile?.display_name ? (
-              <Text style={{ fontSize: 14, color: 'rgba(10,10,10,0.65)', marginTop: 4 }}>
+              <Text
+                maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+                style={{ fontSize: 14, color: 'rgba(10,10,10,0.65)', marginTop: 4 }}
+              >
                 {profile.display_name}
               </Text>
             ) : null}
@@ -144,12 +181,15 @@ export default function ProfileTab() {
                 voyait. C'est elle qui donne la certitude que le bento est
                 bien parti, et sa disparition confirme le retrait. */}
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
               style={{
                 fontFamily: 'Bungee',
                 fontSize: 9,
                 letterSpacing: 1,
                 marginTop: 10,
-                color: 'rgba(10,10,10,0.55)',
+                color: INK_MUTED,
                 textTransform: 'uppercase',
               }}
             >
@@ -179,6 +219,9 @@ export default function ProfileTab() {
                 ]}
               >
                 <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
                   style={{
                     fontFamily: 'Bungee',
                     fontSize: 14,
@@ -203,11 +246,13 @@ export default function ProfileTab() {
           {/* Section À propos / Légal */}
           <View style={{ marginTop: 36, gap: 8 }}>
             <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
               style={{
                 fontFamily: 'Bungee',
                 fontSize: 10,
                 letterSpacing: 2,
-                color: 'rgba(10,10,10,0.55)',
+                color: INK_MUTED,
                 textTransform: 'uppercase',
                 marginBottom: 4,
               }}
@@ -217,10 +262,12 @@ export default function ProfileTab() {
             <ProfileLink label="Crédits & attributions" onPress={() => router.push('/credits')} />
             <ProfileLink
               label="Politique de confidentialité"
+              role="link"
               onPress={() => Linking.openURL(PRIVACY_URL)}
             />
             <ProfileLink
               label="Conditions d'utilisation"
+              role="link"
               onPress={() => Linking.openURL(TERMS_URL)}
             />
             <ProfileLink
@@ -229,14 +276,57 @@ export default function ProfileTab() {
             />
           </View>
 
+          {/* Comptes bloqués. Sans cette liste, bloquer était une porte à sens
+              unique : le menu qui débloque vit sur la page du compte bloqué,
+              que le fil et la recherche ne montrent plus. */}
+          {blocked.length > 0 ? (
+            <View style={{ marginTop: 24, gap: 8 }}>
+              <Text
+                numberOfLines={1}
+                maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+                style={{
+                  fontFamily: 'Bungee',
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  color: INK_MUTED,
+                  textTransform: 'uppercase',
+                  marginBottom: 4,
+                }}
+              >
+                Comptes bloqués
+              </Text>
+              {blocked.map((blockedPseudo) => (
+                <BlockedRow
+                  key={blockedPseudo}
+                  pseudo={blockedPseudo}
+                  onUnblock={() => {
+                    void unblock(blockedPseudo);
+                    showToast(`@${blockedPseudo} débloqué`, { variant: 'neutral' });
+                  }}
+                />
+              ))}
+              <Text
+                allowFontScaling={false}
+                style={{
+                  ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 11, 16),
+                  color: INK_MUTED,
+                }}
+              >
+                Leurs bentos ne s&apos;affichent ni dans « La table » ni dans la recherche.
+              </Text>
+            </View>
+          ) : null}
+
           {/* Section Compte */}
           <View style={{ marginTop: 24, gap: 8 }}>
             <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
               style={{
                 fontFamily: 'Bungee',
                 fontSize: 10,
                 letterSpacing: 2,
-                color: 'rgba(10,10,10,0.55)',
+                color: INK_MUTED,
                 textTransform: 'uppercase',
                 marginBottom: 4,
               }}
@@ -274,11 +364,16 @@ export default function ProfileTab() {
               }}
             >
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
                 style={{
                   fontFamily: 'Bungee',
                   fontSize: 12,
                   letterSpacing: 1,
-                  color: '#e63946',
+                  // À l'encre : en rouge sur son propre voile, 2,36 : 1. Le
+                  // cadre et le fond rouges disent déjà que l'action est grave.
+                  color: '#0a0a0a',
                   textTransform: 'uppercase',
                 }}
               >
@@ -286,11 +381,11 @@ export default function ProfileTab() {
               </Text>
             </Pressable>
             <Text
+              allowFontScaling={false}
               style={{
-                fontSize: 11,
-                color: 'rgba(10,10,10,0.55)',
+                ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 11, 16),
+                color: INK_MUTED,
                 textAlign: 'center',
-                lineHeight: 16,
                 marginTop: 4,
               }}
             >
@@ -303,11 +398,80 @@ export default function ProfileTab() {
   );
 }
 
-function ProfileLink({ label, onPress }: { label: string; onPress: () => void }) {
+/**
+ * Ligne de la liste du profil. Bouton par défaut, lien seulement quand elle
+ * ouvre une adresse hors de l'app : « Crédits », « Exporter mes données » et
+ * « Retirer mon bento du fil » s'annonçaient comme des liens alors qu'elles
+ * agissent dans l'app.
+ */
+/** Une ligne de la liste des comptes bloqués : le pseudo, et de quoi le débloquer. */
+function BlockedRow({ pseudo, onUnblock }: { pseudo: string; onUnblock: () => void }) {
+  return (
+    <View
+      style={{
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: '#ffffff',
+        borderWidth: 2,
+        borderColor: '#0a0a0a',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+        style={{ fontSize: 14, fontWeight: '600', flexShrink: 1 }}
+      >
+        @{pseudo}
+      </Text>
+      <Pressable
+        onPress={onUnblock}
+        accessibilityRole="button"
+        accessibilityLabel={`Débloquer @${pseudo}`}
+        // Le libellé fait 24 pt de haut : la cible tactile en fait 44.
+        hitSlop={{ top: 10, bottom: 10 }}
+        style={{
+          backgroundColor: '#0a0a0a',
+          borderRadius: 999,
+          paddingHorizontal: 14,
+          paddingVertical: 6,
+        }}
+      >
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+          style={{
+            fontFamily: 'Bungee',
+            fontSize: 10,
+            letterSpacing: 1,
+            color: '#fbbf24',
+            textTransform: 'uppercase',
+          }}
+        >
+          Débloquer
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ProfileLink({
+  label,
+  role = 'button',
+  onPress,
+}: {
+  label: string;
+  role?: 'button' | 'link';
+  onPress: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="link"
+      accessibilityRole={role}
       accessibilityLabel={label}
       style={{
         paddingVertical: 13,
@@ -321,8 +485,16 @@ function ProfileLink({ label, onPress }: { label: string; onPress: () => void })
         justifyContent: 'space-between',
       }}
     >
-      <Text style={{ fontSize: 14, fontWeight: '600' }}>{label}</Text>
-      <Text style={{ fontSize: 18, color: 'rgba(10,10,10,0.4)' }}>›</Text>
+      <Text
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+        style={{ fontSize: 14, fontWeight: '600', flexShrink: 1 }}
+      >
+        {label}
+      </Text>
+      {/* Un chevron, pas un texte à lire. */}
+      <Text allowFontScaling={false} style={{ fontSize: 18, color: INK_PLACEHOLDER }}>
+        ›
+      </Text>
     </Pressable>
   );
 }

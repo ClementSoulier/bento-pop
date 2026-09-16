@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import * as ts from 'typescript';
-import { fontScaleFor } from './font-scaling';
+import { NATURAL_LINE_EM, fontScaleFor, naturalLineHeight, scaledType } from './font-scaling';
 
 /**
  * Les plafonds de police système, lus dans le code source.
@@ -156,6 +156,35 @@ describe('fontScaleFor', () => {
   });
 });
 
+describe('scaledType', () => {
+  it('multiplie taille et hauteur de ligne par le même facteur plafonné', () => {
+    assert.deepEqual(scaledType(1, 1.2, 15, 20), { fontSize: 15, lineHeight: 20 });
+    assert.deepEqual(scaledType(3.571, 1.2, 15, 20), { fontSize: 18, lineHeight: 24 });
+    assert.deepEqual(scaledType(Number.NaN, 1.4, 13, 19), { fontSize: 13, lineHeight: 19 });
+  });
+});
+
+describe('naturalLineHeight', () => {
+  it('rend les hauteurs relevées dans l’arbre d’accessibilité de l’iPhone 17 Pro', () => {
+    assert.equal(naturalLineHeight('Bungee', 10).toFixed(3), '13.333');
+    assert.equal(naturalLineHeight('Bungee', 11).toFixed(3), '14.667');
+    assert.equal(naturalLineHeight('Bungee', 15), 20);
+  });
+
+  it('arrondit au tiers de point supérieur, sans se laisser tromper par la virgule flottante', () => {
+    // 25 × 1,32 × 3 = 99 exactement, qu'une multiplication flottante rend 99,000…01.
+    assert.equal(naturalLineHeight('Bungee', 25), 33);
+    for (let size = 8; size <= 40; size += 0.5) {
+      for (const font of Object.keys(NATURAL_LINE_EM) as (keyof typeof NATURAL_LINE_EM)[]) {
+        const height = naturalLineHeight(font, size);
+        const exact = size * NATURAL_LINE_EM[font];
+        assert.ok(height >= exact - 0.01 && height < exact + 1 / 3, `${font} ${size}`);
+        assert.ok(Math.abs(height * 3 - Math.round(height * 3)) < 1e-9, `${font} ${size}`);
+      }
+    }
+  });
+});
+
 describe('page publique, textes de l’écran', () => {
   const texts = tagsNamed(parse(SCREEN), 'Text');
 
@@ -176,7 +205,7 @@ describe('page publique, textes de l’écran', () => {
   });
 
   it('prend ses plafonds dans le modèle, jamais en nombres recopiés', () => {
-    const allowed = new Set(['CONTENT_MAX_FONT_MULTIPLIER', 'BUTTON_MAX_FONT_MULTIPLIER']);
+    const allowed = new Set(['CONTENT_MAX_FONT_MULTIPLIER', 'CONTROL_MAX_FONT_MULTIPLIER']);
     const copied = texts.filter((t) => {
       const cap = t.attributes.get('maxFontSizeMultiplier');
       return (
@@ -204,7 +233,7 @@ describe('page publique, textes de l’écran', () => {
       (t) => !fixed(t) || capsOf(t).join() !== 'CONTENT_MAX_FONT_MULTIPLIER',
     );
     const wrongButtons = buttons.filter(
-      (t) => !fixed(t) || capsOf(t).join() !== 'BUTTON_MAX_FONT_MULTIPLIER',
+      (t) => !fixed(t) || capsOf(t).join() !== 'CONTROL_MAX_FONT_MULTIPLIER',
     );
     assert.equal(wrongHeader.length, 0, `en-tête mal plafonné : ${linesOf(wrongHeader)}`);
     assert.equal(wrongButtons.length, 0, `bouton mal plafonné : ${linesOf(wrongButtons)}`);
@@ -333,6 +362,107 @@ describe('cases du bento', () => {
       assert.equal(others.length, 0, `un seul ${tag}`);
       assert.equal(element?.attributes.get('allowFontScaling'), 'allowFontScaling', tag);
     }
+  });
+});
+
+/** Les plafonds nommés de l'app, cf. `font-scaling.ts`. */
+const CAPS = new Set([
+  'CONTENT_MAX_FONT_MULTIPLIER',
+  'CONTROL_MAX_FONT_MULTIPLIER',
+  'TITLE_MAX_FONT_MULTIPLIER',
+  'TILE_MAX_FONT_MULTIPLIER',
+]);
+
+type AppText = Tag & { path: string; tag: string };
+
+/**
+ * Tous les textes de l'app : `<Text>`, `<TextInput>` et `<Animated.Text>` de
+ * `app/` et `src/`, hors tests. Un texte imbriqué dans un autre en hérite la
+ * police et n'est pas compté.
+ */
+function appTexts(): AppText[] {
+  const files = readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
+    (path) =>
+      /^(app|src)\//.test(path) &&
+      path.endsWith('.tsx') &&
+      !path.includes('node_modules') &&
+      !/\.test\.tsx$/.test(path),
+  );
+  const names = new Set(['Text', 'TextInput', 'Animated.Text']);
+  /**
+   * Composants qui rendent leurs enfants dans un texte à eux, plafonné : un
+   * `<Text>` passé en enfant y est imbriqué à l'exécution.
+   */
+  const wrappers = new Set(['RuleLine', 'Sticker', 'StampButton']);
+  const texts: AppText[] = [];
+  for (const path of files) {
+    const file = parse(path);
+    const visit = (node: ts.Node, insideText: boolean) => {
+      let inside = insideText;
+      if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
+        const opening = ts.isJsxElement(node) ? node.openingElement : node;
+        const tag = opening.tagName.getText();
+        if (names.has(tag)) {
+          if (!insideText) {
+            const style = opening.attributes.properties.find(
+              (a): a is ts.JsxAttribute => ts.isJsxAttribute(a) && a.name.getText() === 'style',
+            );
+            const expression =
+              style?.initializer && ts.isJsxExpression(style.initializer)
+                ? style.initializer.expression
+                : undefined;
+            texts.push({
+              path,
+              tag,
+              line: file.getLineAndCharacterOfPosition(opening.getStart()).line + 1,
+              attributes: attributesOf(opening),
+              styleSource: expression ? resolvedSource(expression, opening) : '',
+            });
+          }
+          inside = tag !== 'TextInput';
+        } else if (wrappers.has(tag)) {
+          inside = true;
+        }
+      }
+      ts.forEachChild(node, (child) => visit(child, inside));
+    };
+    visit(file, false);
+  }
+  return texts;
+}
+
+const where = (texts: AppText[]) => texts.map((t) => `${t.path}, ligne ${t.line}`).join(' ; ');
+
+/**
+ * Le chantier 11 étend à toute l'app la règle de la page publique et des cases.
+ * Sans elle, 87 des 128 textes de l'app suivaient la police sans plafond, et
+ * l'accueil d'un iPhone 17 Pro poussait son bouton hors de l'écran dès la plus
+ * grande taille standard : on ne pouvait plus s'inscrire.
+ */
+describe('toute l’app', () => {
+  const texts = appTexts();
+
+  it('trouve les textes de l’app', () => {
+    assert.ok(texts.length >= 120, `${texts.length} textes`);
+  });
+
+  it('plafonne chaque texte, ou lui applique la police lui-même', () => {
+    const uncapped = texts.filter((t) => !fixed(t) && !t.attributes.has('maxFontSizeMultiplier'));
+    assert.equal(uncapped.length, 0, `sans plafond : ${where(uncapped)}`);
+  });
+
+  it('prend ses plafonds dans `font-scaling.ts`, jamais en nombres recopiés', () => {
+    const copied = texts.filter((t) => {
+      const cap = t.attributes.get('maxFontSizeMultiplier');
+      const scaled = [
+        ...t.styleSource.matchAll(/\b(?:fontScaleFor|scaledType)\(\s*fontScale\s*,\s*([^,)\s]+)/g),
+      ].map((m) => m[1] ?? '');
+      return (
+        (cap !== undefined && (typeof cap !== 'string' || !CAPS.has(cap))) ||
+        scaled.some((c) => !CAPS.has(c))
+      );
+    });
+    assert.equal(copied.length, 0, `plafond recopié : ${where(copied)}`);
   });
 });
 

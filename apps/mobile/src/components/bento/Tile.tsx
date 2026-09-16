@@ -118,8 +118,10 @@ export function Tile({
   // cf. `tileTextScale`. Figée à 1 quand la grille ne suit pas le système.
   const { fontScale } = useWindowDimensions();
   const textScale = allowFontScaling ? tileTextScale(height, size, scale, fontScale) : 1;
-  // Le titre rétrécit encore si son premier mot ne tient pas sur la ligne, à
-  // la taille qu'Android arrondit au pixel supérieur : cf. `tileTitleScale`.
+  // Le titre rétrécit encore jusqu'à tenir entier dans ses deux lignes, sans
+  // descendre sous `TITLE_MIN_SCALE`, et toujours assez pour que son premier mot
+  // ne se coupe pas au milieu : cf. `tileTitleScale`. La mesure prend la taille
+  // qu'Android arrondit au pixel supérieur.
   const titleScale =
     textScale *
     tileTitleScale(
@@ -407,7 +409,11 @@ export function Tile({
       {content}
     </Pressable>
   ) : (
-    <View style={innerStyle} accessibilityRole="image" accessibilityLabel={a11yLabel}>
+    // `accessible` : la case se lit d'un bloc. Sans lui, VoiceOver lisait ses
+    // trois textes l'un après l'autre sur la page publique, l'initiale en
+    // filigrane comprise : « I », « FILM », « INCEPTION ». Et pas de rôle
+    // `image` : une case n'est pas une image, et le mot serait annoncé.
+    <View style={innerStyle} accessible accessibilityLabel={a11yLabel}>
       {content}
     </View>
   );

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -11,7 +12,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import popyIntello from '@bento-pop/brand/assets/mascot/popy-intello.png';
-import { PageTitle, StampButton, YellowBg } from '@/components/primitives';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
+} from '@/components/bento/font-scaling';
+import { INK_MUTED, INK_PLACEHOLDER, PageTitle, StampButton, YellowBg } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
 import {
   PSEUDO_MAX,
@@ -20,6 +25,7 @@ import {
   type PseudoCheck,
 } from '@/lib/pseudo';
 import { supabase } from '@/supabase/client';
+import { userErrorMessage } from '@/lib/user-error-message';
 import { useSession } from '@/state/session';
 
 /**
@@ -63,7 +69,8 @@ export default function PseudoOnboarding() {
       .insert({ id: userId, pseudo, terms_accepted_at: new Date().toISOString() });
     setSubmitting(false);
     if (error) {
-      Alert.alert('Oups', `Impossible de créer le profil : ${error.message}`);
+      console.warn('[accueil] création du profil', error);
+      Alert.alert('Oups', userErrorMessage('create-profile', error));
       return;
     }
     await refreshProfile();
@@ -74,124 +81,163 @@ export default function PseudoOnboarding() {
     <YellowBg>
       <SafeAreaView style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: 24, paddingBottom: 16 }}>
-          <PageTitle
-            kicker="ÉTAPE 2 / 3"
-            title="Choisis ton pseudo."
-            sub="C'est l'adresse de ton bento. 3 à 20 caractères, lettres, chiffres, underscores."
-          />
-
-          {/* Input pseudo + statut */}
-          <View style={{ marginTop: 32, paddingHorizontal: 20 }}>
-            <View
-              style={[
-                {
-                  backgroundColor: '#ffffff',
-                  borderWidth: 3,
-                  borderColor: '#0a0a0a',
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                },
-                SHADOWS.stamp,
-              ]}
-            >
-              <Text style={{ fontFamily: 'Bungee', fontSize: 18, color: 'rgba(10,10,10,0.4)' }}>
-                @
-              </Text>
-              <TextInput
-                value={pseudo}
-                onChangeText={setPseudo}
-                placeholder="ton_pseudo"
-                autoCapitalize="none"
-                autoCorrect={false}
-                spellCheck={false}
-                maxLength={PSEUDO_MAX}
-                style={{
-                  fontFamily: 'Extenda',
-                  fontSize: 24,
-                  flex: 1,
-                  paddingVertical: 0,
-                  color: '#0a0a0a',
-                  textTransform: 'lowercase',
-                }}
-              />
-              <StatusBadge check={check} />
-            </View>
-
-            <View
-              style={{
-                marginTop: 12,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Text style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)' }}>
-                bento-pop.com/u/<Text style={{ fontWeight: '700' }}>{pseudo || 'ton_pseudo'}</Text>
-              </Text>
-              <Text style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)' }}>
-                {pseudo.length} / {PSEUDO_MAX}
-              </Text>
-            </View>
-          </View>
-
-          {/* Suggestions */}
-          <View style={{ marginTop: 28, paddingHorizontal: 20 }}>
-            <Text
-              style={{
-                fontFamily: 'Bungee',
-                fontSize: 10,
-                letterSpacing: 2,
-                color: 'rgba(10,10,10,0.55)',
-                marginBottom: 10,
-                textTransform: 'uppercase',
-              }}
-            >
-              Suggestions populaires
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {suggestions.map((s, i) => (
-                <Pressable
-                  key={s}
-                  onPress={() => setPseudo(s)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Utiliser la suggestion ${s}`}
-                  style={[
-                    {
-                      backgroundColor: '#ffffff',
-                      borderWidth: 2,
-                      borderColor: '#0a0a0a',
-                      borderRadius: 999,
-                      paddingHorizontal: 12,
-                      paddingVertical: 5,
-                      transform: [{ rotate: `${[-1, 0.5, -0.5, 1, -0.3][i] ?? 0}deg` }],
-                    },
-                    SHADOWS.stamp,
-                  ]}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '600' }}>@{s}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          {/* Popy peek */}
-          <View style={{ flex: 1, position: 'relative' }}>
-            <Image
-              source={popyIntello}
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                right: -20,
-                width: 130,
-                height: 130,
-                transform: [{ rotate: '8deg' }],
-              }}
-              resizeMode="contain"
+          {/* Tout défile au-dessus du bouton, qui reste en bas : à la plus grande
+              police, le titre prenait l'écran, et le champ comme le bouton en
+              sortaient. Tant que tout tient, `flexGrow` garde la mise en page
+              d'avant, le Popy en bas à droite. */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            alwaysBounceVertical={false}
+          >
+            <PageTitle
+              kicker="ÉTAPE 2 / 3"
+              title="Choisis ton pseudo."
+              sub="C'est l'adresse de ton bento. 3 à 20 caractères, lettres, chiffres, underscores."
             />
-          </View>
+
+            {/* Input pseudo + statut */}
+            <View style={{ marginTop: 32, paddingHorizontal: 20 }}>
+              <View
+                style={[
+                  {
+                    backgroundColor: '#ffffff',
+                    borderWidth: 3,
+                    borderColor: '#0a0a0a',
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                  },
+                  SHADOWS.stamp,
+                ]}
+              >
+                <Text
+                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+                  style={{ fontFamily: 'Bungee', fontSize: 18, color: INK_PLACEHOLDER }}
+                >
+                  @
+                </Text>
+                <TextInput
+                  value={pseudo}
+                  onChangeText={setPseudo}
+                  placeholder="ton_pseudo"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  maxLength={PSEUDO_MAX}
+                  accessibilityLabel="Pseudo"
+                  accessibilityHint="3 à 20 caractères, lettres, chiffres, underscores"
+                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+                  style={{
+                    fontFamily: 'Extenda',
+                    fontSize: 24,
+                    flex: 1,
+                    paddingVertical: 0,
+                    color: '#0a0a0a',
+                    textTransform: 'lowercase',
+                  }}
+                />
+                <StatusBadge check={check} />
+              </View>
+
+              {/* L'adresse cède la place au compteur : à la taille 2,0 d'Android, les
+                  deux se chevauchaient, « ton_pseudo0 / 20 ». */}
+              <View
+                style={{
+                  marginTop: 12,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+                  style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)', flexShrink: 1 }}
+                >
+                  bento-pop.com/u/<Text style={{ fontWeight: '700' }}>{pseudo || 'ton_pseudo'}</Text>
+                </Text>
+                <Text
+                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+                  style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)' }}
+                >
+                  {pseudo.length} / {PSEUDO_MAX}
+                </Text>
+              </View>
+            </View>
+
+            {/* Suggestions */}
+            <View style={{ marginTop: 28, paddingHorizontal: 20 }}>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+                style={{
+                  fontFamily: 'Bungee',
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  color: INK_MUTED,
+                  marginBottom: 10,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Suggestions populaires
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {suggestions.map((s, i) => (
+                  <Pressable
+                    key={s}
+                    onPress={() => setPseudo(s)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Utiliser la suggestion ${s}`}
+                    // La puce fait 31 pt de haut : la cible tactile en fait 44.
+                    hitSlop={{ top: 7, bottom: 7 }}
+                    style={[
+                      {
+                        backgroundColor: '#ffffff',
+                        borderWidth: 2,
+                        borderColor: '#0a0a0a',
+                        borderRadius: 999,
+                        paddingHorizontal: 12,
+                        paddingVertical: 5,
+                        transform: [{ rotate: `${[-1, 0.5, -0.5, 1, -0.3][i] ?? 0}deg` }],
+                      },
+                      SHADOWS.stamp,
+                    ]}
+                  >
+                    <Text
+                      maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+                      style={{ fontSize: 13, fontWeight: '600' }}
+                    >
+                      @{s}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Popy peek. Sa hauteur est réservée : quand le texte grossit, la page
+                défile au lieu de poser la mascotte sur les suggestions. */}
+            <View style={{ flex: 1, minHeight: 130, position: 'relative' }}>
+              <Image
+                source={popyIntello}
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: -20,
+                  width: 130,
+                  height: 130,
+                  transform: [{ rotate: '8deg' }],
+                }}
+                resizeMode="contain"
+              />
+            </View>
+          </ScrollView>
 
           <View style={{ paddingHorizontal: 20 }}>
             <StampButton
@@ -211,15 +257,21 @@ export default function PseudoOnboarding() {
 function StatusBadge({ check }: { check: PseudoCheck }) {
   if (check.status === 'idle') return null;
   if (check.status === 'checking') {
-    return <ActivityIndicator size="small" color="rgba(10,10,10,0.55)" />;
+    return <ActivityIndicator size="small" color={INK_MUTED} />;
   }
   const color =
-    check.status === 'available' ? '#2ec4b6' : check.status === 'taken' ? '#e63946' : '#d97706';
+    check.status === 'available'
+      ? '#2ec4b6'
+      : check.status === 'taken' || check.status === 'reserved'
+      ? '#e63946'
+      : '#d97706';
   const label =
     check.status === 'available'
       ? 'Libre'
       : check.status === 'taken'
       ? 'Pris'
+      : check.status === 'reserved'
+      ? 'Réservé'
       : check.status === 'too-short'
       ? 'Trop court'
       : check.status === 'too-long'
@@ -230,7 +282,12 @@ function StatusBadge({ check }: { check: PseudoCheck }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-      <Text style={{ fontSize: 12, fontWeight: '600', color }}>{label}</Text>
+      <Text
+        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+        style={{ fontSize: 12, fontWeight: '600', color }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }

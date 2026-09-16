@@ -1,7 +1,13 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+  CONTROL_MAX_FONT_MULTIPLIER,
+  TILE_MAX_FONT_MULTIPLIER,
+  scaledType,
+} from '@/components/bento/font-scaling';
 import { PALETTES, paletteKeyForItem } from '@/components/bento/palettes';
+import { displayTitleScale } from '@/lib/display-title';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { itemImageUrl } from '@/lib/item-image';
 import { cleanTitle } from '@/lib/text';
@@ -57,6 +63,18 @@ export function ItemTile({
   onPress,
 }: ItemTileProps) {
   const palette = PALETTES[paletteKeyForItem(item.id)];
+  const title = cleanTitle(item.title);
+  // Le titre grossit jusqu'au plafond des cases, et rétrécit si un de ses mots ne
+  // tient pas sur la ligne : à la plus grande police, « INTE / RS… », « DUN / E ».
+  const { fontScale } = useWindowDimensions();
+  const capped = scaledType(fontScale, TILE_MAX_FONT_MULTIPLIER, TITLE_SIZE, TITLE_SIZE);
+  const shrink = displayTitleScale(
+    title,
+    width - TILE_BORDER * 2 - TITLE_INSET * 2,
+    capped.fontSize,
+    0,
+    Platform.OS === 'android' ? pixelRatio : undefined,
+  );
 
   return (
     <Pressable
@@ -100,8 +118,9 @@ export function ItemTile({
                 { alignItems: 'center', justifyContent: 'center', paddingBottom: 12 },
               ]}
             >
-              <Text style={[styles.initial, { color: palette.ink }]}>
-                {initialOf(cleanTitle(item.title))}
+              {/* Une initiale en filigrane, dimensionnée sur la tuile. */}
+              <Text allowFontScaling={false} style={[styles.initial, { color: palette.ink }]}>
+                {initialOf(title)}
               </Text>
             </View>
           </>
@@ -112,13 +131,26 @@ export function ItemTile({
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <Text numberOfLines={2} style={styles.title}>
-          {cleanTitle(item.title)}
+        <Text
+          numberOfLines={2}
+          allowFontScaling={false}
+          // Android : passer à la ligne entre deux mots, jamais au milieu.
+          textBreakStrategy="simple"
+          style={[
+            styles.title,
+            { fontSize: capped.fontSize * shrink, lineHeight: capped.lineHeight * shrink },
+          ]}
+        >
+          {title}
         </Text>
       </View>
       {item.subtitle ? (
         <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
-          <Text numberOfLines={1} style={styles.subtitle}>
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+            style={styles.subtitle}
+          >
             {item.subtitle}
           </Text>
         </View>
@@ -133,11 +165,17 @@ export function initialOf(s: string): string {
   return (match?.[0] ?? '?').toUpperCase();
 }
 
+/** Titre en Extenda 11 sur 11, posé à 6 pt des bords. */
+const TITLE_SIZE = 11;
+const TITLE_INSET = 6;
+/** Bordure de la tuile, cf. `styles.tile`. */
+const TILE_BORDER = 2.5;
+
 const styles = StyleSheet.create({
   tile: {
     // La largeur est posée au rendu, cf. `searchTileWidth`.
     backgroundColor: '#ffffff',
-    borderWidth: 2.5,
+    borderWidth: TILE_BORDER,
     borderColor: '#0a0a0a',
     borderRadius: 12,
     overflow: 'hidden',
@@ -152,12 +190,10 @@ const styles = StyleSheet.create({
   },
   title: {
     position: 'absolute',
-    bottom: 6,
-    left: 6,
-    right: 6,
+    bottom: TITLE_INSET,
+    left: TITLE_INSET,
+    right: TITLE_INSET,
     fontFamily: 'Extenda',
-    fontSize: 11,
-    lineHeight: 11,
     color: '#ffffff',
     textTransform: 'uppercase',
     textShadowColor: 'rgba(0,0,0,0.5)',

@@ -1,8 +1,14 @@
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { SHADOWS, YellowBg } from '@/components/primitives';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
+  scaledType,
+} from '@/components/bento/font-scaling';
+import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, YellowBg } from '@/components/primitives';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 const TERMS_URL = 'https://bento-pop.com/mentions-legales';
@@ -30,6 +36,8 @@ export default function CreditsPage() {
   const build: string | undefined = (Constants as unknown as { nativeBuildVersion?: string })
     .nativeBuildVersion;
 
+  const { fontScale } = useWindowDimensions();
+
   const openUrl = (url: string) => {
     Linking.openURL(url).catch(() => {
       // silent fail — le user peut copier l'url depuis le crédit
@@ -45,6 +53,8 @@ export default function CreditsPage() {
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
             accessibilityRole="button"
             accessibilityLabel="Retour"
+            // La pastille fait 36 pt : la cible tactile en fait 44.
+            hitSlop={4}
             style={[
               {
                 backgroundColor: '#ffffff',
@@ -59,12 +69,20 @@ export default function CreditsPage() {
               SHADOWS.stamp,
             ]}
           >
-            <Text style={{ fontSize: 16, fontWeight: '800' }}>‹</Text>
+            {/* Un glyphe dans une cible de 36 pt, pas un texte à lire : grossi, il
+                sortait de sa pastille, comme sur la page publique. */}
+            <Text allowFontScaling={false} style={{ fontSize: 16, fontWeight: '800' }}>
+              ‹
+            </Text>
           </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48 }}>
           <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER}
             style={{
               fontFamily: 'Extenda',
               fontSize: 36,
@@ -74,7 +92,10 @@ export default function CreditsPage() {
           >
             Crédits
           </Text>
-          <Text style={{ marginTop: 6, fontSize: 13, color: 'rgba(10,10,10,0.65)' }}>
+          <Text
+            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+            style={{ marginTop: 6, fontSize: 13, color: 'rgba(10,10,10,0.65)' }}
+          >
             Mon Bento Pop · v{version}
             {build ? ` (${build})` : ''}
           </Text>
@@ -131,12 +152,12 @@ export default function CreditsPage() {
           </Section>
 
           <Text
+            allowFontScaling={false}
             style={{
               marginTop: 32,
-              fontSize: 11,
-              color: 'rgba(10,10,10,0.55)',
+              ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 11, 17),
+              color: INK_MUTED,
               textAlign: 'center',
-              lineHeight: 17,
             }}
           >
             Mon Bento Pop est une app companion de Bento Pop. Production : Liventure SAS.
@@ -151,11 +172,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <View style={{ marginTop: 28 }}>
       <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
         style={{
           fontFamily: 'Bungee',
           fontSize: 10,
           letterSpacing: 2,
-          color: 'rgba(10,10,10,0.55)',
+          color: INK_MUTED,
           textTransform: 'uppercase',
           marginBottom: 8,
         }}
@@ -190,6 +213,7 @@ function CardLink({ label, onPress }: { label: string; onPress?: () => void }) {
       disabled={!onPress}
       accessibilityRole={onPress ? 'link' : 'text'}
       accessibilityLabel={label}
+      accessibilityState={{ disabled: !onPress }}
       style={{
         paddingVertical: 13,
         paddingHorizontal: 16,
@@ -198,8 +222,18 @@ function CardLink({ label, onPress }: { label: string; onPress?: () => void }) {
         justifyContent: 'space-between',
       }}
     >
-      <Text style={{ fontSize: 14, fontWeight: '600', flex: 1 }}>{label}</Text>
-      {onPress ? <Text style={{ fontSize: 18, color: 'rgba(10,10,10,0.4)' }}>↗</Text> : null}
+      <Text
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+        style={{ fontSize: 14, fontWeight: '600', flex: 1 }}
+      >
+        {label}
+      </Text>
+      {/* Une flèche, pas un texte à lire. */}
+      {onPress ? (
+        <Text allowFontScaling={false} style={{ fontSize: 18, color: INK_PLACEHOLDER }}>
+          ↗
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -217,6 +251,7 @@ function Attribution({
   text: string;
   onPress: () => void;
 }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <Pressable
       onPress={onPress}
@@ -234,19 +269,33 @@ function Attribution({
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Text
+          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
           style={{
             fontFamily: 'Bungee',
             fontSize: 11,
             letterSpacing: 1.5,
             color: '#e63946',
             textTransform: 'uppercase',
+            flexShrink: 1,
           }}
         >
           {source}
         </Text>
-        <Text style={{ marginLeft: 'auto', fontSize: 14, color: 'rgba(10,10,10,0.4)' }}>↗</Text>
+        <Text
+          allowFontScaling={false}
+          style={{ marginLeft: 'auto', fontSize: 14, color: INK_PLACEHOLDER }}
+        >
+          ↗
+        </Text>
       </View>
-      <Text style={{ marginTop: 6, fontSize: 12, color: 'rgba(10,10,10,0.75)', lineHeight: 17 }}>
+      <Text
+        allowFontScaling={false}
+        style={{
+          marginTop: 6,
+          ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 12, 17),
+          color: 'rgba(10,10,10,0.75)',
+        }}
+      >
         {text}
       </Text>
     </Pressable>

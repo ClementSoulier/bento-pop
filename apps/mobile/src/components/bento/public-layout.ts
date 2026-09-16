@@ -1,5 +1,5 @@
 import { feedScale } from '@/components/feed/layout';
-import { fontScaleFor } from './font-scaling';
+import { CONTENT_MAX_FONT_MULTIPLIER, CONTROL_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
 import { GRID_WIDTH, gridBoxHeight, gridScaleForHeight } from './geometry';
 
 /**
@@ -92,7 +92,7 @@ export const CTA_LABEL_LINE_H = 17;
 /** Écart minimal entre le bas de la boîte et le haut du bloc de boutons. */
 export const CTA_GAP = 8;
 
-/**
+/*
  * Plafonds de grossissement de la police système des textes de l'écran
  * (spéc §5.4) : en `maxFontSizeMultiplier` sur un texte dont seule la taille
  * compte, par `fontScaleFor` sur un texte dont la hauteur de ligne compte.
@@ -100,10 +100,10 @@ export const CTA_GAP = 8;
  * Le modèle ne tient que si l'écran les applique : ce sont eux qui bornent la
  * croissance de l'en-tête et des boutons. Les libellés de boutons plafonnent
  * plus bas parce qu'ils décident d'une hauteur, dans un bloc collant qui
- * recouvrait l'écran entier à la plus grande taille.
+ * recouvrait l'écran entier à la plus grande taille. Depuis le chantier 11, ce
+ * sont les plafonds de toute l'app, cf. `font-scaling.ts`.
  */
-export const CONTENT_MAX_FONT_MULTIPLIER = 1.4;
-export const BUTTON_MAX_FONT_MULTIPLIER = 1.2;
+export { CONTENT_MAX_FONT_MULTIPLIER, CONTROL_MAX_FONT_MULTIPLIER };
 
 /**
  * Plancher d'échelle : exactement ce que le fil montre sur un iPhone SE,
@@ -159,7 +159,7 @@ export function publicHeaderHeight(fontScale: number): number {
  * `adjustsFontSizeToFit` le rétrécissait jusqu'à n'en laisser qu'un trait.
  */
 export function publicCtaLabelHeight(fontScale: number): number {
-  return CTA_LABEL_LINE_H * fontScaleFor(fontScale, BUTTON_MAX_FONT_MULTIPLIER);
+  return CTA_LABEL_LINE_H * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
 }
 
 /** Hauteur du bloc de boutons collants à une taille de police donnée. */

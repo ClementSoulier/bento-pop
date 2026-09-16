@@ -1,6 +1,14 @@
-import { Text, View } from 'react-native';
+import { AccessibilityInfo, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useRef } from 'react';
+import { connectionAnnouncement } from '@/lib/announce';
 import { useIsOffline } from '@/lib/use-is-offline';
+import { OFFLINE_BANNER_PADDING, offlineBannerHeight } from '@/lib/offline-banner';
+import {
+  CONTROL_MAX_FONT_MULTIPLIER,
+  naturalLineHeight,
+  scaledType,
+} from '@/components/bento/font-scaling';
 
 /**
  * Banner rouge en haut d'écran quand le device est offline.
@@ -16,6 +24,23 @@ import { useIsOffline } from '@/lib/use-is-offline';
 export function OfflineBanner() {
   const offline = useIsOffline();
   const insets = useSafeAreaInsets();
+  // Le bandeau apparaît et disparaît tout seul : il s'annonce, dans les deux
+  // sens. Le premier rendu ne dit rien, il ne raconte aucun changement.
+  const previous = useRef(offline);
+  useEffect(() => {
+    if (previous.current === offline) return;
+    previous.current = offline;
+    AccessibilityInfo.announceForAccessibility(connectionAnnouncement(offline));
+  }, [offline]);
+  // Hauteur de ligne posée et police appliquée par le bandeau : sa hauteur est la
+  // même sur les deux plateformes, et plafonnée.
+  const { fontScale } = useWindowDimensions();
+  const type = scaledType(
+    fontScale,
+    CONTROL_MAX_FONT_MULTIPLIER,
+    10,
+    naturalLineHeight('Bungee', 10),
+  );
 
   if (!offline) return null;
 
@@ -32,12 +57,14 @@ export function OfflineBanner() {
         backgroundColor: '#e63946',
       }}
     >
+      {/* Hauteur du modèle, celle que les écrans réservent : cf. `useOfflineInset`. */}
       <View
         style={{
+          height: offlineBannerHeight(fontScale),
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: 6,
+          paddingVertical: OFFLINE_BANNER_PADDING,
           gap: 8,
         }}
       >
@@ -50,12 +77,15 @@ export function OfflineBanner() {
           }}
         />
         <Text
+          allowFontScaling={false}
+          numberOfLines={1}
           style={{
             fontFamily: 'Bungee',
-            fontSize: 10,
+            ...type,
             letterSpacing: 1.5,
             color: '#ffffff',
             textTransform: 'uppercase',
+            includeFontPadding: false,
           }}
         >
           Pas de connexion

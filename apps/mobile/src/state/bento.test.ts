@@ -60,7 +60,7 @@ describe('lastFilled, déclencheur de la pulsation', () => {
    * cases d'un coup. Si elle touchait `lastFilled`, les six tuiles
    * pulseraient à l'ouverture de l'app.
    */
-  it('n\'est pas touché par une resynchronisation', () => {
+  it("n'est pas touché par une resynchronisation", () => {
     state().hydrate({ film: FILM, series: SERIE });
     assert.equal(state().lastFilled, null);
 
@@ -78,7 +78,7 @@ describe('lastFilled, déclencheur de la pulsation', () => {
 });
 
 describe('hydrate face aux écritures en vol', () => {
-  it('applique l\'état distant quand rien n\'est en vol', () => {
+  it("applique l'état distant quand rien n'est en vol", () => {
     state().setSlot('film', FILM);
     state().hydrate({ series: SERIE });
     assert.equal(state().slots.film, undefined, 'hydrate remplace, il ne fusionne pas');
@@ -92,7 +92,7 @@ describe('hydrate face aux écritures en vol', () => {
    * tuile qu'on vient d'afficher disparaît sous les yeux de l'utilisateur
    * pendant que l'écriture, elle, réussit.
    */
-  it('ignore l\'état distant tant qu\'une écriture n\'est pas confirmée', () => {
+  it("ignore l'état distant tant qu'une écriture n'est pas confirmée", () => {
     state().beginWrite();
     state().setSlot('film', FILM);
 
@@ -137,11 +137,53 @@ describe('hydrate face aux écritures en vol', () => {
     assert.deepEqual(state().slots.film, FILM, 'le verrou ne protège plus rien');
   });
 
-  it('reset repart d\'un compteur propre', () => {
+  it("reset repart d'un compteur propre", () => {
     state().beginWrite();
     state().reset();
     assert.equal(state().pendingWrites, 0);
     state().hydrate({ film: FILM });
     assert.deepEqual(state().slots.film, FILM);
+  });
+});
+
+/**
+ * Ce que le composer attend pour montrer autre chose qu'un squelette. Il ne
+ * l'attend pas qu'en cas de succès : un compte sans bento, une ligne sans
+ * cases ou une lecture qui échoue doivent le débloquer aussi, sinon
+ * « Chargement… » ne s'en va jamais. Relevé au chantier 11 sur l'émulateur
+ * Pixel 8, dont le compte n'avait pas encore de bento.
+ */
+describe('première lecture', () => {
+  it('commence non hydraté', () => {
+    assert.equal(state().hydrated, false);
+  });
+
+  it('est hydraté par une lecture qui rapporte des cases', () => {
+    state().hydrate({ film: FILM });
+    assert.equal(state().hydrated, true);
+  });
+
+  it('est hydraté par une lecture vide', () => {
+    state().hydrate({});
+    assert.equal(state().hydrated, true);
+  });
+
+  it('est hydraté même quand une écriture est en vol', () => {
+    state().beginWrite();
+    state().hydrate({});
+    assert.equal(state().hydrated, true);
+  });
+
+  it('se marque hydraté sans toucher aux cases', () => {
+    state().setSlot('film', FILM);
+    state().markHydrated();
+    assert.equal(state().hydrated, true);
+    assert.deepEqual(state().slots.film, FILM, 'une lecture en échec a effacé une case');
+  });
+
+  it('redevient non hydraté sur reset', () => {
+    state().hydrate({});
+    state().reset();
+    assert.equal(state().hydrated, false);
   });
 });

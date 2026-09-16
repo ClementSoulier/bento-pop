@@ -15,7 +15,13 @@ import { router } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { FeedPost, FeedPostSkeleton, feedBoxWidth, feedScale, feedSideInset } from '@/components/feed';
-import { Sticker, YellowBg } from '@/components/primitives';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
+  scaledType,
+} from '@/components/bento/font-scaling';
+import { INK_MUTED, Sticker, YellowBg } from '@/components/primitives';
 import {
   FEED_QUERY_KEY,
   PAGE_SIZE,
@@ -159,7 +165,8 @@ function Header({ sideInset }: { sideInset: number }) {
       <View style={{ paddingTop: 14 }}>
         <Text
           accessibilityRole="header"
-          maxFontSizeMultiplier={1.4}
+          // 1,4 et non le plafond des titres : réglé et recetté ainsi au chantier 2.
+          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
           style={{
             fontFamily: 'Extenda',
             fontSize: 28,
@@ -197,17 +204,20 @@ function Loading({ sideInset, scale }: { sideInset: number; scale: number }) {
  * base fraîche, l'ancien écran l'affichait dès qu'aucun bento n'était curé.
  */
 function EmptyState() {
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 }}>
       <Sticker color="#0a0a0a" textColor="#fbbf24" rotation={4} size={12}>
         La table est vide
       </Sticker>
       <Text
+        allowFontScaling={false}
+        // Android : passer à la ligne entre deux mots, jamais au milieu.
+        textBreakStrategy="simple"
         style={{
           marginTop: 16,
           fontFamily: 'Extenda',
-          fontSize: 24,
-          lineHeight: 26,
+          ...scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 24, 26),
           textAlign: 'center',
           letterSpacing: 1,
           textTransform: 'uppercase',
@@ -228,6 +238,8 @@ function EmptyState() {
         }}
       >
         <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
           style={{
             fontFamily: 'Bungee',
             fontSize: 12,
@@ -249,6 +261,7 @@ function EmptyState() {
  * s'afficherait sous les deux ou trois premiers bentos d'une base neuve.
  */
 function Footer({ loadingMore, exhausted }: { loadingMore: boolean; exhausted: boolean }) {
+  const { fontScale } = useWindowDimensions();
   if (loadingMore) {
     return (
       <View style={{ paddingVertical: 20, alignItems: 'center' }}>
@@ -260,11 +273,11 @@ function Footer({ loadingMore, exhausted }: { loadingMore: boolean; exhausted: b
   return (
     <View style={{ paddingVertical: 8, paddingHorizontal: 32 }}>
       <Text
+        allowFontScaling={false}
         style={{
-          fontSize: 13,
-          color: 'rgba(10,10,10,0.55)',
+          ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 13, 19),
+          color: INK_MUTED,
           textAlign: 'center',
-          lineHeight: 19,
         }}
       >
         C&apos;est tout pour l&apos;instant. À toi de jouer.
@@ -274,13 +287,15 @@ function Footer({ loadingMore, exhausted }: { loadingMore: boolean; exhausted: b
 }
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 32 }}>
       <Text
+        allowFontScaling={false}
+        textBreakStrategy="simple"
         style={{
           fontFamily: 'Extenda',
-          fontSize: 22,
-          lineHeight: 24,
+          ...scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 22, 24),
           textAlign: 'center',
           letterSpacing: 1,
         }}
@@ -288,12 +303,12 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         Oups, ça coince
       </Text>
       <Text
+        allowFontScaling={false}
         style={{
           marginTop: 8,
-          fontSize: 13,
+          ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 13, 19),
           color: 'rgba(10,10,10,0.65)',
           textAlign: 'center',
-          lineHeight: 19,
         }}
       >
         On n&apos;arrive pas à charger les bentos. Vérifie ta connexion et réessaie.
@@ -311,6 +326,8 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         }}
       >
         <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
           style={{
             fontFamily: 'Bungee',
             fontSize: 12,

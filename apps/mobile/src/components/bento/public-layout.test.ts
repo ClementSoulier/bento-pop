@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { feedBoxWidth, feedScale, feedSideInset } from '@/components/feed/layout';
 import { GRID_WIDTH, gridBoxHeight, gridScaleForHeight } from './geometry';
 import {
-  BUTTON_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
   CONTENT_MAX_FONT_MULTIPLIER,
   CTA_FIXED_H,
   CTA_LABEL_LINE_H,
@@ -236,7 +236,7 @@ describe('la taille de police système', () => {
     assert.equal(publicHeaderHeight(LARGEST_FONT), publicHeaderHeight(CONTENT_MAX_FONT_MULTIPLIER));
     assert.equal(
       publicCtaBlockHeight(LARGEST_FONT),
-      publicCtaBlockHeight(BUTTON_MAX_FONT_MULTIPLIER),
+      publicCtaBlockHeight(CONTROL_MAX_FONT_MULTIPLIER),
     );
   });
 
@@ -253,7 +253,7 @@ describe('la taille de police système', () => {
   it('donne au libellé de bouton la hauteur de sa ligne, plafonnée comme le texte', () => {
     assert.equal(publicCtaLabelHeight(1), CTA_LABEL_LINE_H);
     assert.ok(publicCtaLabelHeight(1.118) > CTA_LABEL_LINE_H);
-    assert.equal(publicCtaLabelHeight(LARGEST_FONT), CTA_LABEL_LINE_H * BUTTON_MAX_FONT_MULTIPLIER);
+    assert.equal(publicCtaLabelHeight(LARGEST_FONT), CTA_LABEL_LINE_H * CONTROL_MAX_FONT_MULTIPLIER);
     for (const fontScale of FONT_SCALES) {
       assert.equal(
         publicCtaBlockHeight(fontScale),

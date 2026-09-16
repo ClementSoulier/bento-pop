@@ -13,7 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
-import { SHADOWS, TopChip, YellowBg } from '@/components/primitives';
+import { CONTENT_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
+import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, TopChip, YellowBg } from '@/components/primitives';
+import { SEARCH_ICON_BOX } from '@/components/search/layout';
+import { SearchIcon } from '@/components/TabIcons';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { tapFeedback } from '@/lib/haptics';
 import {
@@ -128,6 +131,7 @@ export default function SearchTab() {
               `TopChip` : c'est du ressort du chantier 11, mais on ne laisse
               pas un titre cassé sur l'écran qu'on livre. */}
           <Text
+            accessibilityRole="header"
             style={{
               fontFamily: 'Extenda',
               fontSize: 28,
@@ -135,7 +139,7 @@ export default function SearchTab() {
               letterSpacing: 1,
               textTransform: 'uppercase',
             }}
-            maxFontSizeMultiplier={1.4}
+            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
           >
             {'Trouve un\nbento.'}
           </Text>
@@ -161,19 +165,27 @@ export default function SearchTab() {
               SHADOWS.stamp,
             ]}
           >
-            <Text style={{ fontSize: 16, color: 'rgba(10,10,10,0.4)' }}>🔍</Text>
+            {/* L'icône de la barre d'onglets, et non l'emoji 🔍 : même dessin sur les
+                deux plateformes, et rien que VoiceOver lise à voix haute. */}
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={SEARCH_ICON_BOX}
+            >
+              <SearchIcon size={18} color={INK_PLACEHOLDER} />
+            </View>
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="pseudo, film, série, artiste…"
-              placeholderTextColor="rgba(10,10,10,0.4)"
+              placeholderTextColor={INK_PLACEHOLDER}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
               accessibilityLabel="Chercher un pseudo ou un titre"
               // Sans plafond, à la plus grande taille système le texte saisi
               // pousse la loupe hors de la barre et déborde en hauteur.
-              maxFontSizeMultiplier={1.4}
+              maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
               style={{ fontSize: 16, fontWeight: '600', flex: 1, paddingVertical: 0 }}
             />
             {loading ? <ActivityIndicator size="small" color="#0a0a0a" /> : null}
@@ -296,7 +308,7 @@ function Chip({ item, onPress }: { item: SharedItem; onPress: () => void }) {
       <Text
         style={{ fontSize: 13, fontWeight: '600', flexShrink: 1 }}
         numberOfLines={1}
-        maxFontSizeMultiplier={1.4}
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
       >
         {cleanTitle(item.title, CHIP_TITLE_MAX)}
       </Text>
@@ -305,9 +317,9 @@ function Chip({ item, onPress }: { item: SharedItem; onPress: () => void }) {
           fontFamily: 'Bungee',
           fontSize: 10,
           letterSpacing: 0.5,
-          color: 'rgba(10,10,10,0.5)',
+          color: INK_MUTED,
         }}
-        maxFontSizeMultiplier={1.4}
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
       >
         {item.picks}
       </Text>
@@ -344,7 +356,7 @@ function NoResult({
         // lignes sans plafond rognaient la requête elle-même, c'est-à-dire la
         // seule information que cet écran apporte.
         numberOfLines={3}
-        maxFontSizeMultiplier={1.4}
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
       >
         {`Rien pour « ${query} ».`}
       </Text>
@@ -356,7 +368,7 @@ function NoResult({
           lineHeight: 19,
           color: 'rgba(10,10,10,0.65)',
         }}
-        maxFontSizeMultiplier={1.4}
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
       >
         Essaie un titre de film, une série, un artiste, ou le pseudo de quelqu'un.
       </Text>
@@ -388,10 +400,10 @@ function Hint({ children }: { children: string }) {
         fontFamily: 'Bungee',
         fontSize: 10,
         letterSpacing: 2,
-        color: 'rgba(10,10,10,0.55)',
+        color: INK_MUTED,
         textTransform: 'uppercase',
       }}
-      maxFontSizeMultiplier={1.4}
+      maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
     >
       {children}
     </Text>
@@ -409,10 +421,10 @@ function SectionHeader({ title }: { title: string }) {
         fontFamily: 'Bungee',
         fontSize: 10,
         letterSpacing: 2,
-        color: 'rgba(10,10,10,0.55)',
+        color: INK_MUTED,
         textTransform: 'uppercase',
       }}
-      maxFontSizeMultiplier={1.4}
+      maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
     >
       {title}
     </Text>
@@ -429,7 +441,7 @@ function SearchError({ onRetry }: { onRetry: () => void }) {
           textAlign: 'center',
           lineHeight: 19,
         }}
-        maxFontSizeMultiplier={1.4}
+        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
       >
         Recherche indisponible. Vérifie ta connexion.
       </Text>
@@ -453,7 +465,7 @@ function SearchError({ onRetry }: { onRetry: () => void }) {
             color: '#fbbf24',
             textTransform: 'uppercase',
           }}
-          maxFontSizeMultiplier={1.4}
+          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
         >
           Réessayer
         </Text>
@@ -518,7 +530,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
         <Text
           style={{ fontFamily: 'Extenda', fontSize: 16, lineHeight: 16, letterSpacing: 0.6 }}
           numberOfLines={1}
-          maxFontSizeMultiplier={1.4}
+          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
         >
           @{match.pseudo}
         </Text>
@@ -526,7 +538,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
           <Text
             style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)', marginTop: 3 }}
             numberOfLines={1}
-            maxFontSizeMultiplier={1.4}
+            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
           >
             {match.displayName}
           </Text>
@@ -535,7 +547,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
           <Text
             style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)', marginTop: 3 }}
             numberOfLines={1}
-            maxFontSizeMultiplier={1.4}
+            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
           >
             <Text style={{ fontWeight: '700' }}>
               {CATEGORY_META[match.item.category].label}
@@ -562,7 +574,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
             color: '#fbbf24',
             textTransform: 'uppercase',
           }}
-          maxFontSizeMultiplier={1.4}
+          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
         >
           Voir
         </Text>

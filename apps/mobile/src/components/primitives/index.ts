@@ -6,3 +6,4 @@ export { TopChip } from './TopChip';
 export { Pagination } from './Pagination';
 export { ToastHost, useToast } from './Toast';
 export { SHADOWS, stampShadow } from './shadow';
+export { INK_MUTED, INK_PLACEHOLDER } from './ink';
