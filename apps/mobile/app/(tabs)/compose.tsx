@@ -11,7 +11,8 @@ import { INK_MUTED, SHADOWS, StampButton, YellowBg, useToast } from '@/component
 import { failureFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
-import { editableBentoId, publishBento, switchBento } from '@/lib/bento-actions';
+import { editableBentoId, listOwnBentos, publishBento, switchBento } from '@/lib/bento-actions';
+import { type Edition, createEditionBento, loadReleasedEditions } from '@/lib/editions';
 import type { OwnBento } from '@/lib/own-bento';
 import {
   CTA_GAP_MIN,
@@ -31,8 +32,7 @@ import {
 } from '@/components/bento/font-scaling';
 import { composeCta } from '@/lib/compose-cta';
 import { useOfflineInset } from '@/lib/use-offline-inset';
-import type { CategoryKey } from '@/supabase/types';
-import { mainBentoCases } from '@/components/bento/cases';
+import { composerCases } from '@/components/bento/cases';
 
 /**
  * Marge de chaque côté de la grille. Elle en fixe la largeur, que les titres
@@ -67,8 +67,9 @@ export default function ComposeTab() {
   const pseudo = profile?.pseudo;
   const userId = useSession((s) => s.user?.id);
   const refreshProfile = useSession((s) => s.refreshProfile);
-  const filledCategories = Object.keys(slots) as CategoryKey[];
-  const filled = filledCategories.length;
+  const cases = useBento((s) => s.cases);
+  const filledKeys = Object.keys(slots);
+  const filled = filledKeys.length;
   // Bloqué tant qu'au moins un slot référence un item en attente de
   // modération. La règle est gardée côté UI uniquement pour l'instant
   // (le SQL strict `can_publish_bento` arrive plus tard, cf. spec §7.1).
@@ -79,6 +80,25 @@ export default function ComposeTab() {
   const insets = useSafeAreaInsets();
 
   const showToast = useToast((s) => s.show);
+
+  /**
+   * Les éditions sorties, relues à chaque retour sur l'onglet.
+   *
+   * La RLS ne rend que les sorties : l'app n'a donc aucun filtre de date à
+   * appliquer, et une édition programmée reste invisible même si quelqu'un
+   * inspecte la requête. Une lecture qui échoue laisse la liste vide, ce qui
+   * ne retire rien à l'écran : les éditions sont un ajout, pas un prérequis.
+   */
+  const [editions, setEditions] = useState<Edition[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      let vivant = true;
+      void loadReleasedEditions()
+        .then((liste) => { if (vivant) setEditions(liste); })
+        .catch(() => { if (vivant) setEditions([]); });
+      return () => { vivant = false; };
+    }, []),
+  );
 
   // Re-synchronise le bento depuis Supabase à chaque retour sur l'onglet.
   // Sans ça, un item validé (ou refusé) par l'équipe pendant que l'app est
@@ -96,7 +116,8 @@ export default function ComposeTab() {
   // dans `lib/compose-cta.ts`. Les avoir calculés séparément avait produit un
   // bouton actif qui ne faisait rien : cf. le commentaire de ce fichier.
   const cta = composeCta({
-    filled: filledCategories,
+    cases,
+    filled: filledKeys,
     hasPending,
     publishing,
     published: publishedAt !== null,
@@ -104,7 +125,7 @@ export default function ComposeTab() {
 
   const onPrimary = () => {
     if (cta.kind === 'open-slot') {
-      router.push({ pathname: '/search-modal', params: { category: cta.category } });
+      router.push({ pathname: '/search-modal', params: { category: cta.caseKey } });
       return;
     }
     if (cta.kind === 'publish') void onPublish();
@@ -163,7 +184,10 @@ export default function ComposeTab() {
   const bentoScale = composeBentoScale({
     // La bande de sélection prend de la place au-dessus de la grille : le
     // modèle la compte, sans quoi la boîte passerait sous le bouton.
-    bentoCount: own.length,
+    // Ce que le sélecteur affiche : les bentos du compte plus les éditions
+    // sorties qu'il reste à composer. Compter les seuls bentos ferait
+    // calculer la boîte sur une hauteur qui n'est pas la bonne.
+    bentoCount: own.length + editions.filter((e) => !own.some((b) => b.editionId === e.id)).length,
     screenHeight,
     insetTop: insets.top + offlineInset,
     tabBarHeight,
@@ -300,7 +324,7 @@ export default function ComposeTab() {
                 </View>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                  <ProgressBar filled={filled} total={6} />
+                  <ProgressBar filled={filled} total={cases.length} />
                   <Text
                     allowFontScaling={false}
                     style={{
@@ -310,14 +334,14 @@ export default function ComposeTab() {
                       includeFontPadding: false,
                     }}
                   >
-                    {filled} / 6
+                    {filled} / {cases.length}
                   </Text>
                 </View>
               )}
             </View>
           </View>
 
-          <BentoSelector own={own} currentId={current?.id ?? null} />
+          <BentoSelector own={own} currentId={current?.id ?? null} editions={editions} />
 
           {/* Grille bento — scale dynamique pour fit l'écran. Tant que la première
               lecture du bento n'a pas répondu, un squelette : un bento vide
@@ -325,7 +349,7 @@ export default function ComposeTab() {
           <View style={{ paddingHorizontal: GRID_SIDE_PADDING }}>
             {hydrated ? (
               <BentoGrid
-                cases={mainBentoCases(slots)}
+                cases={composerCases(cases, slots)}
                 scale={bentoScale}
                 // Toute la largeur de l'écran, et non `GRID_WIDTH × bentoScale` :
                 // l'échelle se calcule ici sur la hauteur.
@@ -380,10 +404,46 @@ export default function ComposeTab() {
  * publique : le budget vertical du composer est calculé au point, et tout ce
  * qui suit la boîte tombe derrière le bloc du bouton.
  */
-function BentoSelector({ own, currentId }: { own: OwnBento[]; currentId: string | null }) {
+function BentoSelector({
+  own,
+  currentId,
+  editions,
+}: {
+  own: OwnBento[];
+  currentId: string | null;
+  editions: Edition[];
+}) {
   const { fontScale } = useWindowDimensions();
   const scale = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
-  if (own.length <= 1) return null;
+  const showToast = useToast((s) => s.show);
+  const [creating, setCreating] = useState<number | null>(null);
+
+  // Les éditions sorties que ce compte n'a pas encore composées.
+  const composees = new Set(own.map((b) => b.editionId).filter((id): id is number => id !== null));
+  const aComposer = editions.filter((e) => !composees.has(e.id));
+
+  // Rien à choisir : ni second bento, ni édition à rejoindre. Le composer
+  // garde exactement l'aspect qu'il avait, et `composeSelectorHeight` rend
+  // zéro. C'est la promesse du §5.4 du chantier 16.
+  if (own.length <= 1 && aComposer.length === 0) return null;
+
+  const rejoindre = async (edition: Edition) => {
+    if (creating !== null) return;
+    setCreating(edition.id);
+    try {
+      const bentoId = await createEditionBento(edition.id);
+      const userId = useSession.getState().user?.id;
+      if (userId) useBento.getState().setOwn(await listOwnBentos(userId), bentoId);
+      await switchBento(bentoId);
+    } catch (e) {
+      showToast(
+        e instanceof Error ? e.message : 'L’édition n’a pas pu s’ouvrir.',
+        { variant: 'danger' },
+      );
+    } finally {
+      setCreating(null);
+    }
+  };
   return (
     <ScrollView
       horizontal
@@ -434,6 +494,46 @@ function BentoSelector({ own, currentId }: { own: OwnBento[]; currentId: string 
           </Pressable>
         );
       })}
+
+      {/* Les éditions sorties qu'on n'a pas encore composées. Un tap crée
+          leur bento et bascule dessus. */}
+      {aComposer.map((edition) => (
+        <Pressable
+          key={`edition-${edition.id}`}
+          onPress={() => void rejoindre(edition)}
+          disabled={creating !== null}
+          accessibilityRole="button"
+          accessibilityLabel={`Composer l’édition ${edition.title}`}
+          accessibilityState={{ disabled: creating !== null }}
+          style={[
+            {
+              height: SELECTOR_CHIP_H * scale,
+              justifyContent: 'center',
+              paddingHorizontal: 14,
+              borderRadius: 999,
+              borderWidth: 2.5,
+              borderStyle: 'dashed',
+              borderColor: '#0a0a0a',
+              backgroundColor: '#fbbf24',
+              opacity: creating !== null && creating !== edition.id ? 0.5 : 1,
+            },
+          ]}
+        >
+          <Text
+            allowFontScaling={false}
+            numberOfLines={1}
+            style={{
+              fontFamily: 'Bungee',
+              fontSize: 11 * scale,
+              lineHeight: 15 * scale,
+              letterSpacing: 0.5,
+              color: '#0a0a0a',
+            }}
+          >
+            {creating === edition.id ? '…' : `+ ${edition.title}`}
+          </Text>
+        </Pressable>
+      ))}
     </ScrollView>
   );
 }

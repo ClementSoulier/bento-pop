@@ -33,11 +33,24 @@ export type BentoItems = Partial<Record<CategoryKey, TileData>>;
  *
  * L'ordre est celui de `CATEGORY_ORDER`, donc celui de la boîte.
  */
-export function mainBentoCases(
-  slots: BentoItems,
-): readonly BentoCase[] {
+export function mainBentoCases(slots: BentoItems): readonly BentoCase[] {
   return MAIN_CASES.map((meta) => ({
     ...meta,
     tile: slots[meta.key as CategoryKey],
   }));
+}
+
+/**
+ * Les cases du bento édité, remplies depuis le store.
+ *
+ * La variante du composer, qui ne connaît pas ses cases à la compilation :
+ * elles viennent du store, six pour le bento principal et de deux à six pour
+ * une édition. `mainBentoCases` reste pour le fil, la page publique et
+ * l'image de partage, qui ne montrent que le bento principal jusqu'au lot 5.
+ */
+export function composerCases(
+  cases: readonly CaseMeta[],
+  slots: Partial<Record<string, TileData>>,
+): readonly BentoCase[] {
+  return cases.map((meta) => ({ ...meta, tile: slots[meta.key] }));
 }

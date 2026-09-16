@@ -1,5 +1,4 @@
-import { CATEGORY_ORDER } from '@bento-pop/supabase-mobile/bento';
-import type { CategoryKey } from '@/supabase/types';
+
 
 /**
  * Décide de ce que fait, et de ce que dit, le bouton principal du composer.
@@ -22,7 +21,7 @@ export type ComposeCta =
   /** Publication en cours. */
   | { kind: 'busy'; label: string; disabled: true }
   /** Ouvre une case à remplir. Couvre le bento vide ET le bento partiel. */
-  | { kind: 'open-slot'; label: string; disabled: false; category: CategoryKey }
+  | { kind: 'open-slot'; label: string; disabled: false; caseKey: string }
   /** Complet, mais une case attend la modération. */
   | { kind: 'blocked'; label: string; disabled: true }
   /** Complet et publiable. */
@@ -31,8 +30,14 @@ export type ComposeCta =
   | { kind: 'view-public'; label: string; disabled: false };
 
 export type ComposeCtaInput = {
-  /** Catégories actuellement remplies. */
-  filled: readonly CategoryKey[];
+  /**
+   * Les cases du bento édité, dans l'ordre de la boîte. Six pour le bento
+   * principal, de deux à six pour une édition : c'est ce nombre qui décide
+   * quand le bento est complet, et non plus un `CATEGORY_ORDER` en dur.
+   */
+  cases: readonly { readonly key: string; readonly prompt: string }[];
+  /** Clés des cases actuellement remplies. */
+  filled: readonly string[];
   /** Au moins une case référence un item en attente de modération. */
   hasPending: boolean;
   /** Publication en cours. */
@@ -44,15 +49,19 @@ export type ComposeCtaInput = {
 /**
  * Première case vide dans l'ordre de lecture de la boîte.
  *
- * `null` seulement si les six sont pleines, ce que l'appelant traite avant
+ * `null` seulement si toutes sont pleines, ce que l'appelant traite avant
  * d'arriver ici.
  */
-export function firstEmptyCategory(filled: readonly CategoryKey[]): CategoryKey | null {
+export function firstEmptyCase(
+  cases: readonly { readonly key: string }[],
+  filled: readonly string[],
+): string | null {
   const taken = new Set(filled);
-  return CATEGORY_ORDER.find((c) => !taken.has(c)) ?? null;
+  return cases.find((c) => !taken.has(c.key))?.key ?? null;
 }
 
 export function composeCta({
+  cases,
   filled,
   hasPending,
   publishing,
@@ -62,17 +71,22 @@ export function composeCta({
     return { kind: 'busy', label: 'Publication…', disabled: true };
   }
 
-  const next = firstEmptyCategory(filled);
+  const next = firstEmptyCase(cases, filled);
   if (next) {
     // Le bento vide garde son libellé d'accueil : griser un gros bouton au
     // centre de l'écran d'un nouvel arrivant était pire que de l'orienter.
     // C'est la même action dans les deux cas, seul le mot change.
-    const remaining = CATEGORY_ORDER.length - filled.length;
+    //
+    // Le libellé d'accueil nomme la première case au lieu de dire « ton
+    // film » en dur : une édition ne commence pas forcément par un film, et
+    // le mot en dur aurait envoyé sur une case qui n'existe pas.
+    const remaining = cases.length - filled.length;
+    const premiere = cases[0]?.prompt.toLowerCase() ?? 'ta première case';
     const label =
       filled.length === 0
-        ? 'Commence par ton film'
+        ? `Commence par ${premiere}`
         : `Compléter (${remaining} restant${remaining > 1 ? 's' : ''})`;
-    return { kind: 'open-slot', label, disabled: false, category: next };
+    return { kind: 'open-slot', label, disabled: false, caseKey: next };
   }
 
   // Avant la modération : un bento déjà en ligne le reste, quoi qu'il arrive

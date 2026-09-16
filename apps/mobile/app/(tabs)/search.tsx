@@ -37,6 +37,13 @@ import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useBlocked } from '@/state/blocked';
 import { supabase } from '@/supabase/client';
 
+/** Libellés des six cases du bento principal, pour étiqueter un résultat.
+ *  Une case d'édition n'y est pas : on affiche alors sa clé, que la
+ *  recherche par item ne montre de toute façon pas aujourd'hui. */
+const CATEGORY_LABELS: Record<string, string | undefined> = Object.fromEntries(
+  Object.entries(CATEGORY_META).map(([k, m]) => [k, m.label]),
+);
+
 /**
  * Onglet « Trouver ».
  *
@@ -553,7 +560,7 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
             maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
           >
             <Text style={{ fontWeight: '700' }}>
-              {CATEGORY_META[match.item.category].label}
+              {CATEGORY_LABELS[match.item.category] ?? match.item.category}
             </Text>
             {` · ${cleanTitle(match.item.title)}`}
           </Text>

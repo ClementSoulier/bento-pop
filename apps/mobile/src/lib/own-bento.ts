@@ -15,5 +15,12 @@ export type OwnBento = {
   slug: string;
   /** Le bento que `/u/<pseudo>` met en avant. Un seul par compte. */
   isPrimary: boolean;
+  /**
+   * L'édition que ce bento compose, ou `null` pour un bento libre.
+   *
+   * Chantier 13. C'est lui qui décide du jeu de cases à charger : les six
+   * compilées dans l'app, ou celles de l'édition, lues en base.
+   */
+  editionId: number | null;
   publishedAt: string | null;
 };

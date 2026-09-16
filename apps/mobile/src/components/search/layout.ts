@@ -1,5 +1,3 @@
-import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
-import type { CategoryKey } from '@bento-pop/supabase-mobile/types';
 
 /**
  * Géométrie et libellés de la modale de recherche d'item.
@@ -63,7 +61,18 @@ export function searchTileHeight(windowWidth: number): number {
  * concaténait « Cherche un » et le libellé, ce qui donnait « Cherche un
  * chanson… » et « Cherche un série… », visibles sur deux des six écrans.
  */
-export function searchPlaceholder(category: CategoryKey): string {
-  const meta = CATEGORY_META[category];
+export function searchPlaceholder(
+  meta: { label: string; gender: 'm' | 'f' },
+  /**
+   * L'intitulé est-il un nom commun ?
+   *
+   * Vrai pour les six cases du bento principal, « Film », « Série », dont
+   * l'article s'accorde. Faux pour la question d'une édition : « Cherche une
+   * la série que tu caches… » ne veut rien dire. La question est déjà le
+   * titre de la modale, le champ n'a donc pas à la répéter.
+   */
+  nomCommun = true,
+): string {
+  if (!nomCommun) return 'Cherche…';
   return `Cherche ${meta.gender === 'f' ? 'une' : 'un'} ${meta.label.toLowerCase()}…`;
 }

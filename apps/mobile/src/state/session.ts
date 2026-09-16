@@ -9,6 +9,7 @@ import { useBento } from '@/state/bento';
 import { mapRemoteSlots } from '@/lib/bento-slots';
 import { hydrateFromDraft } from '@/state/draft-hydrate';
 import { withTimeout } from '@/lib/with-timeout';
+import { caseSetFor } from '@/lib/bento-actions';
 
 type Profile = Database['public']['Tables']['users']['Row'];
 
@@ -175,6 +176,7 @@ async function hydrateBentoFromRemote(userId: string) {
       id: b.id,
       slug: b.slug,
       isPrimary: b.is_primary,
+      editionId: b.edition_id,
       publishedAt: b.published_at,
     })),
   );
@@ -186,14 +188,18 @@ async function hydrateBentoFromRemote(userId: string) {
     return;
   }
 
-  const slots = mapRemoteSlots(ligne.bento_items);
-  useBento.getState().hydrate(slots);
+  // Le jeu de cases du bento courant, avant ses cases remplies : une édition
+  // n'a pas les six du principal, et `slots` s'indexe par clé de case.
+  const cases = await caseSetFor(useBento.getState().current);
+  useBento.getState().setCases(cases);
+  useBento.getState().hydrate(mapRemoteSlots(ligne.bento_items, cases));
 }
 
 type RemoteBento = {
   id: string;
   slug: string;
   is_primary: boolean;
+  edition_id: number | null;
   published_at: string | null;
   bento_items:
     | { category_id: number; items: unknown }[]
@@ -214,6 +220,7 @@ async function readBentos(userId: string): Promise<RemoteBento[] | null> {
         `id,
        slug,
        is_primary,
+       edition_id,
        published_at,
        bento_items (
          category_id,

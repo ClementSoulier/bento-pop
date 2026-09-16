@@ -1,29 +1,31 @@
 import { supabase } from '@/supabase/client';
 import { queryClient } from '@/lib/query-client';
 import { refreshPublicViews } from '@/lib/public-bento-query';
-import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
-import type { CategoryKey } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import type { OwnBento } from './own-bento';
 import { mapRemoteSlots, type Slots } from './bento-slots';
 import { publishItemsFromSlots } from './bento-actions-pure';
+import { MAIN_CASE_SET, type CaseSet } from './case-set';
+import { loadEditionCases } from './editions';
 
 export type { OwnBento };
 
 
-const OWN_BENTO_SELECT = 'id, slug, is_primary, published_at' as const;
+const OWN_BENTO_SELECT = 'id, slug, is_primary, edition_id, published_at' as const;
 
 function toOwnBento(row: {
   id: string;
   slug: string;
   is_primary: boolean;
+  edition_id: number | null;
   published_at: string | null;
 }): OwnBento {
   return {
     id: row.id,
     slug: row.slug,
     isPrimary: row.is_primary,
+    editionId: row.edition_id,
     publishedAt: row.published_at,
   };
 }
@@ -85,7 +87,12 @@ export async function ensurePrimaryBento(userId: string): Promise<OwnBento> {
  */
 export async function setBentoSlot(
   bentoId: string,
-  category: CategoryKey,
+  /**
+   * `bento_categories.id` de la case, et non sa clé : c'est ce que
+   * `bento_items` référence, et une case d'édition n'a pas de catégorie.
+   * L'appelant le tient de son jeu de cases, cf. `case-set.ts`.
+   */
+  caseId: number,
   itemId: string,
 ): Promise<void> {
   const { error } = await supabase
@@ -93,7 +100,7 @@ export async function setBentoSlot(
     .upsert(
       {
         bento_id: bentoId,
-        category_id: CATEGORY_IDS[category],
+        category_id: caseId,
         item_id: itemId,
       },
       { onConflict: 'bento_id,category_id' },
@@ -191,18 +198,15 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
 }
 
 /**
- * Vide une case du bento : supprime la ligne `bento_items` pour la
- * catégorie donnée. L'item lui-même reste dans le catalogue mutualisé.
+ * Vide une case du bento : supprime sa ligne `bento_items`. L'item lui-même
+ * reste dans le catalogue mutualisé.
  */
-export async function clearBentoSlot(
-  bentoId: string,
-  category: CategoryKey,
-): Promise<void> {
+export async function clearBentoSlot(bentoId: string, caseId: number): Promise<void> {
   const { error } = await supabase
     .from('bento_items')
     .delete()
     .eq('bento_id', bentoId)
-    .eq('category_id', CATEGORY_IDS[category]);
+    .eq('category_id', caseId);
   if (error) throw new Error(`Clear slot failed: ${error.message}`);
   invalidatePublicViews();
 }
@@ -286,8 +290,27 @@ export async function editableBentoId(userId: string): Promise<string | null> {
 export async function switchBento(bentoId: string): Promise<void> {
   const store = useBento.getState();
   store.setOwn(store.own, bentoId);
+  // Le jeu de cases AVANT les cases remplies : `slots` s'indexe par clé de
+  // case, donc hydrater avec l'ancien jeu poserait des cases que la grille
+  // n'afficherait pas et que la publication enverrait quand même.
+  const cases = await caseSetFor(store.own.find((b) => b.id === bentoId) ?? null);
+  store.setCases(cases);
   const data = await loadBentoById(bentoId);
-  store.hydrate(mapRemoteSlots(data?.bento_items));
+  store.hydrate(mapRemoteSlots(data?.bento_items, cases));
+}
+
+/**
+ * Le jeu de cases d'un bento : les six du principal, ou celles de son
+ * édition.
+ *
+ * Un bento d'édition dont les cases ne se lisent pas, parce que l'édition a
+ * été dépubliée entre-temps, retombe sur un jeu vide plutôt que sur les six
+ * du principal : mieux vaut une boîte qu'on ne peut pas composer qu'une boîte
+ * qui écrirait dans les cases du bento principal.
+ */
+export async function caseSetFor(bento: OwnBento | null): Promise<readonly CaseSet[]> {
+  if (!bento?.editionId) return MAIN_CASE_SET;
+  return loadEditionCases(bento.editionId);
 }
 
 /**
@@ -310,7 +333,9 @@ export async function publishFirstBento(
   const { data, error } = await supabase.rpc('publish_first_bento', {
     p_pseudo: pseudo,
     p_terms_accepted_at: termsAcceptedAt,
-    p_items: publishItemsFromSlots(slots),
+    // Le premier bento d'un compte est toujours le principal : ses six
+    // cases, jamais celles d'une édition.
+    p_items: publishItemsFromSlots(slots, MAIN_CASE_SET),
   });
   if (error) throw new Error(error.message);
   if (!data) throw new Error('First publish failed');

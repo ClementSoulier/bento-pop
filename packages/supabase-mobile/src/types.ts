@@ -497,7 +497,7 @@ export type Database = {
     Views: { [_: string]: never };
     Functions: {
       search_items: {
-        Args: { q: string; category_key: CategoryKey; lim?: number };
+        Args: { q: string; category_key: string; lim?: number };
         Returns: Array<{
           id: string;
           title: string;
@@ -511,7 +511,7 @@ export type Database = {
       find_similar_items: {
         Args: {
           q: string;
-          category_key: CategoryKey;
+          category_key: string;
           threshold?: number;
           lim?: number;
         };
@@ -526,7 +526,7 @@ export type Database = {
       };
       popular_items: {
         Args: {
-          category_key: CategoryKey;
+          category_key: string;
           lim?: number;
           /**
            * Retire un item du résultat. Sert à ne pas reproposer celui qui
@@ -561,6 +561,16 @@ export type Database = {
        */
       create_bento: {
         Args: { p_slug: string };
+        Returns: string;
+      };
+      /**
+       * Le bento d'une édition sortie, pour le compte connecté. Chantier 13.
+       *
+       * Refuse une édition non sortie et un doublon. L'adresse est celle de
+       * l'édition, suffixée si un bento libre l'occupait déjà.
+       */
+      create_edition_bento: {
+        Args: { p_edition: number };
         Returns: string;
       };
       /**

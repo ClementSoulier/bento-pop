@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { CategoryKey } from '@/supabase/types';
 import type { OwnBento } from '@/lib/own-bento';
 import type { TileData } from '@/components/bento/Tile';
+import { MAIN_CASE_SET, type CaseSet } from '@/lib/case-set';
 
 /**
  * État local du bento en cours de composition / édition.
@@ -32,7 +32,8 @@ import type { TileData } from '@/components/bento/Tile';
  * resynchronisation pour le reste de la session.
  */
 
-type BentoSlots = Partial<Record<CategoryKey, TileData & { itemId?: string }>>;
+/** Les cases remplies, indexées par clé de case. Cf. `bento-slots.ts`. */
+type BentoSlots = Partial<Record<string, TileData & { itemId?: string }>>;
 
 /**
  * Dernière case posée par une action de l'utilisateur.
@@ -62,6 +63,15 @@ type BentoState = {
    */
   current: OwnBento | null;
   own: OwnBento[];
+  /**
+   * Les cases du bento édité, dans l'ordre de la boîte.
+   *
+   * Chantier 13. Six pour le bento principal, de deux à six pour une
+   * édition : leur nombre décide de la disposition, et leurs clés indexent
+   * `slots`. Le jeu du bento principal est compilé dans l'app, celui d'une
+   * édition vient de la base, cf. `case-set.ts`.
+   */
+  cases: readonly CaseSet[];
   slots: BentoSlots;
   lastFilled: LastFilled | null;
   /**
@@ -86,8 +96,8 @@ type BentoState = {
    * vide après le garde-fou de démarrage.
    */
   hydrated: boolean;
-  setSlot: (cat: CategoryKey, data: TileData & { itemId?: string }) => void;
-  clearSlot: (cat: CategoryKey) => void;
+  setSlot: (caseKey: string, data: TileData & { itemId?: string }) => void;
+  clearSlot: (caseKey: string) => void;
   reset: () => void;
   /**
    * Remplace l'intégralité des cases par l'état distant. Sans effet tant
@@ -120,6 +130,14 @@ type BentoState = {
    * verrou `pendingWrites` n'a pas à s'y appliquer.
    */
   setPublishedAt: (publishedAt: string | null) => void;
+  /**
+   * Pose le jeu de cases, et **vide les cases remplies**.
+   *
+   * Les deux vont ensemble : `slots` est indexé par clé de case, donc garder
+   * les anciennes en changeant de jeu laisserait des cases orphelines que la
+   * grille n'afficherait pas et que la publication enverrait quand même.
+   */
+  setCases: (cases: readonly CaseSet[]) => void;
   /** À encadrer d'un `try` / `finally` autour de toute écriture optimiste. */
   beginWrite: () => void;
   endWrite: () => void;
@@ -129,6 +147,7 @@ type BentoState = {
 export const useBento = create<BentoState>((set, get) => ({
   current: null,
   own: [],
+  cases: MAIN_CASE_SET,
   slots: {},
   lastFilled: null,
   publishedAt: null,
@@ -149,6 +168,7 @@ export const useBento = create<BentoState>((set, get) => ({
     set({
       current: null,
       own: [],
+      cases: MAIN_CASE_SET,
       slots: {},
       lastFilled: null,
       publishedAt: null,
@@ -165,6 +185,7 @@ export const useBento = create<BentoState>((set, get) => ({
     set({ slots, hydrated: true });
   },
   markHydrated: () => set({ hydrated: true }),
+  setCases: (cases) => set({ cases, slots: {}, lastFilled: null, hydrated: false }),
   setOwn: (own, currentId) =>
     set((s) => {
       const voulu = currentId ?? s.current?.id ?? null;
