@@ -282,7 +282,7 @@ export function EditionEditor({
                     <td className="px-2 py-2">
                       <select
                         id={`case-gender-${c.order}`}
-                        className="admin-select h-[30px] w-[60px] py-0 text-[12px]"
+                        className="admin-select h-[30px] w-[78px] py-0 text-[12px]"
                         value={c.gender} disabled={sortie}
                         onChange={(e) => majCase(c.order, { gender: e.target.value as 'm' | 'f' })}
                       >
@@ -304,7 +304,7 @@ export function EditionEditor({
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="whitespace-nowrap px-4 py-2 text-right">
                       <Verdict v={v} />
                     </td>
                   </tr>

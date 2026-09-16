@@ -111,24 +111,28 @@ function EditionLine({
           {edition.title}
         </Link>
       </td>
-      <td className="px-2 py-2 font-mono text-[12px] text-admin-muted">/{edition.slug}</td>
-      <td className="px-2 py-2 font-mono text-[12px]">{formatDate(edition.releasedAt)}</td>
+      <td className="whitespace-nowrap px-2 py-2 font-mono text-[12px] text-admin-muted">/{edition.slug}</td>
+      <td className="whitespace-nowrap px-2 py-2 font-mono text-[12px]">{formatDate(edition.releasedAt)}</td>
       <td className="px-2 py-2 font-mono text-[12px]">{edition.cases}</td>
       <td className="px-2 py-2 font-mono text-[12px]">{edition.composed}</td>
-      <td className="px-4 py-2 text-right">
-        <span className="inline-block rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.12em]">
-          {EDITION_STATUS_LABELS[edition.status]}
-        </span>
-        {edition.composed === 0 && (
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={pending}
-            className="admin-btn admin-btn-danger admin-btn-sm ml-2 h-[26px] py-0"
-          >
-            {pending ? '…' : 'Supprimer'}
-          </button>
-        )}
+      <td className="px-4 py-2">
+        {/* Une seule ligne : la pastille et l'action passaient l'une sous
+            l'autre dès que la colonne se resserrait. */}
+        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+          <span className="inline-block rounded-full border-2 border-bento-ink px-2 py-px font-mono text-[9px] uppercase tracking-[0.12em]">
+            {EDITION_STATUS_LABELS[edition.status]}
+          </span>
+          {edition.composed === 0 && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={pending}
+              className="admin-btn admin-btn-danger admin-btn-sm h-[26px] py-0"
+            >
+              {pending ? '…' : 'Supprimer'}
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );

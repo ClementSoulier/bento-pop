@@ -928,10 +928,24 @@ largeur moins la marge de 8 et le pointillé de **2**, pas 2,5. Elle passe de
 type sans filtrer `edition_id`, et aurait renvoyé une case d'édition dès la
 première créée.
 
-⚠️ **L'écran n'a pas été vu.** Le back-office est derrière une
-authentification, et l'agent ne crée pas de compte ni ne saisit de mot de
-passe. Sa recette visuelle appartient donc à Clément, et elle est le premier
-point de la recette du lot 6.
+**L'écran a été recetté**, en session simulée sur une copie détachée du dépôt
+et le Supabase local, sans qu'aucun compte soit créé nulle part. Trois défauts
+que ni les tests ni le typage ne voyaient :
+
+- le sélecteur de genre, large de 60 points, affichait « ur » : la flèche
+  native du `select` mangeait la fin du mot ;
+- l'adresse d'une édition se coupait en deux lignes dans la liste ;
+- la pastille d'état et le bouton de suppression passaient l'un sous l'autre.
+
+**Le cas qui justifie l'écran, vérifié de bout en bout** : « Le film qui t'a
+fait pleurer » affiche `TIENT · 66 %` en case 1, pleine largeur, et
+`COUPÉ · 3 LIGNES` en case 6, dans la rangée à trois. L'aperçu l'y montre
+tronquée et cerclée de rouge, et l'enregistrement est refusé. La même question,
+deux verdicts, selon la seule position.
+
+**Géométrie de l'aperçu mesurée dans le navigateur** : boîte 300 × 425,5 px et
+rangées 182,8 / 202,8 pour une édition à trois cases, soit exactement 512, 220
+et 244 à l'échelle 300/361.
 
 ### Lot 4 · L'app : découvrir et composer une édition
 
