@@ -520,10 +520,16 @@ déjà revendiquée par l'app, sans nouveau déploiement de fichier de liaison.*
 - **La modération ne sait que bannir.** Le seul remède est
   `delete from public.users` (`reports/actions.ts:61`). `target_bento_id` est lu
   (`reports/page.tsx:51-52`) puis jamais utilisé.
-- **Le back-office ne purge jamais la landing** après avoir mis en avant ou
-  publié un bento : aucun appel à `revalidateLanding` dans `bentos/actions.ts`
-  ni dans `utilisateurs/nouveau/actions.ts`. La fenêtre de fraîcheur est celle
-  de l'ISR, 300 s.
+- **Le back-office ne purge pas la landing lui-même**, aucun appel à
+  `revalidateLanding` dans `bentos/actions.ts` ni dans
+  `utilisateurs/nouveau/actions.ts`. **Corrigé au lot 3 : ce n'est pas un
+  défaut.** Le déclencheur `bentos_revalidate_landing` s'en charge en base, et
+  un déclencheur se moque du rôle qui écrit : publier et mettre en avant
+  passent tous deux par un `update` sur `bentos`, donc la purge part. La
+  création d'un profil éditorial est couverte de la même façon, sa publication
+  étant un `update` séparé. Reste une fenêtre de 300 s pour les changements de
+  **cases** seuls, `bento_items` ne portant pas de déclencheur : c'est le
+  comportement assumé de l'ISR, pas un oubli.
 - **Il crée exactement un bento par profil éditorial**
   (`utilisateurs/nouveau/actions.ts:146-153`), sans moyen d'en ajouter un.
 
@@ -966,12 +972,18 @@ fichiers restent fautifs et sont listés nommément dans la constante `DETTE` :
 si une entrée de cette liste n'est plus fautive, pour qu'elle ne survive pas à
 sa correction. **Le lot 4 doit la vider.**
 
-### Lot 3 · Les compteurs, la modération et le back-office
+### Lot 3 · Les compteurs, la modération et le back-office · livré
 
-`shared_items`, `popular_items`, `search_bentos` par personne ; entonnoir et
-liste de comptes par personne ; `target_bento_id` passé au signalement et suivi
-jusqu'au lien de modération ; création d'un deuxième bento depuis le
-back-office ; confirmation de suppression qui dit le vrai nombre.
+Entonnoir et liste de comptes par personne ; `target_bento_id` passé au
+signalement et suivi jusqu'au lien de modération ; création d'un deuxième bento
+depuis le back-office ; confirmations de suppression et de bannissement qui
+disent le vrai nombre ; une seule fonction pour l'adresse publique, là où
+quatre écrans l'écrivaient à la main.
+
+**Ce que la mesure a corrigé dans cette spéc.** §4.7 affirmait que le
+back-office ne purge jamais la landing. C'est faux : le déclencheur
+`bentos_revalidate_landing` s'en charge en base, et un déclencheur ne dépend
+pas du rôle qui écrit.
 
 ### Lot 4 · Le composer, le profil et le partage à plusieurs bentos
 
@@ -1088,8 +1100,10 @@ stocké par le simulateur.
   roadmap, sans réponse tant qu'il n'y a pas de secondaire réel.
 - **Un remède de modération par bento** : aujourd'hui le seul geste possible est
   la suppression du compte (§4.7).
-- **Le back-office ne purge jamais la landing** après mise en avant ou
-  publication d'un bento éditorial. Défaut préexistant, hors périmètre.
+- **Les changements de cases seuls ne purgent pas la landing.** Le
+  déclencheur vit sur `bentos`, pas sur `bento_items` : changer un item laisse
+  la page publique jusqu'à 300 s en arrière. Comportement assumé de l'ISR,
+  noté pour mémoire.
 - **`artist` et `creator` partagent le type `person`** : un même item peut
   occuper deux cases d'un seul bento. Corrigé de fait par le passage des
   compteurs à `distinct user_id`, à vérifier.

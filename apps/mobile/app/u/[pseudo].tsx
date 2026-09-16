@@ -114,7 +114,13 @@ export default function PublicBentoScreen() {
     <YellowBg>
       <SafeAreaView style={{ flex: 1 }}>
         <TopBar
-          optionsFor={state.kind === 'found' && !state.isOwn ? state.bento.pseudo : null}
+          // Le bento et non le seul pseudo : un signalement doit nommer ce
+          // qui a été vu, et un compte peut en avoir plusieurs. Chantier 16.
+          optionsFor={
+            state.kind === 'found' && !state.isOwn
+              ? { pseudo: state.bento.pseudo, bentoId: state.bento.id }
+              : null
+          }
           // Arrivé par un lien partagé sur `/u/<pseudo>/<slug>`, il n'y a rien
           // derrière : « Retour » mène alors au compte, pas au composer, sinon
           // la page d'un bento nommé est un cul-de-sac.
@@ -267,7 +273,7 @@ function TopBar({
   optionsFor,
   fallback,
 }: {
-  optionsFor: string | null;
+  optionsFor: { pseudo: string; bentoId: string } | null;
   /** Où mener quand il n'y a pas d'écran précédent, cf. l'appelant. */
   fallback: '/(tabs)/compose' | `/u/${string}`;
 }) {
@@ -306,7 +312,9 @@ function TopBar({
           ‹
         </Text>
       </Pressable>
-      {optionsFor ? <BlockReportMenu pseudo={optionsFor} /> : null}
+      {optionsFor ? (
+        <BlockReportMenu pseudo={optionsFor.pseudo} bentoId={optionsFor.bentoId} />
+      ) : null}
     </View>
   );
 }
@@ -794,7 +802,7 @@ function formatDate(iso: string): string {
  * (ou Débloquer si déjà mute). Le block est purement local au device
  * (AsyncStorage via `useBlocked`), pas notifié au backend.
  */
-function BlockReportMenu({ pseudo }: { pseudo: string }) {
+function BlockReportMenu({ pseudo, bentoId }: { pseudo: string; bentoId: string }) {
   const isBlocked = useBlocked((s) => s.isBlocked(pseudo));
   const block = useBlocked((s) => s.block);
   const unblock = useBlocked((s) => s.unblock);
@@ -816,7 +824,14 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
                 style: 'destructive',
                 onPress: async () => {
                   try {
-                    await submitReport({ targetKind: 'bento', targetPseudo: pseudo });
+                    // `targetBentoId` existait dans la table et dans le type
+                    // depuis le début, et n'était jamais renseigné : la
+                    // modération ne recevait qu'un compte. Chantier 16.
+                    await submitReport({
+                      targetKind: 'bento',
+                      targetPseudo: pseudo,
+                      targetBentoId: bentoId,
+                    });
                     Alert.alert('Merci', 'Notre équipe va examiner ce bento sous 24h.');
                   } catch (e) {
                     console.warn('[page publique] signalement', e);

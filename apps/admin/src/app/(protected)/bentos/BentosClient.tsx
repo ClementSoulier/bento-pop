@@ -2,11 +2,16 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { publicBentoPath, publicBentoUrl } from '@/lib/bento-url';
 import { setBentoFeatured } from './actions';
 
 export type BentoRow = {
   id: string;
   userId: string;
+  /** Adresse du bento : `/u/<pseudo>/<slug>`. Chantier 16. */
+  slug: string;
+  /** Le bento que `/u/<pseudo>` met en avant. */
+  isPrimary: boolean;
   pseudo: string;
   displayName: string | null;
   isFeatured: boolean;
@@ -103,6 +108,11 @@ export function BentosClient({ rows: initialRows }: BentosClientProps) {
                 <Link href={`/bentos/${r.id}`} className="underline-offset-2 hover:underline">
                   @{r.pseudo}
                 </Link>
+                {/* Sans le slug, deux bentos d'un même compte donnaient deux
+                    lignes rigoureusement identiques. Chantier 16. */}
+                {r.isPrimary ? null : (
+                  <span className="ml-2 font-mono text-[10px] text-admin-muted">/{r.slug}</span>
+                )}
               </td>
               <td className="px-4 py-3 text-admin-muted">{r.displayName ?? '—'}</td>
               <td className="px-4 py-3 font-mono text-[11px] text-admin-muted">
@@ -145,7 +155,8 @@ export function BentosClient({ rows: initialRows }: BentosClientProps) {
               </td>
               <td className="px-4 py-3 text-right">
                 <a
-                  href={`https://bento-pop.com/u/${r.pseudo}`}
+                  href={publicBentoUrl(r.pseudo, r.slug, r.isPrimary)}
+                  title={publicBentoPath(r.pseudo, r.slug, r.isPrimary)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-mono text-[11px] uppercase tracking-[0.12em] text-admin-muted hover:text-admin-ink"

@@ -135,14 +135,21 @@ async function loadTelemetry(mobile: Mobile): Promise<TelemetryRow[]> {
 async function loadBentos(mobile: Mobile): Promise<BentoRow[]> {
   const { data, error } = await mobile
     .from('bentos')
-    .select('user_id, published_at, is_featured, bento_items(count)');
+    // `id`, `slug` et `is_primary` depuis le chantier 16 : sans eux, deux
+    // bentos d'un même compte sont indiscernables une fois chargés.
+    .select('id, user_id, slug, is_primary, published_at, is_featured, bento_items(count)')
+    .order('is_primary', { ascending: false })
+    .order('created_at', { ascending: true });
   if (error) throw new Error(`Lecture des bentos échouée : ${error.message}`);
 
   return (data ?? []).map((b) => {
     // PostgREST rend l'agrégat sous la forme `[{ count: n }]`.
     const items = b.bento_items as unknown as { count: number }[] | null;
     return {
+      id: b.id,
       user_id: b.user_id,
+      slug: b.slug,
+      is_primary: b.is_primary,
       published_at: b.published_at,
       is_featured: b.is_featured,
       slots: items?.[0]?.count ?? 0,

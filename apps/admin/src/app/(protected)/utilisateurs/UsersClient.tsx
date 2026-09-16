@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { publicBentoUrl } from '@/lib/bento-url';
 import { checkPseudoShape } from '@/lib/pseudo-rules';
 import { DELETION_REASONS, type DeletionReasonId } from '@/lib/deletion-reasons';
 import { deleteMobileUser, deleteOrphanAccounts, updateMobileUser } from './actions';
@@ -43,7 +44,9 @@ export function UsersClient({ funnel, rows: initialRows, orphans }: UsersClientP
       case 'publies':
         return searched.filter((r) => r.publishedAt !== null);
       case 'sans-bento':
-        return searched.filter((r) => r.slots === 0);
+        // Aucun bento du tout, et non « le principal est vide » : les deux
+        // coïncidaient tant qu'un compte n'en avait qu'un.
+        return searched.filter((r) => r.bentoCount === 0);
       case 'editorial':
         return searched.filter((r) => r.kind === 'editorial');
       default:
@@ -342,7 +345,7 @@ function ProfilesTable({
               <td className="px-4 py-3 font-semibold">
                 <span className="inline-flex items-center gap-2">
                   <Link
-                    href={`https://bento-pop.com/u/${r.pseudo}`}
+                    href={publicBentoUrl(r.pseudo)}
                     target="_blank"
                     rel="noreferrer"
                     className="underline-offset-2 hover:underline"
@@ -391,10 +394,16 @@ function ProfilesTable({
 }
 
 function BentoCell({ row }: { row: UserListRow }) {
-  if (row.slots === 0) return <span className="text-admin-muted">aucun</span>;
+  if (row.bentoCount === 0) return <span className="text-admin-muted">aucun</span>;
   return (
     <span className="inline-flex items-center gap-2">
       <span>{row.slots} / 6</span>
+      {/* Le compte en a-t-il d'autres ? Sans cette pastille, la cellule
+          décrirait le seul bento principal et laisserait croire que c'est
+          tout ce qu'il possède. Chantier 16. */}
+      {row.bentoCount > 1 ? (
+        <span className="admin-badge admin-badge-muted">+{row.bentoCount - 1}</span>
+      ) : null}
       {row.publishedAt ? (
         <span className="admin-badge admin-badge-success">publié</span>
       ) : (
@@ -560,9 +569,14 @@ function DeleteDialog({
           <li>· Le profil et son historique disparaissent.</li>
           <li>
             ·{' '}
-            {row.slots > 0
-              ? `Son bento (${row.slots} case${row.slots > 1 ? 's' : ''}${row.publishedAt ? ', publié' : ', brouillon'}) est supprimé.`
-              : "Aucun bento à supprimer."}
+            {/* La cascade efface TOUS ses bentos. L'ancienne formulation n'en
+                décrivait qu'un : une confirmation d'action irréversible qui
+                sous-déclare ce qu'elle détruit. Chantier 16. */}
+            {row.bentoCount === 0
+              ? 'Aucun bento à supprimer.'
+              : row.bentoCount === 1
+                ? `Son bento (${row.slots} case${row.slots > 1 ? 's' : ''}${row.publishedAt ? ', publié' : ', brouillon'}) est supprimé.`
+                : `Ses ${row.bentoCount} bentos sont supprimés, dont ${row.publishedCount} en ligne.`}
           </li>
           <li>
             · <code className="font-mono">/u/{row.pseudo}</code> renverra une page introuvable.

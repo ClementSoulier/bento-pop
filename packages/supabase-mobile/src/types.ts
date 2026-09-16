@@ -246,6 +246,10 @@ export type Database = {
            * `update (published_at)`. Un secondaire se crée par
            * `create_bento()`, et le compilateur le rappelle ici plutôt que
            * de laisser découvrir un 403 à l'exécution.
+           *
+           * Le back-office, lui, écrit avec la clé service-role, qui n'est
+           * pas soumise à ces grants : il assume la conversion à un seul
+           * endroit, `apps/admin/src/app/(protected)/bentos/actions.ts`.
            */
           slug: string;
           /** Le bento que `/u/<pseudo>` met en avant. Un seul par compte. */

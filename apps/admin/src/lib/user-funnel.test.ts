@@ -29,13 +29,21 @@ const profile = (id: string, over: Partial<ProfileRow> = {}): ProfileRow => ({
   ...over,
 });
 
+let compteur = 0;
 const bento = (userId: string, over: Partial<BentoRow> = {}): BentoRow => ({
+  id: `b-${(compteur += 1)}`,
   user_id: userId,
+  slug: 'mon-bento',
+  is_primary: true,
   published_at: null,
   is_featured: false,
   slots: 0,
   ...over,
 });
+
+/** Un bento secondaire du même compte : slug distinct, non principal. */
+const secondaire = (userId: string, over: Partial<BentoRow> = {}): BentoRow =>
+  bento(userId, { slug: `hebdo-${compteur}`, is_primary: false, ...over });
 
 describe('computeFunnel', () => {
   /**
@@ -248,5 +256,79 @@ describe('filterUsers', () => {
 
   it('ne jette pas sur un nom affiché absent', () => {
     assert.equal(filterUsers(rows, 'zzz').length, 0);
+  });
+});
+
+/**
+ * Chantier 16. L'entonnoir compte des personnes, pas des bentos, et la liste
+ * des comptes n'en perd plus en route. Les deux défauts étaient invisibles
+ * tant qu'un compte n'avait qu'un bento.
+ */
+describe('plusieurs bentos par compte', () => {
+  it('compte des personnes, donc l’entonnoir reste monotone', () => {
+    const accounts = [account('a'), account('b')];
+    const profiles = [profile('a'), profile('b')];
+    // `a` a trois bentos, dont deux publiés. C'est UNE personne qui a
+    // commencé, et UNE qui a publié.
+    const bentos = [
+      bento('a', { published_at: '2026-02-01T00:00:00Z' }),
+      secondaire('a', { published_at: '2026-03-01T00:00:00Z' }),
+      secondaire('a'),
+      bento('b'),
+    ];
+
+    const f = computeFunnel(accounts, profiles, bentos);
+    assert.equal(f.started, 2, 'deux personnes ont commencé, pas quatre bentos');
+    assert.equal(f.published, 1, 'une seule a publié');
+    assert.ok(f.started <= f.members, 'l’entonnoir ne peut pas remonter');
+    assert.ok(f.published <= f.started, 'l’entonnoir ne peut pas remonter');
+  });
+
+  it('ne dépasse jamais 100 % quand une personne a plusieurs bentos', () => {
+    const accounts = [account('a')];
+    const profiles = [profile('a')];
+    const bentos = [bento('a'), secondaire('a'), secondaire('a')];
+    const f = computeFunnel(accounts, profiles, bentos);
+    assert.ok(funnelShare(f.started, f.installs) <= 100);
+  });
+
+  it('montre le bento principal dans la liste, pas le dernier chargé', () => {
+    // L'ordre est volontairement défavorable : le secondaire arrive en tête,
+    // comme PostgREST pourrait le rendre sans `order by`.
+    const rows = buildUserRows(
+      [profile('a')],
+      [
+        secondaire('a', { slots: 2 }),
+        bento('a', { slots: 6, published_at: '2026-03-01T00:00:00Z', is_featured: true }),
+      ],
+      new Set(['a']),
+    );
+    const a = rows.find((r) => r.id === 'a');
+    assert.equal(a?.slots, 6, 'la cellule montre le principal');
+    assert.equal(a?.isFeatured, true);
+    assert.equal(a?.publishedAt, '2026-03-01T00:00:00Z');
+  });
+
+  it('ne perd plus aucun bento en route', () => {
+    const rows = buildUserRows(
+      [profile('a')],
+      [
+        bento('a', { slots: 6, published_at: '2026-03-01T00:00:00Z' }),
+        secondaire('a', { slots: 4, published_at: '2026-04-01T00:00:00Z' }),
+        secondaire('a', { slots: 1 }),
+      ],
+      new Set(['a']),
+    );
+    const a = rows.find((r) => r.id === 'a');
+    assert.equal(a?.bentoCount, 3, 'la suppression du compte en effacera trois');
+    assert.equal(a?.publishedCount, 2);
+  });
+
+  it('dit zéro et non « undefined » pour un compte sans bento', () => {
+    const rows = buildUserRows([profile('z')], [], new Set(['z']));
+    const z = rows.find((r) => r.id === 'z');
+    assert.equal(z?.bentoCount, 0);
+    assert.equal(z?.publishedCount, 0);
+    assert.equal(z?.slots, 0);
   });
 });
