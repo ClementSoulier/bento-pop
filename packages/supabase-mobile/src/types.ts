@@ -508,6 +508,24 @@ export type Database = {
         Args: { p_slug: string };
         Returns: string;
       };
+      /**
+       * Premier bento d'un compte : profil, bento, cases et publication en
+       * **une transaction**. Chantier 9.
+       *
+       * Une suite d'appels PostgREST laisserait un profil orphelin si les
+       * cases échouent, ou des cases orphelines si la publication échoue.
+       * Refuse un compte qui a déjà un profil, un bento incomplet, un pseudo
+       * pris ou mal formé, et l'absence d'acceptation des règles.
+       */
+      publish_first_bento: {
+        Args: {
+          p_pseudo: string;
+          p_terms_accepted_at: string | null;
+          /** `[{ category_id, item_id }, …]`, les six cases du brouillon. */
+          p_items: { category_id: number; item_id: string }[];
+        };
+        Returns: string;
+      };
       search_bentos: {
         Args: { q: string; lim?: number };
         Returns: Array<{

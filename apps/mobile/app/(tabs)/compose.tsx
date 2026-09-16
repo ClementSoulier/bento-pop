@@ -62,7 +62,8 @@ export default function ComposeTab() {
   const lastFilled = useBento((s) => s.lastFilled);
   const publishedAt = useBento((s) => s.publishedAt);
   const setPublishedAt = useBento((s) => s.setPublishedAt);
-  const pseudo = useSession((s) => s.profile?.pseudo);
+  const profile = useSession((s) => s.profile);
+  const pseudo = profile?.pseudo;
   const userId = useSession((s) => s.user?.id);
   const refreshProfile = useSession((s) => s.refreshProfile);
   const filledCategories = Object.keys(slots) as CategoryKey[];
@@ -115,9 +116,19 @@ export default function ComposeTab() {
   // le CTA ne connaît pas.
   const onPublish = async () => {
     if (!userId) return;
+
+    // Pas encore de profil : c'est ici que le pseudo se demande, et pas trois
+    // écrans avant d'avoir vu une case. L'écran suivant crée profil, bento,
+    // cases et publication d'un seul geste. Chantier 9.
+    if (!profile) {
+      router.push('/onboarding/pseudo');
+      return;
+    }
+
     setPublishing(true);
     try {
       const bentoId = await editableBentoId(userId);
+      if (!bentoId) return;
       await publishBento(bentoId);
       // Sans ça le CTA resterait « Publier mon bento » jusqu'à la prochaine
       // hydratation, et l'app continuerait d'ignorer qu'elle vient de rendre
@@ -216,7 +227,12 @@ export default function ComposeTab() {
                 includeFontPadding: false,
               }}
             >
-              @{pseudo ?? '…'}
+              {/* Sans pseudo, la ligne garde sa hauteur mais ne dit rien.
+                  « @… » ne durait qu'un aller-retour avant le chantier 9 ;
+                  depuis, on compose sans pseudo aussi longtemps qu'on veut,
+                  et afficher une adresse en pointillés tout ce temps promet
+                  quelque chose qui n'existe pas. */}
+              {pseudo ? `@${pseudo}` : ' '}
             </Text>
             <Text
               accessibilityRole="header"

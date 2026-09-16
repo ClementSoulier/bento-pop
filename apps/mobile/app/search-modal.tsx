@@ -197,19 +197,21 @@ export default function SearchModal() {
    * ressemblent exactement : le toast disparaît, la case ne bouge pas, et
    * rien ne dit s'il faut recommencer. Annuler est une promesse.
    */
-  const restoreSlot = async (bentoId: string, previous: SlotSnapshot) => {
+  const restoreSlot = async (bentoId: string | null, previous: SlotSnapshot) => {
     // L'annulation part depuis le toast, donc alors que le composer a déjà
     // le focus et peut relancer une hydratation à tout moment.
     beginWrite();
     try {
       if (previous?.itemId) {
-        await setBentoSlot(bentoId, category, previous.itemId);
+        // `bentoId` nul : brouillon d'avant compte, il n'y a rien à défaire
+        // côté serveur, seulement localement. Chantier 9.
+        if (bentoId) await setBentoSlot(bentoId, category, previous.itemId);
         setSlot(category, previous);
       } else {
         // Le cas qui manquerait si on se contentait de réécrire l'ancien
         // item : remplir une case vide puis annuler doit la revider, pas la
         // laisser telle quelle.
-        await clearBentoSlot(bentoId, category);
+        if (bentoId) await clearBentoSlot(bentoId, category);
         clearSlot(category);
       }
     } catch (e) {
@@ -242,7 +244,13 @@ export default function SearchModal() {
    * lance pas deux écritures dont l'ordre d'arrivée n'est pas garanti.
    */
   const onChoose = async (item: ChosenItem) => {
-    if (!userId || choosingRef.current) return;
+    // **Pas de garde sur `userId`.** Depuis le chantier 9, choisir un item du
+    // catalogue n'écrit rien côté serveur tant qu'il n'y a pas de profil : la
+    // case va dans le brouillon de l'appareil. Exiger une session ici
+    // rendait le composer muet, sans message, quand `signInAnonymously`
+    // échoue, ce qui est exactement la situation du rejet App Store
+    // 2bf822e0 : une revue sur réseau restreint. Cf. `state/session.ts`.
+    if (choosingRef.current) return;
     choosingRef.current = true;
 
     // Au moment du tap, pas à la fin de l'écriture : le retour tactile doit
@@ -267,8 +275,11 @@ export default function SearchModal() {
     router.back();
 
     try {
-      const bentoId = await editableBentoId(userId);
-      await setBentoSlot(bentoId, category, item.id);
+      // `null` : pas encore de profil, donc rien où écrire côté serveur. La
+      // case est déjà posée localement et le miroir l'a mise sur l'appareil ;
+      // elle partira en base à la publication. Chantier 9.
+      const bentoId = userId ? await editableBentoId(userId) : null;
+      if (bentoId) await setBentoSlot(bentoId, category, item.id);
       slotFilledFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
         variant: 'success',
@@ -316,7 +327,7 @@ export default function SearchModal() {
     try {
       const itemId = await submitItem(category, title);
       const bentoId = await editableBentoId(userId);
-      await setBentoSlot(bentoId, category, itemId);
+      if (bentoId) await setBentoSlot(bentoId, category, itemId);
       setSlot(category, {
         title,
         subtitle: undefined,
@@ -347,7 +358,7 @@ export default function SearchModal() {
     setSubmitting(true);
     try {
       const bentoId = await editableBentoId(userId);
-      await clearBentoSlot(bentoId, category);
+      if (bentoId) await clearBentoSlot(bentoId, category);
       clearSlot(category);
       router.back();
       showToast('Case vidée', {

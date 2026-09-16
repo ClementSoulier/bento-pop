@@ -1,4 +1,5 @@
 import '../src/styles/global.css';
+import { startDraft } from '@/state/draft-mirror';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
@@ -39,6 +40,9 @@ export default function RootLayout() {
   // 'done' : sinon le premier rendu passerait le splash avant que l'effet
   // n'ait démarré, et l'app clignoterait juste avant un rechargement.
   const [otaPhase, setOtaPhase] = useState<OtaPhase | 'done'>('checking');
+
+  // Chantier 9 : le brouillon d'avant compte, dans les deux sens.
+  useEffect(() => startDraft(), []);
 
   useEffect(() => {
     init().catch((err) => {

@@ -4,8 +4,10 @@ import { refreshPublicViews } from '@/lib/public-bento-query';
 import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
 import type { CategoryKey } from '@/supabase/types';
 import { useBento } from '@/state/bento';
+import { useSession } from '@/state/session';
 import type { OwnBento } from './own-bento';
-import { mapRemoteSlots } from './bento-slots';
+import { mapRemoteSlots, type Slots } from './bento-slots';
+import { publishItemsFromSlots } from './bento-actions-pure';
 
 export type { OwnBento };
 
@@ -258,7 +260,12 @@ export async function createSecondaryBento(slug: string): Promise<string> {
  * redemande à la base que si le store n'en a pas encore, c'est-à-dire au tout
  * premier remplissage d'un compte neuf.
  */
-export async function editableBentoId(userId: string): Promise<string> {
+export async function editableBentoId(userId: string): Promise<string | null> {
+  // Pas encore de profil : le brouillon vit sur l'appareil jusqu'à la
+  // publication, et `bentos.user_id` référence `users(id)`, donc il n'y a
+  // simplement rien où écrire côté serveur. Chantier 9.
+  if (!useSession.getState().profile) return null;
+
   const courant = useBento.getState().current;
   if (courant) return courant.id;
 
@@ -281,4 +288,32 @@ export async function switchBento(bentoId: string): Promise<void> {
   store.setOwn(store.own, bentoId);
   const data = await loadBentoById(bentoId);
   store.hydrate(mapRemoteSlots(data?.bento_items));
+}
+
+/**
+ * Publie le premier bento d'un compte : profil, bento, cases et publication.
+ *
+ * Chantier 9. Tout passe par `publish_first_bento`, une fonction
+ * `security definer`, et c'est une nécessité et non un confort : une suite
+ * d'appels PostgREST laisserait un profil orphelin si les cases échouent, ou
+ * des cases orphelines si la publication échoue. Ici, ou tout passe, ou rien.
+ *
+ * `slots` vient du brouillon gardé sur l'appareil, `termsAcceptedAt` de
+ * l'écran des règles. La fonction refuse un bento incomplet, un pseudo pris
+ * ou mal formé, et un compte qui a déjà un profil.
+ */
+export async function publishFirstBento(
+  pseudo: string,
+  termsAcceptedAt: string | null,
+  slots: Slots,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('publish_first_bento', {
+    p_pseudo: pseudo,
+    p_terms_accepted_at: termsAcceptedAt,
+    p_items: publishItemsFromSlots(slots),
+  });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('First publish failed');
+  invalidatePublicViews();
+  return data;
 }

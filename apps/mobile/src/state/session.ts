@@ -7,6 +7,7 @@ import { describeApp, recordVisit } from '@/lib/telemetry';
 import type { Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { mapRemoteSlots } from '@/lib/bento-slots';
+import { hydrateFromDraft } from '@/state/draft-mirror';
 import { withTimeout } from '@/lib/with-timeout';
 
 type Profile = Database['public']['Tables']['users']['Row'];
@@ -127,6 +128,12 @@ export const useSession = create<SessionState>((set, get) => ({
       console.warn('[session] lecture du profil', e);
     }
     // La lecture a répondu, même pour dire qu'il n'y a rien, ou elle a échoué.
+    // Sans profil, ce que le composer doit montrer est le brouillon gardé sur
+    // l'appareil, et non une boîte vide : chantier 9.
+    if (!get().profile) {
+      hydrateFromDraft();
+      return;
+    }
     useBento.getState().markHydrated();
   },
 

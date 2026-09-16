@@ -32,6 +32,7 @@ declare
   v_uid   uuid;
   v_main  uuid;
   v_second uuid;
+  v_first uuid;
   v_avant jsonb;
   v_apres jsonb;
 
@@ -233,6 +234,78 @@ begin
     raise warning 'KO  5  search_bentos ne rend pas de slug';
     v_ko := v_ko + 1;
   end if;
+
+  -- ── 7. Le parcours « pseudo au moment de publier », chantier 9 ──────
+  --
+  -- Un compte authentifié SANS profil publie ses six cases d'un geste :
+  -- profil, bento, cases et publication dans la même transaction.
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', '99999999-0000-4000-8000-0000000000c2', 'role', 'authenticated')::text,
+    true
+  );
+
+  begin
+    select public.publish_first_bento(
+      'controle.tardif',
+      now() - interval '2 minutes',
+      (select jsonb_agg(jsonb_build_object('category_id', bi.category_id, 'item_id', bi.item_id))
+         from public.bento_items bi where bi.bento_id = v_main)
+    ) into v_first;
+    if v_first is null then
+      raise warning 'KO  7a publication sans identifiant de bento';
+      v_ko := v_ko + 1;
+    elsif (select published_at is not null and is_primary and slug is not null
+             from public.bentos where id = v_first) then
+      raise notice 'ok  7a profil, bento principal, cases et publication d''un geste';
+      v_ok := v_ok + 1;
+    else
+      raise warning 'KO  7a le bento créé n''est ni publié ni principal';
+      v_ko := v_ko + 1;
+    end if;
+  exception when others then
+    raise warning 'KO  7a parcours du premier bento refusé : %', sqlerrm;
+    v_ko := v_ko + 1;
+  end;
+
+  begin
+    perform public.publish_first_bento('controle.tardif2', now(), '[]'::jsonb);
+    raise warning 'KO  7b un compte qui a déjà un profil a pu repasser par ce chemin';
+    v_ko := v_ko + 1;
+  exception when others then
+    raise notice 'ok  7b un compte qui a déjà un profil ne repasse pas par ce chemin';
+    v_ok := v_ok + 1;
+  end;
+
+  -- Un autre compte neuf, pour les refus qui ne dépendent pas du profil.
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', '99999999-0000-4000-8000-0000000000c3', 'role', 'authenticated')::text,
+    true
+  );
+
+  begin
+    perform public.publish_first_bento('controle.tardif3', now(), '[]'::jsonb);
+    raise warning 'KO  7c un bento incomplet a pu être publié';
+    v_ko := v_ko + 1;
+  exception when others then
+    raise notice 'ok  7c un bento incomplet ne se publie pas';
+    v_ok := v_ok + 1;
+  end;
+
+  begin
+    perform public.publish_first_bento(
+      'controle.tardif4',
+      null,
+      (select jsonb_agg(jsonb_build_object('category_id', bi.category_id, 'item_id', bi.item_id))
+         from public.bento_items bi where bi.bento_id = v_main)
+    );
+    raise warning 'KO  7d publication sans acceptation des CGU';
+    v_ko := v_ko + 1;
+  exception when others then
+    raise notice 'ok  7d pas de publication sans acceptation des CGU';
+    v_ok := v_ok + 1;
+  end;
 
   raise notice '════ % tenus, % manqués ════', v_ok, v_ko;
   if v_ko > 0 then

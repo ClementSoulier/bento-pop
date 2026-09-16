@@ -91,6 +91,10 @@ export default function ProfileTab() {
             setUnpublishing(true);
             try {
               const bentoId = await editableBentoId(userId);
+              // Cet écran n'est atteignable qu'avec un bento en ligne, donc
+              // avec un profil : `null` ne peut pas arriver, et s'il arrivait,
+              // ne rien faire vaut mieux que lever.
+              if (!bentoId) return;
               await unpublishBento(bentoId);
               setPublishedAt(null);
             } catch (e) {

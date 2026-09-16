@@ -3,10 +3,11 @@ import { Alert, Linking, Pressable, ScrollView, Text, View, useWindowDimensions 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { CONTENT_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
-import { PageTitle, Sticker, StampButton, YellowBg } from '@/components/primitives';
+import { PageTitle, Pagination, Sticker, StampButton, YellowBg } from '@/components/primitives';
 import { userErrorMessage } from '@/lib/user-error-message';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { supabase } from '@/supabase/client';
+import { useDraft } from '@/state/draft';
 import { useSession } from '@/state/session';
 
 const TERMS_URL = 'https://bento-pop.com/mentions-legales';
@@ -30,6 +31,7 @@ export default function TermsOnboarding() {
   const profile = useSession((s) => s.profile);
   const userId = useSession((s) => s.user?.id);
   const refreshProfile = useSession((s) => s.refreshProfile);
+  const acceptTerms = useDraft((s) => s.acceptTerms);
   const { fontScale } = useWindowDimensions();
 
   const onContinue = async () => {
@@ -50,9 +52,11 @@ export default function TermsOnboarding() {
         await refreshProfile();
         router.replace('/(tabs)/compose');
       } else {
-        // Nouveau compte : on continue l'onboarding, l'acceptation sera
-        // persistée dans l'INSERT de la ligne `users` au step suivant.
-        router.push('/onboarding/pseudo');
+        // Nouveau venu : l'acceptation est gardée sur l'appareil, et c'est
+        // elle que `publish_first_bento` inscrira au moment de publier. Le
+        // pseudo n'est plus demandé ici : chantier 9.
+        acceptTerms();
+        router.push('/onboarding/mechanics');
       }
     } finally {
       setSubmitting(false);
@@ -228,6 +232,17 @@ export default function TermsOnboarding() {
             <StampButton wide disabled={!accepted || submitting} onPress={onContinue}>
               {submitting ? 'Enregistrement…' : 'Continuer'}
             </StampButton>
+
+            {/* Le parcours faisait quatre écrans comptés trois : les points
+                sautaient celui-ci, et l'écran du pseudo annonçait « ÉTAPE
+                2 / 3 ». Depuis le chantier 9 il fait trois écrans, et les
+                trois sont comptés. Pas de points pour un compte existant
+                revenu accepter les règles : il n'est pas dans un parcours. */}
+            {profile ? null : (
+              <View style={{ marginTop: 16 }}>
+                <Pagination total={3} active={1} />
+              </View>
+            )}
           </View>
         </View>
       </SafeAreaView>

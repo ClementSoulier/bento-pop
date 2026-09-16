@@ -1009,11 +1009,36 @@ trop large.
 **Le profil ne liste pas les bentos**, c'est le chantier 21 (§3). Il nomme
 seulement celui sur lequel ses actions agissent.
 
-### Lot 5 · Le pseudo au moment de publier
+### Lot 5 · Le pseudo au moment de publier · livré
 
-Chantier 9 : brouillon persisté sur l'appareil, parcours à trois écrans plus
-l'étape tardive, fonction de création atomique portant `terms_accepted_at`,
-pagination recomptée.
+Chantier 9. Le brouillon vit dans `state/draft.ts`, persisté sur l'appareil, et
+`state/draft-mirror.ts` le tient à jour dans les deux sens en un seul endroit :
+demander à chaque chemin d'écriture d'y penser, c'est s'assurer qu'un l'oublie,
+et un brouillon perdu ne lève aucune erreur, il disparaît au redémarrage.
+
+`publish_first_bento` crée profil, bento, cases et publication **en une
+transaction**. Ni profil orphelin si les cases échouent, ni cases orphelines si
+la publication échoue : c'est ce qu'une suite d'appels PostgREST ne sait pas
+garantir.
+
+Parcours mesuré au simulateur, de bout en bout : splash, règles, mécanique,
+composer, six cases, pseudo, page publique. En base à l'arrivée :
+`bento08 · mon-bento · primary=true · publié=true · 6 cases`, et
+`terms_accepted_at` à **11:07:53**, l'heure de l'écran des règles et non celle
+de la publication à 11:16. **Zéro ligne créée côté serveur avant la
+publication.**
+
+**Un gain que la spéc n'avait pas prévu.** Choisir un item du catalogue
+n'exigeait plus d'écriture, donc plus de session : la garde `if (!userId)
+return` sur ce chemin rendait le composer muet, sans message, quand
+`signInAnonymously` échoue. C'est exactement la situation du rejet App Store
+2bf822e0, une revue sur réseau restreint. Elle est levée : on compose
+désormais sans session du tout, et vérifié au simulateur.
+
+Deux détails corrigés au passage : le pseudo du composer affichait `@…` en
+permanence faute de profil, il n'affiche plus rien ; et l'écran du pseudo
+annonce « DERNIÈRE ÉTAPE » au lieu de « ÉTAPE 2 / 3 », puisqu'il n'est plus
+dans un parcours. Le parcours d'accueil fait trois écrans et les compte trois.
 
 ### Lot 6 · Recette et documents
 
