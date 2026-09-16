@@ -140,10 +140,14 @@ vrai**. Onze tests unitaires et sa garde `__DEV__` vérifiée, mais aucun
 `checkForUpdateAsync` réel. Il ne se recette qu'en publiant une vraie mise à
 jour sur la branche `production`, une fois la build installée.
 
-**La checklist appareil accumule quatre chantiers** : haptique du chantier 3,
-VoiceOver, taille de police système, fluidité du fil sur build de production,
-aperçus de partage, plus les deux cas réseau du démarrage, avion et réseau
-très lent.
+**La checklist appareil, allégée par le chantier 11.** Tranchés au simulateur et
+à l'émulateur : la taille de police système sur tous les écrans (§4.2 à §4.4 de
+la spec), les rôles et libellés du lecteur d'écran (§4.5), le démarrage en réseau
+très lent (§4.6). **Restent à l'appareil réel** : l'haptique du chantier 3, la
+lecture VoiceOver et TalkBack d'un parcours complet, la fluidité du fil sur une
+build de production, les aperçus de partage dans deux messageries, et le
+démarrage en mode avion, qu'une build de développement ne peut pas montrer
+puisqu'elle charge son code depuis Metro.
 
 Reste côté Coolify : `MOBILE_SUPABASE_URL` doit porter `.supabase.co` et non
 `.com` (la valeur locale était fausse), et `MOBILE_SUPABASE_SERVICE_ROLE_KEY`
@@ -211,7 +215,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés (PR #58), recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 livré (PR #63), migration appliquée et vérifiée en production · lot 1 (back-office) livré et recetté (PR #64 et #65) · lot 2 (446 candidats en quatre listes, import depuis l'écran Types) livré (PR #66) · lot 3 recetté : bento principal identique au pixel sur iPhone et Android, recherche élargie vue en production · DoD 7 sur 9, restent à l'équipe après redéploiement du back-office sur Coolify : importer et relire jusqu'à 50 validés par type, fusionner les deux doublons · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
-| 11 | Accessibilité et polish | Qualité | S | rien | ⬜ à glisser entre deux chantiers |
+| 11 | Accessibilité et polish | Qualité | **L** | rien | 🟡 spécification écrite et cinq lots implémentés le 15/09, **rien commité ni publié sans accord** · effort réévalué S → L à la mesure · 432 tests verts, matrice de recette parcourue sur 17 Pro, SE et Pixel 8 · [spec](./UX-11-ACCESSIBILITE-POLISH.md) |
 | 16 | Plusieurs bentos par compte | Contenu | L | 5 | ⬜ roadmap produit · planifié avec le 9 |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ planifié avec le 16, qui touche les mêmes écrans |
 | 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ⬜ roadmap produit, recadré le 15/09 |
@@ -644,6 +648,15 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 ## 11. Accessibilité et polish
 
 > **À glisser entre deux chantiers**, arbitré le 15 septembre 2026 : effort S, aucune dépendance.
+>
+> **Spécifié et implémenté le 15 septembre 2026**, cinq lots, rien commité ni
+> publié : [`UX-11-ACCESSIBILITE-POLISH.md`](./UX-11-ACCESSIBILITE-POLISH.md).
+> **L'effort passe de S à L** : la mesure a montré que l'inscription se ferme à
+> la plus grande taille de police standard, que le lecteur d'écran lit une case
+> en trois morceaux, et que le bouton signature de l'app avait perdu son ombre,
+> son enfoncement et son grisé désactivé sans que rien ne le signale. Les points
+> listés ci-dessous sont tous traités, sauf ceux marqués comme arbitrés ou
+> absorbés. Les arbitrages sont **provisoires**, à relire, cf. §11 de la spec.
 
 - La loupe est un **emoji** 🔍 (`search-modal.tsx:457`, `search.tsx:164`) alors que `react-native-svg` et `@expo/vector-icons` sont installés : rendu différent iOS et Android, et lu à voix haute par VoiceOver.
 - Plusieurs titres ont un `lineHeight` inférieur au `fontSize` (`fontSize: 28, lineHeight: 26` dans compose et search ; celui de « La table » est passé à 30) : avec la taille de police système augmentée, les glyphes Extenda se font rogner. Les plafonds de grossissement sont suivis plus bas.

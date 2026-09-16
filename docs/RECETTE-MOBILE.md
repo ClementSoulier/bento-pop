@@ -722,6 +722,67 @@ npm test > suite.log 2>&1; pkill -x yes
 Au chantier 7, trois échecs sur neuf passages ont désigné le test, et un
 message d'échec enrichi de ses compteurs en a donné la cause.
 
+### Le style d'un `Pressable` en fonction de `pressed` n'est pas appliqué
+
+Sous le runtime JSX de NativeWind, `style={({ pressed }) => …}` sur un
+`Pressable` **ne donne rien du tout**, silencieusement. Au chantier 11, le
+`StampButton` de l'app avait ainsi perdu son ombre stamp, son enfoncement à
+l'appui et le grisé de son état désactivé : un bouton inerte se présentait comme
+actif. Le style en tableau, lui, s'applique ; l'appui se suit alors à la main par
+`onPressIn` / `onPressOut`.
+
+Pour trancher entre « la propriété n'a pas d'effet » et « le style n'arrive
+pas », poser une sonde impossible à manquer, ici une bordure bleue de 6 pt, et
+mesurer la capture : en forme fonction, bordure noire pleine et fond inchangé ;
+en forme tableau, bordure bleue à 50 % et fond composité. `FeedPost` avait relevé
+le même symptôme sur ses marges sans en tirer la règle.
+
+### Un `ScrollView` qui ne défile pas et rogne quand même sa fin
+
+`contentContainerStyle={{ flexGrow: 1 }}` avec un enfant en `flex: 1` et une
+`minHeight` : quand le contenu grossit, l'enfant ne peut plus se réduire sous sa
+hauteur minimale, la boîte de contenu reste à la hauteur de l'écran, et ce qui
+dépasse est **rogné sans que rien ne défile**. Mesuré au chantier 11 sur l'écran
+splash d'un iPhone SE à la troisième taille d'accessibilité : la fin de la phrase
+d'accroche disparaissait sous le bouton, et deux balayages n'y changeaient rien.
+Le ressort d'un décor ne porte donc pas de `minHeight` ; le décor s'efface quand
+la place manque, sa place étant mesurée par `onLayout`.
+
+Le symptôme se reconnaît à ceci qu'un balayage ne bouge rien : capturer, balayer,
+recapturer, faire la différence. Identique, le contenu ne défile pas.
+
+### `adjustsFontSizeToFit` avec une hauteur de ligne posée
+
+Sur iOS, un texte qui porte à la fois `adjustsFontSizeToFit` et un `lineHeight`
+explicite rétrécit jusqu'à la trace : le moteur fait tenir la police dans la
+hauteur de ligne, et non l'inverse. Vu au chantier 11 sur le pseudo du composer,
+réduit à quelques pixels. Ne le poser que là où le texte peut vraiment déborder,
+jamais avec une hauteur de ligne posée.
+
+### La barre d'onglets en navigation à trois boutons
+
+Sa hauteur se calcule sur la marge basse du système, 34 pt en gestes sur iOS,
+24 dp en trois boutons sur Android. Prendre la valeur d'iOS des deux côtés
+coupait les libellés en deux sur l'émulateur en trois boutons. Une base par
+plateforme, cf. `tab-bar.ts`, et 108 dp en trois boutons.
+
+### `simctl io screenshot` échoue en silence sur un chemin relatif
+
+Aucune erreur, aucun fichier : toute une série de captures peut se perdre. Passer
+un chemin absolu, et vérifier que le fichier existe avant d'enchaîner. La
+sous-commande de taille de police, elle, s'écrit `content_size` avec un
+souligné, quand la plupart des autres prennent un tiret.
+
+### LogBox masque la barre d'onglets, et les taps par libellé échouent
+
+Le bandeau de développement couvre le bas de l'écran : un script qui tape sur
+« La table » tape dans le bandeau et reste sur l'écran précédent, sans erreur. Le
+chercher dans l'arbre avant chaque série, le fermer par « Dismiss », et
+recommencer la série. Au chantier 11, trois écrans d'une série avaient ainsi été
+capturés deux fois le même. Son texte se lit en le dépliant : un avertissement
+d'expo-router pendant la navigation vient de la bibliothèque, sa pile de
+composants ne citant que `ContextNavigator` et `ExpoRoot`.
+
 ---
 
 ## 5. Après la recette
