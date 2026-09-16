@@ -4,6 +4,7 @@ import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { AbortTimeoutError } from './abort-timeout';
 import { FEED_QUERY_KEY } from './feed';
 import type { PublicBentoResult } from './public-bento';
+import { MAIN_CASES } from '@bento-pop/supabase-mobile/bento';
 import {
   PUBLIC_BENTO_QUERY_ROOT,
   PUBLIC_BENTO_STALE_TIME_MS,
@@ -29,6 +30,8 @@ const PUBLISHED: PublicBentoResult = {
     isFeatured: false,
     publishedAt: '2026-09-14T08:00:00.000000+00:00',
     slots: {},
+  cases: MAIN_CASES,
+  editionTitle: null,
   },
 };
 

@@ -1,6 +1,13 @@
 import { createMobileAnonClient, type MobileClient } from '@/lib/supabase/mobile';
 import { isValidPseudo } from './pseudo';
-import { mapBentoItems, type BentoSlots, type RawBentoItemRow } from './map';
+import type { CaseMeta } from '@bento-pop/supabase-mobile/bento';
+import {
+  bentoCases,
+  mapBentoItems,
+  type BentoSlots,
+  type RawBentoItemRow,
+  type RawCaseRow,
+} from './map';
 
 /**
  * Accès aux bentos publics du projet Supabase mobile.
@@ -20,10 +27,17 @@ const BENTO_SELECT = `
     id,
     slug,
     is_primary,
+    edition_id,
     published_at,
     is_featured,
+    editions (
+      slug,
+      title,
+      bento_categories ( key, prompt, stamp, gender, display_order )
+    ),
     bento_items (
       category_id,
+      bento_categories ( key ),
       items ( id, title, subtitle, year, image_url, image_credit )
     )
   )
@@ -48,6 +62,15 @@ export type PublicBento = {
    */
   readonly isGuest: boolean;
   readonly slots: BentoSlots;
+  /**
+   * Les cases de ce bento, dans l'ordre de la boîte, vides comprises.
+   *
+   * Leur nombre décide de la disposition. Six pour le bento principal, de
+   * deux à six pour une édition.
+   */
+  readonly cases: readonly CaseMeta[];
+  /** L'édition composée, ou `null` pour un bento libre. */
+  readonly edition: { readonly slug: string; readonly title: string } | null;
 };
 
 /**
@@ -71,8 +94,23 @@ type RawBentoRow = {
   readonly id: string;
   readonly slug: string;
   readonly is_primary: boolean;
+  /** L'édition composée, ou `null` pour un bento libre. Chantier 13. */
+  readonly edition_id: number | null;
   readonly published_at: string | null;
   readonly is_featured: boolean;
+  /**
+   * L'édition, avec **toutes** ses cases, vides comprises.
+   *
+   * Imbriquée dans la même requête plutôt que lue à part : les cases vides
+   * n'ont pas de ligne `bento_items`, et sans elles la disposition serait
+   * déduite des seules cases remplies. Une boîte incomplète rétrécirait au
+   * lieu de montrer des emplacements.
+   */
+  readonly editions: {
+    readonly slug: string;
+    readonly title: string;
+    readonly bento_categories: readonly RawCaseRow[] | null;
+  } | null;
   readonly bento_items: readonly RawBentoItemRow[] | null;
 };
 
@@ -219,6 +257,13 @@ export async function lookupPublicBento(
       // faire échouer la page.
       isGuest: user.kind === 'editorial',
       slots: mapBentoItems(bento.bento_items ?? []),
+      // La liste complète des cases, vides comprises : c'est elle qui décide
+      // de la disposition. Celles de l'édition quand il en compose une, les
+      // six du bento principal sinon.
+      cases: bentoCases(bento.editions?.bento_categories, bento.edition_id !== null),
+      edition: bento.editions
+        ? { slug: bento.editions.slug, title: bento.editions.title }
+        : null,
     },
   };
 }

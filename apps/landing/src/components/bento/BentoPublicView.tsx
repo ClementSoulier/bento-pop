@@ -10,7 +10,7 @@ import {
 import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
 import { bentoPath } from '@/lib/bento/metadata';
 import type { FeaturedBento, PublicBento } from '@/lib/bento/queries';
-import { mainBentoCases } from './cases';
+import { mainBentoCases, publicCases } from './cases';
 
 /**
  * Le rendu d'une page publique de bento, partagé par les deux routes.
@@ -149,6 +149,16 @@ export function BentoPublishedView({
             pseudo={bento.pseudo}
             displayName={bento.displayName}
             publishedAt={bento.publishedAt}
+            {...(bento.edition
+              ? {
+                  // Le titre de l'édition passe devant la date : sans lui, on
+                  // ne comprend pas pourquoi cette boîte n'a pas les cases du
+                  // bento principal.
+                  subtitle: `${bento.edition.title}, publié le ${new Intl.DateTimeFormat('fr-FR', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                  }).format(new Date(bento.publishedAt))}`,
+                }
+              : {})}
             isFeatured={bento.isFeatured}
             isGuest={bento.isGuest}
           />
@@ -156,7 +166,7 @@ export function BentoPublishedView({
         </div>
 
         <div className="lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <PublicBentoGrid cases={mainBentoCases(bento.slots)} label={`Les six choix de @${bento.pseudo}`} />
+          <PublicBentoGrid cases={publicCases(bento.cases, bento.slots)} label={`Les six choix de @${bento.pseudo}`} />
         </div>
 
         <div className="lg:col-start-2 lg:row-start-2">

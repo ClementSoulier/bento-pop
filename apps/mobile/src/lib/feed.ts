@@ -1,5 +1,7 @@
 import {
   CATEGORY_BY_ID,
+  MAIN_CASES,
+  type CaseMeta,
   CATEGORY_META,
   CATEGORY_ORDER,
   paletteKeyForItem,
@@ -54,9 +56,15 @@ const FEED_SELECT = `
   is_primary,
   published_at,
   is_featured,
+  edition_id,
   users:user_id ( pseudo, display_name, kind ),
+  editions (
+    title,
+    bento_categories ( key, prompt, stamp, gender, display_order )
+  ),
   bento_items (
     category_id,
+    bento_categories ( key ),
     items ( id, title, subtitle, image_url, image_credit )
   )
 ` as const;
@@ -67,10 +75,18 @@ export type FeedRow = {
   is_primary: boolean;
   published_at: string | null;
   is_featured: boolean;
+  edition_id?: number | null;
   users: { pseudo: string; display_name: string | null; kind: string } | null;
+  editions?: {
+    title: string;
+    bento_categories: {
+      key: string; prompt: string; stamp: string; gender: string | null; display_order: number;
+    }[] | null;
+  } | null;
   bento_items:
     | {
         category_id: number;
+        bento_categories?: { key: string } | null;
         items: {
           id: string;
           title: string;
@@ -108,6 +124,10 @@ export type FeedBento = {
    */
   publishedAt: string;
   slots: BentoItems;
+  /** Les cases du bento, vides comprises. Leur nombre fait la disposition. */
+  cases: readonly CaseMeta[];
+  /** Le titre de l'édition composée, ou `null` pour un bento libre. */
+  editionTitle: string | null;
 };
 
 export type FeedCursor = { publishedAt: string; id: string };
@@ -140,9 +160,10 @@ export function mapFeedRow(row: FeedRow): FeedBento | null {
 
   const slots: BentoItems = {};
   for (const link of row.bento_items ?? []) {
-    const cat = CATEGORY_BY_ID[link.category_id];
+    // La clé jointe d'abord, la table des six en repli : une case d'édition
+    // n'est pas dans `CATEGORY_BY_ID`.
+    const cat = link.bento_categories?.key ?? CATEGORY_BY_ID[link.category_id];
     const item = link.items;
-    // `cat` indéfini : une 7e catégorie déployée en base avant les clients.
     if (!cat || !item) continue;
     slots[cat] = {
       title: item.title,
@@ -167,6 +188,17 @@ export function mapFeedRow(row: FeedRow): FeedBento | null {
     isGuest: user.kind === 'editorial',
     publishedAt: row.published_at,
     slots,
+    // Les cases du bento, vides comprises : leur nombre décide de la
+    // disposition. Celles de l'édition, ou les six du bento principal.
+    cases: row.edition_id != null
+      ? [...(row.editions?.bento_categories ?? [])]
+          .sort((a, b) => a.display_order - b.display_order)
+          .map((c) => ({
+            key: c.key, prompt: c.prompt, stamp: c.stamp,
+            gender: c.gender === 'f' ? ('f' as const) : ('m' as const),
+          }))
+      : MAIN_CASES,
+    editionTitle: row.editions?.title ?? null,
   };
 }
 

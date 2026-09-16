@@ -33,17 +33,39 @@ export const GUEST_RIBBON: FeedRibbon = {
 };
 
 /**
- * Une seule étiquette à la fois, et « invité » l'emporte.
+ * Bento composé d'après une édition hebdomadaire.
  *
- * Un bento invité est presque toujours aussi un coup de cœur, c'est même la
- * raison de le composer. Mais « coup de cœur » est un avis que le lecteur
- * peut deviner, alors que « invité » est la seule information qu'il ne peut
- * déduire de rien d'autre : sans elle, le fil attribue à une personne réelle
- * une composition qu'elle n'a pas faite. En cas de conflit, on affiche ce qui
- * ne se devine pas.
+ * Jaune de la marque sur encre : la troisième teinte disponible, et la plus
+ * proche de ce que l'édition est, un rendez-vous de l'équipe. Le libellé
+ * porte le titre de l'édition et non le mot « hebdomadaire » : « LA SEMAINE
+ * DU FILM QUI PIQUE » dit ce qu'on va y trouver, « BENTO DE LA SEMAINE » ne
+ * dit que la fréquence.
  */
-export function ribbonFor(bento: { isGuest: boolean; isFeatured: boolean }): FeedRibbon | null {
+export function editionRibbon(title: string): FeedRibbon {
+  return { label: title, color: '#fbbf24', textColor: '#0a0a0a' };
+}
+
+/**
+ * Une seule étiquette à la fois, et l'ordre compte.
+ *
+ * « Invité » d'abord : un bento invité est presque toujours aussi un coup de
+ * cœur, c'est même la raison de le composer. Mais « coup de cœur » est un
+ * avis que le lecteur peut deviner, alors que « invité » est la seule
+ * information qu'il ne peut déduire de rien d'autre : sans elle, le fil
+ * attribue à une personne réelle une composition qu'elle n'a pas faite.
+ *
+ * L'édition ensuite, avant le coup de cœur, et pour la même raison : la boîte
+ * d'une édition n'a pas les cases du bento principal, et sans son titre le
+ * lecteur ne comprend pas pourquoi. C'est une information sur ce qu'il voit,
+ * pas un avis dessus.
+ */
+export function ribbonFor(bento: {
+  isGuest: boolean;
+  isFeatured: boolean;
+  editionTitle?: string | null;
+}): FeedRibbon | null {
   if (bento.isGuest) return GUEST_RIBBON;
+  if (bento.editionTitle) return editionRibbon(bento.editionTitle);
   if (bento.isFeatured) return FEATURED_RIBBON;
   return null;
 }

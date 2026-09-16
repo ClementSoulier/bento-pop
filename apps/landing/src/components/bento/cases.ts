@@ -25,3 +25,18 @@ export function mainBentoCases(slots: BentoSlots): readonly PublicCase[] {
     tile: slots[meta.key as CategoryKey],
   }));
 }
+
+/**
+ * Les cases d'un bento, remplies depuis sa requête.
+ *
+ * La variante générale : `cases` vient de la base, six pour le bento
+ * principal et de deux à six pour une édition, et `slots` porte ce qui y est
+ * posé. `mainBentoCases` reste pour les écrans qui n'ont pas de bento sous la
+ * main, comme la page « pas encore terminé ».
+ */
+export function publicCases(
+  cases: readonly CaseMeta[],
+  slots: BentoSlots,
+): readonly PublicCase[] {
+  return cases.map((meta) => ({ ...meta, tile: slots[meta.key] }));
+}

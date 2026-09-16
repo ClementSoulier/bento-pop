@@ -4,10 +4,17 @@ import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import popy from '@bento-pop/brand/assets/mascot/popy-content.png';
 import { publicBentoLabel } from '@/lib/share';
 import { BentoGrid } from './BentoGrid';
-import { mainBentoCases, type BentoItems } from './cases';
+import { MAIN_CASES, type CaseMeta } from '@bento-pop/supabase-mobile/bento';
+import { composerCases, type BentoItems } from './cases';
 
 type ShareImageProps = {
   items: BentoItems;
+  /**
+   * Les cases du bento partagé, vides comprises. Leur nombre fait la
+   * disposition : une édition à trois cases ne se partage pas dans une boîte
+   * à six. Les six du bento principal par défaut.
+   */
+  cases?: readonly CaseMeta[];
   pseudo: string;
   /**
    * L'adresse imprimée en pied de carte. Chantier 16 : elle nommait le
@@ -57,7 +64,7 @@ const CARD_PADDING_H = 80;
  * `allowFontScaling={false}`, et la grille le transmet à ses cases.
  */
 export const ShareImage = forwardRef<View, ShareImageProps>(
-  ({ items, pseudo, slug, isPrimary = true }, ref) => {
+  ({ items, pseudo, slug, isPrimary = true, cases = MAIN_CASES }, ref) => {
   const safePseudo = pseudo?.trim() || 'anonyme';
   return (
     <View
@@ -142,7 +149,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(
         }}
       >
         <BentoGrid
-          cases={mainBentoCases(items)}
+          cases={composerCases(cases, items)}
           scale={2.5}
           width={CARD_WIDTH - CARD_PADDING_H * 2}
           readOnly
@@ -195,7 +202,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(
               marginTop: 4,
             }}
           >
-            Compose le tien · 6 cases pop culture
+            Compose le tien sur Mon Bento Pop
           </Text>
         </View>
       </View>

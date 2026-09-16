@@ -20,7 +20,7 @@ export type BentoCase = CaseMeta & { readonly tile?: TileData };
  * publique et l'image de partage manipulent ; `mainBentoCases` le convertit
  * en liste ordonnée au moment de dessiner.
  */
-export type BentoItems = Partial<Record<CategoryKey, TileData>>;
+export type BentoItems = Partial<Record<string, TileData>>;
 
 /**
  * Les six cases du bento principal, remplies depuis le store.

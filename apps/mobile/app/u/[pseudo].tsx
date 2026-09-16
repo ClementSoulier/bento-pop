@@ -46,7 +46,7 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
 import { publicSupabase } from '@/supabase/client';
-import { mainBentoCases } from '@/components/bento/cases';
+import { composerCases } from '@/components/bento/cases';
 
 /**
  * Page publique d'un compte, `/u/<pseudo>`, et d'un bento nommé,
@@ -532,7 +532,7 @@ function FoundPage({
     setSharing(true);
     try {
       const imageUrls = Object.values(bento.slots)
-        .map((s) => s.imageUrl)
+        .map((s) => s?.imageUrl)
         .filter((u): u is string => Boolean(u));
       const outcome = await shareBentoImage(
         bento.pseudo,
@@ -551,7 +551,10 @@ function FoundPage({
     }
   };
 
-  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}bento publié le ${formatDate(bento.publishedAt)}`;
+  // Le titre de l'édition passe devant la date : sans lui, on ne comprend
+  // pas pourquoi cette boîte n'a pas les cases du bento principal.
+  const quoi = bento.editionTitle ?? 'bento';
+  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}${quoi}, publié le ${formatDate(bento.publishedAt)}`;
 
   return (
     <View style={{ flex: 1 }}>
@@ -572,7 +575,7 @@ function FoundPage({
         <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
         {/* Marge et non largeur, cf. `publicSideInset`. */}
         <View style={{ marginHorizontal: sideInset }}>
-          <BentoGrid cases={mainBentoCases(bento.slots)} scale={scale} width={boxWidth} readOnly />
+          <BentoGrid cases={composerCases(bento.cases, bento.slots)} scale={scale} width={boxWidth} readOnly />
         </View>
       </ScrollView>
 
@@ -603,6 +606,7 @@ function FoundPage({
         <ShareImage
           ref={shareImageRef}
           items={bento.slots}
+          cases={bento.cases}
           pseudo={bento.pseudo}
           slug={bento.slug}
           isPrimary={bento.isPrimary}

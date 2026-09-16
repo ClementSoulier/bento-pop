@@ -85,8 +85,10 @@ describe('loadPublicBento, forme de la requête', () => {
     assert.equal(
       params.get('select'),
       'pseudo,display_name,kind,' +
-        'bentos(id,slug,is_primary,published_at,is_featured,' +
-        'bento_items(category_id,items(id,title,subtitle,image_url,image_credit)))',
+        'bentos(id,slug,is_primary,edition_id,published_at,is_featured,' +
+        'editions(slug,title,bento_categories(key,prompt,stamp,gender,display_order)),' +
+        'bento_items(category_id,bento_categories(key),' +
+        'items(id,title,subtitle,image_url,image_credit)))',
     );
     for (const field of ['year', 'external_source', 'external_id', 'created_at']) {
       assert.ok(!req.query.includes(field), `champ inutile demandé : ${field}`);

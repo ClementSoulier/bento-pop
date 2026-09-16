@@ -4,6 +4,7 @@ import {
   type PaletteKey,
 } from '@bento-pop/supabase-mobile/bento';
 import type { CategoryKey } from '@bento-pop/supabase-mobile/types';
+import { MAIN_CASES, type CaseMeta } from '@bento-pop/supabase-mobile/bento';
 
 /**
  * Transformation des lignes `bento_items` en cases affichables.
@@ -26,8 +27,30 @@ export type BentoTile = {
   readonly paletteKey: PaletteKey;
 };
 
-/** Les 6 cases, indexées par catégorie. Une case absente n'est pas remplie. */
-export type BentoSlots = Partial<Record<CategoryKey, BentoTile>>;
+/**
+ * Les cases remplies, indexées par **clé de case**.
+ *
+ * `string` et non `CategoryKey` depuis le chantier 13 : une case d'édition
+ * porte `ed<édition>_<rang>`, et les six clés de catégorie n'en sont qu'un
+ * cas particulier.
+ */
+export type BentoSlots = Partial<Record<string, BentoTile>>;
+
+/**
+ * La description d'une case, telle que la base la rend.
+ *
+ * Elle vient de la requête et non plus de `CATEGORY_META` : la base porte
+ * l'intitulé, le tampon et le genre des six cases du bento principal depuis
+ * le chantier 13, et c'est la seule source possible pour une édition.
+ * `bento-cases-vs-app.test.ts` lie les six valeurs à celles de l'app.
+ */
+export type RawCaseRow = {
+  readonly key: string;
+  readonly prompt: string;
+  readonly stamp: string;
+  readonly gender: string | null;
+  readonly display_order: number;
+};
 
 /**
  * Forme brute d'une ligne `bento_items` jointe à son `items`.
@@ -41,6 +64,11 @@ export type BentoSlots = Partial<Record<CategoryKey, BentoTile>>;
  */
 export type RawBentoItemRow = {
   readonly category_id: number;
+  /**
+   * La case de cette ligne, jointe. Elle donne la clé sous laquelle la case
+   * s'indexe, ce que `CATEGORY_BY_ID` ne sait faire que pour les six.
+   */
+  readonly bento_categories?: { readonly key: string } | null;
   readonly items: {
     readonly id: string;
     readonly title: string;
@@ -72,7 +100,9 @@ export function mapBentoItems(rows: readonly RawBentoItemRow[]): BentoSlots {
   const slots: Record<string, BentoTile> = {};
 
   for (const row of rows) {
-    const category = CATEGORY_BY_ID[row.category_id];
+    // La clé jointe d'abord, la table des six en repli : une version
+    // déployée avant cette requête ne joignait pas la case.
+    const category = row.bento_categories?.key ?? CATEGORY_BY_ID[row.category_id];
     if (!category) continue;
 
     const item = row.items;
@@ -94,7 +124,36 @@ export function mapBentoItems(rows: readonly RawBentoItemRow[]): BentoSlots {
   return slots as BentoSlots;
 }
 
-/** Nombre de cases effectivement remplies, de 0 à 6. */
+/** Nombre de cases effectivement remplies. */
 export function filledCount(slots: BentoSlots): number {
   return Object.keys(slots).length;
+}
+
+/**
+ * Les cases d'un bento, dans l'ordre de la boîte.
+ *
+ * Celles de l'édition quand le bento en compose une, les six du bento
+ * principal sinon. **La liste complète, cases vides comprises** : c'est elle
+ * qui décide de la disposition, et la déduire des seules cases remplies
+ * ferait rétrécir la boîte d'un bento incomplet au lieu d'y montrer des
+ * emplacements vides.
+ *
+ * Une édition dont les cases ne se lisent pas, parce qu'elle a été dépubliée
+ * après la publication du bento, retombe sur une liste vide : la boîte ne se
+ * dessine alors pas, ce qui vaut mieux que de la dessiner avec les cases de
+ * quelqu'un d'autre.
+ */
+export function bentoCases(
+  editionCases: readonly RawCaseRow[] | null | undefined,
+  hasEdition: boolean,
+): readonly CaseMeta[] {
+  if (!hasEdition) return MAIN_CASES;
+  return [...(editionCases ?? [])]
+    .sort((a, b) => a.display_order - b.display_order)
+    .map((c) => ({
+      key: c.key,
+      prompt: c.prompt,
+      stamp: c.stamp,
+      gender: c.gender === 'f' ? ('f' as const) : ('m' as const),
+    }));
 }

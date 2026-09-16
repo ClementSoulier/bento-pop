@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
-import { PALETTES, boxPlacements, boxRowHeights } from '@bento-pop/supabase-mobile/bento';
-import { mainBentoCases, type PublicCase } from '@/components/bento/cases';
+import { MAIN_CASES, PALETTES, boxPlacements, boxRowHeights } from '@bento-pop/supabase-mobile/bento';
+import { mainBentoCases, publicCases, type PublicCase } from '@/components/bento/cases';
 import { logoDataUrl } from '@/app/_og/assets';
 import { bentoImageAlt } from '@/lib/bento/metadata';
 import { cleanTitle, initialOf } from '@/lib/bento/text';
@@ -86,6 +86,9 @@ export default async function OpenGraphImage({ params }: ImageParams) {
           ? lookup.bento.pseudo
           : lookup.pseudo;
     const slots: BentoSlots = lookup.kind === 'published' ? lookup.bento.slots : {};
+    // Les cases du bento, vides comprises : leur nombre décide de la
+    // disposition, comme dans l'app et sur la page web.
+    const cases = lookup.kind === 'published' ? lookup.bento.cases : MAIN_CASES;
 
     const extenda = await loadExtenda();
     const covered = coveredCodePoints(extenda);
@@ -95,13 +98,13 @@ export default async function OpenGraphImage({ params }: ImageParams) {
     const rendered = [
       `@${pseudo}`,
       lookup.kind === 'published' ? (lookup.bento.displayName ?? '') : '',
-      ...Object.values(slots).flatMap((tile) => [cleanTitle(tile.title), tile.subtitle ?? '']),
+      ...Object.values(slots).flatMap((tile) => (tile ? [cleanTitle(tile.title), tile.subtitle ?? ''] : [])),
       ...mainBentoCases({}).flatMap((c) => [c.stamp, c.prompt]),
     ];
 
     const [fallbackFont, imageMap] = await Promise.all([
       fetchFallbackFont(missingGlyphs(rendered, covered)),
-      prefetchImages(Object.values(slots).map((tile) => tile.imageUrl)),
+      prefetchImages(Object.values(slots).map((tile) => tile?.imageUrl ?? null)),
     ]);
 
     const fonts = [
@@ -124,7 +127,7 @@ export default async function OpenGraphImage({ params }: ImageParams) {
             padding: '0 44px',
           }}
         >
-          <BentoBox cases={mainBentoCases(slots)} images={imageMap} />
+          <BentoBox cases={publicCases(cases, slots)} images={imageMap} />
           <SidePanel
             pseudo={pseudo}
             displayName={lookup.kind === 'published' ? lookup.bento.displayName : null}

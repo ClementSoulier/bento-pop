@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { PublicBento } from './public-bento';
 import { publicPageState, type PublicPageInput } from './public-page-state';
+import { MAIN_CASES } from '@bento-pop/supabase-mobile/bento';
 
 const BENTO: PublicBento = {
   id: '20000000-0000-4000-8000-000000000001',
@@ -13,6 +14,8 @@ const BENTO: PublicBento = {
   isFeatured: false,
   publishedAt: '2026-09-08T15:49:11.227431+00:00',
   slots: {},
+  cases: MAIN_CASES,
+  editionTitle: null,
 };
 
 const input = (overrides: Partial<PublicPageInput> = {}): PublicPageInput => ({

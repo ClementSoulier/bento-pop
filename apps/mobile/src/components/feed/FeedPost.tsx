@@ -8,7 +8,7 @@ import { FeedPostHeader } from './FeedPostHeader';
 // pour que la règle de priorité entre elles reste testable.
 import { ribbonFor } from './ribbon';
 import { HEADER_GAP, POST_GAP, RIBBON_OFFSET } from './layout';
-import { mainBentoCases } from '@/components/bento/cases';
+import { composerCases } from '@/components/bento/cases';
 
 /** Cadre épaissi des posts à étiquette, second signal après l'étiquette. */
 const RIBBON_BORDER = 7;
@@ -74,7 +74,7 @@ export function FeedPost({ bento, width, sideInset, scale, onPress, now }: FeedP
 
         <View style={{ marginTop: HEADER_GAP }}>
           <BentoGrid
-            cases={mainBentoCases(bento.slots)}
+            cases={composerCases(bento.cases, bento.slots)}
             scale={scale}
             width={width}
             readOnly

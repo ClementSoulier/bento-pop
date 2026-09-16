@@ -1,4 +1,4 @@
--- Contrôles « bento hebdomadaire », chantier 13, lot 1.
+-- Contrôles « bento hebdomadaire », chantier 13, lots 1 et 5.
 --
 -- À rejouer sur le Supabase LOCAL après avoir appliqué les migrations du
 -- dépôt. Tout se passe dans une transaction annulée à la fin : le script ne
@@ -353,6 +353,28 @@ begin
     raise notice 'ok  8b deux cases ne partagent pas un rang dans une édition';
     v_ok := v_ok + 1;
   end;
+
+  -- ── 9. La purge de landing ne casse rien sans secret de coffre ──────
+  -- Le déclencheur appelle la landing quand le titre d'une édition change.
+  -- Sans `landing_base_url` en coffre, il doit sortir en silence : corriger
+  -- un titre ne peut pas dépendre d'une landing joignable.
+  begin
+    update public.editions set title = title || ' (corrigé)' where id = v_edition;
+    raise notice 'ok  9a le titre se corrige sans coffre configuré';
+    v_ok := v_ok + 1;
+  exception when others then
+    raise warning 'KO  9a corriger un titre lève : %', sqlerrm;
+    v_ko := v_ko + 1;
+  end;
+
+  select count(*) into v_n from pg_trigger where tgname = 'editions_revalidate_landing';
+  if v_n = 1 then
+    raise notice 'ok  9b le déclencheur de purge est posé';
+    v_ok := v_ok + 1;
+  else
+    raise warning 'KO  9b déclencheur de purge absent';
+    v_ko := v_ko + 1;
+  end if;
 
   raise notice '════ % tenus, % manqués ════', v_ok, v_ko;
   if v_ko > 0 then
