@@ -65,16 +65,25 @@ qu'aucun compte n'a deux bentos**. La page publique affiche « rien en ligne »
 pour tout le monde, le jour de la migration, sans qu'un seul deuxième bento
 existe.
 
-La conséquence est structurante : **la migration ne peut pas précéder le code
-qui la rend inoffensive.** C'est ce qui décide l'ordre de tout le chantier, et
-c'est l'arbitrage D3.
+La conséquence est structurante : **la levée de la contrainte ne peut pas
+précéder le code qui la rend inoffensive.** C'est ce qui décide l'ordre de tout
+le chantier, et c'est l'arbitrage D3.
 
-La sortie est mesurée, et elle est simple. **Une requête qui part de `bentos` et
-remonte vers `users` ne dépend pas de la contrainte** : elle rend exactement la
-même chose avant et après la migration, `users` en objet, six cases, même
-identifiant (§4.3, mesure 4). La requête renversée de §5.2 **est** la lecture
-tolérante : il n'y a ni normalisation à écrire, ni béquille à retirer plus tard.
-Il suffit qu'elle soit adoptée avant que la migration parte.
+**Mais seule la levée est dangereuse.** Mesuré en écrivant le lot 1 : une
+migration qui n'ajoute que des colonnes laisse `bentos_user_id_key` en place,
+donc la relation reste un un-à-un et les apps en circulation ne voient
+strictement rien. D'où deux migrations et non une (§6.1), la première sans
+aucun risque et la seconde seule soumise à un calendrier.
+
+Reste à écrire une lecture qui traverse la bascule. Deux formes ont été
+mesurées (§4.3, mesures 4 et 5), et **c'est la jointure externe qui l'emporte** :
+partir de `bentos` pour remonter vers `users` aurait été insensible à la
+contrainte, mais aurait rendu zéro ligne aussi bien pour un pseudo inconnu que
+pour un pseudo sans rien en ligne, perdant la distinction que le chantier 7
+avait gagnée en une seule requête. La jointure est donc gardée, la réponse est
+normalisée en liste, et **le bento est choisi explicitement** sur `is_primary`
+ou sur le slug demandé (§5.2). Trois lignes de normalisation, pas une béquille :
+elles restent justes des deux côtés de la migration.
 
 ### 1.3 Pourquoi le 9 vient avec le 16
 
@@ -289,9 +298,26 @@ GET /rest/v1/bentos?select=id,published_at,users!inner(pseudo,display_name),
 
 **La relation `bentos` vers `users` est un plusieurs-vers-un porté par une clé
 étrangère : la contrainte unique sur `user_id` ne la concerne pas.** Cette
-requête traverse donc la migration sans rien changer. C'est elle qui rend le
-déploiement possible sans fenêtre de casse, sans écrire la moindre béquille de
-compatibilité.
+requête traverse donc la migration sans rien changer.
+
+**Mesure 5, et c'est elle qui décide.** La requête renversée perd quelque
+chose : un pseudo inconnu et un pseudo sans rien en ligne rendent tous deux
+zéro ligne. La distinction que le chantier 7 avait gagnée en une seule requête
+demanderait une seconde lecture. La jointure externe, elle, la garde, et le
+filtre imbriqué suffit à tout le reste :
+
+| Requête, après migration A | Résultat |
+|---|---|
+| `users?select=pseudo,bentos(…)` d'un compte à 1 bento | `bentos` en **objet** |
+| le même, après migration B | `bentos` en **tableau de 1** |
+| compte existant sans rien en ligne | `[{pseudo, bentos: null}]`, **la distinction tient** |
+| pseudo inconnu | `[]` |
+| deux bentos publiés | tableau de 2, **ce dont la page de compte a besoin** |
+| `&bentos.is_primary=eq.true` | élague à 1 |
+| `&bentos.slug=eq.hebdo-38` | élague à 1 |
+
+La jointure est donc gardée, et le tableau absorbé par trois lignes. Le choix
+du bento, lui, devient explicite : c'est tout l'objet de §5.2.
 
 **Ce qui casse, et ce qui ne casse pas.** `ensureBento` ne casse pas au moment
 de la migration : `maybeSingle()` tolère 0 ou 1 ligne. Il casse le jour où un
@@ -613,33 +639,43 @@ couvre les brouillons comme les publiés. Le principal reste joignable à
 `/u/<pseudo>`, et gagne au passage sa propre adresse `/u/<pseudo>/mon-bento`,
 dont la canonique renvoie sur `/u/<pseudo>`.
 
-### 5.2 La requête renversée, seule lecture d'un bento public
+### 5.2 Une seule lecture, et un choix explicite
 
-Une seule forme, des deux côtés, mesurée insensible à la migration (§4.3,
-mesure 4) :
+La jointure externe est conservée (§4.3, mesure 5). Ce qui change, c'est qu'on
+cesse de prendre « le » bento pour en choisir un, et qu'on le dit :
 
 ```ts
-// Le bento principal d'un pseudo, nommé, filtré, ordonné.
-supabase.from('bentos')
-  .select('id, slug, published_at, is_featured, users!inner ( pseudo, display_name, kind ), bento_items ( … )')
-  .eq('is_primary', true)
-  .not('published_at', 'is', null)
-  .ilike('users.pseudo', pseudo)
-  .limit(1);
+// La relation, toujours en liste, quelle que soit la forme rendue.
+function bentoRows(raw) {
+  if (raw === null || raw === undefined) return [];
+  return Array.isArray(raw) ? raw : [raw];
+}
+
+// Le bento demandé. Avec un slug, c'est celui-là ou rien ; sans, le
+// principal, et à défaut le plus ancien publié.
+const published = bentoRows(row.bentos)
+  .filter((b) => b.published_at)
+  .sort((a, b) => a.published_at.localeCompare(b.published_at));
+const chosen = slug
+  ? published.find((b) => b.slug === slug)
+  : (published.find((b) => b.is_primary) ?? published[0]);
 ```
 
-Elle remplace `PUBLIC_BENTO_SELECT` dans l'app
-(`apps/mobile/src/lib/public-bento.ts:38-50`) et `firstBento` sur la landing
-(`apps/landing/src/lib/bento/queries.ts:89-92`). Un `.eq('slug', slug)` à la
-place du `.eq('is_primary', true)` sert la page d'un secondaire.
+Quatre défauts mesurés en §4.6 disparaissent d'un coup : le choix non
+déterministe de `raw[0]` sur une requête sans `order by`, le brouillon qui
+masque un publié et force un `noindex`, le désaccord possible entre le HTML et
+son image d'aperçu, et l'absence d'ordre entre deux bentos.
 
-Elle règle d'un coup quatre défauts mesurés en §4.6 : le choix non
-déterministe, le brouillon qui masque un publié et force `noindex`, le désaccord
-possible entre le HTML et son image d'aperçu, et le `noindex` qui en découle.
+Le repli « à défaut le plus ancien publié » n'est pas décoratif : sans lui, un
+compte dont le principal est en brouillon afficherait « rien en ligne » alors
+qu'un autre de ses bentos est public.
 
-**Et c'est elle qui rend le déploiement sûr.** Puisqu'elle donne le même
-résultat avant et après la migration, la build qui la porte peut partir des mois
-avant, et la migration n'attend que son adoption (D3).
+**Une seule requête, des deux côtés, et les autres bentos viennent avec.** Le
+filtre imbriqué sur le slug a été écrit puis retiré : il aurait fait de la page
+d'un bento nommé un cul-de-sac, sans aucun lien vers le reste du compte. Les
+bentos d'un compte se comptent sur les doigts d'une main, ils reviennent tous,
+et le choix se fait à l'arrivée. L'app et la landing rendent ainsi exactement
+la même page.
 
 ### 5.3 Les adresses
 
@@ -750,45 +786,68 @@ comptés trois à trois écrans comptés trois.
 
 ## 6. Contrat technique
 
-### 6.1 Migration
+### 6.1 Migration, en deux fichiers et non un
 
-Un seul fichier, appliqué à la main dans l'éditeur SQL du projet mobile, comme
-les précédentes (`20260915000000_close_privilege_gaps.sql:32-33`).
+Appliqués à la main dans l'éditeur SQL du projet mobile, comme les précédentes
+(`20260915000000_close_privilege_gaps.sql:32-33`).
 
-1. Les colonnes `slug` et `is_primary`, l'`update` rétroactif, les contraintes
-   et les index de §5.1.
+**Le découpage vient d'une mesure faite en écrivant le lot 1.** Une migration
+qui n'ajoute que des colonnes **ne change pas la forme** des réponses
+PostgREST : `bentos_user_id_key` reste en place, la relation reste un un-à-un,
+et les apps en circulation ne voient rien. C'est la levée de la contrainte, et
+elle seule, qui fait basculer en tableau. Les deux n'ont donc pas les mêmes
+contraintes de calendrier, et les séparer supprime tout risque.
+
+**Migration A, `20260916120000_bentos_slug_and_primary.sql`, sans risque.**
+
+1. Les colonnes `slug` et `is_primary`, l'`update` rétroactif, le contrôle de
+   forme et l'unicité `(user_id, slug)`. **`bentos_user_id_key` n'est pas
+   touchée.**
 2. `grant select (slug, is_primary)` pour `anon` et `authenticated`. **Aucun
    `grant insert` ni `update` sur ces colonnes** : le client ne choisit ni
    l'adresse d'un bento ni lequel est le principal.
-3. `create function public.create_bento(p_slug text)`, `security definer`,
+3. Le déclencheur `revalidate_landing_bento` émet `/u/<pseudo>`,
+   `/u/<pseudo>/<slug>` et `/sitemap.xml`.
+
+**Migration B, au lot 2, celle qui demande un calendrier.**
+
+4. Bascule de `bentos_user_id_key` vers `bentos_one_primary`, l'index unique
+   partiel de §5.1.
+5. `create function public.create_bento(p_slug text)`, `security definer`,
    `set search_path = ''`, qui vérifie la forme du slug, refuse les slugs
    réservés, applique un plafond de bentos par compte, et insère pour
    `auth.uid()` avec `is_primary = false`.
-4. Réécriture de `shared_items`, `popular_items` et `search_bentos` en
+6. Réécriture de `shared_items`, `popular_items` et `search_bentos` en
    `distinct user_id`, et ajout du `slug` au retour de `search_bentos`.
-5. Le déclencheur `revalidate_landing_bento` émet `/u/<pseudo>`,
-   `/u/<pseudo>/<slug>` et `/sitemap.xml`.
-6. Le passage de `terms_accepted_at` dans la fonction de création de profil du
+7. Le passage de `terms_accepted_at` dans la fonction de création de profil du
    chantier 9.
 
 ### 6.2 L'ordre de déploiement, et pourquoi il tient
 
-La migration ouvre le tableau PostgREST pour tout le monde (§1.2), mais la
-requête renversée n'en dépend pas (§4.3, mesure 4). L'ordre est donc :
+**Corrigé le 16 septembre 2026, en écrivant le lot 1.** La première version de
+cette section mettait la migration après la fusion. C'est faux, et le build de
+la landing l'a dit tout seul : le code du lot 1 demande `slug` à PostgREST, et
+contre une base qui ne l'a pas encore, la réponse est
+`400 · 42703 column bentos_1.slug does not exist`. Vérifié en lecture seule
+contre la production. **La landing déployée avant la migration A rendrait 404
+sur les 27 pages de bento.**
 
-1. **la PR est fusionnée** : les deux apps web se déploient et lisent déjà dans
-   le nouveau sens, ce qui fonctionne sur le schéma actuel ;
-2. **une build mobile part** avec la requête renversée, dormante pour tout ce
-   qui concerne les secondaires ;
-3. **la migration s'applique à la main**, sur ton feu vert, quand l'adoption de
-   cette build te paraît suffisante ;
-4. **le premier bento secondaire est créé depuis le back-office**, et la recette
-   de bout en bout devient possible.
+L'ordre juste, les deux migrations n'ayant pas les mêmes contraintes (§6.1) :
 
-**Entre les étapes 1 et 3, rien ne change pour personne.** C'est tout le gain :
-le moment de l'étape 3 devient un choix, pas une conséquence.
+| # | Étape | Risque |
+|---|---|---|
+| 1 | **Migration A** appliquée en production | **aucun** : elle n'ajoute que des colonnes, la relation reste un un-à-un, les apps en circulation ne voient rien |
+| 2 | **Fusion de la PR** : landing et back-office se déploient | aucun : la base sait déjà répondre |
+| 3 | **Build mobile 1.3.0**, puis adoption | aucun : dormante pour tout ce qui concerne les secondaires |
+| 4 | **Migration B**, sur feu vert, quand l'adoption suffit | c'est **la** fenêtre : une app restée sur l'ancienne requête dirait « rien en ligne » |
+| 5 | **Premier bento secondaire** créé depuis le back-office | aucun |
 
-**Ce que l'étape 3 coûte quand même, et qu'il ne faut pas se cacher.** Une app
+Entre les étapes 1 et 4, rien ne change pour personne.
+
+C'est tout le gain : le moment de l'étape 4 devient un choix, pas une
+conséquence.
+
+**Ce que l'étape 4 coûte quand même, et qu'il ne faut pas se cacher.** Une app
 restée sur l'ancienne requête lit `.published_at` sur un tableau et affiche
 « rien en ligne » sur **toutes** les pages publiques, pas seulement celles des
 comptes à plusieurs bentos. La page web, elle, n'est pas concernée : la landing
@@ -838,8 +897,8 @@ Rejoués depuis les migrations du dépôt, à chaque lot :
 - `create_bento` refuse un slug pris, un slug mal formé, un slug réservé, et un
   appel non authentifié ; le bento créé naît avec `is_primary = false` ;
 - un client `authenticated` ne peut écrire ni `slug` ni `is_primary` en direct ;
-- **la traversée de la migration** : la requête renversée rend le même résultat
-  avant et après, mesure 4 de §4.3 rejouée en test.
+- **la traversée de la migration** : la même lecture rend le même bento avant
+  et après, l'objet comme le tableau, mesures 4 et 5 de §4.3 rejouées en test.
 
 ### 7.3 Recette, bloquante
 
@@ -878,19 +937,19 @@ Les six lots sont des **jalons de relecture dans la branche**, pas des
 livraisons : tout part en une seule PR (D8). Leur ordre reste celui-ci parce
 que le lot 1 est ce qui protège tout le reste.
 
-### Lot 1 · La lecture renversée et les adresses
+### Lot 1 · Migration A, la lecture et les adresses · livré
 
-Requête renversée des deux côtés (§5.2), route `app/u/[pseudo]/[slug].tsx` et
-son équivalent web, `/u/<pseudo>` devenu page de profil avec le principal en
-contenu principal, sitemap et image d'aperçu par bento, purge des deux adresses,
-`firstBento` retiré. **Écrit en premier, et vérifié sur le schéma actuel** :
-c'est ce qui rend la migration inoffensive, donc ce qui ne doit dépendre de rien.
+Migration A de §6.1, choix explicite du bento des deux côtés (§5.2), route
+`app/u/[pseudo]/[slug].tsx` et son équivalent web, `/u/<pseudo>` devenu page de
+compte avec le principal en contenu principal, sitemap et image d'aperçu par
+bento, purge des deux adresses, `firstBento` retiré.
 
-### Lot 2 · La base et les droits
+### Lot 2 · Migration B et les droits
 
-Migration de §6.1, fonction `create_bento`, types, garde-fou de source. Tests de
-base rejoués sur le local, dont la traversée mesurée en §4.3. **Rien n'est
-appliqué en production à ce stade** : c'est l'étape 3 de §6.2, sur feu vert.
+Levée de `bentos_user_id_key`, index partiel, fonction `create_bento`, types,
+garde-fou de source. Tests de base rejoués sur le local, dont la traversée
+mesurée en §4.3. **Rien n'est appliqué en production à ce stade** : c'est
+l'étape 4 de §6.2, sur feu vert.
 
 ### Lot 3 · Les compteurs, la modération et le back-office
 
@@ -924,12 +983,13 @@ la branche. Ce qui suit la fusion, dans l'ordre de §6.2 :
 
 | # | Étape | Qui |
 |---|---|---|
-| 1 | Fusion après CI verte, déploiement des deux apps web | moi, sur ton accord |
-| 2 | Build mobile 1.3.0, iOS et Android, profil `production` | moi, sur ton accord |
-| 3 | Mesure de l'adoption de la 1.3.0 | toi, clé privilégiée |
-| 4 | Application de la migration dans l'éditeur SQL | toi |
-| 5 | Création d'un premier bento secondaire depuis le back-office | toi ou moi |
-| 6 | Recette de bout en bout sur les trois appareils | moi |
+| 1 | **Migration A** dans l'éditeur SQL, avant toute fusion | toi |
+| 2 | Fusion après CI verte, déploiement des deux apps web | moi, sur ton accord |
+| 3 | Build mobile 1.3.0, iOS et Android, profil `production` | moi, sur ton accord |
+| 4 | Mesure de l'adoption de la 1.3.0 | toi, clé privilégiée |
+| 5 | **Migration B** dans l'éditeur SQL | toi |
+| 6 | Création d'un premier bento secondaire depuis le back-office | toi ou moi |
+| 7 | Recette de bout en bout sur les trois appareils | moi |
 
 Rien n'est soumis aux stores sans décision explicite, et la migration n'est
 appliquée que par toi.
@@ -964,7 +1024,7 @@ de code.**
 |---|---|---|
 | D1 | Périmètre du 16 face au 13, vu la dépendance circulaire de §3.1 | **Le 16 fait la place, le 13 fera les éditions.** Le deuxième bento se crée depuis le back-office ; le « Fait quand » de la roadmap est réécrit |
 | D2 | Que deviennent les bentos existants | **Tous principaux, avec un slug rétroactif** : `slug = 'mon-bento'`, `is_primary = true`, brouillons compris. Deux colonnes neuves, aucune donnée d'utilisateur touchée |
-| D3 | Comment franchir la fenêtre où l'app en circulation lit un tableau | **Le code part avant la migration.** La requête renversée traverse la migration sans changer de résultat (§4.3, mesure 4), donc aucune béquille de compatibilité n'est écrite |
+| D3 | Comment franchir la fenêtre où l'app en circulation lit un tableau | **Le code part avant la levée de la contrainte.** Affiné en écrivant le lot 1 : la migration se coupe en deux, et seule la seconde moitié demande un calendrier (§6.1, §6.2) |
 | D4 | Comment un bento secondaire est créé | **Fonction `security definer`**, jamais un `insert` client : les droits colonne ne laissent au client que `user_id` en écriture (§4.3) |
 | D5 | Ce que devient `/u/<pseudo>` | **Page de profil dont le contenu principal est le bento principal affiché en entier**, les autres listés dessous. `/u/<pseudo>/<slug>` adresse un bento seul. Les 27 liens en circulation gardent leur contenu |
 | D6 | Un signalement vise-t-il un bento ou un compte | **Le bento.** La colonne `target_bento_id` existe déjà et n'est jamais remplie : il n'y a qu'un argument à passer (§4.5) |

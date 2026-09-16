@@ -52,6 +52,9 @@ const rowFor = (
   bentos:
     bentos === undefined
       ? {
+          id: `b-${pseudo}`,
+          slug: 'mon-bento',
+          is_primary: true,
           published_at: '2026-09-08T15:49:11.227431+00:00',
           is_featured: false,
           bento_items: [
@@ -82,7 +85,7 @@ describe('loadPublicBento, forme de la requête', () => {
     assert.equal(
       params.get('select'),
       'pseudo,display_name,kind,' +
-        'bentos(published_at,is_featured,' +
+        'bentos(id,slug,is_primary,published_at,is_featured,' +
         'bento_items(category_id,items(id,title,subtitle,image_url,image_credit)))',
     );
     for (const field of ['year', 'external_source', 'external_id', 'created_at']) {
@@ -145,6 +148,7 @@ describe('loadPublicBento, réponses', () => {
     assert.deepEqual(await loadPublicBento(client, 'keremasan'), {
       pseudo: 'keremasan',
       bento: null,
+      others: [],
     });
 
     stub.enqueue([]);
@@ -237,5 +241,45 @@ describe('loadPublicBento, erreurs', () => {
     // La réponse piège, qu'un réessai aurait reçue, attend encore dans la
     // file : la consommer ici, sans quoi elle fausserait le test suivant.
     assert.equal((await loadPublicBento(client, 'dark_hifus'))?.pseudo, 'dark_hifus');
+  });
+});
+
+/**
+ * Chantier 16 : `/u/<pseudo>/<slug>` vise un bento nommé. Le filtre part sur
+ * la ressource imbriquée, comme celui des brouillons, pour que la distinction
+ * « pseudo inconnu » contre « rien à cette adresse » survive.
+ */
+describe('loadPublicBento, un bento nommé', () => {
+  it('ne filtre pas le slug en base : les autres bentos servent à naviguer', async () => {
+    reset();
+    stub.enqueue([rowFor('dark_hifus')]);
+    await loadPublicBento(client, 'dark_hifus', { slug: 'hebdo-38' });
+
+    const { params } = onlyRequest();
+    assert.equal(params.get('bentos.slug'), null, 'le choix se fait au mapping');
+    assert.equal(params.get('slug'), null, 'et surtout pas sur `users`');
+    assert.equal(params.get('bentos.published_at'), 'not.is.null', 'le brouillon reste exclu');
+  });
+
+  it('ne demande rien pour un slug hors format', async () => {
+    reset();
+    // Vide, majuscules, tiret en tête, tiret en queue, trop court : la
+    // contrainte `bentos_slug_format` refuserait chacun d'eux en base.
+    for (const slug of ['', 'A-Majuscule', '-tiret-en-tete', 'tiret-en-queue-', 'ok']) {
+      assert.equal(await loadPublicBento(client, 'dark_hifus', { slug }), null, slug);
+    }
+    assert.equal(stub.requests.length, 0, 'aucune requête ne doit partir');
+  });
+
+  it('rend « rien à cette adresse » pour un slug inconnu, jamais le principal', async () => {
+    reset();
+    stub.enqueue([rowFor('dark_hifus')]);
+    const result = await loadPublicBento(client, 'dark_hifus', { slug: 'jamais-publie' });
+    assert.equal(result?.bento, null, 'ne doit pas retomber sur le principal');
+    assert.deepEqual(
+      result?.others.map((o) => o.slug),
+      [],
+      'sans bento choisi, rien à lister',
+    );
   });
 });

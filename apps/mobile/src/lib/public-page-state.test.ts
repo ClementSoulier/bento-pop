@@ -4,6 +4,9 @@ import type { PublicBento } from './public-bento';
 import { publicPageState, type PublicPageInput } from './public-page-state';
 
 const BENTO: PublicBento = {
+  id: '20000000-0000-4000-8000-000000000001',
+  slug: 'mon-bento',
+  isPrimary: true,
   pseudo: 'Dark_Hifus',
   displayName: null,
   isGuest: false,
@@ -23,8 +26,10 @@ const input = (overrides: Partial<PublicPageInput> = {}): PublicPageInput => ({
 
 describe('publicPageState, réponses', () => {
   it('montre le bento trouvé', () => {
-    const state = publicPageState(input({ data: { pseudo: 'Dark_Hifus', bento: BENTO } }));
-    assert.deepEqual(state, { kind: 'found', bento: BENTO, isOwn: false });
+    const state = publicPageState(
+      input({ data: { pseudo: 'Dark_Hifus', bento: BENTO, others: [] } }),
+    );
+    assert.deepEqual(state, { kind: 'found', bento: BENTO, isOwn: false, others: [] });
   });
 
   it('dit « introuvable » pour un pseudo qui n’existe pas', () => {
@@ -32,8 +37,15 @@ describe('publicPageState, réponses', () => {
   });
 
   it('dit « rien en ligne » pour un compte sans bento publié', () => {
-    const state = publicPageState(input({ data: { pseudo: 'keremasan', bento: null } }));
-    assert.deepEqual(state, { kind: 'nothing-online', pseudo: 'keremasan', isOwn: false });
+    const state = publicPageState(
+      input({ data: { pseudo: 'keremasan', bento: null, others: [] } }),
+    );
+    assert.deepEqual(state, {
+      kind: 'nothing-online',
+      pseudo: 'keremasan',
+      isOwn: false,
+      others: [],
+    });
   });
 
   /**
@@ -42,24 +54,29 @@ describe('publicPageState, réponses', () => {
    */
   it('reconnaît sa propre page sans bento, à la casse près', () => {
     const state = publicPageState(
-      input({ ownPseudo: 'KEREMASAN', data: { pseudo: 'keremasan', bento: null } }),
+      input({ ownPseudo: 'KEREMASAN', data: { pseudo: 'keremasan', bento: null, others: [] } }),
     );
-    assert.deepEqual(state, { kind: 'nothing-online', pseudo: 'keremasan', isOwn: true });
+    assert.deepEqual(state, {
+      kind: 'nothing-online',
+      pseudo: 'keremasan',
+      isOwn: true,
+      others: [],
+    });
   });
 
   it('reconnaît son propre bento, et seulement le sien', () => {
     const own = publicPageState(
-      input({ ownPseudo: 'dark_hifus', data: { pseudo: 'Dark_Hifus', bento: BENTO } }),
+      input({ ownPseudo: 'dark_hifus', data: { pseudo: 'Dark_Hifus', bento: BENTO, others: [] } }),
     );
     assert.equal(own.kind === 'found' && own.isOwn, true);
 
     const other = publicPageState(
-      input({ ownPseudo: 'keremasan', data: { pseudo: 'Dark_Hifus', bento: BENTO } }),
+      input({ ownPseudo: 'keremasan', data: { pseudo: 'Dark_Hifus', bento: BENTO, others: [] } }),
     );
     assert.equal(other.kind === 'found' && other.isOwn, false);
 
     const anonymous = publicPageState(
-      input({ ownPseudo: '', data: { pseudo: 'Dark_Hifus', bento: BENTO } }),
+      input({ ownPseudo: '', data: { pseudo: 'Dark_Hifus', bento: BENTO, others: [] } }),
     );
     assert.equal(anonymous.kind === 'found' && anonymous.isOwn, false);
   });
@@ -92,7 +109,7 @@ describe('publicPageState, chargement et pannes', () => {
    * que la personne regardait.
    */
   it('garde une réponse déjà reçue, hors ligne comme après un rafraîchissement raté', () => {
-    const data = { pseudo: 'Dark_Hifus', bento: BENTO };
+    const data = { pseudo: 'Dark_Hifus', bento: BENTO, others: [] };
     assert.equal(publicPageState(input({ data, isOffline: true })).kind, 'found');
     assert.equal(publicPageState(input({ data, isError: true })).kind, 'found');
     assert.equal(publicPageState(input({ data: null, isOffline: true })).kind, 'not-found');

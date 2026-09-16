@@ -13,12 +13,16 @@ import {
 } from './public-bento-query';
 
 /** Ce que la personne a vu en ouvrant sa page avant de publier. */
-const NOTHING_ONLINE: PublicBentoResult = { pseudo: 'dark_hifus', bento: null };
+const NOTHING_ONLINE: PublicBentoResult = { pseudo: 'dark_hifus', bento: null, others: [] };
 
 /** Ce que la base dit juste après la publication. */
 const PUBLISHED: PublicBentoResult = {
   pseudo: 'dark_hifus',
+  others: [],
   bento: {
+    id: 'b-principal',
+    slug: 'mon-bento',
+    isPrimary: true,
     pseudo: 'dark_hifus',
     displayName: null,
     isGuest: false,
@@ -81,9 +85,27 @@ function firstRenderOnReopen(client: QueryClient, pseudo: string, answer: Public
 
 describe('publicBentoQueryKey', () => {
   it('range un pseudo sous une seule clé, quelle que soit sa casse', () => {
-    assert.deepEqual(publicBentoQueryKey('  Dark_Hifus '), [PUBLIC_BENTO_QUERY_ROOT, 'dark_hifus']);
+    assert.deepEqual(publicBentoQueryKey('  Dark_Hifus '), [
+      PUBLIC_BENTO_QUERY_ROOT,
+      'dark_hifus',
+      null,
+    ]);
     assert.deepEqual(publicBentoQueryKey('DARK_HIFUS'), publicBentoQueryKey('dark_hifus'));
   });
+
+  it('sépare la page du compte de celle d’un bento nommé', () => {
+    // Servir l’une à la place de l’autre afficherait le mauvais bento.
+    assert.notDeepEqual(
+      publicBentoQueryKey('dark_hifus'),
+      publicBentoQueryKey('dark_hifus', 'hebdo-38'),
+    );
+    assert.deepEqual(publicBentoQueryKey('dark_hifus', 'hebdo-38'), [
+      PUBLIC_BENTO_QUERY_ROOT,
+      'dark_hifus',
+      'hebdo-38',
+    ]);
+  });
+
 });
 
 describe('shouldRetryPublicBento', () => {
@@ -146,12 +168,35 @@ describe('refreshPublicViews', () => {
   it('remet à zéro toutes les pages publiques, pas seulement la sienne', async () => {
     const client = newQueryClient();
     await visitAndLeave(client, 'dark_hifus', NOTHING_ONLINE);
-    await visitAndLeave(client, 'keremasan', { pseudo: 'keremasan', bento: null });
+    await visitAndLeave(client, 'keremasan', { pseudo: 'keremasan', bento: null, others: [] });
 
     refreshPublicViews(client);
 
     assert.equal(client.getQueryData(publicBentoQueryKey('dark_hifus')), undefined);
     assert.equal(client.getQueryData(publicBentoQueryKey('keremasan')), undefined);
+  });
+
+  /**
+   * Chantier 16 : un compte a désormais deux pages en cache, la sienne et
+   * celle de chaque bento nommé. Une page de bento périmée dirait « rien en
+   * ligne » juste après sa publication, exactement comme le piège du §6.3.
+   */
+  it('remet à zéro la page d’un bento nommé autant que celle du compte', async () => {
+    const client = newQueryClient();
+    const observer = new QueryObserver(client, {
+      queryKey: publicBentoQueryKey('dark_hifus', 'hebdo-38'),
+      queryFn: async () => NOTHING_ONLINE,
+      staleTime: PUBLIC_BENTO_STALE_TIME_MS,
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    await waitFor(() => observer.getCurrentResult().status === 'success');
+    unsubscribe();
+    await visitAndLeave(client, 'dark_hifus', NOTHING_ONLINE);
+
+    refreshPublicViews(client);
+
+    assert.equal(client.getQueryData(publicBentoQueryKey('dark_hifus')), undefined);
+    assert.equal(client.getQueryData(publicBentoQueryKey('dark_hifus', 'hebdo-38')), undefined);
   });
 
   it('invalide le fil sans le vider', () => {

@@ -125,6 +125,7 @@ describe('page publique, réseau qui ne répond pas', () => {
     const { queryFn } = publicBentoQueryOptions(
       supabaseOn(silent.url, fetchFn),
       'dark_hifus',
+      null,
       TIMEOUT_MS,
     );
 
@@ -152,6 +153,7 @@ describe('page publique, réseau qui ne répond pas', () => {
     const options = publicBentoQueryOptions(
       supabaseOn(silent.url, fetchFn),
       'dark_hifus',
+      null,
       TIMEOUT_MS,
     );
     const observer = new QueryObserver(newQueryClient(), options);
@@ -174,7 +176,7 @@ describe('page publique, réseau qui ne répond pas', () => {
   it('annule la requête en cours quand on quitte la page', async () => {
     const abandonedBefore = silent.abandoned();
     const receivedBefore = silent.received();
-    const options = publicBentoQueryOptions(supabaseOn(silent.url), 'keremasan', 10_000);
+    const options = publicBentoQueryOptions(supabaseOn(silent.url), 'keremasan', null, 10_000);
     const observer = new QueryObserver(newQueryClient(), options);
 
     const unsubscribe = observer.subscribe(() => {});

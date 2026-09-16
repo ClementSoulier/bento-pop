@@ -29,12 +29,23 @@ type StubUser = {
   display_name: string | null;
   /** `member` par défaut ; `editorial` pour un bento composé par l'équipe. */
   kind?: string;
-  bentos: {
-    id: string;
-    published_at: string;
-    is_featured: boolean;
-    bento_items: { category_id: number; items: StubItem | null }[];
-  } | null;
+  /**
+   * Objet tant que `bentos_user_id_key` existe, TABLEAU dès qu'elle est
+   * levée : PostgREST choisit la forme d'après les contraintes, et le change
+   * même pour un compte qui n'a qu'un bento. Les deux formes sont donc
+   * représentées ici, parce que la landing doit traverser la migration sans
+   * rien changer (chantier 16, §4.3 de la spéc).
+   */
+  bentos: StubBento | StubBento[] | null;
+};
+
+type StubBento = {
+  id: string;
+  slug: string;
+  is_primary: boolean;
+  published_at: string;
+  is_featured: boolean;
+  bento_items: { category_id: number; items: StubItem | null }[];
 };
 
 const item = (id: string, title: string, extra: Partial<StubItem> = {}): StubItem => ({
@@ -68,6 +79,8 @@ export const USERS: StubUser[] = [
     display_name: 'Clement',
     bentos: {
       id: 'b-1',
+      slug: 'mon-bento',
+      is_primary: true,
       published_at: YEAR,
       is_featured: true,
       bento_items: fullItems,
@@ -78,6 +91,8 @@ export const USERS: StubUser[] = [
     display_name: null,
     bentos: {
       id: 'b-2',
+      slug: 'mon-bento',
+      is_primary: true,
       published_at: YEAR,
       is_featured: false,
       bento_items: fullItems,
@@ -90,6 +105,8 @@ export const USERS: StubUser[] = [
     display_name: null,
     bentos: {
       id: 'b-3',
+      slug: 'mon-bento',
+      is_primary: true,
       published_at: YEAR,
       is_featured: false,
       bento_items: [...fullItems.slice(0, 5), { category_id: 6, items: null }],
@@ -103,7 +120,7 @@ export const USERS: StubUser[] = [
     pseudo: 'invite',
     display_name: 'Créateur Invité',
     kind: 'editorial',
-    bentos: { id: 'b-6', published_at: YEAR, is_featured: true, bento_items: fullItems },
+    bentos: { id: 'b-6', slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: true, bento_items: fullItems },
   },
   {
     // Réservé au test de redirection canonique : aucun autre test ne doit
@@ -113,7 +130,32 @@ export const USERS: StubUser[] = [
     // le même pseudo à des casses différentes se contamineraient.
     pseudo: 'majuscule',
     display_name: null,
-    bentos: { id: 'b-4', published_at: YEAR, is_featured: false, bento_items: fullItems },
+    bentos: { id: 'b-4', slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+  },
+  {
+    // Deux bentos publiés, rendus en TABLEAU : c'est la forme que prend la
+    // relation une fois `bentos_user_id_key` levée. Sert à vérifier que le
+    // principal reste à `/u/deuxbentos` et que le second a sa propre adresse.
+    pseudo: 'deuxbentos',
+    display_name: null,
+    bentos: [
+      {
+        id: 'b-7',
+        slug: 'hebdo-38',
+        is_primary: false,
+        published_at: '2026-02-01T10:00:00.000Z',
+        is_featured: false,
+        bento_items: fullItems,
+      },
+      {
+        id: 'b-8',
+        slug: 'mon-bento',
+        is_primary: true,
+        published_at: YEAR,
+        is_featured: false,
+        bento_items: fullItems,
+      },
+    ],
   },
   {
     // Profil existant sans bento publié : `bentos_read_published` renvoie
@@ -123,6 +165,12 @@ export const USERS: StubUser[] = [
     bentos: null,
   },
 ];
+
+/** Les bentos d'un compte, quelle que soit la forme rendue par PostgREST. */
+function bentosOf(user: StubUser): StubBento[] {
+  if (!user.bentos) return [];
+  return Array.isArray(user.bentos) ? user.bentos : [user.bentos];
+}
 
 /** Reproduit la sémantique d'`ILIKE` : `%` quelconque, `_` un caractère. */
 function ilikeMatches(pattern: string, value: string): boolean {
@@ -165,9 +213,17 @@ export function startStub(port: number): Promise<Server> {
     }
 
     if (url.pathname === '/rest/v1/bentos') {
-      const featured = USERS.filter((u) => u.bentos?.is_featured && u.bentos.published_at).map(
-        (u, i) => ({ featured_order: i, users: { pseudo: u.pseudo } }),
-      );
+      // Une ligne par BENTO, comme PostgREST, et non par personne : c'est ce
+      // qui rendait la duplication de pseudos dans le sitemap structurellement
+      // intestable avant le chantier 16.
+      const featured = USERS.flatMap((u) => bentosOf(u))
+        .filter((b) => b.is_featured && b.published_at)
+        .map((b, i) => ({
+          featured_order: i,
+          slug: b.slug,
+          is_primary: b.is_primary,
+          users: { pseudo: USERS.find((u) => bentosOf(u).includes(b))!.pseudo },
+        }));
       return json(res, 200, featured);
     }
 

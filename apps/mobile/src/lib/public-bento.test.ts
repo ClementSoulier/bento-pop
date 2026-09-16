@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
-import { mapPublicBento, type PublicBentoRow } from './public-bento';
+import { bentoRows, mapPublicBento, type PublicBentoRow } from './public-bento';
 
 /** Six décimales : la précision d'un `timestamptz`, à reprendre telle quelle. */
 const PUBLISHED = '2026-09-08T15:49:11.227431+00:00';
 
-type BentoRow = NonNullable<PublicBentoRow['bentos']>;
+type BentoRow = Exclude<NonNullable<PublicBentoRow['bentos']>, readonly unknown[]>;
 type Links = NonNullable<BentoRow['bento_items']>;
 
 const item = (
@@ -39,7 +39,15 @@ const row = (
   pseudo: 'dark_hifus',
   display_name: null,
   kind: 'member',
-  bentos: { published_at: PUBLISHED, is_featured: false, bento_items: fullLinks, ...bento },
+  bentos: {
+    id: 'b-principal',
+    slug: 'mon-bento',
+    is_primary: true,
+    published_at: PUBLISHED,
+    is_featured: false,
+    bento_items: fullLinks,
+    ...bento,
+  },
   ...overrides,
 });
 
@@ -125,7 +133,11 @@ describe('mapPublicBento, « rien en ligne » et « introuvable » sont deux cho
    * bento en ligne » au lieu de « Bento introuvable ».
    */
   it('rend le pseudo sans bento quand rien n’est en ligne', () => {
-    assert.deepEqual(mapPublicBento(row({ bentos: null })), { pseudo: 'dark_hifus', bento: null });
+    assert.deepEqual(mapPublicBento(row({ bentos: null })), {
+      pseudo: 'dark_hifus',
+      bento: null,
+      others: [],
+    });
   });
 
   /**
@@ -168,5 +180,122 @@ describe('mapPublicBento, cases partielles', () => {
     const slots = mapPublicBento(row({}, { bento_items: links })).bento?.slots;
     assert.equal(Object.keys(slots ?? {}).length, 6);
     assert.equal(slots?.film?.title, 'Le Seigneur des anneaux');
+  });
+});
+
+/**
+ * Chantier 16. Le point de bascule n'est pas « quelqu'un a deux bentos » mais
+ * « la contrainte unique a été levée » : PostgREST rend alors un tableau même
+ * pour un compte qui n'en a qu'un. Mesuré, cf. `docs/UX-16-PLUSIEURS-BENTOS.md`
+ * §4.3.
+ */
+describe('bentoRows, les deux formes de la relation', () => {
+  const one = {
+    id: 'b-1',
+    slug: 'mon-bento',
+    is_primary: true,
+    published_at: PUBLISHED,
+    is_featured: false,
+    bento_items: fullLinks,
+  };
+
+  it('accepte l’objet rendu tant que `bentos_user_id_key` existe', () => {
+    assert.deepEqual(bentoRows(one), [one]);
+  });
+
+  it('accepte le tableau rendu une fois la contrainte levée', () => {
+    assert.deepEqual(bentoRows([one]), [one]);
+  });
+
+  it('lit l’absence de bento comme une liste vide, jamais comme une erreur', () => {
+    assert.deepEqual(bentoRows(null), []);
+    assert.deepEqual(bentoRows([]), []);
+  });
+});
+
+describe('mapPublicBento, plusieurs bentos par compte', () => {
+  const secondaire = (over: Partial<BentoRow> = {}): BentoRow => ({
+    id: 'b-hebdo',
+    slug: 'hebdo-38',
+    is_primary: false,
+    published_at: '2026-09-15T10:00:00.000000+00:00',
+    is_featured: false,
+    bento_items: fullLinks,
+    ...over,
+  });
+
+  const principal = (over: Partial<BentoRow> = {}): BentoRow => ({
+    id: 'b-principal',
+    slug: 'mon-bento',
+    is_primary: true,
+    published_at: PUBLISHED,
+    is_featured: false,
+    bento_items: fullLinks,
+    ...over,
+  });
+
+  it('met en avant le principal, quel que soit l’ordre rendu par PostgREST', () => {
+    for (const liste of [
+      [principal(), secondaire()],
+      [secondaire(), principal()],
+    ]) {
+      const result = mapPublicBento(row({ bentos: liste }));
+      assert.equal(result.bento?.slug, 'mon-bento');
+      assert.deepEqual(
+        result.others.map((o) => o.slug),
+        ['hebdo-38'],
+      );
+    }
+  });
+
+  /**
+   * Le défaut mesuré côté landing : `raw[0]` tombait parfois sur un brouillon
+   * et la page annonçait « rien en ligne » alors qu'un bento publié existait.
+   * Ici le brouillon est déjà écarté par le filtre de la requête ; ce test
+   * verrouille le cas où il passerait quand même.
+   */
+  it('ne dit jamais « rien en ligne » quand un bento l’est', () => {
+    const result = mapPublicBento(
+      row({ bentos: [principal({ published_at: null }), secondaire()] }),
+    );
+    assert.equal(result.bento?.slug, 'hebdo-38', 'le publié doit être montré');
+    assert.deepEqual(result.others, [], 'le brouillon ne se liste pas');
+  });
+
+  it('classe les autres du plus ancien au plus récent', () => {
+    const vieux = secondaire({ id: 'b-vieux', slug: 'archives-2025', published_at: '2025-01-01T00:00:00.000000+00:00' });
+    const result = mapPublicBento(row({ bentos: [secondaire(), principal(), vieux] }));
+    assert.deepEqual(
+      result.others.map((o) => o.slug),
+      ['archives-2025', 'hebdo-38'],
+    );
+  });
+
+  it('n’a rien à lister tant qu’un compte n’a qu’un bento', () => {
+    // La promesse de §5.4 : rien ne change à l'écran avant le deuxième.
+    assert.deepEqual(mapPublicBento(row({ bentos: [principal()] })).others, []);
+  });
+
+  it('rend le bento que le slug nomme, et liste les autres', () => {
+    const result = mapPublicBento(row({ bentos: [principal(), secondaire()] }), 'hebdo-38');
+    assert.equal(result.bento?.slug, 'hebdo-38');
+    assert.deepEqual(
+      result.others.map((o) => o.slug),
+      ['mon-bento'],
+      'la page d’un bento nommé doit mener au principal',
+    );
+  });
+
+  it('ne retombe jamais sur le principal pour un slug inconnu', () => {
+    const result = mapPublicBento(row({ bentos: [principal(), secondaire()] }), 'jamais-publie');
+    assert.equal(result.bento, null);
+    assert.deepEqual(result.others, []);
+  });
+
+  it('porte l’identité du bento choisi, pas celle du compte', () => {
+    const bento = mapPublicBento(row({ bentos: [principal(), secondaire()] })).bento;
+    assert.equal(bento?.id, 'b-principal');
+    assert.equal(bento?.isPrimary, true);
+    assert.equal(bento?.publishedAt, PUBLISHED);
   });
 });

@@ -1,12 +1,13 @@
 import type { MetadataRoute } from 'next';
 import { getPodcastEpisodes, getShowEpisodes } from '@/content/episodes';
+import { bentoPath } from '@/lib/bento/metadata';
 import { listFeaturedPseudos } from '@/lib/bento/queries';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
   const now = new Date();
 
-  const [shows, podcasts, featuredPseudos] = await Promise.all([
+  const [shows, podcasts, featuredBentos] = await Promise.all([
     getShowEpisodes(),
     getPodcastEpisodes(),
     listFeaturedPseudos(),
@@ -19,9 +20,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    * enverrait un signal contradictoire aux moteurs, qui les exploreraient
    * pour découvrir qu'ils ne doivent pas les indexer. Priorité modérée :
    * ce sont des pages de partage, pas le cœur éditorial du site.
+   *
+   * Une entrée par **bento** depuis le chantier 16, et non par personne : le
+   * principal sort à `/u/<pseudo>`, les autres à `/u/<pseudo>/<slug>`.
+   * `listFeaturedPseudos` dédoublonne déjà par adresse, faute de quoi deux
+   * bentos mis en avant d'un même compte produisaient deux fois la même URL.
    */
-  const bentoUrls: MetadataRoute.Sitemap = featuredPseudos.map((pseudo) => ({
-    url: `${base}/u/${pseudo}`,
+  const bentoUrls: MetadataRoute.Sitemap = featuredBentos.map((bento) => ({
+    url: `${base}${bentoPath(bento.pseudo, bento.isPrimary ? null : bento.slug)}`,
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.5,

@@ -13,9 +13,16 @@ import { cleanTitle, joinReadable, truncateAtWord } from './text';
 /** Longueur au-delà de laquelle Google tronque une description. */
 const DESCRIPTION_MAX = 160;
 
-/** Chemin canonique d'un bento, dans la casse stockée en base. */
-export function bentoPath(pseudo: string): string {
-  return `/u/${pseudo}`;
+/**
+ * Chemin canonique d'un bento, dans la casse stockée en base.
+ *
+ * Sans `slug`, c'est la page du compte, dont le contenu principal est le bento
+ * principal : c'est l'adresse que portent les liens déjà partagés, et elle ne
+ * change pas. Avec, c'est l'adresse d'un bento précis. Le principal a les
+ * deux, et sa canonique est la première (chantier 16, D5).
+ */
+export function bentoPath(pseudo: string, slug: string | null = null): string {
+  return slug ? `/u/${pseudo}/${slug}` : `/u/${pseudo}`;
 }
 
 /** Titre de page et `og:title`. */

@@ -14,6 +14,7 @@ import {
   publicCtaBlockHeight,
   publicCtaLabelHeight,
   publicHeaderHeight,
+  publicOthersStripHeight,
   publicScrollOverflow,
   publicSideInset,
   type PublicLayoutMetrics,
@@ -283,6 +284,68 @@ describe('publicSideInset', () => {
   it('ne devient jamais négative', () => {
     for (const width of [0, -100, 50, 200]) {
       assert.ok(publicSideInset(width, 1) >= 0, `${width}`);
+    }
+  });
+});
+
+/**
+ * Chantier 16. La bande des autres bentos se dessine au-dessus de la boîte.
+ * Ce que ces tests verrouillent, c'est surtout qu'elle ne coûte rien tant
+ * qu'un compte n'a qu'un bento : la page publique de tous les comptes
+ * existants ne doit pas bouger d'un pixel, ce qu'une comparaison A/B au
+ * simulateur a confirmé le 16 septembre 2026.
+ */
+describe('publicOthersStripHeight, la bande des autres bentos', () => {
+  it('ne prend aucune place tant qu’un compte n’a qu’un bento', () => {
+    for (const fontScale of FONT_SCALES) {
+      assert.equal(publicOthersStripHeight(fontScale), 0, `${fontScale}`);
+      assert.equal(publicOthersStripHeight(fontScale, 0), 0, `${fontScale}`);
+    }
+  });
+
+  it('ne change pas la géométrie de la boîte sans autre bento', () => {
+    for (const [name, metrics] of Object.entries(DEVICES)) {
+      assert.equal(
+        publicBoxAvailableHeight({ ...metrics, otherBentos: 0 }),
+        publicBoxAvailableHeight(metrics),
+        name,
+      );
+      assert.equal(
+        publicBentoScale({ ...metrics, otherBentos: 0 }),
+        publicBentoScale(metrics),
+        name,
+      );
+    }
+  });
+
+  it('prend la même place pour un autre bento que pour dix', () => {
+    // Une bande, quel qu’en soit le nombre : elle défile horizontalement.
+    assert.equal(publicOthersStripHeight(1, 1), publicOthersStripHeight(1, 10));
+    assert.ok(publicOthersStripHeight(1, 1) > 0);
+  });
+
+  it('grandit avec la police des contrôles, plafonnée comme eux', () => {
+    const base = publicOthersStripHeight(1, 1);
+    const grand = publicOthersStripHeight(LARGEST_FONT, 1);
+    assert.ok(grand > base, 'la bande doit suivre la police');
+    const plafonne = publicOthersStripHeight(CONTROL_MAX_FONT_MULTIPLIER, 1);
+    assert.equal(grand, plafonne, 'au-delà du plafond, elle ne grandit plus');
+  });
+
+  /**
+   * Le défaut mesuré en recette : posée sous la grille, la bande tombait
+   * derrière le bloc de boutons. Au-dessus, elle mange de la hauteur
+   * disponible, donc la boîte rétrécit d’autant et rien ne se recouvre.
+   */
+  it('retire à la boîte exactement ce qu’elle prend', () => {
+    for (const [name, metrics] of Object.entries(DEVICES)) {
+      const avec = { ...metrics, otherBentos: 2 };
+      assert.equal(
+        publicBoxAvailableHeight(metrics) - publicBoxAvailableHeight(avec),
+        publicOthersStripHeight(metrics.fontScale, 2),
+        name,
+      );
+      assert.ok(publicBentoScale(avec) <= publicBentoScale(metrics), name);
     }
   });
 });

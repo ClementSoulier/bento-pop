@@ -61,16 +61,24 @@ const TITLE_MAX = { lg: 38, md: 22, sm: 15 } as const;
  */
 const SUBTITLE_MAX = { lg: 34, md: 18, sm: 14 } as const;
 
-export async function generateImageMetadata({ params }: { params: Promise<{ pseudo: string }> }) {
+/**
+ * `slug` est absent sur `/u/<pseudo>` et présent sur `/u/<pseudo>/<slug>` :
+ * la même route sert les deux, et chaque bento a donc son propre aperçu. Sans
+ * cela, le HTML d'un bento nommé et son image auraient montré deux bentos
+ * différents, exactement le défaut mesuré au §4.6 de la spéc du chantier 16.
+ */
+type ImageParams = { params: Promise<{ pseudo: string; slug?: string }> };
+
+export async function generateImageMetadata({ params }: ImageParams) {
   const { pseudo } = await params;
   return [{ id: 'bento', size, contentType, alt: bentoImageAlt(pseudo) }];
 }
 
-export default async function OpenGraphImage({ params }: { params: Promise<{ pseudo: string }> }) {
-  const { pseudo: requested } = await params;
+export default async function OpenGraphImage({ params }: ImageParams) {
+  const { pseudo: requested, slug } = await params;
 
   try {
-    const lookup = await lookupPublicBento(requested);
+    const lookup = await lookupPublicBento(requested, slug ?? null);
     const pseudo =
       lookup.kind === 'not-found'
         ? requested

@@ -350,3 +350,62 @@ function jpegSize(buffer: Buffer): { width: number; height: number } | null {
   }
   return null;
 }
+
+/**
+ * Chantier 16. Le compte `deuxbentos` du bouchon rend sa relation en
+ * TABLEAU, la forme que PostgREST prend une fois `bentos_user_id_key` levée,
+ * et porte deux bentos publiés : `mon-bento`, principal, et `hebdo-38`.
+ */
+describe('plusieurs bentos par compte', () => {
+  it('sert toujours le bento principal à l’adresse du compte', async () => {
+    const res = await get('/u/deuxbentos');
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    // `hebdo-38` est publié en février, `mon-bento` en décembre : si le choix
+    // se faisait sur « le premier venu » ou sur la date, ce test tomberait.
+    assert.ok(html.includes('/u/deuxbentos/hebdo-38'), 'le second doit être accessible');
+  });
+
+  it('donne au second bento sa propre adresse', async () => {
+    const res = await get('/u/deuxbentos/hebdo-38');
+    assert.equal(res.status, 200);
+    assert.ok((await res.text()).includes('@deuxbentos'));
+  });
+
+  it('renvoie 404 sur une adresse de bento qui n’existe pas', async () => {
+    // Et surtout pas le bento principal : un lien mort ne doit pas afficher
+    // silencieusement autre chose que ce qu'il nomme.
+    assert.equal((await get('/u/deuxbentos/jamais-publie')).status, 404);
+  });
+
+  it('canonise le second bento sur sa propre adresse', async () => {
+    const html = await (await get('/u/deuxbentos/hebdo-38')).text();
+    assert.ok(
+      html.includes(`${SITE_URL}/u/deuxbentos/hebdo-38`),
+      'la canonique doit nommer le bento',
+    );
+  });
+
+  it('canonise le principal sur l’adresse du compte, même servi sous son slug', async () => {
+    const res = await get('/u/deuxbentos/mon-bento');
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    // Deux URL pour un même contenu se départagent par la canonique, et c'est
+    // l'adresse du compte qui gagne : c'est elle qui circule déjà.
+    assert.ok(html.includes(`${SITE_URL}/u/deuxbentos"`), 'la canonique doit être celle du compte');
+    assert.ok(
+      !html.includes(`${SITE_URL}/u/deuxbentos/mon-bento"`),
+      'et surtout pas celle sous le slug',
+    );
+  });
+
+  it('ne montre aucune autre adresse à un compte qui n’a qu’un bento', async () => {
+    // `/u/<pseudo>/opengraph-image/...` existe de toute façon : c'est la
+    // navigation entre bentos qui ne doit pas apparaître.
+    const seul = await (await get('/u/keremasan')).text();
+    assert.ok(!seul.includes('Les autres bentos de ce compte'), 'rien ne doit changer pour eux');
+
+    const plusieurs = await (await get('/u/deuxbentos')).text();
+    assert.ok(plusieurs.includes('Les autres bentos de ce compte'), 'témoin du même test');
+  });
+});

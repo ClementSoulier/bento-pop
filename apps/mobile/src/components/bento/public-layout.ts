@@ -92,6 +92,13 @@ export const CTA_LABEL_LINE_H = 17;
 /** Écart minimal entre le bas de la boîte et le haut du bloc de boutons. */
 export const CTA_GAP = 8;
 
+/**
+ * Bande des autres bentos : hauteur d'une pastille et écart avec la boîte.
+ * La pastille suit la police des contrôles, plafonnée à 1,2 comme eux.
+ */
+export const OTHERS_CHIP_H = 34;
+export const OTHERS_GAP = 10;
+
 /*
  * Plafonds de grossissement de la police système des textes de l'écran
  * (spéc §5.4) : en `maxFontSizeMultiplier` sur un texte dont seule la taille
@@ -134,7 +141,30 @@ export type PublicLayoutMetrics = {
    * au-dessus du défaut.
    */
   fontScale: number;
+  /**
+   * Nombre d'autres bentos publiés du compte, chantier 16.
+   *
+   * Zéro pour tout compte qui n'en a qu'un, c'est-à-dire tous au 16 septembre
+   * 2026 : la bande ne se dessine pas et la géométrie ne bouge pas d'un pixel.
+   */
+  otherBentos?: number;
 };
+
+/**
+ * Hauteur de la bande des autres bentos, sous l'en-tête.
+ *
+ * **Au-dessus de la boîte, et non dessous.** Mesuré : posée après la grille,
+ * la bande tombe exactement là où commence le bloc de boutons, puisque
+ * `publicBentoScale` dimensionne la boîte pour finir à cet endroit précis.
+ * Elle n'était visible qu'en défilant, sans rien pour le laisser deviner.
+ *
+ * Nulle sans autre bento : aucun compte ne voit sa page changer tant qu'il
+ * n'en a qu'un.
+ */
+export function publicOthersStripHeight(fontScale: number, otherBentos = 0): number {
+  if (otherBentos <= 0) return 0;
+  return OTHERS_CHIP_H * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER) + OTHERS_GAP;
+}
 
 /**
  * Hauteur de l'en-tête à une taille de police donnée.
@@ -183,6 +213,7 @@ export function publicBoxAvailableHeight(metrics: PublicLayoutMetrics): number {
     metrics.insetBottom -
     TOP_BAR_H -
     publicHeaderHeight(metrics.fontScale) -
+    publicOthersStripHeight(metrics.fontScale, metrics.otherBentos) -
     publicScrollBottomInset(metrics.fontScale)
   );
 }
