@@ -451,12 +451,24 @@ Sa propre justification le condamne : une édition par semaine, avec les
 éditions passées qui restent composables, atteint 20 en **20 semaines, moins de
 cinq mois**.
 
-**Les slugs réservés** ne protègent pas le préfixe des éditions. Si quelqu'un
-crée un bento secondaire nommé `semaine-2026-38`, la création de son bento
-d'édition échouera sur `bentos_user_slug unique (user_id, slug)`.
+**Les slugs réservés** ne protègent pas les adresses d'édition. Si quelqu'un
+crée un bento libre nommé `semaine-2026-38`, la création de son bento
+d'édition échouera sur `bentos_user_slug unique (user_id, slug)`. Une liste en
+dur ne pouvait de toute façon pas prévoir les éditions à venir.
 
-Les deux se corrigent dans le fichier de la migration B, qui **n'a jamais été
-appliquée ailleurs que sur un Supabase local reconstructible** (D10).
+Les deux vivent dans le corps de `create_bento` : la migration des éditions la
+remplace, et le fichier de la migration B n'est pas touché (D10).
+
+**Les deux défauts sont prouvés**, en remettant l'ancien code sur le Supabase
+local :
+
+```
+témoin 1 : ancienne forme → « Un bento se publie complet. »
+           un compte neuf envoyant ses six cases est refusé dès qu'UNE case
+           d'édition existe
+témoin 2 : après 20 semaines → « Tu as atteint la limite de bentos pour ce
+           compte. »
+```
 
 ### 4.11 Ce qui ne bouge pas
 
@@ -611,57 +623,80 @@ composant partagé.
 
 ### 6.1 Les migrations
 
-**Trois fichiers, dans cet ordre.**
+**Deux fichiers, et la migration B n'est pas touchée** (D10, corrigée au
+lot 1). Les deux défauts de §4.10 vivent dans le corps de `create_bento`,
+qu'un `create or replace` reprend : l'append-only est préservé, et rien ne
+diverge si la migration B a déjà été appliquée quelque part.
 
-**`…_bentos_lift_unique.sql`, amendé et non remplacé** (D10). Deux corrections
-de §4.10, dans le fichier qui n'a jamais tourné ailleurs qu'en local :
-
-- le plafond de 20 bentos passe à un seuil compatible avec une édition par
-  semaine tenue plusieurs années, et distingue les bentos d'édition des bentos
-  libres ;
-- le préfixe des slugs d'édition rejoint la liste des slugs réservés.
-
-**`…_editions.sql`**, additif et invisible des versions déployées :
+**`20260917100000_editions.sql`**, additif et invisible des versions
+déployées :
 
 ```sql
 create table public.editions (
   id smallint primary key generated always as identity,
   slug text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$'),
-  title text not null,
+  title text not null check (length(btrim(title)) between 1 and 80),
   released_at timestamptz,          -- null = brouillon, jamais visible
   show_id uuid,                     -- réservé au chantier 19, non lu
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 alter table public.bento_categories
-  add column edition_id smallint references public.editions(id),
+  add column edition_id smallint references public.editions(id) on delete cascade,
+  add column prompt text,
   add column stamp text,
-  add column gender char(1) check (gender in ('m','f')),
-  add column position smallint;
-
--- Les six cases du bento principal reçoivent les valeurs de CATEGORY_META.
--- Un test lie les deux sources (§7.2).
+  add column gender text check (gender in ('m','f'));
 
 alter table public.bentos
-  add column edition_id smallint references public.editions(id);
+  add column edition_id smallint references public.editions(id) on delete set null;
 
 create unique index bentos_one_per_edition
   on public.bentos (user_id, edition_id) where edition_id is not null;
 ```
 
-**Correctif bloquant, dans le même fichier.** Le contrôle de complétude du
-serveur doit ignorer les cases d'édition, sinon toute première publication est
-refusée dès la première édition créée :
+**`prompt` en plus de `label_fr`, et non à sa place.** Mesuré sur la base au
+moment de l'écrire : `label_fr` vaut « Artiste musical » et « Lieu de voyage »
+quand l'app affiche « Artiste » et « Lieu ». Les deux colonnes ne disent donc
+pas la même chose, et les confondre obligerait à sacrifier l'une. `label_fr`
+reste le mot du back-office, utile pour distinguer deux cases de type
+Personne ; `prompt` est ce que lit l'utilisateur, et pour une édition c'est la
+question.
+
+Pas de colonne `position` : `display_order` existe déjà sur la table et dit
+exactement cela, y compris pour une édition. En prime, `position` est un nom
+de fonction Postgres.
+
+**Deux correctifs bloquants, dans le même fichier**, sur du code écrit au
+chantier 16 mais jamais appliqué (§4.3 et §4.10) :
 
 ```sql
--- 20260916180000_publish_first_bento.sql:82, à reprendre
+-- publish_first_bento : la complétude ne compte que le bento principal.
+-- Sans « and edition_id is null », la première édition créée refuse TOUTE
+-- première publication de tout nouveau compte.
 if v_count <> (select count(*) from public.bento_categories
                 where is_active and edition_id is null) then
+
+-- create_bento : le plafond ne compte que les bentos LIBRES, et l'adresse
+-- d'une édition est réservée en interrogeant `editions` plutôt qu'une liste
+-- en dur, qui ne pouvait pas prévoir les éditions à venir.
+where b.user_id = v_uid and b.edition_id is null
+…
+if exists (select 1 from public.editions e where e.slug = p_slug) then
 ```
 
-**`…_create_edition_bento.sql`** : la fonction `security definer` qui crée le
-bento d'une édition pour la personne connectée, refuse une édition non sortie,
-refuse un doublon, et dérive le slug de l'édition.
+**`20260917110000_create_edition_bento.sql`** : la fonction `security definer`
+qui crée le bento d'une édition sortie pour la personne connectée, refuse une
+édition non sortie, refuse un doublon, et prend l'adresse de l'édition. Si un
+bento libre occupe déjà cette adresse, créé avant que l'édition n'existe, une
+boucle bornée suffixe l'adresse plutôt que d'échouer : la personne n'y est pour
+rien.
+
+**La purge de la landing au changement d'une édition part au lot 5**, avec le
+lot qui affiche le titre d'édition sur la page publique. L'écrire ici aurait
+dupliqué la logique de coffre et de `net.http_post` de
+`20260916120000_bentos_slug_and_primary.sql:124-185`, avec le risque de
+divergence que le chantier vient précisément de corriger ailleurs.
 
 ### 6.2 L'ordre de déploiement, et le mode maintenance
 
@@ -757,25 +792,41 @@ choisit.
 
 ### 7.2 Tests de base, sur Supabase local
 
-Un `check-editions.sql` sur le modèle de `check-bentos-multi.sql` : contrôles
-rejouables dans une transaction annulée, avec un **témoin** qui échoue si le
-jeu de données ne prouve rien.
-
-Contrôles minimaux :
+`apps/mobile/scripts/check-editions.sql`, huit familles de contrôles et **18
+assertions**, rejouables dans une transaction annulée. Livré au lot 1, sortie
+`════ 18 tenus, 0 manqués ════`.
 
 1. Une édition sans `released_at` est invisible de l'anonyme, ses cases aussi.
-2. Une édition sortie est visible, ses cases aussi.
+2. Une édition sortie est visible, ses cases aussi, et les six cases
+   principales restent lisibles.
 3. Deux cases du même type dans une édition : acceptées, et deux items
    distincts s'y posent.
 4. Un item d'un autre type dans une case d'édition : refusé par le trigger.
-5. `create_edition_bento` deux fois pour la même personne et la même édition :
-   la seconde échoue.
-6. La première publication d'un compte neuf reste possible **après** création
-   d'une édition : c'est le correctif de §6.1, et sans ce contrôle il passe
-   inaperçu.
-7. Le plafond de bentos, à la valeur retenue.
-8. **Le lien entre la base et l'app** : les `stamp`, `gender` et `position` des
-   six cases principales valent exactement `CATEGORY_META` et `CATEGORY_ORDER`.
+5. Un seul bento par personne et par édition ; il porte l'adresse de
+   l'édition ; une édition non sortie ne se compose pas ; son adresse est
+   réservée à `create_bento` **avant même sa sortie**.
+6. La première publication d'un compte neuf aboutit **après** création d'une
+   édition. C'est le correctif de §6.1, et aucun test d'application ne le
+   verrait.
+7. Le plafond ne compte que les bentos libres, et une édition se compose
+   malgré un plafond atteint.
+8. Les six cases principales ont leur `prompt`, leur tampon et leur genre, et
+   deux cases ne partagent pas un rang dans une édition.
+
+**Il construit ses propres données**, contrairement à `check-bentos-multi.sql`
+qui exige un bento publié préexistant : après un `supabase db reset` la base
+locale est vide, et un contrôle qui ne se rejoue pas ne garde rien.
+
+**Deux témoins hors script** prouvent que les correctifs de §4.10 portent : en
+remettant l'ancien code, la première publication d'un compte neuf est refusée,
+et le plafond bloque après vingt semaines. Sans eux, les contrôles 6 et 7
+passeraient sans rien démontrer.
+
+Côté application, `apps/mobile/src/lib/bento-cases-vs-app.test.ts` lie la base
+et l'app : il lit le remplissage SQL des six cases et le compare à
+`CATEGORY_META`, case par case. Il lit le SQL et non la base, parce que la CI
+n'a pas de Postgres et qu'un test qui ne tourne qu'en local ne garde rien. Un
+témoin échoue si l'extraction rend une table vide.
 
 ### 7.3 Recette
 
@@ -809,13 +860,26 @@ Sept lots. Le lot 0 est un préalable qui ne nous appartient pas.
 - L'équipe importe et relit les 446 candidats des quatre types dormants,
   depuis l'écran Types du back-office (§4.8). DoD restante du chantier 15.
 - Rob livre la planche des dispositions 2, 3, 4 et 5 cases (§5.3).
-- La PR de correction de l'aperçu de lien est fusionnée (D9).
+- ~~La PR de correction de l'aperçu de lien est fusionnée (D9).~~ **Fait** :
+  [PR #73](https://github.com/ClementSoulier/bento-pop/pull/73), fusionnée le
+  16 septembre après CI verte. Mesuré après correction sur un vrai build :
+  233 / 142 / 106.
 
-### Lot 1 · Le modèle et les droits
+### Lot 1 · Le modèle et les droits · livré
 
-Les trois migrations de §6.1, l'amendement de la migration B, le correctif de
-`publish_first_bento`, et `check-editions.sql` avec ses huit contrôles. Rien de
-visible.
+Les deux migrations de §6.1, les deux correctifs de code déjà écrit,
+`check-editions.sql` et `bento-cases-vs-app.test.ts`. Rien de visible.
+
+Éprouvé sur le Supabase local, reconstruit de zéro : les seize migrations
+s'appliquent dans l'ordre, les 18 contrôles de `check-editions.sql` passent,
+les **42 contrôles de `check-privileges.ts` restent verts**, les 475 tests
+mobiles passent, `typecheck` est propre.
+
+Deux écarts avec la spécification, tous deux corrigés dans ce document :
+
+- **la migration B n'a pas été amendée** (D10), elle n'en avait pas besoin ;
+- **la purge de la landing part au lot 5** : l'écrire ici dupliquait la
+  logique de coffre et de `net.http_post` existante.
 
 ### Lot 2 · La table des dispositions, et les cinq rendus
 
@@ -877,7 +941,7 @@ DoD.
    ans.
 10. La première publication d'un compte neuf fonctionne alors que des éditions
     existent.
-11. Les huit contrôles de `check-editions.sql` passent sur Supabase local.
+11. Les 18 contrôles de `check-editions.sql` passent sur Supabase local.
 12. Recette parcourue sur iPhone et Android, appareils réels compris.
 13. Aucun compte créé en production, aucune écriture non autorisée.
 
@@ -896,7 +960,7 @@ DoD.
 | **D7** | La sortie store embarque les chantiers 13, 17, 21 et 29 | Choisi le 16 septembre. Une édition hebdomadaire sans notification n'atteint que ceux qui ouvrent l'app d'eux-mêmes |
 | **D8** | À la bascule, `ios_min_version` et `android_min_version` passent à la nouvelle version | Le mécanisme existe depuis le 28 mai et la 1.1 l'honore. Une version ancienne voit « mets à jour » plutôt qu'une page vide |
 | **D9** | La divergence de l'aperçu de lien se corrige tout de suite, en PR séparée | Le défaut est en production sur chaque lien partagé, et ce chantier est bloqué plusieurs semaines par les stores |
-| **D10** | La migration B est amendée dans son fichier plutôt que corrigée par un fichier de plus | **Valable tant qu'elle n'a pas été appliquée en production.** À réexaminer si ce n'est plus vrai |
+| **D10** | ~~La migration B est amendée dans son fichier~~ **La migration B n'est pas touchée** | **Corrigée au lot 1.** Les deux défauts vivent dans le corps de `create_bento`, qu'un `create or replace` reprend : l'append-only est préservé, et rien ne diverge si B a déjà été appliquée quelque part |
 
 ---
 
