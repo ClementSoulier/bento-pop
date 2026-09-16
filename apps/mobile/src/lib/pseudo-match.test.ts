@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { PSEUDO_REGEX, escapeLikePattern, pickExactPseudo } from './pseudo-match';
+import { PSEUDO_REGEX, RESERVED_PSEUDO_PATTERNS, escapeLikePattern, isReservedPseudo, pickExactPseudo } from './pseudo-match';
 
 const rows = [
   { pseudo: 'buyt.k' },
@@ -71,5 +73,37 @@ describe('escapeLikePattern', () => {
       assert.equal(PSEUDO_REGEX.test(pseudo), false, pseudo);
     }
     assert.equal(PSEUDO_REGEX.test('dark_hifus'), true);
+  });
+});
+
+describe('pseudos réservés à la marque', () => {
+  it('reconnaît ce que la base refuse', () => {
+    for (const pseudo of ['bento_pop', 'bentopop', 'bent0pop', 'bento.pop', 'bento_pop_team']) {
+      assert.ok(isReservedPseudo(pseudo), pseudo);
+    }
+  });
+
+  it('laisse passer un pseudo qui ne prétend pas être la marque', () => {
+    for (const pseudo of ['bento_popxbento', 'bento_culture', 'bentoxbento', 'dark_hifus']) {
+      assert.ok(!isReservedPseudo(pseudo), pseudo);
+    }
+  });
+
+  /**
+   * Les motifs sont recopiés de `blocked_pseudo_patterns`, que l'app ne peut pas
+   * lire : ce test les relit dans les migrations, pour qu'un motif changé côté
+   * base ne laisse pas l'app proposer un pseudo qu'elle fera refuser.
+   */
+  it('reste aligné sur les migrations', () => {
+    const root = join(__dirname, '..', '..', 'supabase', 'migrations');
+    const sql = [
+      '20260511130000_reports_and_blocked_pseudos.sql',
+      '20260512100000_blocked_pseudos_expand.sql',
+    ]
+      .map((file) => readFileSync(join(root, file), 'utf8'))
+      .join('\n');
+    for (const pattern of RESERVED_PSEUDO_PATTERNS) {
+      assert.ok(sql.includes(`'${pattern.source}'`), pattern.source);
+    }
   });
 });

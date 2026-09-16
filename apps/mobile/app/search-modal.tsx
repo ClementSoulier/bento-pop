@@ -15,12 +15,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { cleanTitle } from '@/lib/text';
+import { hasExactTitle } from '@/lib/exact-title';
+import { userErrorMessage } from '@/lib/user-error-message';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
+  scaledType,
+} from '@/components/bento/font-scaling';
+import { SearchIcon } from '@/components/TabIcons';
+import { useOfflineInset } from '@/lib/use-offline-inset';
 import { CATEGORY_META } from '@/components/bento/categories';
 import { paletteKeyForItem } from '@/components/bento/palettes';
-import { useToast } from '@/components/primitives';
+import { INK_MUTED, INK_PLACEHOLDER, useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
 import {
   ItemTile,
+  SEARCH_ICON_BOX,
   SuggestionSkeleton,
   searchPlaceholder,
   searchTileWidth,
@@ -119,7 +129,12 @@ export default function SearchModal() {
    */
   const choosingRef = useRef(false);
 
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, fontScale } = useWindowDimensions();
+  // Sur iOS, la modale est une feuille native posée au-dessus de la vue racine :
+  // le bandeau hors ligne n'y est pas visible, donc il n'y a rien à réserver.
+  // Sur Android, c'est un écran de la pile comme un autre.
+  const bannerInset = useOfflineInset();
+  const offlineInset = Platform.OS === 'android' ? bannerInset : 0;
   const tileWidth = searchTileWidth(windowWidth);
   // Constant sur la durée de vie de l'écran : la densité d'un écran ne change
   // pas. Mémorisé pour ne pas rappeler le pont natif à chaque tuile rendue.
@@ -415,24 +430,47 @@ export default function SearchModal() {
    * - `!error` : quand la recherche est tombée, on ne sait pas si l'item
    *   existe. Proposer de le créer, c'est inviter au doublon précisément
    *   quand on est le moins capable de le détecter. Le bandeau d'erreur
-   *   suffit à expliquer pourquoi l'écran ne propose rien.
+   *   suffit à expliquer pourquoi l'écran ne propose rien ;
+   * - **et le titre tapé n'est pas déjà dans la grille** (chantier 11) : la
+   *   condition ne comparait rien, et « Ajouter « Squeezie » » s'affichait
+   *   au-dessous de la tuile Squeezie, relevé en production.
    */
   const canSubmitNew =
-    !showSuggestions && debouncedQuery === query.trim() && !loading && !error;
+    !showSuggestions &&
+    debouncedQuery === query.trim() &&
+    !loading &&
+    !error &&
+    !hasExactTitle(query, results.map((r) => r.title));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fbf3de' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fbf3de', paddingTop: offlineInset }}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel="Fermer la recherche"
+          // La pastille fait 36 pt : la cible tactile en fait 44.
+          hitSlop={4}
           style={[styles.closeBtn, SHADOWS.stamp]}
         >
-          <Text style={{ fontSize: 18, fontWeight: '800', lineHeight: 18 }}>×</Text>
+          {/* Une croix dans une cible de 36 pt, pas un texte à lire : grossie, elle
+              débordait de son cercle. */}
+          <Text allowFontScaling={false} style={{ fontSize: 18, fontWeight: '800', lineHeight: 18 }}>
+            ×
+          </Text>
         </Pressable>
-        <Text style={styles.headerLabel}>Case · {meta.stamp}</Text>
+        {/* Le tampon est une abréviation, « CRÉA » : le lecteur d'écran entend
+            l'intitulé entier. */}
+        <Text
+          numberOfLines={1}
+          accessibilityRole="header"
+          accessibilityLabel={`Case ${meta.label}`}
+          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+          style={[styles.headerLabel, { flexShrink: 1 }]}
+        >
+          Case · {meta.stamp}
+        </Text>
         <View style={{ flex: 1 }} />
         {/* Remontée du bas de l'écran : c'est une action rare, elle n'a pas
             à occuper en permanence la zone que le clavier vient recouvrir.
@@ -444,9 +482,16 @@ export default function SearchModal() {
             disabled={submitting}
             accessibilityRole="button"
             accessibilityLabel="Vider cette case"
+            accessibilityState={{ disabled: submitting }}
             style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }}
           >
-            <Text style={styles.clearLabel}>Vider</Text>
+            <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+              style={styles.clearLabel}
+            >
+              Vider
+            </Text>
           </Pressable>
         ) : null}
       </View>
@@ -454,7 +499,15 @@ export default function SearchModal() {
       {/* Search input */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 14 }}>
         <View style={[styles.searchInput, SHADOWS.stamp]}>
-          <Text style={{ fontSize: 16, color: 'rgba(10,10,10,0.4)' }}>🔍</Text>
+          {/* L'icône de la barre d'onglets, et non l'emoji 🔍 : même dessin sur les
+              deux plateformes, et rien que VoiceOver lise à voix haute. */}
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={SEARCH_ICON_BOX}
+          >
+            <SearchIcon size={18} color={INK_PLACEHOLDER} />
+          </View>
           <TextInput
             ref={inputRef}
             value={query}
@@ -467,10 +520,12 @@ export default function SearchModal() {
             // iPhone SE, mesuré, soit une rangée de tuiles entière.
             autoFocus
             returnKeyType="search"
+            accessibilityLabel={searchPlaceholder(category)}
             // La recherche tourne déjà en continu sur le debounce : la touche
             // entrée ne relance rien, elle replie le clavier pour découvrir
             // le reste de la grille.
             onSubmitEditing={() => inputRef.current?.blur()}
+            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
             style={{ fontSize: 16, fontWeight: '600', flex: 1, paddingVertical: 0 }}
           />
           {loading ? <ActivityIndicator size="small" /> : null}
@@ -479,13 +534,26 @@ export default function SearchModal() {
 
       {/* Résultats + CTA Ajouter */}
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
-        <Text style={styles.resultsCount} accessibilityRole="header">
+        <Text
+          style={styles.resultsCount}
+          accessibilityRole="header"
+          numberOfLines={1}
+          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+        >
           {sectionLabel}
         </Text>
         {error ? (
           <View style={styles.errorBanner}>
-            <Text style={{ fontSize: 12, color: '#e63946', lineHeight: 17 }}>
-              {(error as Error).message}
+            <Text
+              allowFontScaling={false}
+              style={{
+                ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 12, 17),
+                // À l'encre, pas en rouge : le rouge sur son propre voile ne
+                // donnait que 3,29 : 1. Le cadre rouge dit déjà l'erreur.
+                color: '#0a0a0a',
+              }}
+            >
+              {userErrorMessage('search', error)}
             </Text>
           </View>
         ) : null}
@@ -530,16 +598,30 @@ export default function SearchModal() {
                   disabled={submitting}
                   accessibilityRole="button"
                   accessibilityLabel={`Proposer ${query.trim()} au catalogue`}
+                  accessibilityState={{ disabled: submitting, busy: submitting }}
                   style={[styles.addRow, SHADOWS.stamp]}
                 >
                   <View style={styles.addIconBubble}>
-                    <Text style={{ fontSize: 20, lineHeight: 20, fontWeight: '800' }}>+</Text>
+                    {/* Un signe dans une pastille de 38 pt, pas un texte à lire. */}
+                    <Text
+                      allowFontScaling={false}
+                      style={{ fontSize: 20, lineHeight: 20, fontWeight: '800' }}
+                    >
+                      +
+                    </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.addRowTitle} numberOfLines={1}>
+                    <Text
+                      style={styles.addRowTitle}
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+                    >
                       Ajouter « {query.trim()} »
                     </Text>
-                    <Text style={styles.addRowSubtitle}>
+                    <Text
+                      style={styles.addRowSubtitle}
+                      maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+                    >
                       Proposer au catalogue (validé par l&apos;équipe)
                     </Text>
                   </View>
@@ -610,7 +692,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     paddingHorizontal: 4,
     paddingBottom: 8,
-    color: 'rgba(10,10,10,0.55)',
+    color: INK_MUTED,
     textTransform: 'uppercase',
   },
   errorBanner: {
@@ -659,7 +741,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Bungee',
     fontSize: 12,
     letterSpacing: 1,
-    color: '#e63946',
+    // À l'encre, soulignée : en rouge sur le crème, 3,77 : 1 seulement.
+    color: '#0a0a0a',
     textTransform: 'uppercase',
     textDecorationLine: 'underline',
   },

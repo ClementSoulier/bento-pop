@@ -26,6 +26,24 @@
  * `users.pseudo_format` (cf. migration initiale).
  */
 export const PSEUDO_REGEX = /^[A-Za-z0-9_.]{3,20}$/;
+
+/**
+ * Les motifs de marque de `blocked_pseudo_patterns`, recopiés ici.
+ *
+ * La base refuse 41 motifs, que l'app ne peut pas lire : la table est en RLS
+ * sans politique. Deux d'entre eux réservent le nom de la marque, et l'app les
+ * fabrique elle-même : sur un champ vide, la troisième suggestion de l'accueil
+ * était « bento_pop », annoncée « Libre », puis refusée à la validation par
+ * « Impossible de créer le profil : Pseudo non autorisé. » (chantier 11, relevé
+ * sur iPhone SE). Ces deux motifs suffisent donc, et `pseudo-match.test.ts` les
+ * relit dans la migration pour qu'ils ne divergent pas.
+ */
+export const RESERVED_PSEUDO_PATTERNS = [/bent[o0].?pop$/i, /bento.?pop.?team/i];
+
+/** Le pseudo tombe-t-il sous un motif réservé à la marque ? */
+export function isReservedPseudo(pseudo: string): boolean {
+  return RESERVED_PSEUDO_PATTERNS.some((pattern) => pattern.test(pseudo.trim()));
+}
 export const PSEUDO_MIN = 3;
 export const PSEUDO_MAX = 20;
 

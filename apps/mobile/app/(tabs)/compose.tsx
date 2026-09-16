@@ -1,18 +1,32 @@
 import { useCallback, useState } from 'react';
-import { Image, Text, useWindowDimensions, View } from 'react-native';
+import { Image, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { router, useFocusEffect } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
+import { BentoBoxSkeleton } from '@/components/bento/BentoBoxSkeleton';
 import { ProgressBar } from '@/components/bento/ProgressBar';
-import { StampButton, useToast, YellowBg } from '@/components/primitives';
+import { INK_MUTED, StampButton, YellowBg, useToast } from '@/components/primitives';
 import { failureFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { ensureBento, publishBento } from '@/lib/bento-actions';
-import { CTA_GAP, composeBentoScale } from '@/components/bento/compose-layout';
+import {
+  CTA_GAP_MIN,
+  PSEUDO_LINE_H,
+  STATUS_LINE_H,
+  TITLE_LINE_H,
+  composeBentoScale,
+} from '@/components/bento/compose-layout';
+import {
+  CONTROL_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
+  naturalLineHeight,
+  scaledType,
+} from '@/components/bento/font-scaling';
 import { composeCta } from '@/lib/compose-cta';
+import { useOfflineInset } from '@/lib/use-offline-inset';
 import type { CategoryKey } from '@/supabase/types';
 
 /**
@@ -37,6 +51,7 @@ const GRID_SIDE_PADDING = 16;
  */
 export default function ComposeTab() {
   const slots = useBento((s) => s.slots);
+  const hydrated = useBento((s) => s.hydrated);
   const lastFilled = useBento((s) => s.lastFilled);
   const publishedAt = useBento((s) => s.publishedAt);
   const setPublishedAt = useBento((s) => s.setPublishedAt);
@@ -51,7 +66,7 @@ export default function ComposeTab() {
   const hasPending = Object.values(slots).some((s) => s?.pending);
   const [publishing, setPublishing] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   const showToast = useToast((s) => s.show);
@@ -123,123 +138,200 @@ export default function ComposeTab() {
   // Le budget vertical vit dans `compose-layout.ts`, testé : il s'était
   // trompé sans que rien ne le signale, au point que la boîte et le bouton
   // se touchaient.
+  // Le bandeau hors ligne descend l'écran : le budget le compte, sinon la boîte
+  // passerait sous la barre d'onglets dès qu'il apparaît.
+  const offlineInset = useOfflineInset();
   const bentoScale = composeBentoScale({
     screenHeight,
-    insetTop: insets.top,
+    insetTop: insets.top + offlineInset,
     tabBarHeight,
+    fontScale,
   });
+
+  // Les textes de l'en-tête appliquent eux-mêmes la police système, plafonnée,
+  // hauteurs de ligne comprises : ce sont celles que le budget compte.
+  const pseudoType = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 10, PSEUDO_LINE_H);
+  const titleType = scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 28, TITLE_LINE_H);
+  const statusType = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 11, STATUS_LINE_H);
+  const onlineType = scaledType(
+    fontScale,
+    CONTROL_MAX_FONT_MULTIPLIER,
+    9,
+    naturalLineHeight('Bungee', 9),
+  );
+  const onlineHintType = scaledType(
+    fontScale,
+    CONTROL_MAX_FONT_MULTIPLIER,
+    12,
+    naturalLineHeight('Fredoka', 12),
+  );
 
   return (
     <YellowBg>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* Top bar */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingTop: 8,
-            marginBottom: 14,
-          }}
+        {/* L'écran défile quand la grille est à son plancher et que le reste ne
+            tient plus : à la plus grande police, et sur un petit téléphone. Tant
+            que tout tient, `flexGrow` garde la mise en page d'avant, le ressort
+            poussant le bouton en bas. */}
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          alwaysBounceVertical={false}
+          contentInsetAdjustmentBehavior="never"
         >
-          <Image source={logo} style={{ height: 24, width: 110 }} resizeMode="contain" />
-        </View>
+          {/* Top bar */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingTop: 8,
+              marginBottom: 14,
+            }}
+          >
+            <Image source={logo} style={{ height: 24, width: 110 }} resizeMode="contain" />
+          </View>
 
-        {/* Header pseudo + titre + progress */}
-        <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-          <Text
-            style={{
-              fontFamily: 'Bungee',
-              fontSize: 10,
-              letterSpacing: 2,
-              color: 'rgba(10,10,10,0.55)',
-              textTransform: 'uppercase',
-            }}
-          >
-            @{pseudo ?? '—'}
-          </Text>
-          <Text
-            style={{
-              fontFamily: 'Extenda',
-              fontSize: 28,
-              lineHeight: 26,
-              letterSpacing: -0.3,
-              color: '#0a0a0a',
-              textTransform: 'uppercase',
-            }}
-          >
-            Mon bento
-          </Text>
-          {/* Une seule ligne, deux contenus possibles, la même hauteur : le
-              budget vertical de `compose-layout.ts` est mesuré au point et
-              ajouter un bloc ferait rétrécir la boîte pour tout le monde.
-              Sur un bento en ligne, « 6 / 6 » n'apprend plus rien, alors que
-              le fait que les modifications partent en direct, si. */}
-          {cta.kind === 'view-public' ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <View
-                style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#0a0a0a' }}
+          {/* Header pseudo + titre + progress */}
+          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+            <Text
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={{
+                fontFamily: 'Bungee',
+                ...pseudoType,
+                letterSpacing: 2,
+                color: INK_MUTED,
+                textTransform: 'uppercase',
+                includeFontPadding: false,
+              }}
+            >
+              @{pseudo ?? '…'}
+            </Text>
+            <Text
+              accessibilityRole="header"
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={{
+                fontFamily: 'Extenda',
+                ...titleType,
+                letterSpacing: -0.3,
+                color: '#0a0a0a',
+                textTransform: 'uppercase',
+              }}
+            >
+              Mon bento
+            </Text>
+            {/* Une seule ligne, deux contenus possibles, la même hauteur : le
+                budget vertical de `compose-layout.ts` est mesuré au point et
+                ajouter un bloc ferait rétrécir la boîte pour tout le monde.
+                Sur un bento en ligne, « 6 / 6 » n'apprend plus rien, alors que
+                le fait que les modifications partent en direct, si. */}
+            {/* Tant que la première lecture n'a pas répondu, la ligne garde sa
+                hauteur mais ne dit rien : « 0 / 6 » affirmerait un bento vide au
+                moment précis où le squelette dit qu'on ne sait pas encore.
+                Invisible à l'œil et muette au lecteur d'écran, que l'opacité
+                seule ne suffirait pas à faire taire. */}
+            <View
+              accessibilityElementsHidden={!hydrated}
+              importantForAccessibility={hydrated ? 'auto' : 'no-hide-descendants'}
+              style={{ opacity: hydrated ? 1 : 0 }}
+            >
+              {cta.kind === 'view-public' ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <View
+                    style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#0a0a0a' }}
+                  />
+                  <Text
+                    allowFontScaling={false}
+                    style={{
+                      fontFamily: 'Bungee',
+                      ...onlineType,
+                      letterSpacing: 1,
+                      includeFontPadding: false,
+                    }}
+                    numberOfLines={1}
+                  >
+                    En ligne
+                  </Text>
+                  <Text
+                    allowFontScaling={false}
+                    style={{
+                      fontFamily: 'Fredoka',
+                      ...onlineHintType,
+                      opacity: 0.7,
+                      flexShrink: 1,
+                      includeFontPadding: false,
+                    }}
+                    numberOfLines={1}
+                  >
+                    tes modifications sont visibles tout de suite
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                  <ProgressBar filled={filled} total={6} />
+                  <Text
+                    allowFontScaling={false}
+                    style={{
+                      fontFamily: 'Bungee',
+                      ...statusType,
+                      letterSpacing: 1,
+                      includeFontPadding: false,
+                    }}
+                  >
+                    {filled} / 6
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Grille bento — scale dynamique pour fit l'écran. Tant que la première
+              lecture du bento n'a pas répondu, un squelette : un bento vide
+              annoncerait à tort que rien n'a été composé. */}
+          <View style={{ paddingHorizontal: GRID_SIDE_PADDING }}>
+            {hydrated ? (
+              <BentoGrid
+                items={slots}
+                scale={bentoScale}
+                // Toute la largeur de l'écran, et non `GRID_WIDTH × bentoScale` :
+                // l'échelle se calcule ici sur la hauteur.
+                width={screenWidth - GRID_SIDE_PADDING * 2}
+                pulse={lastFilled}
+                onTap={(cat) =>
+                  router.push({ pathname: '/search-modal', params: { category: cat } })
+                }
               />
-              <Text
-                style={{ fontFamily: 'Bungee', fontSize: 9, letterSpacing: 1 }}
-                numberOfLines={1}
-              >
-                En ligne
-              </Text>
-              <Text
-                style={{ fontFamily: 'Fredoka', fontSize: 12, opacity: 0.7, flexShrink: 1 }}
-                numberOfLines={1}
-              >
-                tes modifications sont visibles tout de suite
-              </Text>
-            </View>
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-              <ProgressBar filled={filled} total={6} />
-              <Text style={{ fontFamily: 'Bungee', fontSize: 11, letterSpacing: 1 }}>
-                {filled} / 6
-              </Text>
-            </View>
-          )}
-        </View>
+            ) : (
+              <BentoBoxSkeleton scale={bentoScale} />
+            )}
+          </View>
 
-        {/* Grille bento — scale dynamique pour fit l'écran */}
-        <View style={{ paddingHorizontal: GRID_SIDE_PADDING }}>
-          <BentoGrid
-            items={slots}
-            scale={bentoScale}
-            // Toute la largeur de l'écran, et non `GRID_WIDTH × bentoScale` :
-            // l'échelle se calcule ici sur la hauteur.
-            width={screenWidth - GRID_SIDE_PADDING * 2}
-            pulse={lastFilled}
-            onTap={(cat) =>
-              router.push({ pathname: '/search-modal', params: { category: cat } })
-            }
-          />
-        </View>
+          {/* Spacer flex pour pousser le CTA en bas */}
+          <View style={{ flex: 1 }} />
 
-        {/* Spacer flex pour pousser le CTA en bas */}
-        <View style={{ flex: 1 }} />
-
-        {/* CTA en flux normal, juste au-dessus du tab bar.
-            `paddingBottom` ne compte plus `tabBarHeight` : la zone de contenu
-            de l'écran exclut déjà la barre d'onglets, donc l'ajouter la
-            comptait deux fois. Mesuré sur une capture iPhone 17, bento
-            plein : 93 pt de jaune mort sous le bouton, et **zéro** entre le
-            bouton et la boîte, qui se touchaient.
-            `marginTop` plutôt qu'un `paddingTop` : c'est un écart minimal
-            garanti même quand le ressort du dessus se réduit à rien. */}
-        <View
-          style={{
-            paddingHorizontal: 16,
-            marginTop: CTA_GAP,
-            paddingBottom: 12,
-          }}
-        >
-          <StampButton wide disabled={cta.disabled} onPress={onPrimary}>
-            {cta.label}
-          </StampButton>
-        </View>
+          {/* CTA en flux normal, juste au-dessus du tab bar.
+              `paddingBottom` ne compte plus `tabBarHeight` : la zone de contenu
+              de l'écran exclut déjà la barre d'onglets, donc l'ajouter la
+              comptait deux fois. Mesuré sur une capture iPhone 17, bento
+              plein : 93 pt de jaune mort sous le bouton, et **zéro** entre le
+              bouton et la boîte, qui se touchaient.
+              `marginTop` plutôt qu'un `paddingTop` : c'est un écart minimal
+              garanti même quand le ressort du dessus se réduit à rien. Minimal
+              et non visé : cf. `CTA_GAP_MIN`. */}
+          <View
+            style={{
+              paddingHorizontal: 16,
+              marginTop: CTA_GAP_MIN,
+              paddingBottom: 12,
+            }}
+          >
+            <StampButton wide disabled={cta.disabled || !hydrated} onPress={onPrimary}>
+              {hydrated ? cta.label : 'Chargement…'}
+            </StampButton>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </YellowBg>
   );

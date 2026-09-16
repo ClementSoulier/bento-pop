@@ -1,10 +1,10 @@
 import { supabase } from '@/supabase/client';
 import { isPseudoTaken } from '@/lib/pseudo-availability';
-import { PSEUDO_MAX, PSEUDO_MIN, PSEUDO_REGEX } from '@/lib/pseudo-match';
+import { PSEUDO_MAX, PSEUDO_MIN, PSEUDO_REGEX, isReservedPseudo } from '@/lib/pseudo-match';
 
 // Les règles vivent dans `pseudo-match.ts`, chargeable sans client Supabase :
 // `public-bento.ts` en a besoin sous `node:test`. Réexportées pour les écrans.
-export { PSEUDO_MAX, PSEUDO_MIN, PSEUDO_REGEX };
+export { PSEUDO_MAX, PSEUDO_MIN, PSEUDO_REGEX, isReservedPseudo };
 
 export type PseudoCheck =
   | { status: 'idle' }
@@ -14,6 +14,7 @@ export type PseudoCheck =
   | { status: 'checking' }
   | { status: 'available' }
   | { status: 'taken' }
+  | { status: 'reserved' }
   | { status: 'error' };
 
 /**
@@ -33,6 +34,8 @@ export async function checkPseudoAvailability(raw: string): Promise<PseudoCheck>
   if (trimmed.length < PSEUDO_MIN) return { status: 'too-short' };
   if (trimmed.length > PSEUDO_MAX) return { status: 'too-long' };
   if (!PSEUDO_REGEX.test(trimmed)) return { status: 'invalid' };
+  // Réservé à la marque : la base le refuse, autant le dire avant la validation.
+  if (isReservedPseudo(trimmed)) return { status: 'reserved' };
 
   try {
     return { status: (await isPseudoTaken(supabase, trimmed)) ? 'taken' : 'available' };
@@ -44,6 +47,9 @@ export async function checkPseudoAvailability(raw: string): Promise<PseudoCheck>
 /**
  * Génère 5 suggestions de pseudos dérivés du pseudo souhaité, dans le style
  * du design Claude Design (nao_92, naomi.k, nao_pop, naoxbento, nao_culture).
+ *
+ * Les suggestions qui tombent sous un motif réservé à la marque sont écartées :
+ * sur un champ vide, le modèle donnait « bento_pop », que la base refuse.
  */
 export function generatePseudoSuggestions(base: string): string[] {
   const slug = base
@@ -56,7 +62,7 @@ export function generatePseudoSuggestions(base: string): string[] {
     `${slug}_pop`,
     `${slug}xbento`,
     `${slug}_culture`,
-  ];
+  ].filter((pseudo) => !isReservedPseudo(pseudo));
 }
 
 function randomDigits(n: number): string {
