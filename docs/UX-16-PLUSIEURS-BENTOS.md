@@ -836,7 +836,7 @@ L'ordre juste, les deux migrations n'ayant pas les mêmes contraintes (§6.1) :
 
 | # | Étape | Risque |
 |---|---|---|
-| 1 | **Migration A** appliquée en production | **aucun** : elle n'ajoute que des colonnes, la relation reste un un-à-un, les apps en circulation ne voient rien |
+| 1 | **Migration A** appliquée en production ✅ **faite le 16/09** | **aucun** : elle n'ajoute que des colonnes, la relation reste un un-à-un, les apps en circulation ne voient rien |
 | 2 | **Fusion de la PR** : landing et back-office se déploient | aucun : la base sait déjà répondre |
 | 3 | **Build mobile 1.3.0**, puis adoption | aucun : dormante pour tout ce qui concerne les secondaires |
 | 4 | **Migration B**, sur feu vert, quand l'adoption suffit | c'est **la** fenêtre : une app restée sur l'ancienne requête dirait « rien en ligne » |
@@ -944,12 +944,27 @@ Migration A de §6.1, choix explicite du bento des deux côtés (§5.2), route
 compte avec le principal en contenu principal, sitemap et image d'aperçu par
 bento, purge des deux adresses, `firstBento` retiré.
 
-### Lot 2 · Migration B et les droits
+### Lot 2 · Migration B, les droits et les compteurs · livré
 
-Levée de `bentos_user_id_key`, index partiel, fonction `create_bento`, types,
-garde-fou de source. Tests de base rejoués sur le local, dont la traversée
-mesurée en §4.3. **Rien n'est appliqué en production à ce stade** : c'est
-l'étape 4 de §6.2, sur feu vert.
+Levée de `bentos_user_id_key` vers l'index partiel, fonction `create_bento`,
+compteurs en `distinct user_id`, `search_bentos` qui rend le slug, types, et
+deux garde-fous. **Rien n'est appliqué en production à ce stade** : c'est
+l'étape 5 de §6.2, sur feu vert, une fois la build adoptée.
+
+**Un slug réservé que la spéc n'avait pas vu.** Next expose l'aperçu d'un bento
+à `/u/<pseudo>/opengraph-image/…` par convention de fichier, et une route de
+convention l'emporte sur un segment dynamique : un bento portant ce slug serait
+**définitivement inatteignable**. `create_bento` refuse donc `opengraph-image`,
+`twitter-image`, `icon`, `apple-icon`, `sitemap`, `robots`, plus quelques noms
+gardés pour les chantiers 13 et 21.
+
+**Le garde-fou de source porte sa dette.** `src/lib/bento-queries.test.ts` lit
+l'arbre syntaxique et refuse tout `.from('bentos')` filtré par `user_id` qui ne
+dit pas quel bento, ainsi que tout `maybeSingle()` sur un tel filtre. Trois
+fichiers restent fautifs et sont listés nommément dans la constante `DETTE` :
+`bento-actions.ts`, `session.ts` et `data-export.ts`. Un quatrième test échoue
+si une entrée de cette liste n'est plus fautive, pour qu'elle ne survive pas à
+sa correction. **Le lot 4 doit la vider.**
 
 ### Lot 3 · Les compteurs, la modération et le back-office
 

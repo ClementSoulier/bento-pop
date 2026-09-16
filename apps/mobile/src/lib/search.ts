@@ -30,6 +30,15 @@ export type SharedItemRow = Database['public']['Functions']['shared_items']['Ret
 
 export type SearchMatch = {
   bentoId: string;
+  /**
+   * Adresse du bento trouvé, chantier 16. Le résultat menait jusqu'ici à
+   * `/u/<pseudo>`, ce qui suffisait tant qu'un compte n'avait qu'un bento :
+   * deux bentos d'un même compte donnaient deux lignes identiques menant au
+   * même endroit.
+   */
+  slug: string;
+  /** Vrai pour le bento que `/u/<pseudo>` met en avant. */
+  isPrimary: boolean;
   pseudo: string;
   displayName: string | null;
   isFeatured: boolean;
@@ -52,7 +61,11 @@ export type SharedItem = {
   id: string;
   title: string;
   category: CategoryKey;
-  /** Nombre de bentos publiés contenant cet item. Toujours >= 2. */
+  /**
+   * Nombre de **personnes distinctes** ayant cet item dans un bento publié.
+   * Toujours >= 2. Comptait des bentos avant le chantier 16, ce qui laissait
+   * une seule personne à plusieurs bentos peupler la liste.
+   */
   picks: number;
 };
 
@@ -100,6 +113,8 @@ export function mapSearchRow(row: SearchRow): { match: SearchMatch; kind: 'pseud
 
   const base = {
     bentoId: row.bento_id,
+    slug: row.slug,
+    isPrimary: row.is_primary,
     pseudo: row.pseudo,
     displayName: row.display_name,
     isFeatured: row.is_featured,

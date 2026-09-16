@@ -238,6 +238,18 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          /**
+           * Adresse publique du bento : `/u/<pseudo>/<slug>`. Chantier 16.
+           *
+           * Absente d'`Insert` et d'`Update` **volontairement** : les droits
+           * colonne n'accordent au client que `insert (user_id)` et
+           * `update (published_at)`. Un secondaire se crée par
+           * `create_bento()`, et le compilateur le rappelle ici plutôt que
+           * de laisser découvrir un 403 à l'exécution.
+           */
+          slug: string;
+          /** Le bento que `/u/<pseudo>` met en avant. Un seul par compte. */
+          is_primary: boolean;
           is_featured: boolean;
           featured_order: number | null;
           published_at: string | null;
@@ -481,10 +493,25 @@ export type Database = {
        * chantier 6 : au 13 septembre 2026, 46 des 72 comptes n'en avaient
        * aucun et menaient tous à « Bento introuvable ».
        */
+      /**
+       * Crée un bento secondaire pour `auth.uid()`, toujours non principal.
+       *
+       * Seule voie d'écriture du `slug` côté client : les droits colonne ne
+       * l'accordent pas. Lève sur un slug mal formé, réservé, déjà pris, ou
+       * au-delà du plafond par compte. Cf. chantier 16.
+       */
+      create_bento: {
+        Args: { p_slug: string };
+        Returns: string;
+      };
       search_bentos: {
         Args: { q: string; lim?: number };
         Returns: Array<{
           bento_id: string;
+          /** Adresse du bento trouvé, chantier 16 : `/u/<pseudo>/<slug>`. */
+          slug: string;
+          /** Vrai pour le bento que `/u/<pseudo>` met en avant. */
+          is_primary: boolean;
           pseudo: string;
           display_name: string | null;
           is_featured: boolean;

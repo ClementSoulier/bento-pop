@@ -50,7 +50,9 @@ function lastBody(): Record<string, unknown> {
 }
 
 const row = (pseudo: string): SearchRow => ({
-  bento_id: `bento-${pseudo}`,
+  slug: 'mon-bento',
+    is_primary: true,
+    bento_id: `bento-${pseudo}`,
   pseudo,
   display_name: null,
   is_featured: false,
