@@ -16,6 +16,10 @@
 > secondaires et bouton signature. Livraison retenue : une nouvelle build 1.2.0
 > avant la mise en revue App Store. Rien n'est publié sans accord.
 >
+> **Livré le 16 septembre 2026** : PR #68 fusionnée après CI verte, build
+> production 1.2.0 lancée sur EAS, iOS build 11 et Android versionCode 13.
+> La mise en revue App Store et la publication restent à décider.
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md), chantier 11.
 
 ---

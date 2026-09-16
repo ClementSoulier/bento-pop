@@ -215,7 +215,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 6 | Onglet « Trouver » : recherche par item | Découverte | M | 2 | ✅ 4 lots livrés (PR #58), recette faite, DoD 12/12, migration appliquée · [spec](./UX-06-TROUVER.md) |
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 livré (PR #63), migration appliquée et vérifiée en production · lot 1 (back-office) livré et recetté (PR #64 et #65) · lot 2 (446 candidats en quatre listes, import depuis l'écran Types) livré (PR #66) · lot 3 recetté : bento principal identique au pixel sur iPhone et Android, recherche élargie vue en production · DoD 7 sur 9, restent à l'équipe après redéploiement du back-office sur Coolify : importer et relire jusqu'à 50 validés par type, fusionner les deux doublons · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
-| 11 | Accessibilité et polish | Qualité | **L** | rien | 🟡 spécification écrite et cinq lots implémentés le 15/09, **rien commité ni publié sans accord** · effort réévalué S → L à la mesure · 432 tests verts, matrice de recette parcourue sur 17 Pro, SE et Pixel 8 · [spec](./UX-11-ACCESSIBILITE-POLISH.md) |
+| 11 | Accessibilité et polish | Qualité | **L** | rien | ✅ 5 lots livrés (PR #68, CI verte, fusionnée le 16/09) · effort réévalué S → L à la mesure · DoD 23/23 au simulateur, 432 tests verts, matrice parcourue sur 17 Pro, SE et Pixel 8 · build production 1.2.0 lancée (iOS 11, Android versionCode 13) · restent cinq points d'appareil réel (§7.3) · [spec](./UX-11-ACCESSIBILITE-POLISH.md) |
 | 16 | Plusieurs bentos par compte | Contenu | L | 5 | ⬜ roadmap produit · planifié avec le 9 |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ planifié avec le 16, qui touche les mêmes écrans |
 | 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ⬜ roadmap produit, recadré le 15/09 |
@@ -649,8 +649,8 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 
 > **À glisser entre deux chantiers**, arbitré le 15 septembre 2026 : effort S, aucune dépendance.
 >
-> **Spécifié et implémenté le 15 septembre 2026**, cinq lots, rien commité ni
-> publié : [`UX-11-ACCESSIBILITE-POLISH.md`](./UX-11-ACCESSIBILITE-POLISH.md).
+> **Livré le 16 septembre 2026**, cinq lots, PR #68 fusionnée, build production
+> 1.2.0 lancée : [`UX-11-ACCESSIBILITE-POLISH.md`](./UX-11-ACCESSIBILITE-POLISH.md).
 > **L'effort passe de S à L** : la mesure a montré que l'inscription se ferme à
 > la plus grande taille de police standard, que le lecteur d'écran lit une case
 > en trois morceaux, et que le bouton signature de l'app avait perdu son ombre,
