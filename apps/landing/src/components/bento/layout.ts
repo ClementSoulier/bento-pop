@@ -1,3 +1,9 @@
+import {
+  BOX_COLUMNS,
+  CATEGORY_ORDER,
+  boxPlacements,
+  boxRowHeights,
+} from '@bento-pop/supabase-mobile/bento';
 import type { CategoryKey } from '@bento-pop/supabase-mobile/types';
 
 /**
@@ -37,6 +43,13 @@ export const FRAME = {
   rivetOffset: 8,
 } as const;
 
+/**
+ * Hauteurs des trois rangées du bento principal, nommées.
+ *
+ * Gardées pour la lisibilité des appels, mais elles ne sont plus une source :
+ * `ROW_HEIGHTS` vient de la table partagée, et un test vérifie que les deux
+ * disent la même chose.
+ */
 export const ROW_HEIGHT = {
   film: 220,
   mid: 134,
@@ -88,35 +101,43 @@ export type TileSize = keyof typeof TILE_TYPO;
  *   série    = 3 col + 2 gaps = 156,5  (= (323 - 10) / 2)
  *   chanson  = 2 col + 1 gap  = 101    (= (323 - 20) / 3)
  */
-export const GRID_COLUMNS = 6;
+export const GRID_COLUMNS = BOX_COLUMNS;
 
 /**
- * Disposition des compartiments, dans l'ordre du DOM.
+ * Disposition des compartiments du bento principal, dans l'ordre du DOM.
  *
- * `span` est le nombre de colonnes occupées, `rotate` la micro-rotation qui
- * donne le côté « collé à la main » de la charte.
+ * **Dérivée de la table partagée** depuis le chantier 13 : rangée, portée,
+ * gabarit et rotation viennent de `boxPlacements(6)`, et seule la
+ * correspondance position → catégorie reste ici, parce qu'elle n'appartient
+ * qu'au bento principal. Une édition n'a pas de catégories, elle a des cases.
+ *
+ * Avant, ces six lignes étaient écrites à la main, en face de six autres
+ * écrites à la main dans `BentoGrid.tsx`. C'est ce doublon que le chantier 13
+ * supprime.
  */
 export const TILE_LAYOUT: readonly {
   readonly category: CategoryKey;
-  readonly row: 1 | 2 | 3;
+  readonly row: number;
   readonly span: number;
   readonly size: TileSize;
   readonly rotate: number;
-}[] = [
-  { category: 'film', row: 1, span: 6, size: 'lg', rotate: -0.5 },
-  { category: 'series', row: 2, span: 3, size: 'md', rotate: 0.4 },
-  { category: 'artist', row: 2, span: 3, size: 'md', rotate: -0.3 },
-  { category: 'track', row: 3, span: 2, size: 'sm', rotate: -0.3 },
-  { category: 'creator', row: 3, span: 2, size: 'sm', rotate: 0.5 },
-  { category: 'place', row: 3, span: 2, size: 'sm', rotate: -0.2 },
-] as const;
+}[] = boxPlacements(6).map((place, i) => ({
+  category: CATEGORY_ORDER[i] as CategoryKey,
+  row: place.row,
+  span: place.span,
+  size: place.size as TileSize,
+  rotate: place.rotate,
+}));
 
-/** Hauteur de chaque rangée, dans l'ordre. */
-export const ROW_HEIGHTS: readonly number[] = [
-  ROW_HEIGHT.film,
-  ROW_HEIGHT.mid,
-  ROW_HEIGHT.small,
-];
+/**
+ * Hauteur de chaque rangée du bento principal, dans l'ordre.
+ *
+ * ⚠️ L'aperçu de lien doit l'importer. Il ne le faisait pas, et posait
+ * `flex: 1` sur ses rangées : elles se partageaient la hauteur à parts
+ * égales, 160 points chacune au lieu de 233 / 142 / 106 à son échelle.
+ * Cf. `og-rows.test.ts`.
+ */
+export const ROW_HEIGHTS: readonly number[] = boxRowHeights(6);
 
 /**
  * Hauteur nominale, recalculée depuis les constantes.
@@ -125,8 +146,8 @@ export const ROW_HEIGHTS: readonly number[] = [
  * ajuster la constante, l'image OG serait rognée.
  */
 export function computeDesignHeight(): number {
-  const rows = ROW_HEIGHT.film + ROW_HEIGHT.mid + ROW_HEIGHT.small;
-  const gaps = FRAME.gap * 2;
+  const rows = ROW_HEIGHTS.reduce((somme, h) => somme + h, 0);
+  const gaps = FRAME.gap * (ROW_HEIGHTS.length - 1);
   const chrome = (FRAME.padding + FRAME.border) * 2;
   return rows + gaps + chrome;
 }

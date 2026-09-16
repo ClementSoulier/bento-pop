@@ -545,24 +545,39 @@ et il la résout vers son type sans modification
 
 ### 5.3 Les dispositions, et ce qu'on demande à la direction artistique
 
-**Demande à Rob, avant le premier lot (D3).** Une planche unique, à l'échelle
-de référence 361 × 512, donnant pour 2, 3, 4 et 5 cases :
+**Validées par Rob le 16 septembre 2026**, sur la planche rendue à la
+géométrie réelle : [Dispositions du
+bento](https://claude.ai/artifact/1Dv8w5pMswsBivrqzxTDCM). Neuf dispositions
+proposées, les recommandées retenues.
 
-- le nombre de rangées et, pour chacune, sa hauteur et son nombre de cases ;
-- la hauteur totale de la boîte quand elle a moins de six cases, si elle
-  change ;
-- les micro-rotations de chaque case, dans l'esprit de celles du bento
-  principal (`BentoGrid.tsx:148-161`).
+| Cases | Rangées | Hauteurs | Rangée de trois ? |
+| --- | --- | --- | --- |
+| 6 | 1 + 2 + 3 | 220 / 134 / 100 | oui, l'existant |
+| 5 | 1 + 2 + 2 | 220 / 134 / 100 | non |
+| 4 | 1 + 2 + 1 | 220 / 134 / 100 | non |
+| 3 | 1 + 2 | 220 / 244 | non |
+| 2 | 1 + 1 | 280 / 184 | non |
 
-**Contrainte à lui transmettre, mesurée** : une case d'une rangée à trois
-n'accepte pas une question de plus de deux mots courts (§4.6). Les intitulés
-longs qui font l'intérêt des éditions supposent des rangées de une ou deux
-cases. Une disposition à six cases reste possible, avec des intitulés courts.
+**Deux règles les tiennent**, et elles se lisent dans les nombres :
 
-**Pourquoi une planche unique et non quatre.** Les cinq rendus recopient
-aujourd'hui les mêmes nombres à la main, et c'est exactement ce qui a produit
-la divergence de §4.5. La planche devient une table de données unique,
-`LAYOUTS[n]`, dans `packages/supabase-mobile`, lue par les cinq.
+- **le compartiment vedette reste** : toute disposition ouvre sur une rangée
+  d'une seule case, parce que c'est ce qui fait lire une boîte bento plutôt
+  qu'une grille ;
+- **une rangée de trois n'apparaît qu'à six**, par la mesure de §4.6 : une
+  case y offre 80 points utiles, et un intitulé tient sur deux lignes sans
+  réduction. « Le film qui t'a fait pleurer » y demanderait trois lignes. Les
+  éditions portent des questions, pas des mots courts.
+
+**De 4 à 6 cases, les hauteurs ne changent pas.** Seule la dernière rangée se
+divise autrement. Les cinq rendus gardent donc exactement les nombres qu'ils
+avaient pour le bento principal, ce qui est la raison de ce découpage et ce
+qui rend la preuve au pixel du lot 2 possible.
+
+**Une table, pas une planche par disposition.** Les cinq rendus recopiaient
+les mêmes nombres à la main, et c'est exactement ce qui a produit la
+divergence de §4.5. `BOX_LAYOUTS` dans `packages/supabase-mobile/src/bento.ts`
+est désormais la seule source, avec `boxPlacements(n)` qui rend pour chaque
+case sa rangée, sa hauteur, son gabarit, sa portée web et sa rotation.
 
 ### 5.4 L'intitulé et le tampon
 
