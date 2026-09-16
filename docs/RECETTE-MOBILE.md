@@ -416,6 +416,45 @@ Vécu : une session de recette entière passée à croire que l'app tapait le
 proxy alors qu'elle écrivait en production, en s'appuyant sur le contrôle du
 bundle, qui est insuffisant.
 
+### Ne jamais réinstaller un `.app` traînant dans le dépôt
+
+Variante du piège précédent, et elle contourne même le contrôle de
+`EXConstants.bundle/app.config`.
+
+Le 16 septembre 2026, `apps/mobile/MonBentoPop.app` a été réinstallé sur le
+simulateur pour repartir d'un état propre. Ce fichier n'était pas un dev
+client : une build EAS de canal `preview`, version 0.0.1, datée du 12 mai 2026.
+Son `Expo.plist` porte `EXUpdatesEnabled = true` et
+`EXUpdatesCheckOnLaunch = ALWAYS`, donc **elle charge une mise à jour OTA et
+ignore Metro en silence**. Aucun message, aucun bandeau : l'app démarre, elle
+est simplement branchée sur la production.
+
+Coût : trois `signInAnonymously` sur le projet de production, donc jusqu'à trois
+lignes `auth.users` à nettoyer, et une mesure d'onboarding faite sur une build
+de mai prise pour le code courant.
+
+Les trois contrôles, dans cet ordre :
+
+```bash
+# 1. Ce .app est-il un dev client, ou une build à canal de mise à jour ?
+plutil -p <chemin>.app/Expo.plist 2>/dev/null
+#    EXUpdatesEnabled = true  →  elle ignorera Metro. Ne pas l'installer.
+
+# 2. Après lancement, sur quoi l'app est-elle réellement branchée ?
+D=$(xcrun simctl get_app_container <UDID> com.bentopop.mobile data)
+python3 -c "import json;print(list(json.load(open('$D/Library/Application Support/com.bentopop.mobile/RCTAsyncLocalStorage_V1/manifest.json')).keys()))"
+#    ['sb-127-auth-token']            → le proxy, tout va bien
+#    ['sb-ggjgktbcqumfxrixcdyx-...']  → LA PRODUCTION, arrêter l'app
+
+# 3. Une mise à jour OTA a-t-elle été téléchargée ?
+ls "$D/Library/Application Support/.expo-internal" | head
+```
+
+La bonne façon de repartir d'un état propre : **reconstruire**, avec
+`EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:8098 npx expo run:ios`, qui installe
+un dev client et l'ouvre avec l'URL `expo-development-client/?url=…`. Les `.app`
+du dépôt ne sont pas des outils de recette.
+
 ### `expo run:ios` ne relance pas Metro
 
 `pkill -f "expo start"` ne suffit pas, le processus s'appelle

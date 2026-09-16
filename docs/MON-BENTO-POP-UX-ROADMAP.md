@@ -216,8 +216,8 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 livré (PR #63), migration appliquée et vérifiée en production · lot 1 (back-office) livré et recetté (PR #64 et #65) · lot 2 (446 candidats en quatre listes, import depuis l'écran Types) livré (PR #66) · lot 3 recetté : bento principal identique au pixel sur iPhone et Android, recherche élargie vue en production · DoD 7 sur 9, restent à l'équipe après redéploiement du back-office sur Coolify : importer et relire jusqu'à 50 validés par type, fusionner les deux doublons · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
 | 11 | Accessibilité et polish | Qualité | **L** | rien | ✅ 5 lots livrés (PR #68, CI verte, fusionnée le 16/09) · effort réévalué S → L à la mesure · DoD 23/23 au simulateur, 432 tests verts, matrice parcourue sur 17 Pro, SE et Pixel 8 · build production 1.2.0 lancée (iOS 11, Android versionCode 13) · restent cinq points d'appareil réel (§7.3) · [spec](./UX-11-ACCESSIBILITE-POLISH.md) |
-| 16 | Plusieurs bentos par compte | Contenu | L | 5 | ⬜ roadmap produit · planifié avec le 9 |
-| 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ planifié avec le 16, qui touche les mêmes écrans |
+| 16 | Plusieurs bentos par compte | Contenu | L | 5 | 🟡 **spécifié le 16/09 avec le 9**, neuf arbitrages rendus, six lots, une seule PR · mesuré : un index unique partiel suffit à faire basculer PostgREST en tableau, donc le code part avant la migration · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
+| 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | 🟡 **spécifié le 16/09 avec le 16**, lot 5 de sa spec · brouillon local jusqu'à la publication, mesuré : 34 comptes sur 61 portent un pseudo et n'ont jamais publié · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ⬜ roadmap produit, recadré le 15/09 |
 | 17 | Notifications push | Rétention | L | build native | ⬜ roadmap produit |
 | 18 | Publication automatique à la validation | Activation | M | 5 | ⬜ roadmap produit |
@@ -710,7 +710,7 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 - Un signalement vise-t-il un bento ou un compte ?
 - Dépublier le bento principal dépublie-t-il le reste ?
 
-**Fait quand** : un compte publie son bento principal et un bento hebdomadaire, chacun à son adresse, et tous les liens déjà partagés affichent toujours le bento principal.
+**Fait quand** : ~~un compte publie son bento principal et un bento hebdomadaire, chacun à son adresse~~. **Corrigé le 16 septembre 2026** : ce critère dépendait du chantier 13, qui dépend lui-même du 16, donc la dépendance était circulaire. Il devient « un compte porte **deux bentos publiés**, chacun à son adresse, le deuxième créé depuis le back-office, et tous les liens déjà partagés montrent toujours le bento principal » (cf. [spec](./UX-16-PLUSIEURS-BENTOS.md) §3.1 et §11, D1).
 
 ---
 
@@ -718,7 +718,7 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 
 **Constat.** Parcours actuel : splash, CGU, pseudo, mécanique, composer. On exige un identifiant unique, avec check réseau, avant que l'utilisateur ait vu la moindre valeur.
 
-Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `mechanics.tsx:116` actif 2) et l'écran pseudo annonce « ÉTAPE 2 / 3 », mais l'écran CGU s'intercale sans être compté. Le parcours réel fait quatre écrans.
+Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `mechanics.tsx:157` actif 2) et l'écran pseudo annonce « ÉTAPE 2 / 3 » (`pseudo.tsx:96`), mais l'écran CGU s'intercale sans être compté. Le parcours réel fait quatre écrans, vérifié au simulateur le 16 septembre 2026 (les numéros de ligne précédents, 103 et 116, dataient d'avant le chantier 11).
 
 **Proposition.** Laisser composer la case film dès l'entrée, demander le pseudo au moment de publier, quand il y a quelque chose à perdre. Le pseudo peut être pré-généré (`generatePseudoSuggestions` existe déjà dans `apps/mobile/src/lib/pseudo.ts`) et modifiable ensuite.
 
