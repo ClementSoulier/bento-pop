@@ -384,11 +384,16 @@ export async function caseKeyForType(
   const { data } = await client
     .from('bento_categories')
     .select('key')
+    // ⚠️ `edition_id is null` : depuis le chantier 13, la table porte aussi
+    // les cases des éditions. Sans ce filtre, la recherche d'un type pourrait
+    // être paramétrée par une case d'édition, dont la clé ne vaut que pour
+    // cette édition-là.
+    .is('edition_id', null)
     .eq('type_id', typeId)
     .order('id')
     .limit(1)
     .maybeSingle();
-  return data?.key ?? null;
+  return (data?.key as CategoryKey | undefined) ?? null;
 }
 
 /** Les items d'un type qui partagent un titre, pour l'encart « Doublons probables ». */

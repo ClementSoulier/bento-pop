@@ -394,7 +394,7 @@ export function bungeeTextWidth(
 }
 
 /** Espace où la ligne peut se couper. Les insécables n'en sont pas. */
-const COUPURE = /[^\S   ]+/;
+const COUPURE = /[^\S\u00a0\u2007\u202f]+/;
 
 export type PromptFit = {
   /** L'intitulé s'affiche entier à l'échelle de référence, sans coupe. */

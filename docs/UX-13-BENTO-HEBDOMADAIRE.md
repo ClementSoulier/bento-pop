@@ -902,10 +902,36 @@ Deux écarts avec la spécification, tous deux corrigés dans ce document :
 rendus la lisent. Le test qui compare les proportions entre rendus. Le bento
 principal doit être inchangé au pixel, prouvé par différence d'image.
 
-### Lot 3 · Le back-office des éditions
+### Lot 3 · Le back-office des éditions · livré
 
-Créer, décrire les cases, prévisualiser au rendu réel, programmer, dépublier.
-La règle d'intitulé, partagée avec l'app.
+La règle d'intitulé dans le module partagé, l'écran Éditions, l'éditeur de
+cases et sa prévisualisation.
+
+**La règle d'intitulé mesure du texte sans canevas.** Un back-office en Node
+n'en a pas, et l'app ne peut pas mesurer avant de dessiner : `bento.ts` porte
+donc les largeurs d'avance de Bungee, extraites du vrai fichier de police.
+`bungee-metrics.test.ts` les redérive du `.ttf` à chaque exécution et recoupe
+quatre mesures faites au canevas dans un navigateur, 0,3 % d'écart.
+
+**Elle avertit au lieu de refuser, et c'est la mesure qui l'a imposé.** La
+première version gardait 7 % de marge pour couvrir le fil sur iPhone SE. Elle
+refusait « Créateur de contenu », affiché dans la rangée à trois du bento
+principal depuis le premier jour. Une règle qui refuse ce qui existe est une
+règle fausse. `promptFit` rend donc `fits`, qui bloque, et `tight`, qui
+avertit au-delà de 90 % d'une ligne.
+
+**Une correction de géométrie** : la largeur utile d'une case vide vaut sa
+largeur moins la marge de 8 et le pointillé de **2**, pas 2,5. Elle passe de
+80 à 81 points pour une rangée à trois.
+
+**Un défaut évité au compilateur** : `caseKeyForType` cherchait la case d'un
+type sans filtrer `edition_id`, et aurait renvoyé une case d'édition dès la
+première créée.
+
+⚠️ **L'écran n'a pas été vu.** Le back-office est derrière une
+authentification, et l'agent ne crée pas de compte ni ne saisit de mot de
+passe. Sa recette visuelle appartient donc à Clément, et elle est le premier
+point de la recette du lot 6.
 
 ### Lot 4 · L'app : découvrir et composer une édition
 
