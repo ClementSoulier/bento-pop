@@ -843,26 +843,118 @@ et l'app : il lit le remplissage SQL des six cases et le compare à
 n'a pas de Postgres et qu'un test qui ne tourne qu'en local ne garde rien. Un
 témoin échoue si l'extraction rend une table vide.
 
-### 7.3 Recette
+### 7.3 Recette, prête à dérouler
 
-Sur simulateur iOS et émulateur Android d'abord, **sur appareil réel ensuite**,
-avec le chantier 29 qui solde la dette au passage.
+**Écrite pour être exécutée sans réfléchir**, dans l'ordre, le 17 septembre
+2026. Chaque étape dit ce qu'on fait et ce qu'on doit voir ; une étape qui ne
+donne pas le résultat annoncé est un défaut, pas une approximation.
 
-- Le bento principal, identique au pixel avant et après, dans les trois
-  rendus. Comparaison A/B par différence d'image, comme au chantier 16.
-- Une édition de 2, 3, 4, 5 et 6 cases, composée de bout en bout.
-- Un intitulé trop long, refusé dans le back-office, avec sa prévisualisation.
-- Une édition programmée, invisible avant l'heure, visible après, **sans
-  relancer l'app** : le rafraîchissement au retour au premier plan doit
-  suffire.
-- Le partage d'un bento d'édition dans deux messageries, et son aperçu de lien.
-- Une édition passée composée après la sortie de deux suivantes.
-- La plus grande taille de police système, sur les dispositions à 2 et 3
-  cases, où les intitulés sont les plus longs.
+Tout se passe contre le **Supabase local**. Aucune build ne pointe sur la
+production, et le contrôle de cible se fait avant chaque installation, sur le
+bundle **et** sur la clé de session dans AsyncStorage, comme l'exige
+`RECETTE-MOBILE.md`.
 
-**Aucune build pointée sur la production.** Le contrôle de cible est fait avant
-chaque installation, sur le bundle **et** sur la clé de session dans
-AsyncStorage, comme l'exige `RECETTE-MOBILE.md`.
+#### A. Monter l'environnement
+
+```bash
+# 1. Supabase local, reconstruit depuis les migrations du dépôt
+cd apps/mobile && npx supabase start && npx supabase db reset
+
+# 2. Les contrôles de base : 20 tenus, 0 manqué
+docker exec -i supabase_db_bento-pop-mobile \
+  psql -U postgres -d postgres -q < scripts/check-editions.sql
+
+# 3. Les droits : 42 contrôles, tous verts
+SUPABASE_URL=http://127.0.0.1:54331 SUPABASE_ANON_KEY=<ANON_KEY locale> \
+  npx tsx scripts/check-privileges.ts
+
+# 4. Les éditions de recette : 2, 3 et 6 cases, plus une programmée
+docker exec -i supabase_db_bento-pop-mobile \
+  psql -U postgres -d postgres -q < scripts/seed-editions-local.sql
+```
+
+Le script de données **refuse de tourner sur la production** : il cherche les
+pseudos de l'équipe et lève s'il en trouve un. Ce garde-fou a été éprouvé en
+faisant passer la base locale pour la production, il refuse bien.
+
+#### B. La build de recette, pointée sur le local
+
+```bash
+# Le Supabase local écoute en 54331 ; l'émulateur Android ne voit pas
+# `127.0.0.1` de la machine hôte.
+adb reverse tcp:54331 tcp:54331
+
+# iOS, simulateur
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54331 \
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY locale> \
+  npx expo run:ios
+
+# Android, émulateur
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54331 \
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY locale> \
+  npx expo run:android
+```
+
+**Avant de lancer l'app, vérifier la cible**, les deux contrôles :
+
+```bash
+# le bundle
+unzip -p ios/build/.../MonBentoPop.app/EXConstants.bundle/app.config 2>/dev/null \
+  | grep -o "127.0.0.1:54331\|ggjgktbcqumfxrixcdyx"
+# la session déjà stockée
+D=$(xcrun simctl get_app_container booted com.bentopop.mobile data)
+cat "$D/Library/Application Support/com.bentopop.mobile/RCTAsyncLocalStorage_V1/manifest.json"
+```
+
+La seule réponse acceptable est `127.0.0.1:54331`. `ggjgktbcqumfxrixcdyx`, c'est
+la production, et on s'arrête là.
+
+#### C. Ce qui doit être vrai, dans l'ordre
+
+| # | Geste | Ce qu'on doit voir |
+| --- | --- | --- |
+| 1 | Ouvrir le composer, compte neuf | Six cases, « 0 / 6 », « Commence par film ». **Aucune pastille d'édition** tant qu'il n'y a pas de profil |
+| 2 | Publier un premier bento | Le parcours du chantier 9, inchangé |
+| 3 | Revenir au composer | Trois pastilles pointillées : « Le duel du samedi », « La semaine du film qui pique », « Le grand inventaire ». **Jamais « Celle qu'on ne doit pas voir »** |
+| 4 | Taper « Le duel du samedi » | La boîte devient **deux bandes**, 280 et 184. Compteur « 0 / 2 ». Intitulés entiers, non coupés |
+| 5 | Taper la case du haut | Modale titrée « Le film qui t'a fait pleurer », champ « Cherche… » **sans article** |
+| 6 | Remplir les deux cases | « 2 / 2 », bouton « Publier mon bento » actif |
+| 7 | Publier | La page publique s'ouvre sur `/u/<pseudo>/rec-deux` |
+| 8 | Regarder la page publique | Deux bandes, même géométrie qu'au composer. Sous le pseudo : « Le duel du samedi, publié le … » |
+| 9 | Onglet « La table » | Le bento d'édition porte une étiquette **jaune** au titre de l'édition |
+| 10 | Partager depuis la page publique | L'image 1080×1920 montre **deux cases**, pas six |
+| 11 | Composer « Le grand inventaire » | Six cases, disposition 1 + 2 + 3, **identique au bento principal** |
+| 12 | Comparer au pixel | Capture du bento principal et capture de `rec-six`, même géométrie de boîte. Différence d'image sur le cadre seul : nulle |
+| 13 | Revenir au bento principal par le sélecteur | Les six cases d'origine, rien de perdu |
+| 14 | Police système au maximum | Dispositions à 2 et 3 cases : les intitulés restent lisibles, la boîte ne déborde pas |
+| 15 | Back-office, écran Éditions | Créer une édition à 6 cases, coller « Le film qui t'a fait pleurer » en case 6 : **refusé**, aperçu cerclé de rouge |
+| 16 | Passer cette édition à 3 cases | Le même intitulé passe : la disposition décide |
+
+#### D. Le contrôle qui ne se voit qu'au bon moment
+
+**Une édition programmée sort sans relancer l'app.** C'est la promesse du
+chantier, et elle ne se vérifie qu'en manipulant l'horloge de la base :
+
+```sql
+-- l'édition à venir sort maintenant
+update public.editions set released_at = now() - interval '1 minute'
+ where slug = 'rec-avenir';
+```
+
+Mettre l'app en arrière-plan, la ramener : la pastille doit apparaître **sans
+redémarrage**, parce que le composer relit les éditions à chaque retour sur
+l'onglet. Elle portera une case unique, hors des dispositions dessinées, et la
+boîte refusera de se dessiner plutôt que d'inventer : c'est le comportement
+voulu, `boxPlacements` rend un tableau vide.
+
+#### E. Ce qui reste à l'appareil réel, et qui part au chantier 29
+
+- la fluidité du fil avec des boîtes de tailles différentes qui se succèdent ;
+- le partage dans deux messageries, et l'aperçu de lien tel qu'elles le
+  rendent ;
+- **« CRÉATEUR DE CONTENU », coupé ou non dans le fil sur iPhone SE.** Le
+  calcul dit qu'il déborde (§4.6), aucun écran ne l'a confirmé ;
+- la recette visuelle du back-office sur un écran étroit.
 
 ---
 
@@ -896,11 +988,22 @@ Deux écarts avec la spécification, tous deux corrigés dans ce document :
 - **la purge de la landing part au lot 5** : l'écrire ici dupliquait la
   logique de coffre et de `net.http_post` existante.
 
-### Lot 2 · La table des dispositions, et les cinq rendus
+### Lot 2 · La table des dispositions, et les cinq rendus · livré
 
-`LAYOUTS` dans `packages/supabase-mobile`, à partir de la planche. Les cinq
-rendus la lisent. Le test qui compare les proportions entre rendus. Le bento
-principal doit être inchangé au pixel, prouvé par différence d'image.
+`BOX_LAYOUTS` dans le module de domaine partagé, à partir de la planche
+validée par Rob. Les cinq rendus prennent une **liste ordonnée de cases** au
+lieu d'un dictionnaire indexé par catégorie : c'était le vrai travail, une
+vingtaine de fichiers, parce qu'une édition peut porter deux cases du même
+type et que `CategoryKey` l'interdisait littéralement.
+
+**Preuve au bit près**, sur un vrai build Next avec le bouchon d'e2e, avant et
+après la conversion : l'aperçu de lien et le balisage de la boîte ont le même
+SHA-256. Pas « visuellement identique », le même fichier.
+
+Deux détails gardés à l'identique et documentés, qui expliquent que la
+comparaison sorte à zéro : une rangée d'une seule case garde un conteneur nu
+sans `flex: 1`, et une case vide applique toujours la moitié de la rotation de
+sa tuile.
 
 ### Lot 3 · Le back-office des éditions · livré
 
@@ -947,21 +1050,52 @@ deux verdicts, selon la seule position.
 rangées 182,8 / 202,8 pour une édition à trois cases, soit exactement 512, 220
 et 244 à l'échelle 300/361.
 
-### Lot 4 · L'app : découvrir et composer une édition
+### Lot 4 · L'app : découvrir et composer une édition · livré
 
-Le sélecteur du composer, la lecture des cases d'édition en base,
-`create_edition_bento`, la publication. La modale de recherche paramétrée par
-case et non par catégorie.
+Une case se désigne par sa **clé** et s'écrit par son **identifiant** : c'est
+tout le lot. `Slots` s'indexe par clé, les écritures prennent
+`bento_categories.id`, le store porte le jeu de cases, et en changer vide les
+cases remplies. `composeCta` compte jusqu'au nombre de cases et nomme la
+première au lieu de dire « ton film » en dur. Le sélecteur liste les éditions
+sorties non composées, un tap crée leur bento.
 
-### Lot 5 · Le public : page, aperçu, fil
+Deux défauts trouvés en chemin, invisibles des tests : « Cherche une la série
+que tu caches… », l'article ne s'accordant qu'à un nom commun ; et un module
+de domaine qui importait le client Supabase, cassant le seul module conçu pour
+rester testable sous node.
 
-La page `/u/<pseudo>/<slug>` d'un bento d'édition, son aperçu, l'étiquette et
-le titre dans « La table », l'image de partage.
+### Lot 5 · Le public : page, aperçu, fil · livré
 
-### Lot 6 · Recette et documents
+Les cinq rendus lisent une édition. **Une seule requête**, parce que les cases
+vides n'ont pas de ligne `bento_items` : les déduire des cases remplies ferait
+rétrécir la boîte d'un bento incomplet au lieu d'y montrer des emplacements.
+La liste complète vient de l'édition, imbriquée.
 
-La recette de §7.3, les pièges ajoutés à `RECETTE-MOBILE.md`, la roadmap, la
-DoD.
+Les intitulés viennent désormais de la base et non de `CATEGORY_META` : seule
+source possible pour une édition, et `bento-cases-vs-app.test.ts` lie les six
+valeurs du bento principal à celles de l'app.
+
+L'étiquette du fil porte le **titre** de l'édition, passe devant le coup de
+cœur et cède devant « invité ». La purge de landing, reportée du lot 1, arrive
+avec ce qui la rend nécessaire : modifier une édition ne touche aucun bento,
+donc rien ne purgeait, et l'ancien titre serait resté servi pour toujours.
+
+### Lot 6 · Recette et documents · préparé, en attente des appareils
+
+Ce qui est écrit et vérifiable sans appareil est fait :
+
+- **la recette de §7.3**, pas à pas, avec ce qu'on doit voir à chaque étape ;
+- **`seed-editions-local.sql`**, quatre éditions de recette, 2, 3 et 6 cases
+  plus une programmée qui doit rester invisible. Idempotent, et il refuse de
+  tourner sur la production. Le refus a été éprouvé en faisant passer la base
+  locale pour la production ;
+- **six pièges de plus** dans `RECETTE-MOBILE.md`, tous rencontrés dans ce
+  chantier ;
+- la DoD de §10, onze points sur quatorze.
+
+Ce qui attend un simulateur et un émulateur : les seize étapes de §7.3 C, plus
+le contrôle d'horloge de §7.3 D. Ce qui attend un appareil réel part au
+chantier 29, §7.3 E.
 
 ---
 
@@ -979,26 +1113,32 @@ DoD.
 
 ## 10. Definition of Done
 
-1. Une édition créée et programmée dans le back-office sort à sa date, sans
-   redéploiement ni nouvelle version.
-2. Ses cases sont invisibles avant sa sortie, vérifié en base et non à l'écran.
-3. Deux cases du même type dans une édition fonctionnent, de la saisie à la
-   page publique.
-4. Les dispositions de 2 à 6 cases sont identiques entre les cinq rendus, à
-   l'échelle près, prouvé par test.
-5. Le bento principal est inchangé au pixel dans les trois rendus visibles.
-6. L'aperçu de lien dessine les bonnes hauteurs de rangée, et un test l'empêche
-   de redivergir.
-7. Un intitulé qui ne tient pas est refusé dans le back-office, avant
-   enregistrement.
-8. Une édition passée reste composable après la sortie de deux suivantes.
-9. Le plafond de bentos permet une édition par semaine pendant au moins trois
-   ans.
-10. La première publication d'un compte neuf fonctionne alors que des éditions
-    existent.
-11. Les 18 contrôles de `check-editions.sql` passent sur Supabase local.
-12. Recette parcourue sur iPhone et Android, appareils réels compris.
-13. Aucun compte créé en production, aucune écriture non autorisée.
+**Onze points sur quatorze au 17 septembre 2026.** Ce qui reste demande soit
+un appareil, soit un déploiement, et aucun des deux ne se simule.
+
+| # | Point | État |
+| --- | --- | --- |
+| 1 | Une édition programmée sort à sa date, sans redéploiement ni nouvelle version | ✅ prouvé en base, contrôles 1 et 2 |
+| 2 | Ses cases sont invisibles avant sa sortie, **en base** et non à l'écran | ✅ contrôles 1a et 1b |
+| 3 | Deux cases du même type dans une édition, de la saisie à la page publique | ✅ contrôle 3b, plus les tests du back-office |
+| 4 | Les dispositions de 2 à 6 cases sont identiques entre les cinq rendus | ✅ 41 tests sur la table, plus le garde-fou de l'aperçu de lien |
+| 5 | Le bento principal est inchangé **au pixel** | ✅ pour le web, au bit près : mêmes SHA-256 avant et après. ⬜ pour le rendu natif, qui demande un appareil |
+| 6 | L'aperçu de lien dessine les bonnes hauteurs, et un test l'empêche de redivergir | ✅ mesuré 233 / 142 / 106 sur un vrai build, quatre tests plus un témoin |
+| 7 | Un intitulé qui ne tient pas est refusé avant enregistrement | ✅ vérifié à l'écran : la même question tient en case 1, coupée en case 6 |
+| 8 | Une édition passée reste composable après deux suivantes | ⬜ recette, étape C-11 |
+| 9 | Le plafond permet une édition par semaine pendant des années | ✅ contrôles 7a à 7c, et le plafond ne compte plus que les bentos libres |
+| 10 | La première publication d'un compte neuf marche alors que des éditions existent | ✅ contrôle 6, avec son témoin sur l'ancienne forme |
+| 11 | Les **20** contrôles de `check-editions.sql` passent sur Supabase local | ✅ base reconstruite de zéro, 20 tenus, 0 manqué |
+| 12 | Recette parcourue sur iPhone et Android, appareils réels compris | ⬜ **prête à dérouler**, §7.3, en attente des appareils |
+| 13 | Aucun compte créé en production, aucune écriture non autorisée | ✅ lectures `GET` seulement, `.app` de production contrôlé et non installé |
+| 14 | Les quatre types dormants ont du catalogue | ⬜ préalable du chantier 15 : 446 candidats dans le dépôt, zéro importé |
+
+**Ce que « au pixel » veut dire ici, et ce qu'il ne veut pas dire.** Le web est
+prouvé au bit : l'aperçu de lien et le balisage de la boîte sont les mêmes
+fichiers avant et après la conversion des cinq rendus. Le rendu natif ne l'est
+pas : la table reproduit hauteurs, rotations, gabarits et largeurs à
+l'identique, et 41 tests le vérifient, mais aucun écran ne l'a confirmé. La
+distinction est maintenue exprès.
 
 ---
 

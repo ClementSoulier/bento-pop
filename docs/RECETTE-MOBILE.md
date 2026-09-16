@@ -940,3 +940,107 @@ Remettre aussi ce que la recette a changé sur les émulateurs : police,
 densité, taille, navigation par gestes, réseau, rotation. Désinstaller l'app
 d'un AVD où elle n'était pas. Et après un compte de recette en production
 (§1), vérifier que profil et compte d'authentification sont supprimés.
+
+### Un garde-fou qui lit la mauvaise variable ne garde rien
+
+Le 16 septembre 2026, la recette du back-office a été montée avec deux
+bouchons portant chacun un contrôle de cible : refuser toute base qui ne soit
+pas `127.0.0.1`. Ils lisaient `NEXT_PUBLIC_MOBILE_SUPABASE_URL`.
+
+Le client réel, lui, lit `MOBILE_SUPABASE_URL` (`lib/supabase/mobile.ts:28`).
+Les deux variables n'ont pas à porter la même valeur, et ce jour-là la seconde
+n'était pas définie du tout : le contrôle voyait une chaîne vide, la jugeait
+non conforme ou conforme selon l'écriture, et **n'avait aucun rapport avec la
+base réellement interrogée**. Il aurait laissé passer la production.
+
+> **Un contrôle de cible lit exactement la variable que le code contrôlé
+> utilise.** Pas une qui lui ressemble, pas une qui la préfixe. Et on l'éprouve
+> en lui présentant une cible interdite, une fois, avant de s'en servir.
+
+Même règle pour les scripts SQL de données de recette :
+`seed-editions-local.sql` refuse une base qui porte un pseudo de l'équipe, et
+ce refus a été vérifié en faisant passer la base locale pour la production.
+
+### Une règle d'affichage qui refuse ce qui existe déjà est fausse
+
+En écrivant la règle qui dit si un intitulé de case tient à l'écran, une marge
+de 7 % a paru prudente : elle couvrait le fil sur iPhone SE, mesuré 6 % plus
+serré que l'échelle de référence.
+
+Elle refusait « Créateur de contenu », affiché dans la rangée à trois du bento
+principal **depuis le premier jour**.
+
+> **Avant d'écrire une règle de validation, la passer sur les données qui
+> existent.** Si elle en refuse une seule, c'est la règle qui est fausse, pas
+> la donnée. Une règle prudente qui interdit le présent n'est pas prudente,
+> elle est inapplicable, et elle finira contournée.
+
+La règle rend donc deux verdicts : `fits`, qui bloque, et `tight`, qui
+avertit. L'avertissement a servi tout de suite : « CRÉATEUR DE CONTENU »
+occupe 96 % de sa ligne, et **au calcul il déborde dans le fil sur iPhone
+SE**. À confirmer sur appareil, chantier 29.
+
+### Mesurer du texte sans canevas, et le prouver deux fois
+
+Un back-office en Node n'a pas de canevas, et l'app ne peut pas mesurer avant
+de dessiner. Les largeurs de Bungee sont donc extraites du vrai fichier de
+police, `Bungee_400Regular.ttf` de `@expo-google-fonts` : tables `head`,
+`hhea`, `hmtx` et `cmap` format 4, une centaine de lignes, aucune dépendance.
+
+Deux précautions rendent la table fiable :
+
+- `bungee-metrics.test.ts` **la redérive du fichier** à chaque exécution, donc
+  elle ne peut pas dormir périmée après une montée de version ;
+- elle a été recoupée avec une mesure au canevas dans un vrai navigateur,
+  police réellement chargée : 199,8 contre 199,3 pour « LE FILM QUI T'A FAIT
+  PLEURER », soit 0,3 % d'écart.
+
+> Deux méthodes indépendantes qui tombent d'accord valent mieux qu'une méthode
+> sûre d'elle.
+
+### Un module « pur » cesse de l'être au premier import distrait
+
+`bento-actions-pure.ts` existe pour une raison écrite dans son en-tête : rester
+chargeable sous `node:test`, sans monter React Native. Le 17 septembre, un
+nouveau module de domaine a importé le client Supabase pour y ajouter deux
+lectures, et `bento-actions-pure.ts` a cessé de se tester, avec une erreur
+d'esbuild sur `react-native/index.js` qui ne nomme aucun des deux fichiers.
+
+> **Quand un module porte « ne rien importer de lourd » dans son en-tête,
+> c'est une contrainte, pas une préférence.** Les lectures en base vont dans un
+> module voisin, et le module pur porte l'avertissement en tête.
+
+### Une jointure qui manque ne casse pas, elle efface
+
+Depuis le chantier 13, une case peut appartenir à une édition, et sa clé n'est
+plus forcément l'une des six. Le code qui traduisait `category_id` vers une
+clé passait par une table compilée dans l'app : pour une case d'édition, elle
+rend `undefined`, et la boucle **saute la case en silence**.
+
+Le résultat n'est pas une erreur, c'est une boîte qui se dessine avec des
+cases vides. Les requêtes publiques joignent donc la case pour obtenir sa clé,
+avec l'ancienne table en repli :
+
+```ts
+const cat = link.bento_categories?.key ?? CATEGORY_BY_ID[link.category_id];
+```
+
+> Chercher les endroits où une donnée inconnue est **sautée** plutôt que
+> signalée : ce sont ceux qui mentiront le plus longtemps.
+
+### Les cases vides n'ont pas de ligne, et c'est la disposition qui en dépend
+
+Une case qu'on n'a pas remplie n'existe pas dans `bento_items`. Déduire la
+liste des cases des lignes présentes marche tant que les bentos sont complets,
+et casse dès qu'ils ne le sont pas : la boîte **rétrécit** au lieu de montrer
+des emplacements vides, parce que c'est le nombre de cases qui décide de la
+disposition.
+
+La liste complète vient donc de l'édition, imbriquée dans la même requête :
+
+```
+editions ( slug, title, bento_categories ( key, prompt, … ) )
+```
+
+> Quand une liste décide d'une mise en page, la lire à sa source, pas la
+> déduire de ce qui la remplit.
