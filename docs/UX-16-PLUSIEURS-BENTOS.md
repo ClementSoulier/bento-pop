@@ -906,18 +906,31 @@ Rejoués depuis les migrations du dépôt, à chaque lot :
 - **la traversée de la migration** : la même lecture rend le même bento avant
   et après, l'objet comme le tableau, mesures 4 et 5 de §4.3 rejouées en test.
 
-### 7.3 Recette, bloquante
+### 7.3 Recette
 
-Sur iPhone 17 Pro, iPhone SE et Pixel 8, contre le Supabase local :
+**Faite sur iPhone 17 Pro**, contre le Supabase local, le 16 septembre 2026 :
 
-1. un compte avec un seul bento ne voit **aucun** changement d'écran ;
-2. `/u/<pseudo>` rend le principal, avant et après migration ;
-3. un deuxième bento créé par le back-office apparaît, est adressable, et se
-   partage à sa propre adresse ;
-4. un lien `/u/<pseudo>/<slug>` ouvre l'app sur le bon bento ;
-5. un signalement depuis un bento secondaire arrive avec son `target_bento_id` ;
-6. le parcours nouveau venu : règles, mécanique, composer, six cases, pseudo,
-   publication.
+| | Résultat |
+|---|---|
+| Un compte à un seul bento ne voit aucun changement | **0 pixel différent**, A/B sur la page publique et sur le composer |
+| `/u/<pseudo>` rend le principal | oui, et son slug inconnu 404 au lieu de retomber dessus |
+| Un deuxième bento apparaît, est adressable | bande de sélection, bascule du titre, du statut et de la grille |
+| Un lien `/u/<pseudo>/<slug>` ouvre le bon bento | oui, par lien profond |
+| Parcours nouveau venu de bout en bout | splash, règles, mécanique, composer, six cases, pseudo, page publique |
+| Zéro écriture serveur avant publication | vérifié : 0 ligne `users` créée pendant la composition |
+
+**Restent à faire, sur appareil ou simulateur :**
+
+1. **iPhone SE et Pixel 8**, la même matrice. Ce sont les écrans courts, donc
+   ceux où la bande de sélection peut faire passer la boîte sous le bouton. Le
+   modèle le couvre par le calcul, pas au pixel ;
+2. un **signalement depuis un bento secondaire**, jusqu'au lien de modération
+   du back-office ;
+3. le **partage** d'un bento secondaire dans deux messageries, pour vérifier
+   que l'aperçu montre bien ce bento-là et non le principal ;
+4. la **reprise d'un brouillon** après redémarrage sur un appareil réel, et
+   son sort quand `signInAnonymously` échoue, qui est le cas du rejet App
+   Store 2bf822e0.
 
 ### 7.4 La règle existait déjà, elle n'a pas été appliquée
 
@@ -1040,10 +1053,22 @@ permanence faute de profil, il n'affiche plus rien ; et l'écran du pseudo
 annonce « DERNIÈRE ÉTAPE » au lieu de « ÉTAPE 2 / 3 », puisqu'il n'est plus
 dans un parcours. Le parcours d'accueil fait trois écrans et les compte trois.
 
-### Lot 6 · Recette et documents
+### Lot 6 · Recette et documents · livré
 
-Matrice sur les trois appareils, `RECETTE-MOBILE.md` enrichi de §7.4, roadmap et
-spécification à jour.
+`RECETTE-MOBILE.md` enrichi de six pièges, tous rencontrés pendant ce chantier,
+roadmap et spécification à jour, DoD renseignée.
+
+**La matrice n'a été parcourue que sur iPhone 17 Pro.** L'iPhone SE et le Pixel
+8 restent à faire : ce qui les rend intéressants, c'est la hauteur, et c'est
+justement là que la bande de sélection peut coûter trop cher. Le modèle de
+géométrie les couvre par le calcul (`compose-layout.test.ts` teste SE, 17 et
+Pro Max, et vérifie que l'écart au bouton ne passe jamais sous son minimum),
+mais le calcul n'est pas le pixel. Ils sont listés en §7.3.
+
+**Un défaut trouvé dans le journal Metro**, que ni le typecheck ni les tests ne
+voient : `Require cycle: draft-mirror -> session -> draft-mirror`, introduit au
+lot 5. Un cycle d'imports peut laisser une valeur non initialisée selon l'ordre
+d'évaluation. Cassé en sortant `hydrateFromDraft` dans son propre module.
 
 ---
 
@@ -1058,7 +1083,7 @@ la branche. Ce qui suit la fusion, dans l'ordre de §6.2 :
 | 2 | Fusion après CI verte, déploiement des deux apps web | moi, sur ton accord |
 | 3 | Build mobile 1.3.0, iOS et Android, profil `production` | moi, sur ton accord |
 | 4 | Mesure de l'adoption de la 1.3.0 | toi, clé privilégiée |
-| 5 | **Migration B** dans l'éditeur SQL | toi |
+| 5 | **Migration B** puis `publish_first_bento`, dans l'éditeur SQL | toi |
 | 6 | Création d'un premier bento secondaire depuis le back-office | toi ou moi |
 | 7 | Recette de bout en bout sur les trois appareils | moi |
 
@@ -1069,20 +1094,21 @@ appliquée que par toi.
 
 ## 10. Definition of Done
 
-| # | Critère |
-|---|---|
-| 1 | Les 27 adresses `/u/<pseudo>` montrent le même bento qu'aujourd'hui, avec le même titre et la même image d'aperçu, avant et après migration |
-| 2 | Un compte porte deux bentos publiés, chacun à son adresse, dans l'app et sur le web |
-| 3 | Zéro `maybeSingle()` sur `bentos` filtré par `user_id` dans le dépôt |
-| 4 | Aucun `.eq('user_id', …)` sur `bentos` sans dire quel bento, garde-fou vert |
-| 5 | Deux bentos d'un compte portant le même item ne déplacent aucun compteur |
-| 6 | L'entonnoir du back-office reste monotone avec des comptes à plusieurs bentos |
-| 7 | 100 % des signalements de bento portent `target_bento_id` |
-| 8 | Un nouveau venu remplit six cases sans pseudo, et accepte les règles avant |
-| 9 | `terms_accepted_at` est posé à l'acceptation, plus au choix du pseudo |
-| 10 | La pagination compte le nombre réel d'écrans |
-| 11 | Les tests existants passent, plus les nouveaux |
-| 12 | `RECETTE-MOBILE.md` porte la règle de vérification de cible de §7.4 |
+| # | Critère | État |
+|---|---|---|
+| 1 | Les adresses `/u/<pseudo>` montrent le même bento qu'aujourd'hui, même titre et même aperçu | ✅ A/B pixel, 0 différence, sur la page publique et le composer. À revérifier sur les 27 après déploiement |
+| 2 | Un compte porte deux bentos publiés, chacun à son adresse, dans l'app et sur le web | ✅ simulateur et 6 tests HTTP de bout en bout |
+| 3 | Zéro `maybeSingle()` sur `bentos` filtré par `user_id` | ✅ garde-fou de source, `DETTE` vide |
+| 4 | Aucune requête ne suppose une ligne unique à partir d'un filtre de compte | ✅ garde-fou, plus un témoin contre une règle trop large |
+| 5 | Deux bentos d'un compte portant le même item ne déplacent aucun compteur | ✅ contrôle 4a, avec témoin 4b qui échoue si le jeu de données ne prouve rien |
+| 6 | L'entonnoir du back-office reste monotone | ✅ 5 tests, dont la part qui ne dépasse plus 100 % |
+| 7 | 100 % des signalements de bento portent `target_bento_id` | 🟡 l'app le passe, le back-office le lit. Mesurable seulement après déploiement |
+| 8 | Un nouveau venu remplit six cases sans pseudo, et accepte les règles avant | ✅ parcours complet au simulateur, 0 ligne serveur avant publication |
+| 9 | `terms_accepted_at` est posé à l'acceptation, plus au choix du pseudo | ✅ mesuré : 11:07:53 contre une publication à 11:16 |
+| 10 | La pagination compte le nombre réel d'écrans | ✅ trois écrans, trois points |
+| 11 | Les tests existants passent, plus les nouveaux | ✅ 467 mobile, 95 admin, 104 landing, 29 de bout en bout, 16 contrôles SQL |
+| 12 | `RECETTE-MOBILE.md` porte les règles apprises ici | ✅ six pièges ajoutés |
+| 13 | Le premier bento d'un compte neuf se crée | ✅ contrôles 6a et 6b, après le correctif urgent |
 
 ---
 

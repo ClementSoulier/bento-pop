@@ -455,6 +455,104 @@ La bonne façon de repartir d'un état propre : **reconstruire**, avec
 un dev client et l'ouvre avec l'URL `expo-development-client/?url=…`. Les `.app`
 du dépôt ne sont pas des outils de recette.
 
+### `idb ui tap` prend deux arguments, pas une chaîne
+
+Coûteux parce qu'invisible. Une cible calculée puis passée telle quelle :
+
+```bash
+F=$(… python3 …)        # "74 287"
+idb ui tap --udid "$SIM" $F 2>/dev/null
+```
+
+échoue avec `argument x: invalid int value: '74 287'`, et le `2>/dev/null`
+avale le message. À l'écran, rien ne bouge : on croit que l'app ignore le tap,
+on cherche un défaut dans le code, on relance, on rebâtit. Vécu le 16 septembre
+2026, cinq cycles perdus sur la recette du chantier 9.
+
+```bash
+read -r X Y <<< "$(… python3 … print(int(cx), int(cy)) …)"
+idb ui tap --udid "$SIM" "$X" "$Y"      # et SANS 2>/dev/null
+```
+
+**Règle : jamais de `2>/dev/null` sur `idb`.** Ses erreurs d'usage sont le seul
+signal qu'un tap n'est pas parti.
+
+### Un bandeau LogBox couvre le bas de l'écran, boutons compris
+
+Déjà noté pour la barre d'onglets ; il vaut pour **tout** ce qui touche le bas.
+Sur iPhone 17 Pro, le bandeau occupe `y=800..822` en points, soit la moitié
+basse d'un `StampButton` posé à `y=770`. Les taps y atterrissent et la page ne
+réagit pas.
+
+```bash
+idb ui describe-all --udid "$SIM" | grep -i "Open debugger"
+#   !, Open debugger to view warnings.   y=800
+idb ui tap --udid "$SIM" 388 811        # la croix, pour le fermer
+```
+
+Le fermer avant toute série de taps, ou viser la moitié **haute** du bouton.
+
+### Le proxy de recette n'autorise qu'une inscription
+
+`recette-write-proxy.mjs` refuse la deuxième par construction, et c'est voulu.
+Mais après une désinstallation de l'app, le lancement suivant redemande une
+inscription : le proxy répond `503 inscription déjà faite, refusée`, l'app
+démarre sans session, et **tout ce qui exige `userId` retourne en silence**.
+Symptôme : des taps sans effet, aucune erreur.
+
+```bash
+grep -i "inscription" "$SC/wproxy.log" | tail -2
+```
+
+Le relancer remet son compteur à zéro. Lui rappeler l'existence du coupe-circuit
+`READONLY_FLAG`, obligatoire au démarrage avec `TARGET`, `KEY` et `DELAY_FILE`.
+
+### Une colonne `not null` sans défaut, contre les droits de colonne
+
+Piège de schéma, pas d'écran, et le plus cher du chantier 16.
+
+Le client n'a le droit d'écrire qu'une colonne de `bentos` :
+`grant insert (user_id) to authenticated`. Ajouter une colonne `not null`
+**sans valeur par défaut** rend donc toute insertion client impossible :
+
+```
+ERROR: null value in column "slug" violates not-null constraint
+```
+
+Aucun test applicatif ne peut le voir : ils bouchonnent PostgREST, donc aucune
+contrainte de base ne s'y exerce. Le seul contrôle qui l'attrape rejoue
+l'insertion réelle avec une session simulée, cf. `scripts/check-bentos-multi.sql`
+cas 6a :
+
+```sql
+begin;
+select set_config('request.jwt.claims',
+  json_build_object('sub','<uuid d''un users sans bento>','role','authenticated')::text, true);
+set local role authenticated;
+insert into public.bentos (user_id) values ('<le même uuid>');
+rollback;
+```
+
+**Règle : toute migration qui ajoute une colonne `not null` à une table écrite
+par le client se teste avec cette insertion-là**, avant d'être appliquée.
+
+### Metro dit les cycles d'imports, et personne ne lit Metro
+
+```
+WARN  Require cycle: src/state/draft-mirror.ts -> src/state/session.ts -> src/state/draft-mirror.ts
+Require cycles are allowed, but can result in uninitialized values.
+```
+
+Ni le typecheck ni les tests ne le voient : le cycle se résout à l'exécution,
+et il ne casse que selon l'ordre d'évaluation des modules. Trouvé le 16
+septembre en cherchant autre chose dans le journal.
+
+```bash
+grep -iE "require cycle|error" "$SC/metro.log" | tail
+```
+
+À passer après chaque lot qui déplace des modules d'état.
+
 ### `expo run:ios` ne relance pas Metro
 
 `pkill -f "expo start"` ne suffit pas, le processus s'appelle

@@ -7,7 +7,7 @@ import { describeApp, recordVisit } from '@/lib/telemetry';
 import type { Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { mapRemoteSlots } from '@/lib/bento-slots';
-import { hydrateFromDraft } from '@/state/draft-mirror';
+import { hydrateFromDraft } from '@/state/draft-hydrate';
 import { withTimeout } from '@/lib/with-timeout';
 
 type Profile = Database['public']['Tables']['users']['Row'];

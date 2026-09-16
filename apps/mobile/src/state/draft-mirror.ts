@@ -1,6 +1,7 @@
 import { useBento } from '@/state/bento';
 import { useDraft } from '@/state/draft';
 import { useSession } from '@/state/session';
+import { hydrateFromDraft } from '@/state/draft-hydrate';
 
 /**
  * Tant qu'il n'y a pas de profil, les cases composées vont aussi sur
@@ -20,23 +21,6 @@ export function startDraftMirror(): () => void {
     if (useSession.getState().profile) return;
     useDraft.getState().setSlot(state.slots);
   });
-}
-
-/**
- * Le chemin inverse, au démarrage : ce que l'appareil a gardé redevient ce que
- * le composer affiche.
- *
- * Appelé quand la lecture du profil a répondu qu'il n'y en a pas. `hydrate`
- * respecte le verrou d'écriture en vol, donc une case en cours de saisie n'est
- * pas écrasée par une relecture du brouillon.
- */
-export function hydrateFromDraft(): void {
-  const brouillon = useDraft.getState();
-  if (Object.keys(brouillon.slots).length > 0) {
-    useBento.getState().hydrate(brouillon.slots);
-    return;
-  }
-  useBento.getState().markHydrated();
 }
 
 /**
