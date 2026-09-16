@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { bentoRoute } from '@/lib/bento-address';
 import {
   Alert,
   Image,
@@ -14,7 +15,7 @@ import { router } from 'expo-router';
 import { useSession } from '@/state/session';
 import { useBento } from '@/state/bento';
 import { popyForPseudo } from '@/lib/popy-avatar';
-import { deleteOwnAccount, ensureBento, unpublishBento } from '@/lib/bento-actions';
+import { deleteOwnAccount, editableBentoId, unpublishBento } from '@/lib/bento-actions';
 import { relativeDate } from '@/lib/relative-date';
 import { exportUserData } from '@/lib/data-export';
 import {
@@ -37,6 +38,10 @@ export default function ProfileTab() {
   const pseudo = profile?.pseudo ?? '';
   const popy = popyForPseudo(pseudo);
   const publishedAt = useBento((s) => s.publishedAt);
+  // Chantier 16 : le bento courant et la liste, pour nommer ce sur quoi les
+  // actions de cet écran agissent.
+  const own = useBento((s) => s.own);
+  const current = useBento((s) => s.current);
   const setPublishedAt = useBento((s) => s.setPublishedAt);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -70,8 +75,12 @@ export default function ProfileTab() {
    * de compte, qui est juste en dessous et qui, elle, ne se rattrape pas.
    */
   const confirmUnpublish = () => {
+    // Nommer le bento retiré dès qu'un compte en a plusieurs : « mon bento »
+    // ne désigne plus rien de précis, et c'est une action qu'on ne veut pas
+    // faire sur le mauvais. Chantier 16.
+    const nom = own.length > 1 && current && !current.isPrimary ? ` « ${current.slug} »` : '';
     Alert.alert(
-      'Retirer mon bento du fil ?',
+      `Retirer mon bento${nom} du fil ?`,
       'Il disparaît de « La table » et de sa page publique. Tes cases restent en place, tu peux le republier quand tu veux.',
       [
         { text: 'Annuler', style: 'cancel' },
@@ -81,7 +90,7 @@ export default function ProfileTab() {
             if (!userId) return;
             setUnpublishing(true);
             try {
-              const bentoId = await ensureBento(userId);
+              const bentoId = await editableBentoId(userId);
               await unpublishBento(bentoId);
               setPublishedAt(null);
             } catch (e) {
@@ -203,7 +212,9 @@ export default function ProfileTab() {
                   juste après un geste volontaire de l'utilisateur. */}
               {publishedAt ? (
               <Pressable
-                onPress={() => router.push(`/u/${pseudo}` as const)}
+                // L'adresse du bento courant, et non celle du compte : le
+                // principal la garde, un secondaire a la sienne. Chantier 16.
+                onPress={() => router.push(bentoRoute(pseudo, current?.slug, current?.isPrimary))}
                 accessibilityRole="button"
                 accessibilityLabel="Voir mon bento public"
                 style={[

@@ -533,7 +533,13 @@ function FoundPage({
       const imageUrls = Object.values(bento.slots)
         .map((s) => s.imageUrl)
         .filter((u): u is string => Boolean(u));
-      const outcome = await shareBentoImage(bento.pseudo, shareImageRef, imageUrls);
+      const outcome = await shareBentoImage(
+        bento.pseudo,
+        shareImageRef,
+        imageUrls,
+        bento.slug,
+        bento.isPrimary,
+      );
       if (outcome === 'copied') {
         Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
       } else if (outcome === 'unsupported') {
@@ -593,7 +599,13 @@ function FoundPage({
           transform: [{ translateX: 3000 }],
         }}
       >
-        <ShareImage ref={shareImageRef} items={bento.slots} pseudo={bento.pseudo} />
+        <ShareImage
+          ref={shareImageRef}
+          items={bento.slots}
+          pseudo={bento.pseudo}
+          slug={bento.slug}
+          isPrimary={bento.isPrimary}
+        />
       </View>
     </View>
   );

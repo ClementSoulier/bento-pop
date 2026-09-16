@@ -28,17 +28,33 @@ export type ShareOutcome = 'shared' | 'copied' | 'cancelled' | 'unsupported';
  * L'unicité étant posée en base sur `lower(pseudo)`, la minuscule désigne
  * sans ambiguïté la même personne.
  */
-export function publicBentoUrl(pseudo: string): string {
-  return `${SITE}/u/${pseudo.trim().toLowerCase()}`;
+export function publicBentoUrl(
+  pseudo: string,
+  slug?: string | null,
+  isPrimary = true,
+): string {
+  const compte = `${SITE}/u/${pseudo.trim().toLowerCase()}`;
+  // Le principal se partage à l'adresse du compte, comme avant le chantier
+  // 16 : c'est elle qui circule déjà, et c'est elle que la landing donne
+  // pour canonique.
+  return isPrimary || !slug ? compte : `${compte}/${slug}`;
 }
 
 /** Idem sans le protocole, pour l'afficher sur l'image de partage. */
-export function publicBentoLabel(pseudo: string): string {
-  return publicBentoUrl(pseudo).replace(/^https:\/\//, '');
+export function publicBentoLabel(
+  pseudo: string,
+  slug?: string | null,
+  isPrimary = true,
+): string {
+  return publicBentoUrl(pseudo, slug, isPrimary).replace(/^https:\/\//, '');
 }
 
-export async function shareBento(pseudo: string): Promise<ShareOutcome> {
-  const url = publicBentoUrl(pseudo);
+export async function shareBento(
+  pseudo: string,
+  slug?: string | null,
+  isPrimary = true,
+): Promise<ShareOutcome> {
+  const url = publicBentoUrl(pseudo, slug, isPrimary);
   const title = `Mon Bento Pop · @${pseudo}`;
   const message = `Mon Bento Pop @${pseudo} 🍱\n${url}`;
 

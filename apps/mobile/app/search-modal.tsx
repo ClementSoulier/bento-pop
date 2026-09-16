@@ -49,7 +49,7 @@ import { useSession } from '@/state/session';
 import { searchItems, submitItem, type ItemSearchResult } from '@/lib/items';
 import {
   clearBentoSlot,
-  ensureBento,
+  editableBentoId,
   setBentoSlot,
 } from '@/lib/bento-actions';
 
@@ -267,7 +267,7 @@ export default function SearchModal() {
     router.back();
 
     try {
-      const bentoId = await ensureBento(userId);
+      const bentoId = await editableBentoId(userId);
       await setBentoSlot(bentoId, category, item.id);
       slotFilledFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
@@ -315,7 +315,7 @@ export default function SearchModal() {
     setSubmitting(true);
     try {
       const itemId = await submitItem(category, title);
-      const bentoId = await ensureBento(userId);
+      const bentoId = await editableBentoId(userId);
       await setBentoSlot(bentoId, category, itemId);
       setSlot(category, {
         title,
@@ -346,7 +346,7 @@ export default function SearchModal() {
     const snapshot = currentSlot;
     setSubmitting(true);
     try {
-      const bentoId = await ensureBento(userId);
+      const bentoId = await editableBentoId(userId);
       await clearBentoSlot(bentoId, category);
       clearSlot(category);
       router.back();

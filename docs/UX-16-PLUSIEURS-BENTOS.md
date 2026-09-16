@@ -985,10 +985,29 @@ back-office ne purge jamais la landing. C'est faux : le déclencheur
 `bentos_revalidate_landing` s'en charge en base, et un déclencheur ne dépend
 pas du rôle qui écrit.
 
-### Lot 4 · Le composer, le profil et le partage à plusieurs bentos
+### Lot 4 · Le composer, le profil et le partage à plusieurs bentos · livré
 
-Sélecteur au-delà d'un bento, store qui porte l'identifiant courant, partage
-adressé par bento, export RGPD au pluriel avec montée de `schema_version`.
+`ensureBento` disparaît au profit de `listOwnBentos` et `ensurePrimaryBento` :
+la lecture est une liste, donc elle survit à un compte qui a plusieurs bentos,
+et l'insertion ne pose toujours que `user_id`. Le store porte le bento courant
+et la liste, `switchBento` change de bento et charge ses cases, le partage et
+le fil sont adressés par bento, et l'export RGPD passe au pluriel avec
+`schema_version: 2`.
+
+Sélecteur dans le composer, **au-dessus de la grille**, compté par
+`composeSelectorHeight` : même dessin et même raison que sur la page publique.
+A/B au simulateur : un compte à un seul bento voit un composer identique au
+pixel, `bbox=None` aux trois seuils.
+
+**La liste `DETTE` du garde-fou est vide**, comme prévu. Sa règle a dû être
+corrigée au passage : la première version refusait aussi de **lister** les
+bentos d'un compte, ce qui la rendait impossible à satisfaire autrement qu'en
+la contournant. La règle juste est « ne jamais supposer une seule ligne à
+partir d'un filtre de compte », et un test témoin échoue si elle redevient
+trop large.
+
+**Le profil ne liste pas les bentos**, c'est le chantier 21 (§3). Il nomme
+seulement celui sur lequel ses actions agissent.
 
 ### Lot 5 · Le pseudo au moment de publier
 

@@ -6,7 +6,7 @@ import { supabase } from '@/supabase/client';
 import { describeApp, recordVisit } from '@/lib/telemetry';
 import type { Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
-import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
+import { mapRemoteSlots } from '@/lib/bento-slots';
 import { withTimeout } from '@/lib/with-timeout';
 
 type Profile = Database['public']['Tables']['users']['Row'];
@@ -145,60 +145,68 @@ export const useSession = create<SessionState>((set, get) => ({
 }));
 
 /**
- * Charge le bento de l'utilisateur depuis Supabase et l'injecte dans le
- * store local. La palette est choisie cycliquement selon l'index (pas de
- * persistance de la palette en BDD pour le MVP — c'est purement décoratif).
+ * Charge les bentos du compte et hydrate le store local.
+ *
+ * La palette est choisie cycliquement selon l'index (pas de persistance de la
+ * palette en BDD pour le MVP, c'est purement décoratif).
+ *
+ * **Une liste et non « le » bento**, chantier 16. La lecture rapporte tous les
+ * bentos du compte, le store les garde, et les cases hydratées sont celles du
+ * bento courant, c'est-à-dire le principal au démarrage.
  */
 async function hydrateBentoFromRemote(userId: string) {
-  const { data } = await readBento(userId);
-  if (!data) {
-    // Pas encore de bento, ou la lecture a échoué : dans les deux cas elle a
-    // répondu, et le composer ne doit pas attendre plus.
+  const rows = await readBentos(userId);
+  if (rows === null) {
+    // La lecture a échoué. Elle a répondu quand même, du point de vue du
+    // composer, qui ne doit pas attendre plus, cf. `markHydrated`.
     useBento.getState().markHydrated();
     return;
   }
-  // Posé avant les cases : c'est ce qui décide du libellé du CTA, et on ne
-  // veut pas d'une frame où le bento est plein mais encore « à publier ».
-  useBento.getState().setPublishedAt(data.published_at);
-  if (!data.bento_items) {
+
+  useBento.getState().setOwn(
+    rows.map((b) => ({
+      id: b.id,
+      slug: b.slug,
+      isPrimary: b.is_primary,
+      publishedAt: b.published_at,
+    })),
+  );
+
+  const courant = useBento.getState().current;
+  const ligne = courant ? rows.find((b) => b.id === courant.id) : undefined;
+  if (!ligne?.bento_items) {
     useBento.getState().markHydrated();
     return;
   }
-  const slots: ReturnType<typeof useBento.getState>['slots'] = {};
-  data.bento_items.forEach((bi) => {
-    const cat = CATEGORY_BY_ID[bi.category_id];
-    const item = bi.items as {
-      id: string;
-      title: string;
-      subtitle: string | null;
-      image_url: string | null;
-      image_credit: string | null;
-      status: string;
-    } | null;
-    if (!cat || !item) return;
-    slots[cat] = {
-      title: item.title,
-      subtitle: item.subtitle ?? undefined,
-      imageUrl: item.image_url ?? undefined,
-      imageCredit: item.image_credit ?? undefined,
-      paletteKey: paletteKeyForItem(item.id),
-      itemId: item.id,
-      pending: item.status === 'pending',
-    };
-  });
+
+  const slots = mapRemoteSlots(ligne.bento_items);
   useBento.getState().hydrate(slots);
 }
 
+type RemoteBento = {
+  id: string;
+  slug: string;
+  is_primary: boolean;
+  published_at: string | null;
+  bento_items:
+    | { category_id: number; items: unknown }[]
+    | null;
+};
+
 /**
  * La lecture elle-même. Son échec ne remonte pas : hors ligne, une exception
- * ici laissait le composer attendre une réponse qui n'arriverait jamais.
+ * ici laissait le composer attendre une réponse qui n'arriverait jamais. Elle
+ * rend `null` pour dire « la lecture a échoué », et une liste vide pour dire
+ * « ce compte n'a pas encore de bento », deux choses différentes.
  */
-async function readBento(userId: string) {
+async function readBentos(userId: string): Promise<RemoteBento[] | null> {
   try {
-    return await supabase
+    const { data, error } = await supabase
       .from('bentos')
       .select(
         `id,
+       slug,
+       is_primary,
        published_at,
        bento_items (
          category_id,
@@ -206,9 +214,15 @@ async function readBento(userId: string) {
        )`,
       )
       .eq('user_id', userId)
-      .maybeSingle();
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.warn('[session] lecture des bentos', error.message);
+      return null;
+    }
+    return (data ?? []) as unknown as RemoteBento[];
   } catch (e) {
-    console.warn('[session] lecture du bento', e);
-    return { data: null };
+    console.warn('[session] lecture des bentos', e);
+    return null;
   }
 }

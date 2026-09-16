@@ -14,16 +14,22 @@ import * as ts from 'typescript';
  * `font-scaling.test.ts` lisent les leurs, et échoue avec le fichier et la
  * ligne.
  *
- * Deux choses lui déplaisent, sur la table `bentos` :
+ * Ce qui lui déplaît, sur la table `bentos` : **supposer une seule ligne à
+ * partir d'un filtre de compte**. Concrètement, une chaîne qui porte
+ * `.eq('user_id', …)` et l'une de ces trois formes :
  *
- * - `.maybeSingle()` ou `.single()`, qui supposent qu'il n'y a qu'une ligne.
- *   Depuis la levée de `bentos_user_id_key`, deux bentos rendent `PGRST116`
- *   et un `{ data }` déstructuré sans `error` avale le refus en silence ;
- * - un filtre `.eq('user_id', …)` qui ne dit pas **quel** bento, c'est-à-dire
- *   sans `is_primary`, `slug` ni `id` dans la même chaîne d'appels.
+ * - `.maybeSingle()` ou `.single()`, qui rendent `PGRST116` dès qu'un compte
+ *   a deux bentos, et qu'un `{ data }` déstructuré sans `error` avale en
+ *   silence ;
+ * - `.limit(1)` sans `order`, qui prend la première ligne venue.
  *
- * Les deux sont permis sur une clé primaire : `.eq('id', …).maybeSingle()`
- * nomme sa ligne.
+ * **Lister les bentos d'un compte reste permis**, et c'est même ce qu'il faut
+ * faire : `listOwnBentos` et l'export RGPD filtrent par `user_id` et rendent
+ * une liste. La première version de ce test les refusait aussi, ce qui
+ * l'aurait rendu impossible à satisfaire autrement qu'en le contournant.
+ *
+ * Tout est permis sur une clé primaire : `.eq('id', …).maybeSingle()` nomme
+ * sa ligne.
  */
 
 const APP_ROOT = join(__dirname, '..', '..');
@@ -31,19 +37,15 @@ const APP_ROOT = join(__dirname, '..', '..');
 /**
  * Ce qui reste à reprendre, avec le lot qui s'en charge.
  *
- * Une liste et non une exception muette : elle rend la dette visible en
- * revue, et surtout elle empêche qu'elle grandisse. Un nouvel appelant
- * fautif échoue immédiatement.
+ * Une liste et non une exception muette : elle rend la dette visible en revue,
+ * et surtout elle empêche qu'elle grandisse. Un nouvel appelant fautif échoue
+ * immédiatement.
  *
- * **Le lot 4 doit vider cette liste.** Le test du bas s'en assure : il échoue
- * le jour où une entrée ne correspond plus à rien, pour qu'on ne la traîne pas
- * après l'avoir corrigée.
+ * **Vidée au lot 4**, comme prévu. Le dernier test s'assure qu'elle le reste
+ * juste : il échoue si une entrée ne correspond plus à rien, pour qu'une
+ * exception ne survive pas à sa correction.
  */
-const DETTE = new Map<string, string>([
-  ['src/lib/bento-actions.ts', 'lot 4 : ensureBento et loadOwnBento'],
-  ['src/state/session.ts', 'lot 4 : readBento, hydratation au démarrage'],
-  ['src/lib/data-export.ts', 'lot 4 : export RGPD, charge utile au singulier'],
-]);
+const DETTE = new Map<string, string>([]);
 
 type Appel = { path: string; line: number; text: string };
 
@@ -108,8 +110,17 @@ function filtreParCompte(text: string): boolean {
   return /\.eq\(\s*'user_id'/.test(text);
 }
 
+/** Suppose-t-elle une seule ligne, d'une façon ou d'une autre ? */
 function supposeUneLigne(text: string): boolean {
-  return /\.(maybeSingle|single)\(\)/.test(text);
+  if (/\.(maybeSingle|single)\(\)/.test(text)) return true;
+  // `limit(1)` sans `order` prend la première ligne que PostgREST rend, ce
+  // qui n'est pas défini. Avec un `order`, c'est un choix assumé.
+  return /\.limit\(\s*1\s*\)/.test(text) && !/\.order\(/.test(text);
+}
+
+/** Une chaîne fautive : elle filtre par compte et suppose une seule ligne. */
+function fautive(c: Appel): boolean {
+  return filtreParCompte(c.text) && supposeUneLigne(c.text) && !nommeSonBento(c.text);
 }
 
 describe('aucune requête ne demande « le » bento d’un compte', () => {
@@ -120,30 +131,26 @@ describe('aucune requête ne demande « le » bento d’un compte', () => {
     assert.ok(chaines.length >= 3, `${chaines.length} chaînes trouvées, c'est trop peu`);
   });
 
-  it('ne filtre jamais par compte sans dire quel bento', () => {
-    const fautes = chaines
-      .filter((c) => filtreParCompte(c.text) && !nommeSonBento(c.text))
-      .filter((c) => !DETTE.has(c.path))
-      .map((c) => `${c.path}:${c.line}`);
-    assert.deepEqual(fautes, [], `filtre par compte sans nommer le bento :\n  ${fautes.join('\n  ')}`);
+  it('ne suppose jamais une seule ligne à partir d’un filtre de compte', () => {
+    const fautes = chaines.filter(fautive).filter((c) => !DETTE.has(c.path));
+    assert.deepEqual(
+      fautes.map((c) => `${c.path}:${c.line}`),
+      [],
+      'un filtre par compte ne peut plus rendre une ligne unique',
+    );
   });
 
-  it('ne suppose jamais une seule ligne sur un filtre de compte', () => {
-    const fautes = chaines
-      .filter((c) => supposeUneLigne(c.text) && filtreParCompte(c.text))
-      .filter((c) => !DETTE.has(c.path))
-      .map((c) => `${c.path}:${c.line}`);
-    assert.deepEqual(fautes, [], `maybeSingle() sur un filtre de compte :\n  ${fautes.join('\n  ')}`);
+  it('laisse lister les bentos d’un compte', () => {
+    // Témoin : si ce test ne trouve rien, c'est que la règle du dessus est
+    // devenue trop large et qu'elle interdit aussi les listes légitimes.
+    const listes = chaines.filter((c) => filtreParCompte(c.text) && !fautive(c));
+    assert.ok(listes.length >= 2, 'les listes par compte doivent rester permises');
   });
 
-  it('garde la dette du lot 4 exacte, ni plus ni moins', () => {
+  it('garde la dette exacte, ni plus ni moins', () => {
     // Une entrée qui ne correspond plus à rien se retire : sinon la liste
     // devient une exception permanente que personne ne relit.
-    const fautifs = new Set(
-      chaines
-        .filter((c) => filtreParCompte(c.text) && !nommeSonBento(c.text))
-        .map((c) => c.path),
-    );
+    const fautifs = new Set(chaines.filter(fautive).map((c) => c.path));
     const perimees = [...DETTE.keys()].filter((path) => !fautifs.has(path));
     assert.deepEqual(perimees, [], `corrigé, à retirer de DETTE :\n  ${perimees.join('\n  ')}`);
   });

@@ -111,7 +111,33 @@ export type ComposeMetrics = {
    * tête de fichier.
    */
   fontScale: number;
+  /**
+   * Nombre de bentos du compte, chantier 16.
+   *
+   * Un seul, ou absent : la bande de sélection ne se dessine pas et la
+   * géométrie ne bouge pas d'un pixel. C'est le cas de tous les comptes au 16
+   * septembre 2026, et c'est la promesse du §5.4 de la spéc.
+   */
+  bentoCount?: number;
 };
+
+/**
+ * Bande de sélection du bento, sous l'en-tête. Nulle tant qu'un compte n'a
+ * qu'un bento.
+ *
+ * Même dessin et même raison que `publicOthersStripHeight` sur la page
+ * publique : au-dessus de la boîte, pas dessous, parce que le budget vertical
+ * du composer est mesuré au point et que tout ce qui suit la grille tombe
+ * derrière le bloc du bouton.
+ */
+export function composeSelectorHeight(fontScale: number, bentoCount = 1): number {
+  if (bentoCount <= 1) return 0;
+  return SELECTOR_CHIP_H * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER) + SELECTOR_GAP;
+}
+
+/** Pastille de sélection et son écart avec la boîte. */
+export const SELECTOR_CHIP_H = 32;
+export const SELECTOR_GAP = 10;
 
 /** En-tête à une taille de police donnée : ce qu'il gagne s'ajoute à `HEADER_H`. */
 export function composeHeaderHeight(fontScale: number): number {
@@ -138,12 +164,14 @@ export function composeAvailableHeight({
   insetTop,
   tabBarHeight,
   fontScale,
+  bentoCount,
 }: ComposeMetrics): number {
   return (
     screenHeight -
     insetTop -
     TOP_BAR_H -
     composeHeaderHeight(fontScale) -
+    composeSelectorHeight(fontScale, bentoCount) -
     tabBarHeight -
     composeCtaBlockHeight(fontScale) -
     CTA_GAP
@@ -172,6 +200,7 @@ export function composeCtaGap(metrics: ComposeMetrics): number {
     metrics.insetTop -
     TOP_BAR_H -
     composeHeaderHeight(metrics.fontScale) -
+    composeSelectorHeight(metrics.fontScale, metrics.bentoCount) -
     gridHeight -
     metrics.tabBarHeight -
     composeCtaBlockHeight(metrics.fontScale);

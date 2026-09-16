@@ -50,6 +50,8 @@ export const PAGE_SIZE = 8;
  */
 const FEED_SELECT = `
   id,
+  slug,
+  is_primary,
   published_at,
   is_featured,
   users:user_id ( pseudo, display_name, kind ),
@@ -61,6 +63,8 @@ const FEED_SELECT = `
 
 export type FeedRow = {
   id: string;
+  slug: string;
+  is_primary: boolean;
   published_at: string | null;
   is_featured: boolean;
   users: { pseudo: string; display_name: string | null; kind: string } | null;
@@ -80,6 +84,14 @@ export type FeedRow = {
 
 export type FeedBento = {
   bentoId: string;
+  /**
+   * Adresse du bento, chantier 16. La carte du fil portait déjà `bentoId` et
+   * le jetait en naviguant : deux bentos d'un même compte donnaient deux
+   * cartes menant à la même page, dont une montrait autre chose que ce
+   * qu'elle affichait.
+   */
+  slug: string;
+  isPrimary: boolean;
   pseudo: string;
   displayName: string | null;
   isFeatured: boolean;
@@ -144,6 +156,8 @@ export function mapFeedRow(row: FeedRow): FeedBento | null {
 
   return {
     bentoId: row.id,
+    slug: row.slug,
+    isPrimary: row.is_primary,
     pseudo: user.pseudo,
     displayName: user.display_name,
     isFeatured: row.is_featured,

@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { bentoRoute } from '@/lib/bento-address';
 import {
   ActivityIndicator,
   FlatList,
@@ -83,7 +84,7 @@ export default function TableTab() {
         width={boxWidth}
         sideInset={sideInset}
         scale={scale}
-        onPress={() => router.push(`/u/${item.pseudo}` as const)}
+        onPress={() => router.push(bentoRoute(item.pseudo, item.slug, item.isPrimary))}
       />
     ),
     [boxWidth, sideInset, scale],

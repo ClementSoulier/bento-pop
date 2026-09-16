@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Image, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { router, useFocusEffect } from 'expo-router';
@@ -7,21 +7,25 @@ import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
 import { BentoBoxSkeleton } from '@/components/bento/BentoBoxSkeleton';
 import { ProgressBar } from '@/components/bento/ProgressBar';
-import { INK_MUTED, StampButton, YellowBg, useToast } from '@/components/primitives';
+import { INK_MUTED, SHADOWS, StampButton, YellowBg, useToast } from '@/components/primitives';
 import { failureFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
-import { ensureBento, publishBento } from '@/lib/bento-actions';
+import { editableBentoId, publishBento, switchBento } from '@/lib/bento-actions';
+import type { OwnBento } from '@/lib/own-bento';
 import {
   CTA_GAP_MIN,
   PSEUDO_LINE_H,
   STATUS_LINE_H,
+  SELECTOR_CHIP_H,
+  SELECTOR_GAP,
   TITLE_LINE_H,
   composeBentoScale,
 } from '@/components/bento/compose-layout';
 import {
   CONTROL_MAX_FONT_MULTIPLIER,
   TITLE_MAX_FONT_MULTIPLIER,
+  fontScaleFor,
   naturalLineHeight,
   scaledType,
 } from '@/components/bento/font-scaling';
@@ -51,6 +55,9 @@ const GRID_SIDE_PADDING = 16;
  */
 export default function ComposeTab() {
   const slots = useBento((s) => s.slots);
+  // Chantier 16 : le bento qu'on édite, et tous ceux du compte.
+  const own = useBento((s) => s.own);
+  const current = useBento((s) => s.current);
   const hydrated = useBento((s) => s.hydrated);
   const lastFilled = useBento((s) => s.lastFilled);
   const publishedAt = useBento((s) => s.publishedAt);
@@ -110,7 +117,7 @@ export default function ComposeTab() {
     if (!userId) return;
     setPublishing(true);
     try {
-      const bentoId = await ensureBento(userId);
+      const bentoId = await editableBentoId(userId);
       await publishBento(bentoId);
       // Sans ça le CTA resterait « Publier mon bento » jusqu'à la prochaine
       // hydratation, et l'app continuerait d'ignorer qu'elle vient de rendre
@@ -142,6 +149,9 @@ export default function ComposeTab() {
   // passerait sous la barre d'onglets dès qu'il apparaît.
   const offlineInset = useOfflineInset();
   const bentoScale = composeBentoScale({
+    // La bande de sélection prend de la place au-dessus de la grille : le
+    // modèle la compte, sans quoi la boîte passerait sous le bouton.
+    bentoCount: own.length,
     screenHeight,
     insetTop: insets.top + offlineInset,
     tabBarHeight,
@@ -220,7 +230,10 @@ export default function ComposeTab() {
                 textTransform: 'uppercase',
               }}
             >
-              Mon bento
+              {/* Le nom du bento courant. « Mon bento » reste le titre du
+                  principal, donc l'écran ne change pas tant qu'un compte n'en
+                  a qu'un. Chantier 16. */}
+              {current && !current.isPrimary ? current.slug : 'Mon bento'}
             </Text>
             {/* Une seule ligne, deux contenus possibles, la même hauteur : le
                 budget vertical de `compose-layout.ts` est mesuré au point et
@@ -287,6 +300,8 @@ export default function ComposeTab() {
             </View>
           </View>
 
+          <BentoSelector own={own} currentId={current?.id ?? null} />
+
           {/* Grille bento — scale dynamique pour fit l'écran. Tant que la première
               lecture du bento n'a pas répondu, un squelette : un bento vide
               annoncerait à tort que rien n'a été composé. */}
@@ -334,5 +349,74 @@ export default function ComposeTab() {
         </ScrollView>
       </SafeAreaView>
     </YellowBg>
+  );
+}
+
+/**
+ * Le sélecteur de bento, sous l'en-tête du composer.
+ *
+ * Ne rend rien tant qu'un compte n'a qu'un bento, ce qui est le cas de tous
+ * au 16 septembre 2026 : le composer ne change donc pas d'aspect, et
+ * `composeSelectorHeight` rend zéro dans ce cas. C'est la promesse du §5.4.
+ *
+ * Au-dessus de la grille et non dessous, pour la raison mesurée sur la page
+ * publique : le budget vertical du composer est calculé au point, et tout ce
+ * qui suit la boîte tombe derrière le bloc du bouton.
+ */
+function BentoSelector({ own, currentId }: { own: OwnBento[]; currentId: string | null }) {
+  const { fontScale } = useWindowDimensions();
+  const scale = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
+  if (own.length <= 1) return null;
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+      style={{ marginBottom: SELECTOR_GAP, flexGrow: 0 }}
+    >
+      {own.map((bento) => {
+        const actif = bento.id === currentId;
+        return (
+          <Pressable
+            key={bento.id}
+            onPress={() => {
+              if (actif) return;
+              void switchBento(bento.id);
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: actif }}
+            accessibilityLabel={
+              bento.isPrimary ? 'Éditer mon bento' : `Éditer le bento ${bento.slug}`
+            }
+            style={[
+              {
+                height: SELECTOR_CHIP_H * scale,
+                justifyContent: 'center',
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 2.5,
+                borderColor: '#0a0a0a',
+                backgroundColor: actif ? '#0a0a0a' : '#fbf3de',
+              },
+              actif ? null : SHADOWS.stamp,
+            ]}
+          >
+            <Text
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={{
+                fontFamily: 'Bungee',
+                fontSize: 11 * scale,
+                lineHeight: 15 * scale,
+                letterSpacing: 0.5,
+                color: actif ? '#fbbf24' : '#0a0a0a',
+              }}
+            >
+              {bento.isPrimary ? 'Mon bento' : bento.slug}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
