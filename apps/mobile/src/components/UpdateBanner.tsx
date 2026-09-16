@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStatus } from '@/state/app-status';
 import { useIsOffline } from '@/lib/use-is-offline';
 import { openStore } from '@/lib/open-store';
+import { CONTROL_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
 
 /**
  * Invitation DOUCE à mettre à jour depuis le store.
@@ -42,7 +43,11 @@ export function UpdateBanner() {
   return (
     <View style={[styles.wrap, { top: insets.top }]}>
       <View style={styles.row}>
-        <Text style={styles.label} numberOfLines={1}>
+        <Text
+          style={styles.label}
+          numberOfLines={1}
+          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+        >
           Nouvelle version dispo
         </Text>
         <Pressable
@@ -52,7 +57,13 @@ export function UpdateBanner() {
           accessibilityLabel="Mettre à jour Mon Bento Pop sur le store"
           style={styles.cta}
         >
-          <Text style={styles.ctaLabel}>Mettre à jour</Text>
+          <Text
+            style={styles.ctaLabel}
+            numberOfLines={1}
+            maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+          >
+            Mettre à jour
+          </Text>
         </Pressable>
         <Pressable
           onPress={() => {
@@ -63,7 +74,10 @@ export function UpdateBanner() {
           accessibilityLabel="Plus tard, masquer cette invitation"
           style={styles.close}
         >
-          <Text style={styles.closeLabel}>✕</Text>
+          {/* Une croix dans une cible de 24 pt, pas un texte à lire. */}
+          <Text allowFontScaling={false} style={styles.closeLabel}>
+            ✕
+          </Text>
         </Pressable>
       </View>
     </View>

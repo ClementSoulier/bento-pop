@@ -1,19 +1,13 @@
 import { Image, Text, View } from 'react-native';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { relativeDate } from '@/lib/relative-date';
+import { CONTENT_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
 
 const AVATAR = 40;
 const RADIUS = 14;
 const SHADOW_OFFSET = 4;
 const ROTATION = -1.5;
 
-/**
- * Plafond de mise à l'échelle typographique. Sans lui, un appareil réglé sur
- * la plus grande taille de police fait déborder l'étiquette de la largeur de
- * la boîte. 1,4 laisse une amplification confortable sans casser la mise en
- * page.
- */
-const MAX_FONT_SCALE = 1.4;
 
 type FeedPostHeaderProps = {
   pseudo: string;
@@ -106,7 +100,7 @@ export function FeedPostHeader({
           <View style={{ flexShrink: 1, minWidth: 0 }}>
             <Text
               numberOfLines={1}
-              maxFontSizeMultiplier={MAX_FONT_SCALE}
+              maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
               style={{
                 fontFamily: 'Extenda',
                 fontSize: 16,
@@ -120,7 +114,7 @@ export function FeedPostHeader({
             {meta ? (
               <Text
                 numberOfLines={1}
-                maxFontSizeMultiplier={MAX_FONT_SCALE}
+                maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
                 style={{ marginTop: 3, fontSize: 11, color: 'rgba(10,10,10,0.6)' }}
               >
                 {meta}

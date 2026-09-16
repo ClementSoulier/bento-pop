@@ -11,6 +11,19 @@ import type { CategoryKey } from '@bento-pop/supabase-mobile/types';
 /** Padding horizontal de la liste (16 × 2) plus les deux gouttières (10 × 2). */
 export const GRID_CHROME = 32 + 20;
 
+/**
+ * Boîte de la loupe des barres de recherche, modale et « Trouver ».
+ *
+ * La boîte qu'occupait l'emoji 🔍 sur iPhone, 23 pt de large sur 19 de haut,
+ * mesurée dans l'arbre d'accessibilité : l'icône qui le remplace (chantier 11)
+ * ne déplace ni le champ ni la barre.
+ */
+export const SEARCH_ICON_BOX = {
+  width: 23,
+  height: 19,
+  justifyContent: 'center',
+} as const;
+
 /** Trois tuiles par rangée, comme le `numColumns={3}` de la liste. */
 export const COLUMNS = 3;
 

@@ -12,14 +12,39 @@
  * était donc comptée deux fois, et l'espace volé l'était précisément là où
  * il fallait qu'il respire.
  *
+ * **La police système entre dans le budget** (chantier 11). Les textes de
+ * l'en-tête et le libellé du bouton grossissaient sans que le modèle le sache :
+ * sur iPhone SE, le bouton passait sous la barre d'onglets dès la taille
+ * xLarge, et à la plus grande taille « MON / BENT / O » occupait la moitié de
+ * l'écran. L'écran pose désormais ces hauteurs de ligne, plafonnées, et le
+ * modèle les compte. Quand la grille atteint son plancher sans que tout tienne,
+ * l'écran défile.
+ *
  * Aucun import de `react-native` : le module reste chargeable sous
  * `node:test`.
  */
 
+import {
+  CONTROL_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
+  fontScaleFor,
+  naturalLineHeight,
+} from './font-scaling';
+
 /** Logo 24 + `paddingTop` 8 + `marginBottom` 14. */
 export const TOP_BAR_H = 46;
-/** Pseudo, titre, barre de progression et leurs marges. */
+
+/**
+ * Pseudo, titre, barre de progression et leurs marges, à la taille par défaut.
+ *
+ * L'écran en rend 74 sur iPhone 17 Pro, mesuré dans l'arbre d'accessibilité :
+ * 13,33 + 26 + 8 + 14,67 + 12. Les 14 pt d'écart sont gardés tels quels. Ils
+ * sont ce qui fait tenir le bouton de l'iPhone SE à la taille par défaut, où la
+ * grille est déjà au plancher, et les retirer agrandirait la boîte de tous les
+ * autres téléphones.
+ */
 export const HEADER_H = 88;
+
 /**
  * Bouton principal, son ombre et son `paddingBottom`.
  *
@@ -33,32 +58,95 @@ export const CTA_BLOCK_H = 66;
 export const NATIVE_GRID_H = 512;
 
 /**
- * Écart minimal entre la boîte et le bouton.
+ * Écart visé entre la boîte et le bouton.
  *
- * Retiré de la hauteur disponible avant de calculer l'échelle, *et* posé en
- * marge sur le bouton : le premier empêche la boîte de réclamer cet espace,
- * le second le garantit si le calcul dérive.
+ * Retiré de la hauteur disponible avant de calculer l'échelle : la boîte ne
+ * réclame pas cet espace.
  */
 export const CTA_GAP = 56;
+
+/**
+ * Écart minimal, posé en marge sur le bouton : c'est lui que l'écran garantit.
+ *
+ * 24 et non `CTA_GAP` (chantier 11). Là où la grille est à son plancher, sur
+ * iPhone SE dès la taille par défaut, les 56 pt garantis poussaient le bouton
+ * jusqu'à la barre d'onglets, bordure contre bordure, puis dessous dès que la
+ * police grossissait : 9 pt à xLarge, 17 à xxLarge. Le ressort au-dessus du
+ * bouton rend l'écart visé partout où il y a la place ; là où il n'y en a pas,
+ * l'écart se réduit jusqu'à 24, ombre de la boîte comprise, avant que l'écran ne
+ * défile.
+ */
+export const CTA_GAP_MIN = 24;
 
 /** Bornes de l'échelle : en dessous de 0,65 les tampons deviennent illisibles. */
 export const MIN_SCALE = 0.65;
 export const MAX_SCALE = 1;
 
+/*
+ * Les lignes de texte de l'en-tête, à la taille par défaut. L'écran les pose en
+ * `lineHeight` et les multiplie par le facteur de leur plafond : c'est ce qui
+ * les rend identiques sur iOS et Android, où Bungee prend sinon une boîte deux
+ * fois plus haute.
+ */
+
+/** Pseudo, Bungee 10. */
+export const PSEUDO_LINE_H = naturalLineHeight('Bungee', 10);
+/** « Mon bento », Extenda 28 sur 26. */
+export const TITLE_LINE_H = 26;
+/**
+ * Ligne d'état : « 0 / 6 » en Bungee 11, ou « En ligne » en Bungee 9 suivi
+ * d'une phrase en Fredoka 12. Les deux font 14,67 sur iOS.
+ */
+export const STATUS_LINE_H = naturalLineHeight('Bungee', 11);
+
+/** Libellé d'un `StampButton`, Bungee 15 : 20 pt, cf. `StampButton`. */
+export const STAMP_LABEL_LINE_H = naturalLineHeight('Bungee', 15);
+
 export type ComposeMetrics = {
   screenHeight: number;
   insetTop: number;
   tabBarHeight: number;
+  /**
+   * `useWindowDimensions().fontScale`. Obligatoire, pour la raison écrite en
+   * tête de fichier.
+   */
+  fontScale: number;
 };
+
+/** En-tête à une taille de police donnée : ce qu'il gagne s'ajoute à `HEADER_H`. */
+export function composeHeaderHeight(fontScale: number): number {
+  const label = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
+  const title = fontScaleFor(fontScale, TITLE_MAX_FONT_MULTIPLIER);
+  return (
+    HEADER_H +
+    (PSEUDO_LINE_H + STATUS_LINE_H) * (label - 1) +
+    TITLE_LINE_H * (title - 1)
+  );
+}
+
+/** Bloc du bouton à une taille de police donnée. */
+export function composeCtaBlockHeight(fontScale: number): number {
+  return (
+    CTA_BLOCK_H +
+    STAMP_LABEL_LINE_H * (fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER) - 1)
+  );
+}
 
 /** Hauteur laissée à la grille une fois tout le reste servi. */
 export function composeAvailableHeight({
   screenHeight,
   insetTop,
   tabBarHeight,
+  fontScale,
 }: ComposeMetrics): number {
   return (
-    screenHeight - insetTop - TOP_BAR_H - HEADER_H - tabBarHeight - CTA_BLOCK_H - CTA_GAP
+    screenHeight -
+    insetTop -
+    TOP_BAR_H -
+    composeHeaderHeight(fontScale) -
+    tabBarHeight -
+    composeCtaBlockHeight(fontScale) -
+    CTA_GAP
   );
 }
 
@@ -72,9 +160,10 @@ export function composeBentoScale(metrics: ComposeMetrics): number {
  * Écart obtenu entre le bas de la boîte et le haut du bouton.
  *
  * Le ressort `flex: 1` absorbe ce que la grille n'a pas pris. Tant que
- * l'échelle n'est pas plafonnée, l'écart vaut exactement `CTA_GAP` ; sur un
- * très grand écran où la grille atteint sa taille native, il le dépasse.
- * Ce qui compte est qu'il ne descende jamais en dessous.
+ * l'échelle n'est ni plafonnée ni au plancher, l'écart vaut exactement
+ * `CTA_GAP` ; sur un très grand écran où la grille atteint sa taille native, il
+ * le dépasse ; là où elle est à son plancher, il se réduit, jamais sous
+ * `CTA_GAP_MIN`.
  */
 export function composeCtaGap(metrics: ComposeMetrics): number {
   const gridHeight = NATIVE_GRID_H * composeBentoScale(metrics);
@@ -82,9 +171,9 @@ export function composeCtaGap(metrics: ComposeMetrics): number {
     metrics.screenHeight -
     metrics.insetTop -
     TOP_BAR_H -
-    HEADER_H -
+    composeHeaderHeight(metrics.fontScale) -
     gridHeight -
     metrics.tabBarHeight -
-    CTA_BLOCK_H;
-  return Math.max(CTA_GAP, rest);
+    composeCtaBlockHeight(metrics.fontScale);
+  return Math.max(CTA_GAP_MIN, rest);
 }

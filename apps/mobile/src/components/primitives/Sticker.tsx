@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
+import { CONTROL_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
 import type { ReactNode } from 'react';
 import type { ViewStyle } from 'react-native';
 
@@ -38,6 +39,10 @@ export function Sticker({
   // `lineHeight` explicite ≈ fontSize × 1.15 : Bungee a un ascender/descender
   // généreux, sans ça les glyphes dépassent le bounding box.
   const lineHeight = Math.round(size * 1.15);
+  // Posée, cette hauteur de ligne ne suivrait pas la police sur Android : le
+  // sticker applique lui-même la police système, plafonnée, cf. `fontScaleFor`.
+  const { fontScale } = useWindowDimensions();
+  const type = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, size, lineHeight);
   return (
     <View
       style={[
@@ -74,11 +79,11 @@ export function Sticker({
           }}
         >
           <Text
+            allowFontScaling={false}
             style={{
               color: textColor,
               fontFamily: 'Bungee',
-              fontSize: size,
-              lineHeight,
+              ...type,
               letterSpacing: 1.5,
               textTransform: 'uppercase',
               includeFontPadding: false,

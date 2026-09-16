@@ -3,6 +3,7 @@ import { Animated, Easing, Image, Text, View } from 'react-native';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import popyContent from '@bento-pop/brand/assets/mascot/popy-content.png';
 import { YellowBg } from '@/components/primitives';
+import { CONTROL_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
 
 /**
  * Splash custom affiché pendant le chargement des fonts + de la session
@@ -64,6 +65,8 @@ export function Splash({ caption }: SplashProps) {
         />
         {caption ? (
           <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
             style={{
               fontFamily: 'Bungee',
               fontSize: 11,
