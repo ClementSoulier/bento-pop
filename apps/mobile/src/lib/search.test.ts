@@ -24,7 +24,9 @@ import {
  */
 
 const pseudoRow = (pseudo: string, over: Partial<SearchRow> = {}): SearchRow => ({
-  bento_id: `bento-${pseudo}`,
+  slug: 'mon-bento',
+    is_primary: true,
+    bento_id: `bento-${pseudo}`,
   pseudo,
   display_name: null,
   is_featured: false,
@@ -37,7 +39,9 @@ const pseudoRow = (pseudo: string, over: Partial<SearchRow> = {}): SearchRow => 
 });
 
 const itemRow = (pseudo: string, title: string, categoryId = 1, over: Partial<SearchRow> = {}): SearchRow => ({
-  bento_id: `bento-${pseudo}`,
+  slug: 'mon-bento',
+    is_primary: true,
+    bento_id: `bento-${pseudo}`,
   pseudo,
   display_name: null,
   is_featured: false,
@@ -190,6 +194,8 @@ describe('mapSearchRow, cas limites', () => {
 describe('matchAccessibilityLabel', () => {
   const base: SearchMatch = {
     bentoId: 'b',
+    slug: 'mon-bento',
+    isPrimary: true,
     pseudo: 'ralgan',
     displayName: null,
     isFeatured: false,

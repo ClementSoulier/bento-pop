@@ -25,6 +25,8 @@ import {
   PUBLIC_CTA,
   PUBLIC_HEADER,
   PUBLIC_TOP_BAR,
+  OTHERS_CHIP_H,
+  OTHERS_GAP,
   TOP_BAR_H,
   publicBentoScale,
   publicCtaLabelHeight,
@@ -33,7 +35,7 @@ import {
 } from '@/components/bento/public-layout';
 import { INK_MUTED, SHADOWS, YellowBg, useToast } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
-import type { PublicBento } from '@/lib/public-bento';
+import type { PublicBento, PublicBentoRef } from '@/lib/public-bento';
 import { publicBentoQueryOptions } from '@/lib/public-bento-query';
 import { publicPageState } from '@/lib/public-page-state';
 import { submitReport } from '@/lib/report';
@@ -46,8 +48,13 @@ import { useSession } from '@/state/session';
 import { publicSupabase } from '@/supabase/client';
 
 /**
- * Bento public à l'adresse `/u/<pseudo>` : cible des liens de partage et,
- * depuis le chantier 6, de toute la recherche. Lecture seule.
+ * Page publique d'un compte, `/u/<pseudo>`, et d'un bento nommé,
+ * `/u/<pseudo>/<slug>` : cible des liens de partage et, depuis le chantier 6,
+ * de toute la recherche. Lecture seule.
+ *
+ * Les deux routes rendent ce même écran. Sans `slug`, le contenu principal est
+ * le bento principal du compte, et ses autres bentos sont listés dessous : les
+ * liens déjà partagés gardent donc leur contenu (chantier 16, D5).
  *
  * Cet écran ne décide rien, il rend. La géométrie vient de
  * `public-layout.ts`, les données de `public-bento.ts` par
@@ -56,15 +63,21 @@ import { publicSupabase } from '@/supabase/client';
  * `docs/UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md`.
  */
 export default function PublicBentoScreen() {
-  const { pseudo: rawPseudo } = useLocalSearchParams<{ pseudo: string }>();
+  const { pseudo: rawPseudo, slug: rawSlug } = useLocalSearchParams<{
+    pseudo: string;
+    slug?: string;
+  }>();
   const pseudo = rawPseudo ?? '';
+  // `undefined` sur `/u/<pseudo>` : c'est la page du compte, pas celle d'un
+  // bento nommé, et les deux ont leur propre entrée de cache.
+  const slug = rawSlug ?? null;
   const ownPseudo = useSession((s) => s.profile?.pseudo);
   const isOffline = useIsOffline();
 
   // Client sans session : la page ne doit jamais attendre l'authentification,
   // cf. `supabase/public-reads.ts`.
   const { data, isError, isFetching, refetch } = useQuery(
-    publicBentoQueryOptions(publicSupabase, pseudo),
+    publicBentoQueryOptions(publicSupabase, pseudo, slug),
   );
   const state = publicPageState({ ownPseudo, data, isError, isFetching, isOffline });
 
@@ -84,22 +97,39 @@ export default function PublicBentoScreen() {
   // Le bandeau hors ligne descend l'écran, et c'est justement dans l'état
   // « Connexion perdue » qu'il apparaît : le modèle le compte.
   const offlineInset = useOfflineInset();
+  // La bande des autres bentos prend de la place au-dessus de la boîte : le
+  // modèle la compte, sans quoi la boîte passerait sous le bloc de boutons.
+  const otherBentos = state.kind === 'found' ? state.others.length : 0;
   const scale = publicBentoScale({
     width,
     height,
     insetTop: insets.top + offlineInset,
     insetBottom: insets.bottom,
     fontScale,
+    otherBentos,
   });
   const sideInset = publicSideInset(width, scale);
 
   return (
     <YellowBg>
       <SafeAreaView style={{ flex: 1 }}>
-        <TopBar optionsFor={state.kind === 'found' && !state.isOwn ? state.bento.pseudo : null} />
+        <TopBar
+          // Le bento et non le seul pseudo : un signalement doit nommer ce
+          // qui a été vu, et un compte peut en avoir plusieurs. Chantier 16.
+          optionsFor={
+            state.kind === 'found' && !state.isOwn
+              ? { pseudo: state.bento.pseudo, bentoId: state.bento.id }
+              : null
+          }
+          // Arrivé par un lien partagé sur `/u/<pseudo>/<slug>`, il n'y a rien
+          // derrière : « Retour » mène alors au compte, pas au composer, sinon
+          // la page d'un bento nommé est un cul-de-sac.
+          fallback={slug && pseudo ? (`/u/${pseudo}` as const) : '/(tabs)/compose'}
+        />
         {state.kind === 'found' ? (
           <FoundPage
             bento={state.bento}
+            others={state.others}
             isOwn={state.isOwn}
             scale={scale}
             sideInset={sideInset}
@@ -111,10 +141,26 @@ export default function PublicBentoScreen() {
         ) : state.kind === 'not-found' ? (
           <StateMessage
             title="Bento introuvable"
-            body={`Aucun bento publié à l'adresse @${pseudo}. Il a peut-être été supprimé, ou le pseudo n'existe pas (encore).`}
+            body={
+              slug
+                ? `Aucun bento publié à l'adresse @${pseudo}/${slug}.`
+                : `Aucun bento publié à l'adresse @${pseudo}. Il a peut-être été supprimé, ou le pseudo n'existe pas (encore).`
+            }
           />
         ) : state.kind === 'nothing-online' ? (
-          state.isOwn ? (
+          // Avec un slug, l'adresse nomme un bento précis : dire « ce compte
+          // n'a rien en ligne » serait faux, il peut en avoir d'autres.
+          slug ? (
+            <StateMessage
+              title="Bento introuvable"
+              body={`@${state.pseudo} n'a pas de bento à l'adresse ${slug}.`}
+              action={{
+                label: 'Voir son bento',
+                accessibilityLabel: `Voir le bento de @${state.pseudo}`,
+                onPress: () => router.replace(`/u/${state.pseudo}` as const),
+              }}
+            />
+          ) : state.isOwn ? (
             <StateMessage
               title="Rien en ligne"
               body="Ton bento n'est pas en ligne."
@@ -147,10 +193,90 @@ export default function PublicBentoScreen() {
 }
 
 /**
+ * Les autres bentos publiés du compte, en bande horizontale sous l'en-tête.
+ *
+ * **Au-dessus de la boîte, et c'est une correction de recette.** Posée sous la
+ * grille, la bande tombait exactement derrière le bloc de boutons : mesurée
+ * invisible au repos sur iPhone 17 Pro, atteignable seulement en défilant, et
+ * rien ne laissait deviner qu'il y avait quelque chose à aller chercher.
+ *
+ * Ne rend rien tant qu'il n'y en a qu'un, ce qui est le cas de tous les
+ * comptes au 16 septembre 2026 : la page ne change donc pas d'un pixel tant
+ * qu'un deuxième bento n'existe pas. C'est la promesse du §5.4 de la spéc, et
+ * `publicOthersStripHeight` rend zéro dans ce cas.
+ *
+ * Le libellé est le slug, tel quel : c'est l'adresse, et c'est tout ce qu'un
+ * bento porte aujourd'hui. Le chantier 13 lui donnera un titre.
+ */
+function OtherBentos({
+  pseudo,
+  others,
+  sideInset,
+}: {
+  pseudo: string;
+  others: PublicBentoRef[];
+  sideInset: number;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const scale = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
+  if (others.length === 0) return null;
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: sideInset, gap: 8 }}
+      style={{ marginBottom: OTHERS_GAP, flexGrow: 0 }}
+    >
+      {others.map((other) => (
+        <Pressable
+          key={other.id}
+          onPress={() => router.push(`/u/${pseudo}/${other.slug}` as const)}
+          accessibilityRole="button"
+          accessibilityLabel={`Voir le bento ${other.slug} de @${pseudo}`}
+          style={[
+            {
+              height: OTHERS_CHIP_H * scale,
+              justifyContent: 'center',
+              backgroundColor: '#fbf3de',
+              borderWidth: 2.5,
+              borderColor: '#0a0a0a',
+              borderRadius: 999,
+              paddingHorizontal: 14,
+            },
+            SHADOWS.stamp,
+          ]}
+        >
+          <Text
+            allowFontScaling={false}
+            numberOfLines={1}
+            style={{
+              fontFamily: 'Bungee',
+              fontSize: 12 * scale,
+              lineHeight: 16 * scale,
+              letterSpacing: 0.5,
+              color: '#0a0a0a',
+            }}
+          >
+            {other.slug}
+          </Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
+/**
  * Barre du haut, à hauteur fixe : « Options » apparaît quand le bento arrive
  * sans que rien ne bouge en dessous.
  */
-function TopBar({ optionsFor }: { optionsFor: string | null }) {
+function TopBar({
+  optionsFor,
+  fallback,
+}: {
+  optionsFor: { pseudo: string; bentoId: string } | null;
+  /** Où mener quand il n'y a pas d'écran précédent, cf. l'appelant. */
+  fallback: '/(tabs)/compose' | `/u/${string}`;
+}) {
   return (
     <View
       style={{
@@ -162,7 +288,7 @@ function TopBar({ optionsFor }: { optionsFor: string | null }) {
       }}
     >
       <Pressable
-        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/compose'))}
+        onPress={() => (router.canGoBack() ? router.back() : router.replace(fallback))}
         accessibilityRole="button"
         accessibilityLabel="Retour"
         // La pastille fait 36 pt : la cible tactile en fait 44.
@@ -186,7 +312,9 @@ function TopBar({ optionsFor }: { optionsFor: string | null }) {
           ‹
         </Text>
       </Pressable>
-      {optionsFor ? <BlockReportMenu pseudo={optionsFor} /> : null}
+      {optionsFor ? (
+        <BlockReportMenu pseudo={optionsFor.pseudo} bentoId={optionsFor.bentoId} />
+      ) : null}
     </View>
   );
 }
@@ -378,6 +506,7 @@ function LoadingPage({
 
 function FoundPage({
   bento,
+  others,
   isOwn,
   scale,
   sideInset,
@@ -385,6 +514,8 @@ function FoundPage({
   fontScale,
 }: {
   bento: PublicBento;
+  /** Les autres bentos publiés du compte. Vide tant qu'il n'en a qu'un. */
+  others: PublicBentoRef[];
   isOwn: boolean;
   scale: number;
   sideInset: number;
@@ -402,7 +533,13 @@ function FoundPage({
       const imageUrls = Object.values(bento.slots)
         .map((s) => s.imageUrl)
         .filter((u): u is string => Boolean(u));
-      const outcome = await shareBentoImage(bento.pseudo, shareImageRef, imageUrls);
+      const outcome = await shareBentoImage(
+        bento.pseudo,
+        shareImageRef,
+        imageUrls,
+        bento.slug,
+        bento.isPrimary,
+      );
       if (outcome === 'copied') {
         Alert.alert('Lien copié', 'Tu peux le coller où tu veux.');
       } else if (outcome === 'unsupported') {
@@ -431,6 +568,7 @@ function FoundPage({
           pastille={bento.isGuest ? 'guest' : bento.isFeatured ? 'featured' : null}
           dateLine={dateLine}
         />
+        <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
         {/* Marge et non largeur, cf. `publicSideInset`. */}
         <View style={{ marginHorizontal: sideInset }}>
           <BentoGrid items={bento.slots} scale={scale} width={boxWidth} readOnly />
@@ -461,7 +599,13 @@ function FoundPage({
           transform: [{ translateX: 3000 }],
         }}
       >
-        <ShareImage ref={shareImageRef} items={bento.slots} pseudo={bento.pseudo} />
+        <ShareImage
+          ref={shareImageRef}
+          items={bento.slots}
+          pseudo={bento.pseudo}
+          slug={bento.slug}
+          isPrimary={bento.isPrimary}
+        />
       </View>
     </View>
   );
@@ -670,7 +814,7 @@ function formatDate(iso: string): string {
  * (ou Débloquer si déjà mute). Le block est purement local au device
  * (AsyncStorage via `useBlocked`), pas notifié au backend.
  */
-function BlockReportMenu({ pseudo }: { pseudo: string }) {
+function BlockReportMenu({ pseudo, bentoId }: { pseudo: string; bentoId: string }) {
   const isBlocked = useBlocked((s) => s.isBlocked(pseudo));
   const block = useBlocked((s) => s.block);
   const unblock = useBlocked((s) => s.unblock);
@@ -692,7 +836,14 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
                 style: 'destructive',
                 onPress: async () => {
                   try {
-                    await submitReport({ targetKind: 'bento', targetPseudo: pseudo });
+                    // `targetBentoId` existait dans la table et dans le type
+                    // depuis le début, et n'était jamais renseigné : la
+                    // modération ne recevait qu'un compte. Chantier 16.
+                    await submitReport({
+                      targetKind: 'bento',
+                      targetPseudo: pseudo,
+                      targetBentoId: bentoId,
+                    });
                     Alert.alert('Merci', 'Notre équipe va examiner ce bento sous 24h.');
                   } catch (e) {
                     console.warn('[page publique] signalement', e);

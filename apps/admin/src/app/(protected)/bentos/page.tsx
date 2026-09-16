@@ -29,7 +29,7 @@ export default async function BentosPage() {
   // 1. Fetch bentos publiés
   const { data: bentos } = await mobile
     .from('bentos')
-    .select('id, user_id, is_featured, featured_order, published_at, updated_at')
+    .select('id, user_id, slug, is_primary, is_featured, featured_order, published_at, updated_at')
     .not('published_at', 'is', null)
     .order('is_featured', { ascending: false })
     .order('featured_order', { ascending: true, nullsFirst: false })
@@ -48,6 +48,8 @@ export default async function BentosPage() {
     return {
       id: b.id,
       userId: b.user_id,
+      slug: b.slug,
+      isPrimary: b.is_primary,
       pseudo: u?.pseudo ?? '(supprimé)',
       displayName: u?.display_name ?? null,
       isFeatured: b.is_featured,

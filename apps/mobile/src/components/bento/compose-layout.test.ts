@@ -16,6 +16,7 @@ import {
   composeCtaBlockHeight,
   composeCtaGap,
   composeHeaderHeight,
+  composeSelectorHeight,
   type ComposeMetrics,
 } from './compose-layout';
 import { CONTROL_MAX_FONT_MULTIPLIER, TITLE_MAX_FONT_MULTIPLIER } from './font-scaling';
@@ -191,6 +192,48 @@ describe('police système', () => {
       for (const fontScale of FONT_SCALES) {
         assert.ok(composeCtaGap({ ...device, fontScale }) >= CTA_GAP_MIN);
       }
+    }
+  });
+});
+
+/**
+ * Chantier 16. La bande de sélection du bento ne coûte rien tant qu'un compte
+ * n'en a qu'un : le composer de tous les comptes existants doit rester
+ * identique au pixel.
+ */
+describe('composeSelectorHeight, la bande de sélection', () => {
+  it('ne prend aucune place tant qu’un compte n’a qu’un bento', () => {
+    for (const fontScale of [0.823, 1, 1.235, 1.786, 3.571]) {
+      assert.equal(composeSelectorHeight(fontScale), 0, `${fontScale}`);
+      assert.equal(composeSelectorHeight(fontScale, 1), 0, `${fontScale}`);
+      assert.equal(composeSelectorHeight(fontScale, 0), 0, `${fontScale}`);
+    }
+  });
+
+  it('ne change pas la géométrie de la grille sans deuxième bento', () => {
+    for (const [name, m] of Object.entries({ SE, IPHONE_17, PRO_MAX })) {
+      assert.equal(composeBentoScale({ ...m, bentoCount: 1 }), composeBentoScale(m), name);
+      assert.equal(composeCtaGap({ ...m, bentoCount: 1 }), composeCtaGap(m), name);
+    }
+  });
+
+  it('prend la même place pour deux bentos que pour dix', () => {
+    // Une bande, quel qu’en soit le nombre : elle défile horizontalement.
+    assert.equal(composeSelectorHeight(1, 2), composeSelectorHeight(1, 10));
+    assert.ok(composeSelectorHeight(1, 2) > 0);
+  });
+
+  it('retire à la grille exactement ce qu’elle prend', () => {
+    for (const [name, m] of Object.entries({ SE, IPHONE_17, PRO_MAX })) {
+      const avec = { ...m, bentoCount: 3 };
+      assert.equal(
+        composeAvailableHeight(m) - composeAvailableHeight(avec),
+        composeSelectorHeight(m.fontScale, 3),
+        name,
+      );
+      // Et le bouton ne se fait pas recouvrir : l'écart reste au moins son
+      // minimum, ce qui est toute la raison de compter la bande ici.
+      assert.ok(composeCtaGap(avec) >= CTA_GAP_MIN, name);
     }
   });
 });

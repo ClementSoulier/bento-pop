@@ -20,24 +20,33 @@ export async function exportUserData(userId: string): Promise<void> {
     .eq('id', userId)
     .maybeSingle();
 
-  // 2. Bento (avec items)
-  const { data: bento } = await supabase
+  // 2. Les bentos, au pluriel depuis le chantier 16.
+  //
+  // `maybeSingle()` rendait UN bento, et c'était juste tant qu'un compte n'en
+  // avait qu'un. À partir du deuxième, cette lecture aurait levé un 406 et
+  // l'export d'une personne aurait échoué, ou pire, aurait omis une partie de
+  // ses données : sur un export au titre de l'article 20 du RGPD, c'est la
+  // seule chose qu'on ne peut pas se permettre.
+  const { data: bentos } = await supabase
     .from('bentos')
     .select(
-      `id, is_featured, featured_order, published_at, created_at, updated_at,
+      `id, slug, is_primary, is_featured, featured_order, published_at, created_at, updated_at,
        bento_items (
          category_id, added_at,
          items ( id, title, subtitle, year, image_url, external_source, external_id, metadata )
        )`,
     )
     .eq('user_id', userId)
-    .maybeSingle();
+    .order('is_primary', { ascending: false })
+    .order('created_at', { ascending: true });
 
   const payload = {
     exported_at: new Date().toISOString(),
-    schema_version: 1,
+    // 2 : la clé `bento`, scalaire, devient `bentos`, un tableau. Un lecteur
+    // de l'ancien format le verrait sinon comme un export sans bento.
+    schema_version: 2,
     profile,
-    bento,
+    bentos: bentos ?? [],
   };
 
   const fileName = `bento-pop-export-${(profile?.pseudo ?? 'user').toLowerCase()}-${

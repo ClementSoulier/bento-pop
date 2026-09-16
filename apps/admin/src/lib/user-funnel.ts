@@ -32,9 +32,18 @@ export type TelemetryRow = {
   app_version: string | null;
 };
 
-/** Le bento d'une personne, s'il existe. */
+/**
+ * Un bento. Une personne peut en avoir plusieurs depuis le chantier 16.
+ *
+ * `id`, `slug` et `is_primary` ne sont pas décoratifs : sans eux, deux bentos
+ * d'un même compte étaient indiscernables une fois chargés, et le `Map` qui
+ * les rangeait par `user_id` en perdait un en silence.
+ */
 export type BentoRow = {
+  id: string;
   user_id: string;
+  slug: string;
+  is_primary: boolean;
   published_at: string | null;
   is_featured: boolean;
   slots: number;
@@ -51,9 +60,14 @@ export type UserListRow = {
   appVersion: string | null;
   /** `true` si un compte d'authentification existe pour cet identifiant. */
   hasAuthAccount: boolean;
+  /** Le bento principal : c'est lui que `/u/<pseudo>` met en avant. */
   slots: number;
   publishedAt: string | null;
   isFeatured: boolean;
+  /** Tous ses bentos, principal compris. Chantier 16. */
+  bentoCount: number;
+  /** Combien sont en ligne. */
+  publishedCount: number;
 };
 
 /**
@@ -98,11 +112,20 @@ export function computeFunnel(
   // éditoriaux sont du contenu, pas de l'usage.
   const memberBentos = bentos.filter((b) => memberIds.has(b.user_id));
 
+  // Des PERSONNES, et non des bentos. La documentation de cet écran lit ces
+  // deux nombres comme « 70 ont choisi un pseudo, 26 ont publié » : compter
+  // les bentos rendrait l'entonnoir non monotone dès qu'un compte en a deux,
+  // et `funnelShare` pourrait dépasser 100 %. Chantier 16.
+  const avecBento = new Set(memberBentos.map((b) => b.user_id));
+  const avecPublie = new Set(
+    memberBentos.filter((b) => b.published_at !== null).map((b) => b.user_id),
+  );
+
   return {
     installs: accounts.length,
     members: members.length,
-    started: memberBentos.length,
-    published: memberBentos.filter((b) => b.published_at !== null).length,
+    started: avecBento.size,
+    published: avecPublie.size,
     editorial: profiles.length - members.length,
     orphans: accounts.filter((a) => !profileIds.has(a.id)).length,
   };
@@ -145,11 +168,23 @@ export function buildUserRows(
   bentos: BentoRow[],
   authIds: ReadonlySet<string>,
 ): UserListRow[] {
-  const bentoByUser = new Map(bentos.map((b) => [b.user_id, b]));
+  // Tous les bentos d'une personne, et non le dernier arrivé. Le `Map` que
+  // ce groupement remplace écrasait silencieusement les précédents : une
+  // personne à deux bentos n'en montrait qu'un, et lequel dépendait de
+  // l'ordre dans lequel PostgREST les avait rendus, sans `order by`.
+  const bentosByUser = new Map<string, BentoRow[]>();
+  for (const b of bentos) {
+    const liste = bentosByUser.get(b.user_id);
+    if (liste) liste.push(b);
+    else bentosByUser.set(b.user_id, [b]);
+  }
 
   return profiles
     .map((p) => {
-      const bento = bentoByUser.get(p.id);
+      const siens = bentosByUser.get(p.id) ?? [];
+      // Le principal porte la cellule ; à défaut, le premier venu, pour ne
+      // pas afficher « aucun » à quelqu'un qui en a.
+      const bento = siens.find((b) => b.is_primary) ?? siens[0];
       return {
         id: p.id,
         pseudo: p.pseudo,
@@ -163,6 +198,8 @@ export function buildUserRows(
         slots: bento?.slots ?? 0,
         publishedAt: bento?.published_at ?? null,
         isFeatured: bento?.is_featured ?? false,
+        bentoCount: siens.length,
+        publishedCount: siens.filter((b) => b.published_at !== null).length,
       };
     })
     .sort((a, b) => {

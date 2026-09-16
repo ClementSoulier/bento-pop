@@ -58,9 +58,14 @@ export async function shareBentoImage(
   pseudo: string,
   ref: RefObject<View | null>,
   imageUrls: string[] = [],
+  // Chantier 16 : le lien partagé nomme le bento. Le principal garde
+  // l'adresse du compte, les autres la leur. Valeurs par défaut pour que les
+  // replis en `shareBento` ci-dessous restent lisibles.
+  slug?: string | null,
+  isPrimary = true,
 ): Promise<ShareOutcome> {
   if (Platform.OS === 'web' || !ref.current) {
-    return shareBento(pseudo);
+    return shareBento(pseudo, slug, isPrimary);
   }
 
   try {
@@ -105,9 +110,9 @@ export async function shareBentoImage(
       return 'shared';
     }
     // Pas de sheet de partage dispo (rare : Android sans aucune app de share)
-    return shareBento(pseudo);
+    return shareBento(pseudo, slug, isPrimary);
   } catch {
     // Capture échouée → fallback URL share, l'utilisateur n'est jamais bloqué
-    return shareBento(pseudo);
+    return shareBento(pseudo, slug, isPrimary);
   }
 }

@@ -18,6 +18,8 @@ const BENTO_SELECT = `
   kind,
   bentos (
     id,
+    slug,
+    is_primary,
     published_at,
     is_featured,
     bento_items (
@@ -30,6 +32,10 @@ const BENTO_SELECT = `
 export type PublicBento = {
   /** Casse canonique, telle que stockée en base. */
   readonly pseudo: string;
+  /** Adresse du bento : `/u/<pseudo>/<slug>`. Chantier 16. */
+  readonly slug: string;
+  /** Celui que `/u/<pseudo>` met en avant. */
+  readonly isPrimary: boolean;
   readonly displayName: string | null;
   readonly publishedAt: string;
   readonly isFeatured: boolean;
@@ -52,12 +58,19 @@ export type PublicBento = {
  * l'écran « pas encore terminé » (décision produit, cf. spec §6.5.1).
  */
 export type BentoLookup =
-  | { readonly kind: 'published'; readonly bento: PublicBento }
+  | {
+      readonly kind: 'published';
+      readonly bento: PublicBento;
+      /** Les autres bentos publiés du compte, sans celui de `bento`. */
+      readonly others: readonly FeaturedBento[];
+    }
   | { readonly kind: 'unpublished'; readonly pseudo: string; readonly displayName: string | null }
   | { readonly kind: 'not-found' };
 
 type RawBentoRow = {
   readonly id: string;
+  readonly slug: string;
+  readonly is_primary: boolean;
   readonly published_at: string | null;
   readonly is_featured: boolean;
   readonly bento_items: readonly RawBentoItemRow[] | null;
@@ -74,7 +87,16 @@ type RawUserRow = {
 
 type FeaturedRow = {
   readonly featured_order: number | null;
+  readonly slug: string;
+  readonly is_primary: boolean;
   readonly users: { readonly pseudo: string } | null;
+};
+
+/** Une adresse de bento indexable : `/u/<pseudo>` ou `/u/<pseudo>/<slug>`. */
+export type FeaturedBento = {
+  readonly pseudo: string;
+  readonly slug: string;
+  readonly isPrimary: boolean;
 };
 
 /**
@@ -86,9 +108,40 @@ type FeaturedRow = {
  * types seront régénérés par `supabase gen types` avec les relations
  * complètes (cf. le script `gen-types` du package).
  */
-function firstBento(raw: RawUserRow['bentos']): RawBentoRow | null {
-  if (!raw) return null;
-  return Array.isArray(raw) ? (raw[0] ?? null) : (raw as RawBentoRow);
+function bentoRows(raw: RawUserRow['bentos']): readonly RawBentoRow[] {
+  if (!raw) return [];
+  return Array.isArray(raw) ? raw : [raw as RawBentoRow];
+}
+
+/**
+ * Le bento que l'adresse demande, choisi **explicitement**.
+ *
+ * Ce qui remplace `firstBento`, et pourquoi. `raw[0]` prenait la première
+ * ligne rendue par une requête sans `order by` : avec deux bentos, la page
+ * pouvait changer de bento d'une régénération ISR à l'autre, et un brouillon
+ * arrivé en tête masquait un bento publié en forçant un `noindex`. Ici :
+ *
+ * - avec un `slug`, c'est celui-là ou rien ;
+ * - sans slug, le principal, et à défaut le plus ancien publié, jamais « le
+ *   premier venu ».
+ *
+ * Les chaînes `published_at` sont ISO : l'ordre lexicographique est l'ordre
+ * chronologique.
+ */
+function pickBento(
+  rows: readonly RawBentoRow[],
+  slug: string | null,
+): { chosen: RawBentoRow | null; others: readonly RawBentoRow[] } {
+  const published = rows
+    .filter((row): row is RawBentoRow & { published_at: string } => Boolean(row.published_at))
+    .slice()
+    .sort((a, b) => a.published_at.localeCompare(b.published_at));
+
+  const chosen = slug
+    ? (published.find((row) => row.slug === slug) ?? null)
+    : (published.find((row) => row.is_primary) ?? published[0] ?? null);
+
+  return { chosen, others: chosen ? published.filter((row) => row.id !== chosen.id) : [] };
 }
 
 /**
@@ -99,6 +152,7 @@ function firstBento(raw: RawUserRow['bentos']): RawBentoRow | null {
  */
 export async function lookupPublicBento(
   requestedPseudo: string,
+  slug: string | null = null,
   client: MobileClient | null = createMobileAnonClient(),
 ): Promise<BentoLookup> {
   // Garde-fou avant toute I/O. Vaut aussi comme protection : `_` est
@@ -134,20 +188,29 @@ export async function lookupPublicBento(
   const user = (data ?? []).find((row) => row.pseudo.toLowerCase() === wanted);
   if (!user) return { kind: 'not-found' };
 
-  const bento = firstBento(user.bentos);
+  const { chosen: bento, others } = pickBento(bentoRows(user.bentos), slug);
 
   // `bentos_read_published` masque déjà les bentos non publiés au client
   // anon : `bento` est donc `null` aussi bien pour « pas de bento du tout »
   // que pour « bento en cours ». Le test `published_at` est une ceinture,
-  // pas la vraie garantie.
+  // pas la vraie garantie. Avec un `slug`, c'est aussi « rien à cette
+  // adresse » : l'appelant en fait un 404 de segment plutôt qu'un repli sur
+  // le principal.
   if (!bento?.published_at) {
     return { kind: 'unpublished', pseudo: user.pseudo, displayName: user.display_name };
   }
 
   return {
     kind: 'published',
+    others: others.map((row) => ({
+      pseudo: user.pseudo,
+      slug: row.slug,
+      isPrimary: row.is_primary,
+    })),
     bento: {
       pseudo: user.pseudo,
+      slug: bento.slug,
+      isPrimary: bento.is_primary,
       displayName: user.display_name,
       publishedAt: bento.published_at,
       isFeatured: bento.is_featured,
@@ -170,12 +233,12 @@ export async function lookupPublicBento(
  */
 export async function listFeaturedPseudos(
   client: MobileClient | null = createMobileAnonClient(),
-): Promise<string[]> {
+): Promise<FeaturedBento[]> {
   if (!client) return [];
 
   const { data, error } = await client
     .from('bentos')
-    .select('featured_order, users:user_id ( pseudo )')
+    .select('featured_order, slug, is_primary, users:user_id ( pseudo )')
     .eq('is_featured', true)
     .not('published_at', 'is', null)
     .order('featured_order', { ascending: true, nullsFirst: false })
@@ -186,7 +249,19 @@ export async function listFeaturedPseudos(
     return [];
   }
 
-  return (data ?? [])
-    .map((row) => row.users?.pseudo)
-    .filter((pseudo): pseudo is string => Boolean(pseudo));
+  // Une entrée par bento, et non par personne : un compte peut en avoir
+  // plusieurs mis en avant, et chacun a sa propre adresse. Dédoublonné sur
+  // l'adresse, parce que deux bentos d'un même compte produisaient sinon deux
+  // fois `/u/<pseudo>` dans le sitemap et dans `generateStaticParams`.
+  const vues = new Set<string>();
+  const sorties: FeaturedBento[] = [];
+  for (const row of data ?? []) {
+    const pseudo = row.users?.pseudo;
+    if (!pseudo) continue;
+    const cle = `${pseudo.toLowerCase()}/${row.is_primary ? '' : row.slug}`;
+    if (vues.has(cle)) continue;
+    vues.add(cle);
+    sorties.push({ pseudo, slug: row.slug, isPrimary: row.is_primary });
+  }
+  return sorties;
 }

@@ -44,12 +44,28 @@ export default async function ReportsPage() {
     (users ?? []).map((u) => [u.pseudo.toLowerCase(), u.id]),
   );
 
+  // 3. L'adresse du bento signalé. `target_bento_id` était stocké depuis le
+  //    début et n'était jamais lu : le lien de modération résolvait le pseudo,
+  //    donc il montrait le bento principal, qui n'est pas forcément celui qui
+  //    a été signalé. Chantier 16.
+  const bentoIds = [...new Set((reports ?? []).map((r) => r.target_bento_id).filter(Boolean))];
+  const { data: bentos } = bentoIds.length
+    ? await mobile.from('bentos').select('id, slug, is_primary').in('id', bentoIds as string[])
+    : { data: [] as { id: string; slug: string; is_primary: boolean }[] };
+  const bentoById = new Map((bentos ?? []).map((b) => [b.id, b]));
+
   const rows: ReportRow[] = (reports ?? []).map((r) => ({
     id: r.id,
     targetKind: r.target_kind,
     targetPseudo: r.target_pseudo,
     targetUserId: userIdByPseudo.get(r.target_pseudo.toLowerCase()) ?? null,
     targetBentoId: r.target_bento_id,
+    // Nuls ensemble : un signalement d'avant le chantier 16, ou visant un
+    // pseudo plutôt qu'un bento, n'a pas d'adresse à montrer.
+    targetBentoSlug: r.target_bento_id ? (bentoById.get(r.target_bento_id)?.slug ?? null) : null,
+    targetBentoIsPrimary: r.target_bento_id
+      ? (bentoById.get(r.target_bento_id)?.is_primary ?? null)
+      : null,
     reason: r.reason,
     status: r.status,
     createdAt: r.created_at,

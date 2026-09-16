@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { CategoryKey } from '@/supabase/types';
+import type { OwnBento } from '@/lib/own-bento';
 import type { TileData } from '@/components/bento/Tile';
 
 /**
@@ -49,6 +50,16 @@ type BentoSlots = Partial<Record<CategoryKey, TileData & { itemId?: string }>>;
 type LastFilled = { cat: CategoryKey; seq: number };
 
 type BentoState = {
+  /**
+   * Le bento en cours d'édition, et tous ceux du compte.
+   *
+   * Chantier 16. Le store ne portait aucun identifiant : « le » bento se
+   * redemandait à chaque écriture, ce qui n'a de sens que tant qu'un compte
+   * n'en a qu'un. `current` est nul tant que la première lecture n'a pas
+   * répondu, et `own` est vide dans le même intervalle.
+   */
+  current: OwnBento | null;
+  own: OwnBento[];
   slots: BentoSlots;
   lastFilled: LastFilled | null;
   /**
@@ -93,6 +104,15 @@ type BentoState = {
    */
   markHydrated: () => void;
   /**
+   * Pose la liste des bentos du compte et celui qu'on édite.
+   *
+   * `currentId` absent : on garde le bento courant s'il est toujours dans la
+   * liste, sinon on retombe sur le principal. C'est ce qui évite qu'un
+   * rafraîchissement ramène l'utilisateur sur son principal alors qu'il
+   * éditait autre chose.
+   */
+  setOwn: (own: OwnBento[], currentId?: string | null) => void;
+  /**
    * Pose l'état de publication. Volontairement séparé d'`hydrate` : une
    * écriture de case en vol ne dit rien de l'état de publication, donc le
    * verrou `pendingWrites` n'a pas à s'y appliquer.
@@ -105,6 +125,8 @@ type BentoState = {
 };
 
 export const useBento = create<BentoState>((set, get) => ({
+  current: null,
+  own: [],
   slots: {},
   lastFilled: null,
   publishedAt: null,
@@ -122,7 +144,15 @@ export const useBento = create<BentoState>((set, get) => ({
       return { slots: next };
     }),
   reset: () =>
-    set({ slots: {}, lastFilled: null, publishedAt: null, pendingWrites: 0, hydrated: false }),
+    set({
+      current: null,
+      own: [],
+      slots: {},
+      lastFilled: null,
+      publishedAt: null,
+      pendingWrites: 0,
+      hydrated: false,
+    }),
   hydrate: (slots) => {
     // `hydrated` est posé même quand l'écriture en vol fait ignorer les cases
     // distantes : la lecture a répondu, c'est tout ce que le composer demande.
@@ -133,6 +163,14 @@ export const useBento = create<BentoState>((set, get) => ({
     set({ slots, hydrated: true });
   },
   markHydrated: () => set({ hydrated: true }),
+  setOwn: (own, currentId) =>
+    set((s) => {
+      const voulu = currentId ?? s.current?.id ?? null;
+      const current = own.find((b) => b.id === voulu) ?? own.find((b) => b.isPrimary) ?? own[0] ?? null;
+      // `publishedAt` suit le bento courant : c'est lui que le composer
+      // regarde pour choisir entre « Publier » et « Voir mon bento public ».
+      return { own, current, publishedAt: current?.publishedAt ?? null };
+    }),
   setPublishedAt: (publishedAt) => set({ publishedAt }),
   beginWrite: () => set((s) => ({ pendingWrites: s.pendingWrites + 1 })),
   // `Math.max` plutôt qu'une simple décrémentation : un `endWrite` en trop,

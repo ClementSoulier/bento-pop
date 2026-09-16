@@ -24,14 +24,29 @@ import {
   generatePseudoSuggestions,
   type PseudoCheck,
 } from '@/lib/pseudo';
-import { supabase } from '@/supabase/client';
 import { userErrorMessage } from '@/lib/user-error-message';
 import { useSession } from '@/state/session';
+import { useDraft } from '@/state/draft';
+import { publishFirstBento } from '@/lib/bento-actions';
 
 /**
- * Onboarding 02 — Choix du pseudo. Input avec preview URL + check de
- * disponibilité débouncé sur Supabase + suggestions populaires. Au valider,
- * crée la ligne `public.users` liée à `auth.uid()`.
+ * Le pseudo, demandé **au moment de publier**.
+ *
+ * Chantier 9. Cet écran était le troisième d'un parcours de quatre : on
+ * exigeait un identifiant unique, avec vérification réseau, avant que
+ * quiconque ait vu une case remplie. Mesuré le 16 septembre 2026 : 34 comptes
+ * sur 61, soit 56 %, portent un pseudo et n'ont jamais rien publié. Chacun a
+ * réservé une adresse que personne d'autre ne peut prendre, pour une boîte
+ * que personne ne verra.
+ *
+ * Il arrive maintenant depuis le composer, six cases remplies, au tap sur
+ * « Publier mon bento ». D'où le changement de nature : ce n'est plus une
+ * étape d'un parcours, c'est la dernière chose à faire avant que le bento
+ * soit public, et le libellé le dit.
+ *
+ * Au valider, `publish_first_bento` crée profil, bento, cases et publication
+ * **en une transaction**. Ni profil orphelin si les cases échouent, ni cases
+ * orphelines si la publication échoue.
  *
  * Cf. design Claude Design — `PseudoScreen` dans `screens.jsx`.
  */
@@ -41,6 +56,9 @@ export default function PseudoOnboarding() {
   const [submitting, setSubmitting] = useState(false);
   const userId = useSession((s) => s.user?.id);
   const refreshProfile = useSession((s) => s.refreshProfile);
+  const draftSlots = useDraft((s) => s.slots);
+  const termsAcceptedAt = useDraft((s) => s.termsAcceptedAt);
+  const clearDraft = useDraft((s) => s.clear);
 
   // Debounce le check (350ms) pour ne pas spammer Supabase à chaque keystroke.
   useEffect(() => {
@@ -62,19 +80,19 @@ export default function PseudoOnboarding() {
   const onValidate = async () => {
     if (check.status !== 'available' || !userId) return;
     setSubmitting(true);
-    // `terms_accepted_at` est posé en même temps que l'INSERT — l'utilisateur
-    // ne peut atteindre cet écran qu'après avoir validé l'écran /onboarding/terms.
-    const { error } = await supabase
-      .from('users')
-      .insert({ id: userId, pseudo, terms_accepted_at: new Date().toISOString() });
-    setSubmitting(false);
-    if (error) {
-      console.warn('[accueil] création du profil', error);
-      Alert.alert('Oups', userErrorMessage('create-profile', error));
-      return;
+    try {
+      await publishFirstBento(pseudo, termsAcceptedAt, draftSlots);
+      // Le brouillon a trouvé sa place en base : le garder ferait ressurgir
+      // d'anciennes cases au prochain démarrage.
+      clearDraft();
+      await refreshProfile();
+      router.replace(`/u/${pseudo}` as const);
+    } catch (e) {
+      console.warn('[publication] premier bento', e);
+      Alert.alert('Oups', userErrorMessage('create-profile', e));
+    } finally {
+      setSubmitting(false);
     }
-    await refreshProfile();
-    router.push('/onboarding/mechanics');
   };
 
   return (
@@ -92,8 +110,12 @@ export default function PseudoOnboarding() {
             showsVerticalScrollIndicator={false}
             alwaysBounceVertical={false}
           >
+            {/* Plus de numéro d'étape : cet écran n'est plus dans un
+                parcours, il est la dernière chose avant que le bento soit
+                public. Le parcours d'accueil, lui, fait trois écrans et les
+                compte trois. */}
             <PageTitle
-              kicker="ÉTAPE 2 / 3"
+              kicker="DERNIÈRE ÉTAPE"
               title="Choisis ton pseudo."
               sub="C'est l'adresse de ton bento. 3 à 20 caractères, lettres, chiffres, underscores."
             />
@@ -245,7 +267,7 @@ export default function PseudoOnboarding() {
               disabled={check.status !== 'available' || submitting}
               onPress={onValidate}
             >
-              {submitting ? 'Création…' : 'Valider mon pseudo'}
+              {submitting ? 'Publication…' : 'Publier mon bento'}
             </StampButton>
           </View>
         </View>

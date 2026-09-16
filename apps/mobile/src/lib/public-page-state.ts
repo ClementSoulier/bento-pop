@@ -1,4 +1,4 @@
-import type { PublicBento, PublicBentoResult } from './public-bento';
+import type { PublicBento, PublicBentoRef, PublicBentoResult } from './public-bento';
 
 /**
  * Ce que montre la page bento publique, décidé en un seul endroit.
@@ -9,9 +9,9 @@ import type { PublicBento, PublicBentoResult } from './public-bento';
  */
 export type PublicPageState =
   | { kind: 'loading' }
-  | { kind: 'found'; bento: PublicBento; isOwn: boolean }
+  | { kind: 'found'; bento: PublicBento; isOwn: boolean; others: PublicBentoRef[] }
   | { kind: 'not-found' }
-  | { kind: 'nothing-online'; pseudo: string; isOwn: boolean }
+  | { kind: 'nothing-online'; pseudo: string; isOwn: boolean; others: PublicBentoRef[] }
   | { kind: 'unreachable' };
 
 export type PublicPageInput = {
@@ -42,8 +42,8 @@ export function publicPageState(input: PublicPageInput): PublicPageState {
   if (data !== undefined) {
     const isOwn = samePseudo(input.ownPseudo, data.pseudo);
     return data.bento
-      ? { kind: 'found', bento: data.bento, isOwn }
-      : { kind: 'nothing-online', pseudo: data.pseudo, isOwn };
+      ? { kind: 'found', bento: data.bento, isOwn, others: data.others }
+      : { kind: 'nothing-online', pseudo: data.pseudo, isOwn, others: data.others };
   }
   if (input.isOffline) return { kind: 'unreachable' };
   if (input.isFetching) return { kind: 'loading' };

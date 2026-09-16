@@ -33,6 +33,8 @@ function reset() {
 
 const rowAt = (id: string, publishedAt: string, pseudo = 'someone'): FeedRow => ({
   id,
+  slug: 'mon-bento',
+  is_primary: true,
   published_at: publishedAt,
   is_featured: false,
   users: { pseudo, display_name: null, kind: 'member' },

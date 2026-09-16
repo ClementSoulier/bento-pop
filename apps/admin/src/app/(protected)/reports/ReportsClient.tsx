@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { publicBentoUrl } from '@/lib/bento-url';
 import { banUser, dismissReport } from './actions';
 
 export type ReportRow = {
@@ -9,6 +10,9 @@ export type ReportRow = {
   targetPseudo: string;
   targetUserId: string | null;
   targetBentoId: string | null;
+  /** Adresse du bento signalé, résolue depuis `targetBentoId`. Chantier 16. */
+  targetBentoSlug: string | null;
+  targetBentoIsPrimary: boolean | null;
   reason: string | null;
   status: 'pending' | 'reviewed' | 'dismissed';
   createdAt: string;
@@ -96,7 +100,15 @@ function PendingRow({
       setError(`Pseudo « ${report.targetPseudo} » introuvable (déjà supprimé ?). Marque comme rejeté à la place.`);
       return;
     }
-    if (!confirm(`Bannir définitivement @${report.targetPseudo} ? Cette action efface son bento.`)) {
+    // « son bento » au singulier sous-déclarait ce que la cascade détruit :
+    // le bannissement supprime le compte, donc TOUS ses bentos, et non le
+    // seul qui a été signalé. Une confirmation d'action irréversible doit
+    // dire ce qu'elle fait. Chantier 16.
+    if (
+      !confirm(
+        `Bannir définitivement @${report.targetPseudo} ? Cette action supprime son compte et TOUS ses bentos, pas seulement celui qui est signalé.`,
+      )
+    ) {
       return;
     }
     startTransition(async () => {
@@ -128,13 +140,25 @@ function PendingRow({
             minute: '2-digit',
           })}
           {' · '}
+          {/* Le bento signalé, et non le principal du compte : les deux
+              coïncidaient tant qu'un compte n'en avait qu'un. Un signalement
+              sans identifiant de bento, d'avant le chantier 16, mène toujours
+              au compte, et le dit. */}
           <a
-            href={`https://bento-pop.com/u/${report.targetPseudo}`}
+            href={publicBentoUrl(
+              report.targetPseudo,
+              report.targetBentoSlug,
+              report.targetBentoIsPrimary ?? true,
+            )}
             target="_blank"
             rel="noopener noreferrer"
             className="underline"
           >
-            Voir le bento ↗
+            {report.targetBentoSlug && report.targetBentoIsPrimary === false
+              ? `Voir ${report.targetBentoSlug} ↗`
+              : report.targetBentoId
+                ? 'Voir le bento ↗'
+                : 'Voir le compte ↗'}
           </a>
         </div>
       </div>

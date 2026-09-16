@@ -8,6 +8,13 @@ import { BentoGrid, type BentoItems } from './BentoGrid';
 type ShareImageProps = {
   items: BentoItems;
   pseudo: string;
+  /**
+   * L'adresse imprimée en pied de carte. Chantier 16 : elle nommait le
+   * compte, ce qui menait au bon endroit tant qu'un compte n'avait qu'un
+   * bento. Le principal la garde, les autres ont la leur.
+   */
+  slug?: string | null;
+  isPrimary?: boolean;
 };
 
 /** Largeur de la carte, et sa marge de chaque côté : la grille a le reste, 920 pt. */
@@ -48,7 +55,8 @@ const CARD_PADDING_H = 80;
  * grille (capture du chantier 7, lot 3). Chaque texte porte
  * `allowFontScaling={false}`, et la grille le transmet à ses cases.
  */
-export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, ref) => {
+export const ShareImage = forwardRef<View, ShareImageProps>(
+  ({ items, pseudo, slug, isPrimary = true }, ref) => {
   const safePseudo = pseudo?.trim() || 'anonyme';
   return (
     <View
@@ -176,7 +184,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(({ items, pseudo }, 
               textTransform: 'lowercase',
             }}
           >
-            {publicBentoLabel(safePseudo)}
+            {publicBentoLabel(safePseudo, slug, isPrimary)}
           </Text>
           <Text
             allowFontScaling={false}

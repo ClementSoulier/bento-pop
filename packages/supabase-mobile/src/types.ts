@@ -238,6 +238,22 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          /**
+           * Adresse publique du bento : `/u/<pseudo>/<slug>`. Chantier 16.
+           *
+           * Absente d'`Insert` et d'`Update` **volontairement** : les droits
+           * colonne n'accordent au client que `insert (user_id)` et
+           * `update (published_at)`. Un secondaire se crée par
+           * `create_bento()`, et le compilateur le rappelle ici plutôt que
+           * de laisser découvrir un 403 à l'exécution.
+           *
+           * Le back-office, lui, écrit avec la clé service-role, qui n'est
+           * pas soumise à ces grants : il assume la conversion à un seul
+           * endroit, `apps/admin/src/app/(protected)/bentos/actions.ts`.
+           */
+          slug: string;
+          /** Le bento que `/u/<pseudo>` met en avant. Un seul par compte. */
+          is_primary: boolean;
           is_featured: boolean;
           featured_order: number | null;
           published_at: string | null;
@@ -481,10 +497,43 @@ export type Database = {
        * chantier 6 : au 13 septembre 2026, 46 des 72 comptes n'en avaient
        * aucun et menaient tous à « Bento introuvable ».
        */
+      /**
+       * Crée un bento secondaire pour `auth.uid()`, toujours non principal.
+       *
+       * Seule voie d'écriture du `slug` côté client : les droits colonne ne
+       * l'accordent pas. Lève sur un slug mal formé, réservé, déjà pris, ou
+       * au-delà du plafond par compte. Cf. chantier 16.
+       */
+      create_bento: {
+        Args: { p_slug: string };
+        Returns: string;
+      };
+      /**
+       * Premier bento d'un compte : profil, bento, cases et publication en
+       * **une transaction**. Chantier 9.
+       *
+       * Une suite d'appels PostgREST laisserait un profil orphelin si les
+       * cases échouent, ou des cases orphelines si la publication échoue.
+       * Refuse un compte qui a déjà un profil, un bento incomplet, un pseudo
+       * pris ou mal formé, et l'absence d'acceptation des règles.
+       */
+      publish_first_bento: {
+        Args: {
+          p_pseudo: string;
+          p_terms_accepted_at: string | null;
+          /** `[{ category_id, item_id }, …]`, les six cases du brouillon. */
+          p_items: { category_id: number; item_id: string }[];
+        };
+        Returns: string;
+      };
       search_bentos: {
         Args: { q: string; lim?: number };
         Returns: Array<{
           bento_id: string;
+          /** Adresse du bento trouvé, chantier 16 : `/u/<pseudo>/<slug>`. */
+          slug: string;
+          /** Vrai pour le bento que `/u/<pseudo>` met en avant. */
+          is_primary: boolean;
           pseudo: string;
           display_name: string | null;
           is_featured: boolean;

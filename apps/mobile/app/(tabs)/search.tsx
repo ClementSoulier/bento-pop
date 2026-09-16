@@ -17,6 +17,7 @@ import { CONTENT_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
 import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, TopChip, YellowBg } from '@/components/primitives';
 import { SEARCH_ICON_BOX } from '@/components/search/layout';
 import { SearchIcon } from '@/components/TabIcons';
+import { bentoRoute } from '@/lib/bento-address';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { tapFeedback } from '@/lib/haptics';
 import {
@@ -491,7 +492,9 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
   const popy = popyForPseudo(match.pseudo);
   return (
     <Pressable
-      onPress={() => router.push(`/u/${match.pseudo}` as const)}
+      // L'adresse du bento trouvé, et non celle du compte : deux bentos
+      // d'une même personne sont deux résultats, à deux adresses.
+      onPress={() => router.push(bentoRoute(match.pseudo, match.slug, match.isPrimary))}
       accessibilityRole="button"
       accessibilityLabel={matchAccessibilityLabel(match)}
       style={[

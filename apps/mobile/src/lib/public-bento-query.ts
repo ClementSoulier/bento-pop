@@ -35,9 +35,14 @@ export const PUBLIC_BENTO_RETRIES = 1;
 /**
  * En minuscules : `@Dark_Hifus` et `@dark_hifus` sont le même bento, et
  * doivent partager une entrée de cache au lieu d'en occuper deux.
+ *
+ * Le slug fait partie de la clé depuis le chantier 16 : `/u/x` et
+ * `/u/x/hebdo-38` sont deux pages, et servir l'une à la place de l'autre
+ * afficherait le mauvais bento. `null` désigne la page du compte, dont le
+ * contenu principal est le bento principal.
  */
-export function publicBentoQueryKey(pseudo: string) {
-  return [PUBLIC_BENTO_QUERY_ROOT, pseudo.trim().toLowerCase()] as const;
+export function publicBentoQueryKey(pseudo: string, slug: string | null = null) {
+  return [PUBLIC_BENTO_QUERY_ROOT, pseudo.trim().toLowerCase(), slug] as const;
 }
 
 /**
@@ -54,13 +59,18 @@ export function shouldRetryPublicBento(failureCount: number, error: unknown): bo
 export function publicBentoQueryOptions(
   client: PublicBentoClient,
   pseudo: string,
+  slug: string | null = null,
   timeoutMs: number = PUBLIC_BENTO_TIMEOUT_MS,
 ) {
   return {
-    queryKey: publicBentoQueryKey(pseudo),
+    queryKey: publicBentoQueryKey(pseudo, slug),
     queryFn: ({ signal }: { signal: AbortSignal }): Promise<PublicBentoResult> =>
       withAbortTimeout(
-        (attempt) => loadPublicBento(client, pseudo, { signal: attempt }),
+        (attempt) =>
+          loadPublicBento(client, pseudo, {
+            signal: attempt,
+            ...(slug === null ? {} : { slug }),
+          }),
         timeoutMs,
         signal,
       ),

@@ -216,8 +216,8 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 livré (PR #63), migration appliquée et vérifiée en production · lot 1 (back-office) livré et recetté (PR #64 et #65) · lot 2 (446 candidats en quatre listes, import depuis l'écran Types) livré (PR #66) · lot 3 recetté : bento principal identique au pixel sur iPhone et Android, recherche élargie vue en production · DoD 7 sur 9, restent à l'équipe après redéploiement du back-office sur Coolify : importer et relire jusqu'à 50 validés par type, fusionner les deux doublons · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
 | 11 | Accessibilité et polish | Qualité | **L** | rien | ✅ 5 lots livrés (PR #68, CI verte, fusionnée le 16/09) · effort réévalué S → L à la mesure · DoD 23/23 au simulateur, 432 tests verts, matrice parcourue sur 17 Pro, SE et Pixel 8 · build production 1.2.0 lancée (iOS 11, Android versionCode 13) · restent cinq points d'appareil réel (§7.3) · [spec](./UX-11-ACCESSIBILITE-POLISH.md) |
-| 16 | Plusieurs bentos par compte | Contenu | L | 5 | ⬜ roadmap produit · planifié avec le 9 |
-| 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ⬜ planifié avec le 16, qui touche les mêmes écrans |
+| 16 | Plusieurs bentos par compte | Contenu | L | 5 | 🟡 **6 lots écrits le 16/09**, spécifiés et livrés dans la journée · migration A appliquée en production, B et `publish_first_bento` en attente d'adoption de la build · DoD 12 sur 13, reste le taux de signalements mesurable après déploiement · recette faite sur 17 Pro, SE et Pixel 8 à faire · **pas encore fusionné** · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
+| 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | 🟡 **livré au lot 5 du 16**, parcours vérifié de bout en bout au simulateur · brouillon local, zéro ligne serveur avant publication, CGU horodatées à l'acceptation · gain non prévu : on compose désormais sans session, ce qui répond au rejet App Store 2bf822e0 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ⬜ roadmap produit, recadré le 15/09 |
 | 17 | Notifications push | Rétention | L | build native | ⬜ roadmap produit |
 | 18 | Publication automatique à la validation | Activation | M | 5 | ⬜ roadmap produit |
@@ -234,6 +234,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 24 | Zone de notifications dans l'app | Rétention | M | 22, 23 | ⬜ roadmap produit |
 | 25 | Comptes Instagram et TikTok | Appropriation | L | 21 | ⬜ roadmap produit |
 | 27 | Succès | Rétention | L | 13, 21 | ⬜ roadmap produit |
+| 29 | **La dette de recette sur appareil** | Qualité | M | rien | ⬜ **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers |
 
 **Arbitré le 15 septembre 2026 : la roadmap produit passe devant les
 chantiers 8 à 12.** Elle suit l'ordre donné par l'équipe, le 13 y prenant la
@@ -710,7 +711,7 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 - Un signalement vise-t-il un bento ou un compte ?
 - Dépublier le bento principal dépublie-t-il le reste ?
 
-**Fait quand** : un compte publie son bento principal et un bento hebdomadaire, chacun à son adresse, et tous les liens déjà partagés affichent toujours le bento principal.
+**Fait quand** : ~~un compte publie son bento principal et un bento hebdomadaire, chacun à son adresse~~. **Corrigé le 16 septembre 2026** : ce critère dépendait du chantier 13, qui dépend lui-même du 16, donc la dépendance était circulaire. Il devient « un compte porte **deux bentos publiés**, chacun à son adresse, le deuxième créé depuis le back-office, et tous les liens déjà partagés montrent toujours le bento principal » (cf. [spec](./UX-16-PLUSIEURS-BENTOS.md) §3.1 et §11, D1).
 
 ---
 
@@ -718,7 +719,7 @@ Par ailleurs l'écran n'utilise pas React Query : `useEffect` plus `useState` ma
 
 **Constat.** Parcours actuel : splash, CGU, pseudo, mécanique, composer. On exige un identifiant unique, avec check réseau, avant que l'utilisateur ait vu la moindre valeur.
 
-Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `mechanics.tsx:116` actif 2) et l'écran pseudo annonce « ÉTAPE 2 / 3 », mais l'écran CGU s'intercale sans être compté. Le parcours réel fait quatre écrans.
+Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `mechanics.tsx:157` actif 2) et l'écran pseudo annonce « ÉTAPE 2 / 3 » (`pseudo.tsx:96`), mais l'écran CGU s'intercale sans être compté. Le parcours réel fait quatre écrans, vérifié au simulateur le 16 septembre 2026 (les numéros de ligne précédents, 103 et 116, dataient d'avant le chantier 11).
 
 **Proposition.** Laisser composer la case film dès l'entrée, demander le pseudo au moment de publier, quand il y a quelque chose à perdre. Le pseudo peut être pré-généré (`generatePseudoSuggestions` existe déjà dans `apps/mobile/src/lib/pseudo.ts`) et modifiable ensuite.
 
@@ -1098,6 +1099,63 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:103` actif 0, `
 - Ce qu'on accepte de laisser tricher, par exemple créer des bentos pour cumuler.
 
 **Fait quand** : un succès se débloque au geste qui le mérite, s'affiche sur le profil, et les comptes existants reçoivent ceux qu'ils méritaient déjà.
+
+---
+
+## 29. La dette de recette sur appareil
+
+> **Ouvert le 16 septembre 2026**, à la fin du chantier 16. Chaque chantier a
+> laissé derrière lui un ou deux points qu'il n'a pas pu vérifier autrement que
+> par le calcul ou au simulateur. Pris un par un, chacun se remet à plus tard
+> sans dommage ; rassemblés, ils font une liste qu'on peut parcourir en une
+> session avec deux téléphones sur la table.
+
+**Demandé.** Ne plus laisser de « reste à faire sur appareil » s'accumuler à la
+fin de chaque chantier.
+
+**Constat.** Au 16 septembre, cinq chantiers en portent.
+
+### Du chantier 16, plusieurs bentos par compte
+
+- **La matrice sur iPhone SE et Pixel 8.** Elle n'a tourné que sur iPhone
+  17 Pro. Ce sont les écrans courts, donc ceux où la bande de sélection du
+  composer et celle de la page publique peuvent faire passer la boîte sous le
+  bouton. Le modèle de géométrie les couvre par le calcul, et un test vérifie
+  que l'écart au bouton ne descend jamais sous son minimum, mais le calcul
+  n'est pas le pixel : c'est exactement ce raisonnement qui avait manqué la
+  première version de la bande, posée sous la grille et invisible au repos.
+- **Un signalement depuis un bento secondaire**, jusqu'au lien de modération du
+  back-office, pour voir que `target_bento_id` mène bien au bento signalé et
+  non au principal du compte.
+- **Le partage d'un bento secondaire dans deux messageries**, pour vérifier que
+  l'aperçu montre ce bento-là. Le HTML et l'image sont produits par deux
+  requêtes séparées : c'était le défaut mesuré en §4.6 de la spéc, corrigé,
+  jamais vu à l'œil.
+- **La reprise d'un brouillon sur un appareil réel**, et son sort quand
+  `signInAnonymously` échoue. C'est le cas du rejet App Store 2bf822e0, et le
+  chantier 9 l'a transformé en chemin qui marche : à vérifier en coupant le
+  réseau au premier lancement.
+- **La création d'un bento secondaire depuis le back-office**, reportée par
+  Clément le 16 septembre. Le code existe (`addBentoToAccount`) et la recette
+  de bout en bout l'attend.
+
+### Des chantiers précédents
+
+- **1** : la QA appareil de la page web publique.
+- **2** : la fluidité du fil sur appareil réel, en build de production.
+- **3** : l'haptique et VoiceOver sur la recherche d'item.
+- **11**, les cinq points de son §7.3 : haptique, VoiceOver et TalkBack sur un
+  parcours complet, fluidité du fil sur build de production, aperçus de partage
+  dans deux messageries, démarrage en mode avion.
+
+### Ce qui rendrait la dette inutile
+
+À arbitrer quand on y arrive : est-ce qu'un chantier peut être déclaré terminé
+avec une dette d'appareil, ou est-ce que la recette d'appareil devient une
+condition de fusion ? La deuxième réponse coûte une demi-journée par chantier
+et supprime cette liste.
+
+**Fait quand** : la liste est vide, et la question ci-dessus est tranchée.
 
 ---
 

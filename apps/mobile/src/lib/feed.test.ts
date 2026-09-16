@@ -29,6 +29,8 @@ const fullLinks: NonNullable<FeedRow['bento_items']> = [
 
 const row = (overrides: Partial<FeedRow> = {}): FeedRow => ({
   id: 'b-1',
+  slug: 'mon-bento',
+  is_primary: true,
   published_at: PUBLISHED,
   is_featured: false,
   users: { pseudo: 'dark_hifus', display_name: 'Florian', kind: 'member' },

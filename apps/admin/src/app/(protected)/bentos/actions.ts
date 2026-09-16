@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
-import { createMobileClient } from '@/lib/supabase/mobile';
+import { createMobileClient, type Database } from '@/lib/supabase/mobile';
 import { deleteMobileAccount } from '@/lib/mobile-users';
+import { checkSlug } from '@/lib/bento-slug';
 
 const featuredSchema = z.object({
   bentoId: z.string().uuid(),
@@ -53,6 +54,75 @@ export async function setBentoFeatured(input: {
 
   revalidatePath('/bentos');
   return { ok: true };
+}
+
+const addBentoSchema = z.object({
+  userId: z.string().uuid(),
+  slug: z.string().min(1).max(60),
+});
+
+/**
+ * Ajoute un bento secondaire à un compte existant.
+ *
+ * C'est la porte d'entrée retenue au chantier 16 (D1) : l'app ne sait pas
+ * encore créer de bento secondaire, et le back-office savait déjà créer un
+ * bento éditorial. Cela suffit à rendre le chantier vérifiable de bout en
+ * bout sans attendre le système d'éditions du chantier 13.
+ *
+ * Toujours **non principal** et **en brouillon** : déplacer la mise en avant
+ * et publier sont deux gestes distincts, qui ont déjà leur écran.
+ *
+ * Écriture directe plutôt qu'appel à `create_bento()` : cette fonction agit
+ * pour `auth.uid()`, or le back-office écrit avec la clé service-role, pour
+ * le compte de quelqu'un d'autre. Les règles d'adresse, elles, sont les
+ * mêmes : `checkSlug` les reprend, et la base les tient de toute façon.
+ */
+export async function addBentoToAccount(input: {
+  userId: string;
+  slug: string;
+}): Promise<{ ok: true; bentoId: string } | { ok: false; error: string }> {
+  await requireAdmin();
+  const parsed = addBentoSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Champs invalides' };
+  }
+  const verdict = checkSlug(parsed.data.slug);
+  if (!verdict.ok) return verdict;
+
+  const mobile = createMobileClient();
+  if (!mobile) {
+    return {
+      ok: false,
+      error: 'Supabase mobile non configuré (MOBILE_SUPABASE_URL / MOBILE_SUPABASE_SERVICE_ROLE_KEY).',
+    };
+  }
+
+  // `slug` et `is_primary` sont absents du type `Insert` de `bentos`, et
+  // c'est voulu : ce type décrit ce qu'un CLIENT a le droit d'écrire, et les
+  // droits colonne ne lui accordent que `user_id`. Le back-office écrit avec
+  // la clé service-role, qui n'est pas soumise à ces grants. La conversion
+  // est donc l'endroit exact où l'on quitte les droits du client, et elle
+  // n'existe qu'ici. Cf. `packages/supabase-mobile/src/types.ts`.
+  const payload = {
+    user_id: parsed.data.userId,
+    slug: verdict.slug,
+    is_primary: false,
+  } as unknown as Database['public']['Tables']['bentos']['Insert'];
+
+  const { data, error } = await mobile.from('bentos').insert(payload).select('id').single();
+
+  if (error) {
+    // 23505 : le couple (user_id, slug) est déjà pris. Le message de Postgres
+    // parle de contrainte, celui-ci parle de ce que la personne a fait.
+    if (error.code === '23505') {
+      return { ok: false, error: `Ce compte a déjà un bento à l'adresse « ${verdict.slug} ».` };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath('/bentos');
+  revalidatePath('/utilisateurs');
+  return { ok: true, bentoId: data.id };
 }
 
 const deleteUserSchema = z.object({

@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation';
+import { AddBentoForm } from './AddBentoForm';
+import { publicBentoPath, publicBentoUrl } from '@/lib/bento-url';
 import Link from 'next/link';
 import { PageShell } from '@/components/AppShell/PageShell';
 import { createMobileClient } from '@/lib/supabase/mobile';
@@ -29,7 +31,7 @@ export default async function AdminBentoDetailPage({ params }: { params: Params 
 
   const { data: bento } = await mobile
     .from('bentos')
-    .select('id, user_id, published_at, created_at, is_featured')
+    .select('id, user_id, slug, is_primary, published_at, created_at, is_featured')
     .eq('id', id)
     .maybeSingle();
   if (!bento) notFound();
@@ -74,8 +76,10 @@ export default async function AdminBentoDetailPage({ params }: { params: Params 
 
   return (
     <PageShell
-      crumbs={`Bentos · @${pseudo} · ${rows.length}/6 case${rows.length > 1 ? 's' : ''}`}
-      title={`@${pseudo}`}
+      // Le slug dans le fil d'Ariane : deux bentos d'un même compte donnaient
+      // deux fiches au titre rigoureusement identique. Chantier 16.
+      crumbs={`Bentos · ${publicBentoPath(pseudo, bento.slug, bento.is_primary)} · ${rows.length}/6 case${rows.length > 1 ? 's' : ''}`}
+      title={bento.is_primary ? `@${pseudo}` : `@${pseudo} · ${bento.slug}`}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3 text-[12px] text-admin-muted">
@@ -93,7 +97,7 @@ export default async function AdminBentoDetailPage({ params }: { params: Params 
           ) : null}
           {published ? (
             <a
-              href={`https://bento-pop.com/u/${pseudo}`}
+              href={publicBentoUrl(pseudo, bento.slug, bento.is_primary)}
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono text-[11px] uppercase tracking-[0.12em] hover:text-admin-ink"
@@ -167,6 +171,8 @@ export default async function AdminBentoDetailPage({ params }: { params: Params 
             </table>
           )}
         </section>
+
+        <AddBentoForm userId={bento.user_id} pseudo={pseudo} />
       </div>
     </PageShell>
   );
