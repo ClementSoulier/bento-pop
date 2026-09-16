@@ -913,9 +913,9 @@ la production, et on s'arrête là.
 
 | # | Geste | Ce qu'on doit voir |
 | --- | --- | --- |
-| 1 | Ouvrir le composer, compte neuf | Six cases, « 0 / 6 », « Commence par film ». **Aucune pastille d'édition** tant qu'il n'y a pas de profil |
+| 1 | Ouvrir le composer, compte neuf | Six cases, « 0 / 6 », « Commence par ton film ». **Aucune pastille d'édition** tant qu'il n'y a pas de profil |
 | 2 | Publier un premier bento | Le parcours du chantier 9, inchangé |
-| 3 | Revenir au composer | Trois pastilles pointillées : « Le duel du samedi », « La semaine du film qui pique », « Le grand inventaire ». **Jamais « Celle qu'on ne doit pas voir »** |
+| 3 | Revenir au composer | Trois pastilles pointillées, la plus récente d'abord : « Le grand inventaire », « La semaine du film qui pique », « Le duel du samedi ». **Jamais « Celle qu'on ne doit pas voir »** |
 | 4 | Taper « Le duel du samedi » | La boîte devient **deux bandes**, 280 et 184. Compteur « 0 / 2 ». Intitulés entiers, non coupés |
 | 5 | Taper la case du haut | Modale titrée « Le film qui t'a fait pleurer », champ « Cherche… » **sans article** |
 | 6 | Remplir les deux cases | « 2 / 2 », bouton « Publier mon bento » actif |
@@ -943,7 +943,7 @@ update public.editions set released_at = now() - interval '1 minute'
 
 Mettre l'app en arrière-plan, la ramener : la pastille doit apparaître **sans
 redémarrage**, parce que le composer relit les éditions à chaque retour sur
-l'onglet. Elle portera une case unique, hors des dispositions dessinées, et la
+l'onglet **et** à chaque retour de l'app au premier plan. Elle portera une case unique, hors des dispositions dessinées, et la
 boîte refusera de se dessiner plutôt que d'inventer : c'est le comportement
 voulu, `boxPlacements` rend un tableau vide.
 
@@ -1080,22 +1080,76 @@ cœur et cède devant « invité ». La purge de landing, reportée du lot 1, ar
 avec ce qui la rend nécessaire : modifier une édition ne touche aucun bento,
 donc rien ne purgeait, et l'ancien titre serait resté servi pour toujours.
 
-### Lot 6 · Recette et documents · préparé, en attente des appareils
+### Lot 6 · Recette et documents · parcourue sur simulateur et émulateur
 
-Ce qui est écrit et vérifiable sans appareil est fait :
+**Le 16 septembre 2026**, sur iPhone 17 Pro (simulateur) et Pixel 8
+(émulateur), contre le Supabase local. La cible a été vérifiée avant chaque
+lancement, trois fois : `app.config` compilé dans la build, clé de session
+stockée, et compte anonyme apparu dans la base locale, 8 puis 9 comptes. Aucune
+build n'a pointé ailleurs.
 
-- **la recette de §7.3**, pas à pas, avec ce qu'on doit voir à chaque étape ;
-- **`seed-editions-local.sql`**, quatre éditions de recette, 2, 3 et 6 cases
-  plus une programmée qui doit rester invisible. Idempotent, et il refuse de
-  tourner sur la production. Le refus a été éprouvé en faisant passer la base
-  locale pour la production ;
-- **six pièges de plus** dans `RECETTE-MOBILE.md`, tous rencontrés dans ce
-  chantier ;
-- la DoD de §10, onze points sur quatorze.
+**Les seize étapes de §7.3 C et le contrôle D passent sur les deux
+plateformes, après quinze corrections.** Aucune n'était visible des 821 tests
+(585 de l'app, 127 du back-office, 109 de la landing), tous verts à la fin.
 
-Ce qui attend un simulateur et un émulateur : les seize étapes de §7.3 C, plus
-le contrôle d'horloge de §7.3 D. Ce qui attend un appareil réel part au
-chantier 29, §7.3 E.
+| # | Ce que la recette a montré | Où | Correction |
+| --- | --- | --- | --- |
+| 1 | Cycle de `require` entre `session.ts` et `bento-actions.ts` | app | `caseSetFor` rangé dans `editions.ts` |
+| 2 | Pastilles d'édition proposées sans profil, tap voué à l'échec | composer | masquées tant qu'il n'y a pas de profil |
+| 3 | « Commence par film » : régression, et le test avait été ajusté pour l'accepter | composer | « Commence par ton film », test rétabli |
+| 4 | « bento, publié le » : virgule en trop | page publique | rétabli |
+| 5 | « REC-DEUX » : le slug en guise de nom | composer, sélecteur, profil, page publique, landing | `bentoName`, le titre de l'édition |
+| 6 | Pastille active hors de l'écran après la création d'une édition | sélecteur | `selectorRevealOffset`, testé sur la géométrie relevée |
+| 7 | Modale titrée « Case · Film », alors que les deux cases du duel sont des films | recherche | la question en titre, le tampon au-dessus |
+| 8 | Publier une édition ouvrait la page du bento principal | composer | l'adresse du bento courant, `bentoRoute` |
+| 9 | Titre d'un mot réduit à 5 pt à l'ouverture à froid, sur iOS | toutes les cases | taille mesurée, plus d'`adjustsFontSizeToFit` |
+| 10 | VoiceOver annonçait une édition sans aucune de ses cases | fil | énumération des cases du bento |
+| 11 | Titre d'édition long tronqué, y compris à la plus grande police | composer | réduit jusqu'à 21 pt, `composeTitleScale` |
+| 12 | Intitulé sur deux lignes aligné à gauche sous un « + » centré | case vide | centré ligne à ligne |
+| 13 | Changer de bento effaçait crédits d'image et état « en attente » | composer, dette du chantier 16 | une seule liste de colonnes, `REMOTE_SLOT_COLUMNS` |
+| 14 | Édition sortie invisible au retour de l'app au premier plan | composer, contrôle D | relecture sur `AppState` |
+| 15 | Case pas encore écrite affichée « coupé · 0 lignes » | back-office | « à écrire », et toujours refusée |
+
+**Deux corrections changent volontairement le bento principal**, la 9 et la
+12. Son cadre, lui, n'a pas bougé : différence nulle au pixel entre le bento
+principal et l'édition à six cases, sur les deux plateformes.
+
+**Ce qui a été mesuré, et pas seulement regardé :**
+
+- **C-4**, deux bandes dans le rapport 280 / 184, soit 1,522 : 1,524 au
+  composer iOS, 1,521 sur la page publique, 1,516 sur Android, moins d'un dp ;
+- **C-12**, cadre de boîte : 0 pixel différent sur 326 306 comparés sur iOS,
+  0 sur 263 867 sur Android, où l'écart résiduel, 13 sur 255 au plus, colle aux
+  ombres des cases remplies ;
+- **C-14**, police système au maximum sur iOS et à 2,0 sur Android, pour les
+  dispositions à deux et trois cases, page publique comprise ;
+- **défaut 9**, reproduit trois fois sur trois à froid avant correction, titre
+  haut de 8 px, puis 51 px trois fois sur trois après ;
+- **contrôle D**, même processus avant et après, pid 39308 sur iOS et 8914 sur
+  Android, pastille présente 4 secondes après le retour au premier plan ;
+- **C-15 et C-16**, dans le back-office en session simulée : « Le film qui
+  t'a fait pleurer » refusé en case 6, cerclé de rouge, enregistrement
+  désactivé ; à 77 % en case 3 d'une édition à trois cases, enregistrable.
+
+**Arbitrages ouverts**, soumis en QCM : la longueur maximale d'un titre
+d'édition, que le composer n'affiche entier que jusqu'à 28 caractères environ ;
+deux cases au même tampon, indiscernables une fois remplies ; le titre de
+l'édition, absent de l'image de partage.
+
+**Vu et laissé en l'état**, faute d'être un défaut du chantier ou d'être
+atteignable :
+
+- sur la page d'une édition, la pastille du bento principal porte son slug,
+  « MON-BENTO », règle du chantier 16 ;
+- « Au menu » propose un item déjà posé dans l'autre case de la même édition ;
+- le back-office ne normalise pas l'apostrophe droite en apostrophe
+  typographique ;
+- une édition à une seule case, possible seulement en SQL, offre une pastille
+  dont la boîte refuse de se dessiner, comme §7.3 D l'annonce ;
+- la modale de recherche n'a pas de repli quand elle devient l'écran racine,
+  ce qui ne s'est vu qu'après un rechargement complet en développement.
+
+Ce qui attend un appareil réel part au chantier 29, §7.3 E.
 
 ---
 
@@ -1113,8 +1167,9 @@ chantier 29, §7.3 E.
 
 ## 10. Definition of Done
 
-**Onze points sur quatorze au 17 septembre 2026.** Ce qui reste demande soit
-un appareil, soit un déploiement, et aucun des deux ne se simule.
+**Douze points sur quatorze au 16 septembre 2026, recette parcourue.** Ce qui
+reste demande soit un appareil réel, soit un déploiement, et aucun des deux ne
+se simule.
 
 | # | Point | État |
 | --- | --- | --- |
@@ -1122,14 +1177,14 @@ un appareil, soit un déploiement, et aucun des deux ne se simule.
 | 2 | Ses cases sont invisibles avant sa sortie, **en base** et non à l'écran | ✅ contrôles 1a et 1b |
 | 3 | Deux cases du même type dans une édition, de la saisie à la page publique | ✅ contrôle 3b, plus les tests du back-office |
 | 4 | Les dispositions de 2 à 6 cases sont identiques entre les cinq rendus | ✅ 41 tests sur la table, plus le garde-fou de l'aperçu de lien |
-| 5 | Le bento principal est inchangé **au pixel** | ✅ pour le web, au bit près : mêmes SHA-256 avant et après. ⬜ pour le rendu natif, qui demande un appareil |
+| 5 | Le bento principal est inchangé **au pixel** | ✅ pour le web, au bit près : mêmes SHA-256 avant et après. Natif : cadre de boîte identique au pixel entre principal et édition à six cases, iOS et Android (C-12) ; deux corrections de recette changent volontairement le rendu des cases, lot 6 défauts 9 et 12. ⬜ comparaison avant et après sur appareil réel |
 | 6 | L'aperçu de lien dessine les bonnes hauteurs, et un test l'empêche de redivergir | ✅ mesuré 233 / 142 / 106 sur un vrai build, quatre tests plus un témoin |
 | 7 | Un intitulé qui ne tient pas est refusé avant enregistrement | ✅ vérifié à l'écran : la même question tient en case 1, coupée en case 6 |
-| 8 | Une édition passée reste composable après deux suivantes | ⬜ recette, étape C-11 |
+| 8 | Une édition passée reste composable après deux suivantes | ✅ « Le duel du samedi », sortie la première, composée et publiée alors que deux éditions plus récentes étaient sorties, iOS et Android |
 | 9 | Le plafond permet une édition par semaine pendant des années | ✅ contrôles 7a à 7c, et le plafond ne compte plus que les bentos libres |
 | 10 | La première publication d'un compte neuf marche alors que des éditions existent | ✅ contrôle 6, avec son témoin sur l'ancienne forme |
 | 11 | Les **20** contrôles de `check-editions.sql` passent sur Supabase local | ✅ base reconstruite de zéro, 20 tenus, 0 manqué |
-| 12 | Recette parcourue sur iPhone et Android, appareils réels compris | ⬜ **prête à dérouler**, §7.3, en attente des appareils |
+| 12 | Recette parcourue sur iPhone et Android, appareils réels compris | ✅ simulateur iOS et émulateur Android, seize étapes et contrôle D, lot 6. ⬜ appareils réels, chantier 29 |
 | 13 | Aucun compte créé en production, aucune écriture non autorisée | ✅ lectures `GET` seulement, `.app` de production contrôlé et non installé |
 | 14 | Les quatre types dormants ont du catalogue | ⬜ préalable du chantier 15 : 446 candidats dans le dépôt, zéro importé |
 

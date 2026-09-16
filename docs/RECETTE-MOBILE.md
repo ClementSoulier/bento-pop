@@ -1044,3 +1044,92 @@ editions ( slug, title, bento_categories ( key, prompt, … ) )
 
 > Quand une liste décide d'une mise en page, la lire à sa source, pas la
 > déduire de ce qui la remplit.
+
+### Un défaut qui ne se montre qu'à froid
+
+Le piège « `adjustsFontSizeToFit` avec une hauteur de ligne posée » décrit plus
+haut ne se déclenche pas à chaque rendu. Le 16 septembre 2026, « TITANIC »
+s'écrivait en 5 pt dans la grande case d'une édition, **à la première ouverture
+de la page publique**, et à sa taille normale dès la seconde, page en cache.
+Une recette qui revient sur la page pour « vérifier » voit un écran juste.
+
+Le reproduire, c'est tuer l'app et rouvrir la page à froid, trois fois, en
+mesurant la capture : la hauteur du plus grand bloc de pixels blancs du titre
+passait de 51 px à 8 px, trois fois sur trois. Après correction, 51 px trois
+fois sur trois.
+
+> **Un défaut intermittent se reproduit dans l'état où il est apparu**, ici
+> une page sans cache, avant d'être déclaré corrigé ou imaginaire.
+
+La correction n'a pas été de retirer la hauteur de ligne, que le budget vertical
+compte, mais de ne plus déléguer la taille à la plateforme : un titre d'un mot
+se mesure désormais comme les autres, `lineFitScale`.
+
+### Deux lectures de la même chose finissent par diverger
+
+Le composer se remplit par deux lectures : celle du démarrage, et celle du
+changement de bento. Chacune écrivait sa liste de colonnes. La seconde avait
+perdu `image_credit` et `status` : revenir à son bento principal par le
+sélecteur **effaçait les crédits d'image**, qu'une photo sous licence CC BY
+exige, et **l'état « en attente »**, qui bloque la publication d'une case non
+modérée. Rien ne cassait, les cases s'affichaient, un peu moins complètes.
+
+Vu en comparant deux captures du même bento à une heure d'écart, pas en
+regardant l'écran.
+
+> **Une liste de colonnes lue par une même fonction de mapping s'écrit une
+> fois**, `REMOTE_SLOT_COLUMNS`, et un test vérifie que les deux lectures s'en
+> servent.
+
+### Revenir au premier plan n'est pas revenir sur l'onglet
+
+`useFocusEffect` se déclenche quand l'onglet reprend le focus de navigation,
+pas quand l'app revient de l'arrière-plan. Une édition programmée qui sortait
+pendant que l'app dormait n'apparaissait qu'après un changement d'onglet :
+contrôle D de la recette du chantier 13, même processus avant et après,
+vérifié par son pid.
+
+> Ce qui doit se relire « au retour » se branche sur les deux :
+> `useFocusEffect` **et** `AppState` à `active`, abonnement retiré quand
+> l'onglet perd le focus.
+
+### Un tap hors de l'écran tombe sur le voisin
+
+`idb ui tap` à une abscisse au-delà de la largeur de l'écran ne refuse rien :
+le tap est ramené au bord, et touche l'élément qui s'y trouve. Le 16 septembre,
+viser une pastille défilée hors champ a sélectionné sa voisine, et l'écran
+suivant montrait un autre bento que celui demandé.
+
+> **Taper au centre de la partie visible**, et refuser un élément dont il reste
+> moins de 8 points à l'écran : faire défiler d'abord.
+
+### Un test ajusté à une régression la protège
+
+« Commence par ton film » était devenu « Commence par film » pendant la
+généralisation du bouton aux éditions, et le test avait été modifié pour
+accepter la nouvelle chaîne. La recette l'a vu, pas la suite de tests, qui
+passait.
+
+> Quand un refactor oblige à changer l'assertion d'un test existant, **l'ancienne
+> assertion est la spécification** jusqu'à preuve du contraire. Changer le test
+> demande une raison écrite, pas un rendu différent.
+
+### `find … | head -1` installe n'importe quelle build
+
+Pour installer « la » build du simulateur, `find DerivedData -name "*.app" |
+head -1` a pris une build Release d'une session précédente, pointée sur un
+proxy local. Aucun compte n'a été créé, mais la cible n'était plus celle
+vérifiée.
+
+> Installer par le **chemin exact** de la build qu'on vient de produire, puis
+> contrôler son `app.config` et la clé de session, comme en §2, avant de lancer.
+
+### Un rechargement complet peut rouvrir une modale comme écran racine
+
+Après certaines modifications à chaud, Metro recharge tout le bundle, et
+l'app peut revenir sur la modale de recherche **sans écran derrière** :
+« Fermer » ne fait rien, et LogBox affiche `The action 'GO_BACK' was not
+handled`. Ce n'est pas un défaut de l'app, mais une recette qui continue dans
+cet état capture des écrans faux.
+
+> Au premier `GO_BACK was not handled`, relancer l'app avant la suite.
