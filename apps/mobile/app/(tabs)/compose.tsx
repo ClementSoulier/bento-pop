@@ -32,6 +32,7 @@ import {
 import { composeCta } from '@/lib/compose-cta';
 import { useOfflineInset } from '@/lib/use-offline-inset';
 import type { CategoryKey } from '@/supabase/types';
+import { mainBentoCases } from '@/components/bento/cases';
 
 /**
  * Marge de chaque côté de la grille. Elle en fixe la largeur, que les titres
@@ -324,14 +325,14 @@ export default function ComposeTab() {
           <View style={{ paddingHorizontal: GRID_SIDE_PADDING }}>
             {hydrated ? (
               <BentoGrid
-                items={slots}
+                cases={mainBentoCases(slots)}
                 scale={bentoScale}
                 // Toute la largeur de l'écran, et non `GRID_WIDTH × bentoScale` :
                 // l'échelle se calcule ici sur la hauteur.
                 width={screenWidth - GRID_SIDE_PADDING * 2}
                 pulse={lastFilled}
-                onTap={(cat) =>
-                  router.push({ pathname: '/search-modal', params: { category: cat } })
+                onTap={(caseKey) =>
+                  router.push({ pathname: '/search-modal', params: { category: caseKey } })
                 }
               />
             ) : (

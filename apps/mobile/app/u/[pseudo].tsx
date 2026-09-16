@@ -46,6 +46,7 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
 import { publicSupabase } from '@/supabase/client';
+import { mainBentoCases } from '@/components/bento/cases';
 
 /**
  * Page publique d'un compte, `/u/<pseudo>`, et d'un bento nommé,
@@ -571,7 +572,7 @@ function FoundPage({
         <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
         {/* Marge et non largeur, cf. `publicSideInset`. */}
         <View style={{ marginHorizontal: sideInset }}>
-          <BentoGrid items={bento.slots} scale={scale} width={boxWidth} readOnly />
+          <BentoGrid cases={mainBentoCases(bento.slots)} scale={scale} width={boxWidth} readOnly />
         </View>
       </ScrollView>
 

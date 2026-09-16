@@ -47,7 +47,9 @@ type BentoSlots = Partial<Record<CategoryKey, TileData & { itemId?: string }>>;
  * lui, remplacer deux fois de suite l'item d'une même case ne rejouerait
  * pas l'animation.
  */
-type LastFilled = { cat: CategoryKey; seq: number };
+/** La dernière case remplie, pour la faire pulser. Sa clé, pas sa catégorie :
+ *  une édition n'a pas de catégories. */
+type LastFilled = { caseKey: string; seq: number };
 
 type BentoState = {
   /**
@@ -135,7 +137,7 @@ export const useBento = create<BentoState>((set, get) => ({
   setSlot: (cat, data) =>
     set((s) => ({
       slots: { ...s.slots, [cat]: data },
-      lastFilled: { cat, seq: (s.lastFilled?.seq ?? 0) + 1 },
+      lastFilled: { caseKey: cat, seq: (s.lastFilled?.seq ?? 0) + 1 },
     })),
   clearSlot: (cat) =>
     set((s) => {

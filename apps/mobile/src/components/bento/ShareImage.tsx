@@ -3,7 +3,8 @@ import { Image, Text, View } from 'react-native';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import popy from '@bento-pop/brand/assets/mascot/popy-content.png';
 import { publicBentoLabel } from '@/lib/share';
-import { BentoGrid, type BentoItems } from './BentoGrid';
+import { BentoGrid } from './BentoGrid';
+import { mainBentoCases, type BentoItems } from './cases';
 
 type ShareImageProps = {
   items: BentoItems;
@@ -141,7 +142,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(
         }}
       >
         <BentoGrid
-          items={items}
+          cases={mainBentoCases(items)}
           scale={2.5}
           width={CARD_WIDTH - CARD_PADDING_H * 2}
           readOnly

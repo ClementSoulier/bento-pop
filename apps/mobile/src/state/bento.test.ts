@@ -37,9 +37,9 @@ describe('lastFilled, déclencheur de la pulsation', () => {
 
   it('désigne la dernière case posée', () => {
     state().setSlot('film', FILM);
-    assert.equal(state().lastFilled?.cat, 'film');
+    assert.equal(state().lastFilled?.caseKey, 'film');
     state().setSlot('series', SERIE);
-    assert.equal(state().lastFilled?.cat, 'series');
+    assert.equal(state().lastFilled?.caseKey, 'series');
   });
 
   /**

@@ -10,8 +10,6 @@ import {
 import type { ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { CategoryKey } from '@/supabase/types';
-import { CATEGORY_META } from './categories';
 import { TILE_MAX_FONT_MULTIPLIER } from './font-scaling';
 import { PALETTES, type PaletteKey } from './palettes';
 import {
@@ -52,7 +50,10 @@ export type TileData = {
 };
 
 type TileProps = {
-  cat: CategoryKey;
+  /** Tampon court affiché en haut de la tuile. */
+  stamp: string;
+  /** Intitulé de la case, lu par les lecteurs d'écran. */
+  prompt: string;
   data: TileData;
   height: number;
   /**
@@ -96,7 +97,8 @@ const RADIUS = 18;
  * Cf. design Claude Design — `Tile` dans `bento-tiles.jsx`.
  */
 export function Tile({
-  cat,
+  stamp,
+  prompt,
   data,
   height,
   width,
@@ -106,7 +108,6 @@ export function Tile({
   onPress,
   allowFontScaling = true,
 }: TileProps) {
-  const meta = CATEGORY_META[cat];
   const palette = PALETTES[data.paletteKey ?? 'neutral'];
   // Applique le scale aux dims qui font la mise en page : cf. `tileConf`.
   const conf = tileConf(size, scale);
@@ -272,7 +273,7 @@ export function Tile({
             letterSpacing: 1,
           }}
         >
-          {meta.stamp}
+          {stamp}
         </Text>
       </View>
 
@@ -397,7 +398,7 @@ export function Tile({
     </>
   );
 
-  const a11yLabel = `${meta.label} : ${title}${data.subtitle ? `, ${data.subtitle}` : ''}`;
+  const a11yLabel = `${prompt} : ${title}${data.subtitle ? `, ${data.subtitle}` : ''}`;
   const inner = onPress ? (
     <Pressable
       onPress={onPress}

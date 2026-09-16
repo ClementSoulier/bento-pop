@@ -76,6 +76,47 @@ export const CATEGORY_META: Readonly<
   place: { label: 'Lieu', stamp: 'LIEU', gender: 'm' },
 };
 
+// ─── Une case, telle qu'un rendu la voit ───────────────────────────────
+
+/**
+ * Ce qu'un dessin de la boîte doit savoir d'une case pour la tracer.
+ *
+ * **Le type qui remplace `CategoryKey` dans les rendus**, et c'est le cœur du
+ * chantier 13. Les cinq dessins prenaient un dictionnaire indexé par
+ * catégorie, `Partial<Record<CategoryKey, …>>`. Une édition n'a pas de
+ * catégories : elle a des cases ordonnées, dont deux peuvent porter le même
+ * type. Ce dictionnaire ne pouvait pas la représenter, et le type l'interdisait
+ * littéralement, puisque `CategoryKey` est une union fermée de six littéraux.
+ *
+ * Les rendus prennent donc une **liste ordonnée**. Pour le bento principal,
+ * `MAIN_CASES` la fabrique à partir des constantes de l'app, inchangées ; pour
+ * une édition, elle vient de la base.
+ */
+export type CaseMeta = {
+  /** Identifiant stable : clé de catégorie, ou clé de case d'édition. */
+  readonly key: string;
+  /** Ce que lit l'utilisateur sur une case vide. Pour une édition, la question. */
+  readonly prompt: string;
+  /** Tampon court de la tuile pleine, capitales. */
+  readonly stamp: string;
+  /** Genre grammatical de `prompt`, pour accorder « Cherche un film ». */
+  readonly gender: 'm' | 'f';
+};
+
+/**
+ * Les six cases du bento principal, dans l'ordre de lecture.
+ *
+ * Dérivées des constantes que l'app compile depuis toujours : aucune version
+ * déployée ne change d'affichage. La base porte les mêmes valeurs depuis le
+ * chantier 13, et `bento-cases-vs-app.test.ts` échoue si les deux divergent.
+ */
+export const MAIN_CASES: readonly CaseMeta[] = CATEGORY_ORDER.map((key) => ({
+  key,
+  prompt: CATEGORY_META[key].label,
+  stamp: CATEGORY_META[key].stamp,
+  gender: CATEGORY_META[key].gender,
+}));
+
 // ─── Dispositions de la boîte ──────────────────────────────────────────
 
 /**

@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
-import { CATEGORY_META, PALETTES } from '@bento-pop/supabase-mobile/bento';
+import { PALETTES, boxPlacements, boxRowHeights } from '@bento-pop/supabase-mobile/bento';
+import { mainBentoCases, type PublicCase } from '@/components/bento/cases';
 import { logoDataUrl } from '@/app/_og/assets';
 import { bentoImageAlt } from '@/lib/bento/metadata';
 import { cleanTitle, initialOf } from '@/lib/bento/text';
@@ -18,9 +19,7 @@ import {
   DESIGN_HEIGHT,
   DESIGN_WIDTH,
   FRAME,
-  ROW_HEIGHTS,
   TILE,
-  TILE_LAYOUT,
   TILE_SCRIM,
   TILE_TYPO,
 } from '@/components/bento/layout';
@@ -97,7 +96,7 @@ export default async function OpenGraphImage({ params }: ImageParams) {
       `@${pseudo}`,
       lookup.kind === 'published' ? (lookup.bento.displayName ?? '') : '',
       ...Object.values(slots).flatMap((tile) => [cleanTitle(tile.title), tile.subtitle ?? '']),
-      ...Object.values(CATEGORY_META).map((meta) => meta.stamp),
+      ...mainBentoCases({}).flatMap((c) => [c.stamp, c.prompt]),
     ];
 
     const [fallbackFont, imageMap] = await Promise.all([
@@ -125,7 +124,7 @@ export default async function OpenGraphImage({ params }: ImageParams) {
             padding: '0 44px',
           }}
         >
-          <BentoBox slots={slots} images={imageMap} />
+          <BentoBox cases={mainBentoCases(slots)} images={imageMap} />
           <SidePanel
             pseudo={pseudo}
             displayName={lookup.kind === 'published' ? lookup.bento.displayName : null}
@@ -157,7 +156,9 @@ export default async function OpenGraphImage({ params }: ImageParams) {
  * plutôt que d'un littéral `[1, 2, 3]` qui ne disait rien de leur taille.
  * `layout.test.ts` verrouille la somme.
  */
-function BentoBox({ slots, images }: { slots: BentoSlots; images: Map<string, string> }) {
+function BentoBox({ cases, images }: { cases: readonly PublicCase[]; images: Map<string, string> }) {
+  const places = boxPlacements(cases.length);
+  const rowHeights = boxRowHeights(cases.length);
   return (
     <div
       style={{
@@ -173,25 +174,27 @@ function BentoBox({ slots, images }: { slots: BentoSlots; images: Map<string, st
         boxShadow: `0 ${u(8)}px 0 ${INK}`,
       }}
     >
-      {ROW_HEIGHTS.map((rowHeight, index) => (
+      {rowHeights.map((rowHeight, index) => (
         <div
           key={index + 1}
           style={{ display: 'flex', gap: u(FRAME.gap), height: u(rowHeight) }}
         >
-          {TILE_LAYOUT.filter((slot) => slot.row === index + 1).map((slot) => {
-            const tile = slots[slot.category];
+          {places.filter((place) => place.row === index + 1).map((place) => {
+            const item = cases[place.index];
+            if (!item) return null;
+            const tile = item.tile;
             return tile ? (
               <Tile
-                key={slot.category}
-                stamp={CATEGORY_META[slot.category].stamp}
-                title={cleanTitle(tile.title, TITLE_MAX[slot.size])}
+                key={item.key}
+                stamp={item.stamp}
+                title={cleanTitle(tile.title, TITLE_MAX[place.size])}
                 subtitle={tile.subtitle}
                 image={tile.imageUrl ? images.get(tile.imageUrl) : undefined}
                 paletteKey={tile.paletteKey}
-                size={slot.size}
+                size={place.size}
               />
             ) : (
-              <EmptyTile key={slot.category} label={CATEGORY_META[slot.category].label} />
+              <EmptyTile key={item.key} label={item.prompt} />
             );
           })}
         </div>

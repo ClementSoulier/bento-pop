@@ -10,6 +10,7 @@ import {
 import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
 import { bentoPath } from '@/lib/bento/metadata';
 import type { FeaturedBento, PublicBento } from '@/lib/bento/queries';
+import { mainBentoCases } from './cases';
 
 /**
  * Le rendu d'une page publique de bento, partagé par les deux routes.
@@ -49,7 +50,7 @@ export function BentoUnpublishedView({
                 qui va arriver, et donne une raison de revenir. Aucune
                 donnée du bento non publié n'est lisible ici, la RLS
                 l'interdit au client anonyme. */}
-            <PublicBentoGrid slots={{}} label={`Bento de @${pseudo}, pas encore terminé`} empty />
+            <PublicBentoGrid cases={mainBentoCases({})} label={`Bento de @${pseudo}, pas encore terminé`} empty />
           </div>
           <p className="mt-6 text-center text-[15px] leading-[1.55] text-bento-ink/80">
             <span className="font-display block text-[clamp(20px,5vw,26px)] text-bento-ink">
@@ -155,7 +156,7 @@ export function BentoPublishedView({
         </div>
 
         <div className="lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <PublicBentoGrid slots={bento.slots} label={`Les six choix de @${bento.pseudo}`} />
+          <PublicBentoGrid cases={mainBentoCases(bento.slots)} label={`Les six choix de @${bento.pseudo}`} />
         </div>
 
         <div className="lg:col-start-2 lg:row-start-2">

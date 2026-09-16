@@ -1,23 +1,25 @@
 import { View } from 'react-native';
 import type { ViewStyle } from 'react-native';
-import type { CategoryKey } from '@/supabase/types';
+import { boxPlacements } from '@bento-pop/supabase-mobile/bento';
 import { EmptyTile } from './EmptyTile';
 import { GRID_GEOMETRY, gridBorderWidth, gridTileWidth } from './geometry';
-import { Tile, type TileData } from './Tile';
+import type { BentoCase } from './cases';
+import { Tile } from './Tile';
 import { TilePulse } from './TilePulse';
 import { SHADOWS } from '@/components/primitives/shadow';
 
-export type BentoItems = Partial<Record<CategoryKey, TileData>>;
-
 type BentoGridProps = {
-  /** Items remplis, keyés par catégorie. Si une catégorie manque → EmptyTile. */
-  items: BentoItems;
+  /**
+   * Les cases, dans l'ordre de lecture. Leur nombre décide de la disposition
+   * (`BOX_LAYOUTS`) ; une case sans `tile` se rend vide.
+   */
+  cases: readonly BentoCase[];
   /** Échelle (1 = portrait mobile standard, 1.45 pour image de partage, 0.78 pour onboarding). */
   scale?: number;
   /** Si `true`, toutes les cases sont rendues vides (utile pour l'écran Mécanique). */
   empty?: boolean;
-  /** Callback quand l'utilisateur tape une case. */
-  onTap?: (cat: CategoryKey) => void;
+  /** Callback quand l'utilisateur tape une case, avec sa clé. */
+  onTap?: (caseKey: string) => void;
   /**
    * Grille de consultation : les cases vides deviennent de simples
    * emplacements neutres au lieu du « + Ajoute ton film » du composer.
@@ -38,7 +40,7 @@ type BentoGridProps = {
    * `null` partout ailleurs que sur le composer : le fil, la page publique
    * et l'image de partage rendent des bentos figés.
    */
-  pulse?: { cat: CategoryKey; seq: number } | null;
+  pulse?: { caseKey: string; seq: number } | null;
   /**
    * `false` pour une grille qui ne suit pas la police système : l'image de
    * partage, qui doit sortir identique pour tout le monde. Partout ailleurs,
@@ -55,18 +57,22 @@ type BentoGridProps = {
 };
 
 /**
- * Grille bento à compartiments fixes — métaphore boîte bento :
- *   Row 1 : Film (grand)
- *   Row 2 : Série + Artiste (mid)
- *   Row 3 : Chanson + Créateur + Lieu (small)
+ * La boîte bento, de 2 à 6 cases.
  *
- * Container : fond crème + bordure ink épaisse + 4 rivets noirs dans les
- * coins, comme le hero de la landing (`BentoFrame`). Les compartiments
- * restent posés à l'intérieur sans gap noir gênant, et les EmptyTiles sont
- * visibles sur le fond crème.
+ * Cadre crème, contour encre épais et quatre rivets dans les coins, comme le
+ * hero de la landing (`BentoFrame`). Les compartiments restent posés à
+ * l'intérieur sans écart noir, et les cases vides se voient sur le crème.
+ *
+ * **La disposition ne vit plus ici.** Elle était écrite à la main, six appels
+ * en face de six autres dans `layout.ts` côté web : c'est ce doublon qui a
+ * laissé l'aperçu de lien diverger pendant des mois. Rangées, hauteurs,
+ * gabarits et rotations viennent désormais de `boxPlacements(n)`, la table
+ * partagée, et le nombre de cases suffit à décider du dessin.
+ *
+ * Une case vide applique la moitié de la rotation de sa tuile, comme avant.
  */
 export function BentoGrid({
-  items,
+  cases,
   scale = 1,
   empty = false,
   onTap,
@@ -76,9 +82,6 @@ export function BentoGrid({
   allowFontScaling = true,
   width,
 }: BentoGridProps) {
-  const H_FILM = GRID_GEOMETRY.H_FILM * scale;
-  const H_MID = GRID_GEOMETRY.H_MID * scale;
-  const H_SM = GRID_GEOMETRY.H_SM * scale;
   const GAP = GRID_GEOMETRY.GAP * scale;
   const PAD = GRID_GEOMETRY.PAD * scale;
   // La même fonction que le modèle de la page publique et que le squelette :
@@ -86,42 +89,55 @@ export function BentoGrid({
   const BORDER = gridBorderWidth(scale, frameBorderWidth);
   const RADIUS = GRID_GEOMETRY.RADIUS * scale;
 
-  const renderTile = (cat: CategoryKey, height: number, size: 'sm' | 'md' | 'lg', rotate: number) => {
-    const item = items[cat];
-    if (empty || !item) {
+  const places = boxPlacements(cases.length);
+
+  const renderTile = (index: number) => {
+    const place = places[index];
+    const item = cases[index];
+    if (!place || !item) return null;
+
+    const height = place.height * scale;
+    if (empty || !item.tile) {
       return (
         <EmptyTile
-          cat={cat}
+          prompt={item.prompt}
           height={height}
           scale={scale}
-          rotate={rotate * 0.5}
+          rotate={place.rotate * 0.5}
           readOnly={readOnly}
-          onPress={onTap ? () => onTap(cat) : undefined}
+          onPress={onTap ? () => onTap(item.key) : undefined}
           allowFontScaling={allowFontScaling}
         />
       );
     }
-    const tilesInRow = size === 'lg' ? 1 : size === 'md' ? 2 : 3;
     return (
-      <TilePulse trigger={pulse?.cat === cat ? pulse.seq : null}>
+      <TilePulse trigger={pulse?.caseKey === item.key ? pulse.seq : null}>
         <Tile
-          cat={cat}
-          data={item}
+          stamp={item.stamp}
+          prompt={item.prompt}
+          data={item.tile}
           height={height}
           width={
             width === undefined
               ? undefined
-              : gridTileWidth(width, scale, tilesInRow, frameBorderWidth)
+              : gridTileWidth(width, scale, place.casesInRow, frameBorderWidth)
           }
-          size={size}
+          size={place.size}
           scale={scale}
-          rotate={rotate}
-          onPress={onTap ? () => onTap(cat) : undefined}
+          rotate={place.rotate}
+          onPress={onTap ? () => onTap(item.key) : undefined}
           allowFontScaling={allowFontScaling}
         />
       </TilePulse>
     );
   };
+
+  // Les positions regroupées par rangée, dans l'ordre.
+  const rangees: number[][] = [];
+  for (const place of places) {
+    const rang = place.row - 1;
+    (rangees[rang] ??= []).push(place.index);
+  }
 
   return (
     <View
@@ -144,21 +160,22 @@ export function BentoGrid({
       <Rivet position="bl" />
       <Rivet position="br" />
 
-      {/* Row 1 — Film big */}
-      <View>{renderTile('film', H_FILM, 'lg', -0.5)}</View>
-
-      {/* Row 2 — Série + Artiste */}
-      <View style={{ flexDirection: 'row', gap: GAP }}>
-        <View style={{ flex: 1 }}>{renderTile('series', H_MID, 'md', 0.4)}</View>
-        <View style={{ flex: 1 }}>{renderTile('artist', H_MID, 'md', -0.3)}</View>
-      </View>
-
-      {/* Row 3 — Chanson + Créateur + Lieu */}
-      <View style={{ flexDirection: 'row', gap: GAP }}>
-        <View style={{ flex: 1 }}>{renderTile('track', H_SM, 'sm', -0.3)}</View>
-        <View style={{ flex: 1 }}>{renderTile('creator', H_SM, 'sm', 0.5)}</View>
-        <View style={{ flex: 1 }}>{renderTile('place', H_SM, 'sm', -0.2)}</View>
-      </View>
+      {rangees.map((indices, rang) =>
+        // Une rangée d'une seule case garde un `View` nu, sans `flexDirection`
+        // ni `flex: 1` : c'est ce que le JSX faisait pour le film, et un
+        // conteneur en rangée y changerait la mesure d'un demi-point.
+        indices.length === 1 ? (
+          <View key={rang}>{renderTile(indices[0]!)}</View>
+        ) : (
+          <View key={rang} style={{ flexDirection: 'row', gap: GAP }}>
+            {indices.map((i) => (
+              <View key={i} style={{ flex: 1 }}>
+                {renderTile(i)}
+              </View>
+            ))}
+          </View>
+        ),
+      )}
     </View>
   );
 }

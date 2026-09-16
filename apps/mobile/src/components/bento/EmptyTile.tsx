@@ -1,6 +1,4 @@
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
-import type { CategoryKey } from '@/supabase/types';
-import { CATEGORY_META } from './categories';
 import { GRID_GEOMETRY } from './geometry';
 import {
   EMPTY_TILE_BORDER,
@@ -13,7 +11,8 @@ import { emptyTileLabelFit } from './tile-title';
 import { INK_PLACEHOLDER } from '@/components/primitives/ink';
 
 type EmptyTileProps = {
-  cat: CategoryKey;
+  /** Intitulé de la case. Pour une édition, la question posée. */
+  prompt: string;
   height: number;
   /** Échelle propagée depuis BentoGrid (cf. Tile.scale). */
   scale?: number;
@@ -42,7 +41,7 @@ type EmptyTileProps = {
  * Cf. design Claude Design — `EmptyTile` dans `bento-tiles.jsx`.
  */
 export function EmptyTile({
-  cat,
+  prompt,
   height,
   scale = 1,
   rotate = 0,
@@ -50,9 +49,8 @@ export function EmptyTile({
   onPress,
   allowFontScaling = true,
 }: EmptyTileProps) {
-  const meta = CATEGORY_META[cat];
   const conf = emptyTileConf(scale);
-  const labelFit = emptyTileLabelFit(meta.label);
+  const labelFit = emptyTileLabelFit(prompt);
   // Le libellé applique lui-même la police système, hauteur de ligne comprise,
   // sans dépasser ce que la case permet : cf. `emptyTileLabelScale`. Figé à 1
   // quand la grille ne suit pas le système.
@@ -91,7 +89,7 @@ export function EmptyTile({
     return (
       <View
         accessible
-        accessibilityLabel={`${meta.label} : case vide`}
+        accessibilityLabel={`${prompt} : case vide`}
         style={{ ...frame, borderColor: 'rgba(10,10,10,0.22)', backgroundColor: '#f6ecd4' }}
       >
         <Text
@@ -100,7 +98,7 @@ export function EmptyTile({
           allowFontScaling={false}
           style={[labelStyle, { color: INK_PLACEHOLDER }]}
         >
-          {meta.label}
+          {prompt}
         </Text>
       </View>
     );
@@ -116,7 +114,7 @@ export function EmptyTile({
       accessible
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={
-        onPress ? `Ajouter ${meta.label.toLowerCase()}` : `${meta.label} : case vide`
+        onPress ? `Ajouter ${prompt.toLowerCase()}` : `${prompt} : case vide`
       }
       accessibilityHint={onPress ? 'Ouvre la recherche pour remplir cette case' : undefined}
       style={frame}
@@ -154,7 +152,7 @@ export function EmptyTile({
         allowFontScaling={false}
         style={[labelStyle, { color: '#0a0a0a' }]}
       >
-        {meta.label}
+        {prompt}
       </Text>
     </Frame>
   );

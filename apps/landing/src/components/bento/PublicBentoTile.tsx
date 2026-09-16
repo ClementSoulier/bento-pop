@@ -11,7 +11,8 @@ import { TILE, TILE_SCRIM, TILE_SIZES, TILE_TYPO, type TileSize } from './layout
 const u = (n: number) => `calc(${n} * var(--u))`;
 
 type PublicBentoTileProps = {
-  category: CategoryKey;
+  /** Tampon court affiché en haut du compartiment. */
+  stamp: string;
   tile: BentoTile;
   size: TileSize;
   rotate: number;
@@ -37,14 +38,13 @@ type PublicBentoTileProps = {
  * l'oreille. C'est la définition même d'une image décorative.
  */
 export function PublicBentoTile({
-  category,
+  stamp,
   tile,
   size,
   rotate,
   placement,
   priority = false,
 }: PublicBentoTileProps) {
-  const meta = CATEGORY_META[category];
   const typo = TILE_TYPO[size];
   const palette = PALETTES[tile.paletteKey];
   const hasImage = Boolean(tile.imageUrl);
@@ -120,7 +120,7 @@ export function PublicBentoTile({
             lineHeight: 1.2,
           }}
         >
-          {meta.stamp}
+          {stamp}
         </span>
 
         {/* Couche 3 : titre et sous-titre */}
