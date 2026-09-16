@@ -919,7 +919,9 @@ Rejoués depuis les migrations du dépôt, à chaque lot :
 | Parcours nouveau venu de bout en bout | splash, règles, mécanique, composer, six cases, pseudo, page publique |
 | Zéro écriture serveur avant publication | vérifié : 0 ligne `users` créée pendant la composition |
 
-**Restent à faire, sur appareil ou simulateur :**
+**Restent à faire, sur appareil ou simulateur**, consignés au **chantier 29**
+de la roadmap, « La dette de recette sur appareil », ouvert le 16 septembre
+pour ne plus les laisser s'accumuler chantier après chantier :
 
 1. **iPhone SE et Pixel 8**, la même matrice. Ce sont les écrans courts, donc
    ceux où la bande de sélection peut faire passer la boîte sous le bouton. Le

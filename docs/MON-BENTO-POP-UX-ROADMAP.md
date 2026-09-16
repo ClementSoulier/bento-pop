@@ -234,6 +234,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 24 | Zone de notifications dans l'app | Rétention | M | 22, 23 | ⬜ roadmap produit |
 | 25 | Comptes Instagram et TikTok | Appropriation | L | 21 | ⬜ roadmap produit |
 | 27 | Succès | Rétention | L | 13, 21 | ⬜ roadmap produit |
+| 29 | **La dette de recette sur appareil** | Qualité | M | rien | ⬜ **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers |
 
 **Arbitré le 15 septembre 2026 : la roadmap produit passe devant les
 chantiers 8 à 12.** Elle suit l'ordre donné par l'équipe, le 13 y prenant la
@@ -1098,6 +1099,63 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 - Ce qu'on accepte de laisser tricher, par exemple créer des bentos pour cumuler.
 
 **Fait quand** : un succès se débloque au geste qui le mérite, s'affiche sur le profil, et les comptes existants reçoivent ceux qu'ils méritaient déjà.
+
+---
+
+## 29. La dette de recette sur appareil
+
+> **Ouvert le 16 septembre 2026**, à la fin du chantier 16. Chaque chantier a
+> laissé derrière lui un ou deux points qu'il n'a pas pu vérifier autrement que
+> par le calcul ou au simulateur. Pris un par un, chacun se remet à plus tard
+> sans dommage ; rassemblés, ils font une liste qu'on peut parcourir en une
+> session avec deux téléphones sur la table.
+
+**Demandé.** Ne plus laisser de « reste à faire sur appareil » s'accumuler à la
+fin de chaque chantier.
+
+**Constat.** Au 16 septembre, cinq chantiers en portent.
+
+### Du chantier 16, plusieurs bentos par compte
+
+- **La matrice sur iPhone SE et Pixel 8.** Elle n'a tourné que sur iPhone
+  17 Pro. Ce sont les écrans courts, donc ceux où la bande de sélection du
+  composer et celle de la page publique peuvent faire passer la boîte sous le
+  bouton. Le modèle de géométrie les couvre par le calcul, et un test vérifie
+  que l'écart au bouton ne descend jamais sous son minimum, mais le calcul
+  n'est pas le pixel : c'est exactement ce raisonnement qui avait manqué la
+  première version de la bande, posée sous la grille et invisible au repos.
+- **Un signalement depuis un bento secondaire**, jusqu'au lien de modération du
+  back-office, pour voir que `target_bento_id` mène bien au bento signalé et
+  non au principal du compte.
+- **Le partage d'un bento secondaire dans deux messageries**, pour vérifier que
+  l'aperçu montre ce bento-là. Le HTML et l'image sont produits par deux
+  requêtes séparées : c'était le défaut mesuré en §4.6 de la spéc, corrigé,
+  jamais vu à l'œil.
+- **La reprise d'un brouillon sur un appareil réel**, et son sort quand
+  `signInAnonymously` échoue. C'est le cas du rejet App Store 2bf822e0, et le
+  chantier 9 l'a transformé en chemin qui marche : à vérifier en coupant le
+  réseau au premier lancement.
+- **La création d'un bento secondaire depuis le back-office**, reportée par
+  Clément le 16 septembre. Le code existe (`addBentoToAccount`) et la recette
+  de bout en bout l'attend.
+
+### Des chantiers précédents
+
+- **1** : la QA appareil de la page web publique.
+- **2** : la fluidité du fil sur appareil réel, en build de production.
+- **3** : l'haptique et VoiceOver sur la recherche d'item.
+- **11**, les cinq points de son §7.3 : haptique, VoiceOver et TalkBack sur un
+  parcours complet, fluidité du fil sur build de production, aperçus de partage
+  dans deux messageries, démarrage en mode avion.
+
+### Ce qui rendrait la dette inutile
+
+À arbitrer quand on y arrive : est-ce qu'un chantier peut être déclaré terminé
+avec une dette d'appareil, ou est-ce que la recette d'appareil devient une
+condition de fusion ? La deuxième réponse coûte une demi-journée par chantier
+et supprime cette liste.
+
+**Fait quand** : la liste est vide, et la question ci-dessus est tranchée.
 
 ---
 
