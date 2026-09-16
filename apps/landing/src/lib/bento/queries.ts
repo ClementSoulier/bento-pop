@@ -85,7 +85,7 @@ export type BentoLookup =
       readonly kind: 'published';
       readonly bento: PublicBento;
       /** Les autres bentos publiés du compte, sans celui de `bento`. */
-      readonly others: readonly FeaturedBento[];
+      readonly others: readonly OtherBento[];
     }
   | { readonly kind: 'unpublished'; readonly pseudo: string; readonly displayName: string | null }
   | { readonly kind: 'not-found' };
@@ -135,6 +135,15 @@ export type FeaturedBento = {
   readonly pseudo: string;
   readonly slug: string;
   readonly isPrimary: boolean;
+};
+
+/** Un autre bento du compte, tel que la page le nomme. */
+export type OtherBento = FeaturedBento & {
+  /**
+   * Le titre de l'édition composée, ou `null` pour un bento libre. C'est lui
+   * qui nomme le lien : le slug est une adresse, pas un titre. Chantier 13.
+   */
+  readonly editionTitle: string | null;
 };
 
 /**
@@ -244,6 +253,7 @@ export async function lookupPublicBento(
       pseudo: user.pseudo,
       slug: row.slug,
       isPrimary: row.is_primary,
+      editionTitle: row.editions?.title ?? null,
     })),
     bento: {
       pseudo: user.pseudo,

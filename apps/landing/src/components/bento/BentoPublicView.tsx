@@ -9,7 +9,7 @@ import {
 } from '@/components/bento/BentoPageShell';
 import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
 import { bentoPath } from '@/lib/bento/metadata';
-import type { FeaturedBento, PublicBento } from '@/lib/bento/queries';
+import type { OtherBento, PublicBento } from '@/lib/bento/queries';
 import { mainBentoCases, publicCases } from './cases';
 
 /**
@@ -76,10 +76,10 @@ export function BentoUnpublishedView({
  *
  * Ne rend rien tant qu'un compte n'a qu'un bento, ce qui est le cas de tous
  * au 16 septembre 2026 : aucune page existante ne change d'aspect. Le libellé
- * est le slug, seule chose qu'un bento porte aujourd'hui ; le chantier 13 lui
- * donnera un titre.
+ * est le titre de l'édition pour un bento d'édition, chantier 13, et le slug
+ * pour un bento libre, seule chose qu'il porte.
  */
-function OtherBentos({ others }: { others: readonly FeaturedBento[] }) {
+function OtherBentos({ others }: { others: readonly OtherBento[] }) {
   if (others.length === 0) return null;
   return (
     <nav aria-label="Les autres bentos de ce compte" className="mt-5">
@@ -90,7 +90,7 @@ function OtherBentos({ others }: { others: readonly FeaturedBento[] }) {
               href={bentoPath(other.pseudo, other.isPrimary ? null : other.slug)}
               className="font-display inline-block rounded-full border-[2.5px] border-bento-ink bg-bento-cream px-3.5 py-1.5 text-[13px] tracking-wide text-bento-ink shadow-stamp"
             >
-              {other.slug}
+              {other.editionTitle ?? other.slug}
             </Link>
           </li>
         ))}
@@ -106,7 +106,7 @@ export function BentoPublishedView({
   canonicalUrl,
 }: {
   bento: PublicBento;
-  others: readonly FeaturedBento[];
+  others: readonly OtherBento[];
   canonicalUrl: string;
 }) {
   return (
