@@ -18,6 +18,7 @@ import {
   DESIGN_HEIGHT,
   DESIGN_WIDTH,
   FRAME,
+  ROW_HEIGHTS,
   TILE,
   TILE_LAYOUT,
   TILE_SCRIM,
@@ -142,8 +143,21 @@ export default async function OpenGraphImage({ params }: ImageParams) {
 
 // ─── Boîte bento ───────────────────────────────────────────────────────
 
+/**
+ * ⚠️ Les rangées portent leur hauteur, elles ne se la partagent pas.
+ *
+ * Ce fichier a longtemps posé `flex: 1` sur chaque rangée sans importer
+ * `ROW_HEIGHTS` : les trois se répartissaient la hauteur à parts égales.
+ * Mesuré au pixel le 16 septembre 2026 sur l'image de production de
+ * `@dark_hifus` : **160 px chacune**, quand la page web du même bento
+ * mesurait 259,2 / 157,2 / 117,0. Le compartiment film, signature de la
+ * boîte, perdait 31 % de sa hauteur dans chaque lien partagé.
+ *
+ * Les rangées se dérivent donc de `ROW_HEIGHTS`, seule source des hauteurs,
+ * plutôt que d'un littéral `[1, 2, 3]` qui ne disait rien de leur taille.
+ * `layout.test.ts` verrouille la somme.
+ */
 function BentoBox({ slots, images }: { slots: BentoSlots; images: Map<string, string> }) {
-  const rows = [1, 2, 3] as const;
   return (
     <div
       style={{
@@ -159,9 +173,12 @@ function BentoBox({ slots, images }: { slots: BentoSlots; images: Map<string, st
         boxShadow: `0 ${u(8)}px 0 ${INK}`,
       }}
     >
-      {rows.map((row) => (
-        <div key={row} style={{ display: 'flex', gap: u(FRAME.gap), flex: 1 }}>
-          {TILE_LAYOUT.filter((slot) => slot.row === row).map((slot) => {
+      {ROW_HEIGHTS.map((rowHeight, index) => (
+        <div
+          key={index + 1}
+          style={{ display: 'flex', gap: u(FRAME.gap), height: u(rowHeight) }}
+        >
+          {TILE_LAYOUT.filter((slot) => slot.row === index + 1).map((slot) => {
             const tile = slots[slot.category];
             return tile ? (
               <Tile
