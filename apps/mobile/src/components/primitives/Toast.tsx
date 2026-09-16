@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CONTENT_MAX_FONT_MULTIPLIER, CONTROL_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
+import { toastAnnouncement } from '@/lib/announce';
 import { SHADOWS } from './shadow';
 
 /**
@@ -54,10 +56,17 @@ export const useToast = create<ToastState>((set, get) => ({
   hide: () => set({ message: null, action: null }),
 }));
 
+/**
+ * L'action d'un toast porte la couleur du texte, soulignée, et non un rouge ou
+ * un jaune de marque : le rouge sur le jaune d'un toast de succès ne donnait que
+ * 2,50 : 1, le jaune sur le rouge d'un toast d'erreur 2,50 aussi. À l'encre,
+ * 11,86 sur le jaune et 17,89 sur le crème ; en blanc, 4,17 sur le rouge. Cf.
+ * §4.8 du chantier 11.
+ */
 const PALETTES: Record<ToastVariant, { bg: string; fg: string; actionFg: string }> = {
-  success: { bg: '#fbbf24', fg: '#0a0a0a', actionFg: '#e63946' },
-  neutral: { bg: '#fbf3de', fg: '#0a0a0a', actionFg: '#e63946' },
-  danger: { bg: '#e63946', fg: '#ffffff', actionFg: '#fbbf24' },
+  success: { bg: '#fbbf24', fg: '#0a0a0a', actionFg: '#0a0a0a' },
+  neutral: { bg: '#fbf3de', fg: '#0a0a0a', actionFg: '#0a0a0a' },
+  danger: { bg: '#e63946', fg: '#ffffff', actionFg: '#ffffff' },
 };
 
 export function ToastHost() {
@@ -73,6 +82,9 @@ export function ToastHost() {
 
   useEffect(() => {
     if (!message) return;
+    // Un toast apparaît sans que rien ne le touche : sans annonce, un lecteur
+    // d'écran ne dit ni le message ni l'action qui l'accompagne.
+    AccessibilityInfo.announceForAccessibility(toastAnnouncement(message, action?.label));
     Animated.parallel([
       Animated.timing(fade, { toValue: 1, duration: 180, useNativeDriver: true }),
       Animated.timing(slide, { toValue: 0, duration: 180, useNativeDriver: true }),
@@ -120,6 +132,7 @@ export function ToastHost() {
         ]}
       >
         <Text
+          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
           style={{
             flex: 1,
             color: palette.fg,
@@ -137,9 +150,14 @@ export function ToastHost() {
               action.onPress();
               hide();
             }}
-            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
+            // Le libellé fait 15 pt de haut : la cible tactile en fait 44.
+            hitSlop={{ top: 15, bottom: 15, left: 8, right: 8 }}
           >
             <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
               style={{
                 color: palette.actionFg,
                 fontFamily: 'Bungee',

@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BentoBoxSkeleton, BentoGrid, SKELETON_BONE, ShareImage } from '@/components/bento';
 import { fontScaleFor } from '@/components/bento/font-scaling';
 import {
-  BUTTON_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
   CONTENT_MAX_FONT_MULTIPLIER,
   CTA_LABEL_LINE_H,
   DATE_LINE_H,
@@ -31,7 +31,7 @@ import {
   publicScrollBottomInset,
   publicSideInset,
 } from '@/components/bento/public-layout';
-import { SHADOWS, YellowBg } from '@/components/primitives';
+import { INK_MUTED, SHADOWS, YellowBg, useToast } from '@/components/primitives';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import type { PublicBento } from '@/lib/public-bento';
 import { publicBentoQueryOptions } from '@/lib/public-bento-query';
@@ -39,6 +39,8 @@ import { publicPageState } from '@/lib/public-page-state';
 import { submitReport } from '@/lib/report';
 import { shareBentoImage } from '@/lib/share-image';
 import { useIsOffline } from '@/lib/use-is-offline';
+import { useOfflineInset } from '@/lib/use-offline-inset';
+import { userErrorMessage } from '@/lib/user-error-message';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
 import { publicSupabase } from '@/supabase/client';
@@ -79,10 +81,13 @@ export default function PublicBentoScreen() {
 
   const { width, height, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // Le bandeau hors ligne descend l'écran, et c'est justement dans l'état
+  // « Connexion perdue » qu'il apparaît : le modèle le compte.
+  const offlineInset = useOfflineInset();
   const scale = publicBentoScale({
     width,
     height,
-    insetTop: insets.top,
+    insetTop: insets.top + offlineInset,
     insetBottom: insets.bottom,
     fontScale,
   });
@@ -160,6 +165,8 @@ function TopBar({ optionsFor }: { optionsFor: string | null }) {
         onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/compose'))}
         accessibilityRole="button"
         accessibilityLabel="Retour"
+        // La pastille fait 36 pt : la cible tactile en fait 44.
+        hitSlop={4}
         style={[
           {
             backgroundColor: '#ffffff',
@@ -480,7 +487,7 @@ function CtaBar({
   fontScale: number;
 }) {
   // Appliquée par l'écran, comme l'en-tête : cf. `fontScaleFor`.
-  const textScale = fontScaleFor(fontScale, BUTTON_MAX_FONT_MULTIPLIER);
+  const textScale = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
   const label = {
     fontFamily: 'Bungee',
     fontSize: 13 * textScale,
@@ -636,7 +643,7 @@ function StateMessage({
         >
           <Text
             numberOfLines={1}
-            maxFontSizeMultiplier={BUTTON_MAX_FONT_MULTIPLIER}
+            maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
             style={{
               fontFamily: 'Bungee',
               fontSize: 12,
@@ -667,6 +674,7 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
   const isBlocked = useBlocked((s) => s.isBlocked(pseudo));
   const block = useBlocked((s) => s.block);
   const unblock = useBlocked((s) => s.unblock);
+  const showToast = useToast((s) => s.show);
 
   const onPress = () => {
     const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
@@ -687,7 +695,8 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
                     await submitReport({ targetKind: 'bento', targetPseudo: pseudo });
                     Alert.alert('Merci', 'Notre équipe va examiner ce bento sous 24h.');
                   } catch (e) {
-                    Alert.alert('Oups', (e as Error).message);
+                    console.warn('[page publique] signalement', e);
+                    Alert.alert('Oups', userErrorMessage('report', e));
                   }
                 },
               },
@@ -699,21 +708,37 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
     if (isBlocked) {
       options.push({
         text: `Débloquer @${pseudo}`,
-        onPress: () => unblock(pseudo),
+        onPress: () => {
+          void unblock(pseudo);
+          showToast(`@${pseudo} débloqué`, { variant: 'neutral' });
+        },
       });
     } else {
       options.push({
         text: `Bloquer @${pseudo}`,
         onPress: () =>
+          // Le menu qui débloque vit sur cette page, que le fil et la recherche
+          // ne montrent plus une fois le blocage posé : la liste du profil est
+          // désormais le chemin de retour, et la phrase le dit.
           Alert.alert(
             'Bloquer cet utilisateur ?',
-            'Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux annuler à tout moment depuis ce menu.',
+            'Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux le débloquer depuis ton profil.',
             [
               { text: 'Annuler', style: 'cancel' },
               {
                 text: 'Bloquer',
                 style: 'destructive',
-                onPress: () => block(pseudo),
+                onPress: () => {
+                  void block(pseudo);
+                  showToast(`@${pseudo} est bloqué. Débloque-le depuis ton profil.`, {
+                    variant: 'neutral',
+                    durationMs: 5000,
+                  });
+                  // On quitte la page du compte bloqué : y rester montrerait
+                  // justement le bento qu'on vient de masquer.
+                  if (router.canGoBack()) router.back();
+                  else router.replace('/(tabs)/table');
+                },
               },
             ],
           ),
@@ -729,16 +754,18 @@ function BlockReportMenu({ pseudo }: { pseudo: string }) {
       accessibilityRole="button"
       accessibilityLabel={`Options pour @${pseudo}`}
       accessibilityHint="Ouvre les options de signalement et blocage"
+      // Le libellé fait 25 pt de haut : la cible tactile en fait 44.
+      hitSlop={{ top: 10, bottom: 10 }}
       style={{ marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6 }}
     >
       <Text
         numberOfLines={1}
-        maxFontSizeMultiplier={BUTTON_MAX_FONT_MULTIPLIER}
+        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
         style={{
           fontFamily: 'Bungee',
           fontSize: 10,
           letterSpacing: 1.5,
-          color: 'rgba(10,10,10,0.55)',
+          color: INK_MUTED,
           textTransform: 'uppercase',
         }}
       >

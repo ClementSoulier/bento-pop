@@ -10,6 +10,7 @@ import {
   emptyTileLabelScale,
 } from './tile-text';
 import { emptyTileLabelFit } from './tile-title';
+import { INK_PLACEHOLDER } from '@/components/primitives/ink';
 
 type EmptyTileProps = {
   cat: CategoryKey;
@@ -97,7 +98,7 @@ export function EmptyTile({
           numberOfLines={labelFit.numberOfLines}
           adjustsFontSizeToFit={labelFit.adjustsFontSizeToFit}
           allowFontScaling={false}
-          style={[labelStyle, { color: 'rgba(10,10,10,0.35)' }]}
+          style={[labelStyle, { color: INK_PLACEHOLDER }]}
         >
           {meta.label}
         </Text>
@@ -105,12 +106,19 @@ export function EmptyTile({
     );
   }
 
+  // Sans action, la case n'est pas un bouton : sur l'écran de mécanique de
+  // l'accueil, la grille est un dessin, et VoiceOver y annonçait six boutons
+  // « Ajouter film » qui ne faisaient rien.
+  const Frame = onPress ? Pressable : View;
   return (
-    <Pressable
+    <Frame
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Ajouter ${meta.label.toLowerCase()}`}
-      accessibilityHint="Ouvre la recherche pour remplir cette case"
+      accessible
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={
+        onPress ? `Ajouter ${meta.label.toLowerCase()}` : `${meta.label} : case vide`
+      }
+      accessibilityHint={onPress ? 'Ouvre la recherche pour remplir cette case' : undefined}
       style={frame}
     >
       <View
@@ -148,6 +156,6 @@ export function EmptyTile({
       >
         {meta.label}
       </Text>
-    </Pressable>
+    </Frame>
   );
 }
