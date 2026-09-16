@@ -274,14 +274,193 @@ export function boxTileWidth(casesInRow: number): number {
 
 /**
  * Largeur utile pour du texte dans une case, à l'échelle 1 : la case moins
- * son cadre de 2,5 et sa marge de 8, des deux côtés. Vaut 302, 135,5 ou 80.
+ * son pointillé de 2 et sa marge de 8, des deux côtés. Vaut 303, 136,5 ou 81.
  *
  * C'est le nombre qui décide si un intitulé d'édition tient, et c'est
  * pourquoi il vit ici plutôt que dans l'app : le back-office doit appliquer
  * la même règle avant d'enregistrer une case.
  */
 export function boxTileTextWidth(casesInRow: number): number {
-  return boxTileWidth(casesInRow) - 8 * 2 - 2.5 * 2;
+  return boxTileWidth(casesInRow) - PROMPT_PADDING * 2 - PROMPT_BORDER * 2;
+}
+
+// ─── Un intitulé tient-il dans sa case ? ───────────────────────────────
+
+/**
+ * La règle qui décide si la question d'une édition peut s'afficher.
+ *
+ * **Elle vit ici pour qu'il n'y en ait qu'une.** Le back-office doit refuser
+ * un intitulé trop long avant de l'enregistrer, et l'app doit le dessiner :
+ * deux implémentations divergeraient, et l'équipe découvrirait le défaut une
+ * fois l'édition sortie, quand plus personne ne peut la corriger sans casser
+ * les bentos déjà composés.
+ *
+ * Ce que l'app fait, et que cette règle reproduit : un intitulé de plus d'un
+ * mot s'affiche sur **deux lignes au plus, sans réduction de police**
+ * (`tile-title.ts:47-53`). Au-delà, il est coupé.
+ */
+
+/** Marge intérieure d'une case vide, en points, non mise à l'échelle. */
+const PROMPT_PADDING = 8;
+/** Épaisseur du pointillé d'une case vide (`EMPTY_TILE_BORDER`). */
+const PROMPT_BORDER = 2;
+/** Taille de l'intitulé à l'échelle de référence (`emptyTileConf`). */
+export const PROMPT_FONT_SIZE = 10;
+/** Interlettrage de l'intitulé, en points. */
+export const PROMPT_LETTER_SPACING = 1.2;
+/** Lignes disponibles avant la coupe. */
+export const PROMPT_MAX_LINES = 2;
+
+/**
+ * Part de la largeur utile au-delà de laquelle un intitulé devient serré.
+ *
+ * **Pas un refus, un avertissement**, et il est mesuré. La règle s'évalue à
+ * l'échelle de référence, où la boîte fait 361 × 512. Elle se dessine plus
+ * petit dans le fil, et deux choses la resserrent alors : la taille de police
+ * a un plancher à 8, et ni la marge ni le pointillé d'une case vide ne sont
+ * mis à l'échelle. La capacité, en largeur utile par point de police, se
+ * dégrade donc :
+ *
+ * ```
+ * partage    2,50   police 25   utile 231,5   capacité 9,26
+ * composer   1,00   police 10   utile  81,0   capacité 8,10
+ * fil 17 Pro 0,94   police  9   utile  74,7   capacité 8,30
+ * fil SE     0,88   police  9   utile  68,6   capacité 7,62
+ * ```
+ *
+ * Le fil sur iPhone SE est 6 % plus serré que l'échelle de référence. Un
+ * intitulé qui occupe plus de 90 % d'une ligne y risque donc la coupe.
+ *
+ * ⚠️ Ce n'est pas théorique : « CRÉATEUR DE CONTENU », affiché dans la
+ * rangée à trois du bento principal depuis le premier jour, occupe 77,5 des
+ * 81 points utiles à l'échelle de référence, soit 96 %. Au calcul, il déborde
+ * dans le fil sur iPhone SE. À vérifier sur appareil, cf. le chantier 29.
+ */
+export const PROMPT_TIGHT_RATIO = 0.9;
+
+/**
+ * Largeurs d'avance de Bungee, en em, par caractère.
+ *
+ * Extraites du vrai fichier de police, `Bungee_400Regular.ttf` de
+ * `@expo-google-fonts/bungee` : tables `head`, `hhea`, `hmtx` et `cmap`.
+ * `bungee-metrics.test.ts` les redérive du fichier et échoue si elles
+ * divergent, donc ce tableau ne peut pas dormir périmé.
+ *
+ * Recoupées le 16 septembre 2026 avec une mesure au canevas dans un vrai
+ * navigateur, police réellement chargée : « LE FILM QUI T'A FAIT PLEURER »
+ * donne 199,8 ici contre 199,3 là, soit 0,3 % d'écart.
+ */
+const BUNGEE_GROUPS: readonly (readonly [string, number])[] = [
+  ['  ', 0.225], ['/', 0.347], ["'", 0.356], [',.:;’', 0.384],
+  ['-‐', 0.42], ['!', 0.424], ['()', 0.429], ['1', 0.601],
+  ['IÎÏ', 0.605], ['F', 0.618], ['7', 0.627], ['CÇ', 0.628],
+  ['3', 0.637], ['2', 0.639], ['5', 0.647], ['S', 0.65],
+  ['EÈÉÊË', 0.654], ['?T', 0.656], ['Z', 0.66], ['P', 0.682],
+  ['J', 0.688], ['69', 0.693], ['L', 0.695], ['YŸ', 0.705],
+  ['G', 0.708], ['4', 0.709], ['8', 0.711], ['B', 0.725],
+  ['0', 0.727], ['AVÀÂÄ', 0.73], ['+', 0.734],
+  ['OQXÔÖ', 0.737], ['R', 0.743], ['DKUÙÛÜ', 0.746],
+  ['NÑ', 0.753], ['H', 0.759], ['&', 0.766], ['«»', 0.812],
+  ['W', 0.831], ['M', 0.849], ['Æ', 1.005], ['Œ', 1.015],
+  ['%', 1.031], ['…', 1.11],
+];
+
+const BUNGEE_ADVANCE: ReadonlyMap<string, number> = new Map(
+  BUNGEE_GROUPS.flatMap(([chars, width]) =>
+    [...chars].map((c) => [c, width] as [string, number]),
+  ),
+);
+
+/** Largeur du glyphe de remplacement, pour un caractère hors table. */
+const BUNGEE_FALLBACK = 1;
+
+/**
+ * Largeur d'un texte en Bungee capitales, en points.
+ *
+ * L'interlettrage s'ajoute après chaque caractère, y compris le dernier :
+ * c'est ce que font React Native et le navigateur.
+ */
+export function bungeeTextWidth(
+  text: string,
+  fontSize: number = PROMPT_FONT_SIZE,
+  letterSpacing: number = PROMPT_LETTER_SPACING,
+): number {
+  const majuscules = [...text.toUpperCase()];
+  let em = 0;
+  for (const char of majuscules) {
+    em += BUNGEE_ADVANCE.get(char) ?? BUNGEE_FALLBACK;
+  }
+  return em * fontSize + letterSpacing * majuscules.length;
+}
+
+/** Espace où la ligne peut se couper. Les insécables n'en sont pas. */
+const COUPURE = /[^\S   ]+/;
+
+export type PromptFit = {
+  /** L'intitulé s'affiche entier à l'échelle de référence, sans coupe. */
+  readonly fits: boolean;
+  /**
+   * Il tient, mais de justesse : sa ligne la plus longue passe
+   * `PROMPT_TIGHT_RATIO`, donc il risque la coupe sur un petit écran.
+   */
+  readonly tight: boolean;
+  /** Lignes nécessaires. Au-delà de deux, l'app coupe. */
+  readonly lines: number;
+  /** Le mot qui ne tient pas sur une ligne à lui seul, s'il y en a un. */
+  readonly tooLongWord: string | null;
+  /** Largeur de la ligne la plus longue, en points. */
+  readonly widestLine: number;
+  /** Largeur utile d'une case de cette rangée, en points. */
+  readonly usableWidth: number;
+};
+
+/**
+ * Un intitulé tient-il dans une case d'une rangée de `casesInRow` ?
+ *
+ * Retour à la ligne glouton, comme le moteur de texte : chaque mot passe à la
+ * ligne suivante dès qu'il ne rentre plus. Un mot plus large qu'une ligne
+ * entière ne tient dans aucune disposition, et il est signalé à part pour que
+ * le back-office puisse le nommer.
+ */
+export function promptFit(prompt: string, casesInRow: number): PromptFit {
+  const usableWidth = boxTileTextWidth(casesInRow);
+  const mots = prompt.trim().split(COUPURE).filter(Boolean);
+
+  if (mots.length === 0) {
+    return { fits: false, tight: false, lines: 0, tooLongWord: null, widestLine: 0, usableWidth };
+  }
+
+  let lines = 1;
+  let courante = '';
+  let widestLine = 0;
+  for (const mot of mots) {
+    if (bungeeTextWidth(mot) > usableWidth) {
+      return {
+        fits: false, tight: false, lines: PROMPT_MAX_LINES + 1,
+        tooLongWord: mot, widestLine: bungeeTextWidth(mot), usableWidth,
+      };
+    }
+    const essai = courante ? `${courante} ${mot}` : mot;
+    const largeur = bungeeTextWidth(essai);
+    if (largeur <= usableWidth) {
+      courante = essai;
+      widestLine = Math.max(widestLine, largeur);
+    } else {
+      lines += 1;
+      courante = mot;
+      widestLine = Math.max(widestLine, bungeeTextWidth(mot));
+    }
+  }
+
+  const fits = lines <= PROMPT_MAX_LINES;
+  return {
+    fits,
+    tight: fits && widestLine > usableWidth * PROMPT_TIGHT_RATIO,
+    lines,
+    tooLongWord: null,
+    widestLine,
+    usableWidth,
+  };
 }
 
 // ─── Hash stable ───────────────────────────────────────────────────────

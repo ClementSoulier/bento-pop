@@ -140,9 +140,10 @@ describe('géométrie dérivée', () => {
    * intitulé d'édition tient, et le back-office applique la même règle.
    */
   it('rend les trois largeurs utiles mesurées', () => {
-    assert.equal(boxTileTextWidth(1), 302);
-    assert.equal(boxTileTextWidth(2), 135.5);
-    assert.equal(boxTileTextWidth(3), 80);
+    // Case moins sa marge de 8 et son pointillé de 2, des deux côtés.
+    assert.equal(boxTileTextWidth(1), 303);
+    assert.equal(boxTileTextWidth(2), 136.5);
+    assert.equal(boxTileTextWidth(3), 81);
   });
 });
 
