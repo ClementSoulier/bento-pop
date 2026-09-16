@@ -66,7 +66,14 @@ export function EditionEditor({
         .sort((a, b) => a.order - b.order)
         .map((c) => {
           const v = verdictPar.get(c.order);
-          return { prompt: c.prompt, stamp: c.stamp, fits: v?.fits ?? false, tight: v?.tight ?? false };
+          // Une case pas encore écrite n'est pas une case coupée : l'aperçu
+          // ne la cercle pas de rouge, la validation la refuse déjà.
+          return {
+            prompt: c.prompt,
+            stamp: c.stamp,
+            fits: v ? v.fits || v.empty : false,
+            tight: v?.tight ?? false,
+          };
         }),
     [cases, verdictPar],
   );
@@ -350,6 +357,13 @@ export function EditionEditor({
 
 function Verdict({ v }: { v: ReturnType<typeof caseVerdicts>[number] | undefined }) {
   if (!v) return <span className="text-admin-muted">—</span>;
+  if (v.empty) {
+    return (
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-admin-muted">
+        à écrire
+      </span>
+    );
+  }
   const part = `${Math.round(v.ratio * 100)} %`;
   if (!v.fits) {
     return (

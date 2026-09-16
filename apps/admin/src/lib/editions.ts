@@ -118,6 +118,12 @@ export function validateEdition(input: EditionInput): Result {
 /** Le verdict d'affichage d'une case, tel que l'écran le montre. */
 export type CaseVerdict = {
   order: number;
+  /**
+   * L'intitulé est encore vide : rien à mesurer. L'écran affichait « coupé ·
+   * 0 lignes » pour une case qu'on n'a pas encore écrite, recette du
+   * 16 septembre 2026. La validation, elle, la refuse toujours.
+   */
+  empty: boolean;
   /** L'intitulé s'affiche entier. */
   fits: boolean;
   /** Il tient, mais risque la coupe sur un petit écran. */
@@ -147,15 +153,17 @@ export function caseVerdicts(cases: readonly EditionCase[]): CaseVerdict[] {
     .sort((a, b) => a.order - b.order)
     .map((c, i) => {
       const place = places[i];
+      const empty = c.prompt.trim().length === 0;
       if (!place) {
         return {
-          order: c.order, fits: false, tight: false, lines: 0,
+          order: c.order, empty, fits: false, tight: false, lines: 0,
           casesInRow: 0, ratio: 0, tooLongWord: null,
         };
       }
       const fit = promptFit(c.prompt, place.casesInRow);
       return {
         order: c.order,
+        empty,
         fits: fit.fits,
         tight: fit.tight,
         lines: fit.lines,

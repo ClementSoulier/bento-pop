@@ -172,6 +172,15 @@ describe('le verdict par case', () => {
     assert.deepEqual(caseVerdicts(desordre).map((v) => v.order), [1, 2, 3]);
   });
 
+  it('distingue une case pas encore écrite d’une case coupée', () => {
+    // Recette du 16 septembre : « coupé · 0 lignes » pour un intitulé vide.
+    const [vide, ecrite] = caseVerdicts([cas(1, '  '), cas(2, 'Série')]);
+    assert.equal(vide!.empty, true);
+    assert.equal(ecrite!.empty, false);
+    // La validation la refuse toujours : vide ne veut pas dire acceptable.
+    assert.equal(validateCases([cas(1, ''), cas(2, 'Série')]).ok, false);
+  });
+
   it('rend une part de ligne exploitable', () => {
     const [court] = caseVerdicts([cas(1, 'Film'), cas(2, 'Série')]);
     assert.ok(court!.ratio > 0 && court!.ratio < 0.3, `part mesurée : ${court!.ratio}`);
