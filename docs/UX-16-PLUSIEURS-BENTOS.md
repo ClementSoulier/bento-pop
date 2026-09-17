@@ -844,9 +844,9 @@ L'ordre juste, les deux migrations n'ayant pas les mêmes contraintes (§6.1) :
 |---|---|---|
 | 1 | **Migration A** appliquée en production ✅ **faite le 16/09** | **aucun** : elle n'ajoute que des colonnes, la relation reste un un-à-un, les apps en circulation ne voient rien |
 | 2 | **Fusion de la PR** : landing et back-office se déploient | aucun : la base sait déjà répondre |
-| 3 | **Build mobile 1.3.0**, puis adoption | aucun : dormante pour tout ce qui concerne les secondaires |
+| 3 | **Build mobile 1.3.0**, puis adoption · **construite le 16/09, ne sera pas publiée** : la sortie store attend que tous les chantiers soient terminés et recettés, décision du 17/09 | aucun : dormante pour tout ce qui concerne les secondaires |
 | 4 | **Migration B**, sur feu vert, quand l'adoption suffit ✅ **appliquée le 17/09**, avec le bloc du chantier 13 | c'est **la** fenêtre : une app restée sur l'ancienne requête dirait « rien en ligne ». **Corrigé le 17/09** : aucune version publiée n'a cette requête, cf. ci-dessous |
-| 5 | **Premier bento secondaire** créé depuis le back-office | aucun |
+| 5 | **Premier bento secondaire** créé depuis le back-office | ~~aucun~~ **pas avant la sortie store unique et le relèvement du plancher de version** : un compte à deux bentos casse sa page publique dans les versions publiées, cf. chantier 13, D8 |
 
 Entre les étapes 1 et 4, rien ne change pour personne.
 
@@ -1090,10 +1090,10 @@ la branche. Ce qui suit la fusion, dans l'ordre de §6.2 :
 |---|---|---|
 | 1 | **Migration A** dans l'éditeur SQL, avant toute fusion | toi |
 | 2 | Fusion après CI verte, déploiement des deux apps web | moi, sur ton accord |
-| 3 | Build mobile 1.3.0, iOS et Android, profil `production` | moi, sur ton accord |
-| 4 | Mesure de l'adoption de la 1.3.0 | toi, clé privilégiée |
+| 3 | Build mobile 1.3.0, iOS et Android, profil `production` ✅ **16/09, ne sera pas publiée** (sortie store unique, décision du 17/09) | moi, sur ton accord |
+| 4 | ~~Mesure de l'adoption de la 1.3.0~~ **sans objet** : B appliquée le 17/09 sans l'attendre | toi, clé privilégiée |
 | 5 | **Migration B** puis `publish_first_bento`, dans l'éditeur SQL ✅ **17/09**, avec le bloc du chantier 13 | toi |
-| 6 | Création d'un premier bento secondaire depuis le back-office | toi ou moi |
+| 6 | Création d'un premier bento secondaire depuis le back-office, **pas avant la sortie store unique et le plancher de version** (chantier 13, D8) | toi ou moi |
 | 7 | Recette de bout en bout sur les trois appareils | moi |
 
 Rien n'est soumis aux stores sans décision explicite, et la migration n'est

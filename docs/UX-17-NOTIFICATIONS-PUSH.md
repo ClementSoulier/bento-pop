@@ -19,7 +19,9 @@
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 17, et
 > [le chantier 13](./UX-13-BENTO-HEBDOMADAIRE.md), avec qui il partage sa
-> sortie store.
+> sortie store. **Depuis le 17 septembre 2026, cette sortie est unique** : elle
+> attend que tous les chantiers de la roadmap soient terminés et recettés, cf.
+> §9.
 
 ---
 
@@ -273,6 +275,12 @@ parc réel sont antérieurs et ne remontent rien.
 - Ailleurs, et c'est plus grave : **l'adoption de la 1.3.0, que la migration B
   du chantier 16 attend, n'est pas mesurable par ce moyen.** À trancher
   séparément, cf. §12.
+
+> **Corrigé le 17 septembre 2026.** La migration B n'attendait aucune adoption :
+> aucune version publiée ne lit l'embed dont elle change la forme. Elle est
+> appliquée en production depuis ce jour, cf.
+> [le chantier 13](./UX-13-BENTO-HEBDOMADAIRE.md), §6.2. Et la 1.3.0 ne sera
+> pas publiée : la sortie store attend la fin de tous les chantiers.
 
 ### 4.7 Ce qui ne bouge pas
 
@@ -531,8 +539,14 @@ roadmap, la DoD.
 ## 9. Livraison
 
 - Une branche, une PR, fusionnée après CI verte.
-- **Même sortie store que les chantiers 13, 21 et 29**, décidée le 16
-  septembre.
+- ~~**Même sortie store que les chantiers 13, 21 et 29**, décidée le 16
+  septembre.~~ **Une seule sortie store, quand tous les chantiers de la roadmap
+  sont terminés et recettés**, décidée le 17 septembre 2026. D'ici là, rien de
+  ce chantier n'atteint les versions publiques, la 1.1 et la 0.1.0.
+- **À trancher avant le lot 1 : quand appliquer ses migrations en
+  production.** Appliquées au fil de l'eau, elles doivent rester compatibles
+  avec la 1.1 et la 0.1.0 pendant toute la durée des chantiers ; sinon, elles
+  attendent le jour de la sortie.
 - Les deux secrets de coffre et les deux variables Coolify se posent avant la
   première validation d'item suivant le déploiement.
 
@@ -574,10 +588,12 @@ roadmap, la DoD.
 
 ## 12. Suivis
 
-- ⚠️ **L'adoption d'une version n'est pas mesurable.** La télémétrie est
+- **L'adoption d'une version n'est pas mesurable.** La télémétrie est
   arrivée le 12 septembre, la version publique est la 1.1 du 7 septembre : le
-  parc réel ne remonte rien. La migration B du chantier 16 attend un chiffre
-  qui ne viendra pas. À trancher autrement, et ce n'est pas ce chantier.
+  parc réel ne remonte rien. ~~La migration B du chantier 16 attend un chiffre
+  qui ne viendra pas. À trancher autrement, et ce n'est pas ce chantier.~~
+  **Corrigé le 17 septembre 2026** : la migration B n'attendait aucun chiffre,
+  elle est appliquée en production depuis ce jour, cf. §4.6.
 - **Le commentaire « pas de notification user en V1 »** se retire de
   `catalogue/actions.ts:103` et de trois endroits de
   `docs/MON-BENTO-POP-CATALOG.md`, lignes 126, 164 et 322.

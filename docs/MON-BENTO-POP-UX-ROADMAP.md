@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut au 17 septembre 2026 : chantiers 1 à 7, 9, 11, 13, 14, 15 et 16 livrés, prochain le 17, dont la spécification est arbitrée.** La build 1.3.0 (chantiers 16 et 9) est construite depuis le 16 septembre ; l'App Store sert toujours la 1.1 et le Play Store la 0.1.0, relevé le 17 septembre. La base de production porte depuis le 17 septembre les migrations des chantiers 16, 9 et 13 : **aucune édition ne se compose en production** avant la sortie store et le relèvement du plancher de version. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 17 septembre 2026 : chantiers 1 à 7, 9, 11, 13, 14, 15 et 16 livrés, prochain le 17, dont la spécification est arbitrée.** **Décidé le 17 septembre 2026 : la prochaine sortie store n'aura lieu qu'une fois tous les chantiers de cette roadmap terminés et recettés**, le 29 compris, donc la dette de recette sur appareil soldée ; plus aucune sortie par lot. D'ici là, l'App Store sert la 1.1 et le Play Store la 0.1.0, relevé le 17 septembre, et la build 1.3.0 (chantiers 16 et 9), construite le 16 septembre, ne sera pas publiée. La base de production porte depuis le 17 septembre les migrations des chantiers 16, 9 et 13 : **aucune édition ne se compose en production** avant cette sortie et le relèvement du plancher de version. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -86,7 +86,8 @@ Aucune dépendance ni configuration native n'a bougé depuis la build 1.2.0 :
 `package.json`, `app.json` et `pnpm-lock.yaml` n'ont changé depuis que par le
 numéro de version. Les chantiers 6 et 7 peuvent donc partir en mise à jour à
 distance sur cette runtime, ou dans une nouvelle build 1.2.0 avant la mise en
-revue. À trancher.
+revue. ~~À trancher.~~ **Tranché le 17 septembre 2026 : ils partent dans la
+sortie store unique, avec tous les autres chantiers**, cf. l'en-tête.
 
 La prochaine mise à jour devra viser la runtime **`1.2.0`** :
 
@@ -120,9 +121,10 @@ Réglées le 13 septembre 2026, elles portaient `0.0.1` et `null` depuis le
 | `ios_min_version` | `0.0.1` | inchangé |
 | `android_min_version` | `null` | inchangé |
 
-**À repasser à `1.2.0` le jour où la 1.2.0 est réellement publique**, pas
-avant : un `latest_version` qui annonce une version indisponible envoie les
-gens sur une fiche de store inchangée.
+**À repasser à la version de la sortie unique le jour où elle est réellement
+publique**, pas avant : un `latest_version` qui annonce une version
+indisponible envoie les gens sur une fiche de store inchangée. La 1.2.0 et la
+1.3.0 ne seront pas publiées, cf. l'en-tête.
 
 **Les `min_version` restent volontairement permissives.** Le blocage dur ne
 se pose qu'en connaissance de cause, pour retirer de la circulation une
@@ -218,8 +220,8 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 11 | Accessibilité et polish | Qualité | **L** | rien | ✅ 5 lots livrés (PR #68, CI verte, fusionnée le 16/09) · effort réévalué S → L à la mesure · DoD 23/23 au simulateur, 432 tests verts, matrice parcourue sur 17 Pro, SE et Pixel 8 · build production 1.2.0 lancée (iOS 11, Android versionCode 13) · restent cinq points d'appareil réel (§7.3) · [spec](./UX-11-ACCESSIBILITE-POLISH.md) |
 | 16 | Plusieurs bentos par compte | Contenu | L | 5 | ✅ **6 lots livrés (PR #70, CI verte, fusionnée le 16/09)**, spécifiés et livrés dans la journée · migration A appliquée en production avec son correctif urgent · **B et `publish_first_bento` appliquées en production le 17/09**, avec le bloc du chantier 13 et sans attendre d'adoption : aucune version publiée ne lit l'embed dont B change la forme · DoD 12 sur 13 · recette d'appareil versée au 29 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ✅ **livré au lot 5 du 16 (PR #70)**, parcours vérifié de bout en bout au simulateur · brouillon local, zéro ligne serveur avant publication, CGU horodatées à l'acceptation · gain non prévu : on compose désormais **sans session**, ce qui répond au rejet App Store 2bf822e0 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
-| 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ✅ **6 lots livrés (PR #74, CI verte, fusionnée le 17/09)** · recette sur simulateur iOS et émulateur Android : seize étapes et contrôle d'horloge, 17 défauts corrigés · arbitrages D11 à D13 : titre en 30 caractères, titre de l'édition dans le ruban de partage, **question de l'édition sur la case remplie**, garantie par un test sur 2 736 questions · bento principal inchangé au bit sur le web et au pixel dans l'app · **bloc SQL appliqué en production le 17/09** : migration B, `publish_first_bento` et les trois migrations des éditions · DoD 12 sur 14 : restent l'appareil réel (29) et le catalogue des quatre types dormants (15) · **à faire** : redéployer la landing et le back-office sur Coolify ; **ne composer aucune édition en production** avant la sortie store et le plancher de version (D8) · [spec](./UX-13-BENTO-HEBDOMADAIRE.md) |
-| 17 | Notifications push | Rétention | L | build native | 🟡 **spécification écrite et arbitrée le 17/09**, neuf décisions · l'argument mesuré n'est pas celui qu'on croyait : un item refusé ne laisse **aucun trou** dans un bento publié, mais le délai médian de validation est de **6,9 jours** et personne n'est prévenu · envoi par déclencheur SQL vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · préalables : clé APNs et compte de service FCM, délai administratif · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
+| 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ✅ **6 lots livrés (PR #74, CI verte, fusionnée le 17/09)** · recette sur simulateur iOS et émulateur Android : seize étapes et contrôle d'horloge, 17 défauts corrigés · arbitrages D11 à D13 : titre en 30 caractères, titre de l'édition dans le ruban de partage, **question de l'édition sur la case remplie**, garantie par un test sur 2 736 questions · bento principal inchangé au bit sur le web et au pixel dans l'app · **bloc SQL appliqué en production le 17/09** : migration B, `publish_first_bento` et les trois migrations des éditions · DoD 12 sur 14 : restent l'appareil réel (29) et le catalogue des quatre types dormants (15) · landing et back-office redéployés sur Coolify le 17/09, pages publiques vérifiées en production : boîte du bento principal identique à l'octet près à celle d'avant le redéploiement · **ne composer aucune édition en production** avant la sortie store unique et le plancher de version (D8) · [spec](./UX-13-BENTO-HEBDOMADAIRE.md) |
+| 17 | Notifications push | Rétention | L | build native | 🟡 **spécification écrite et arbitrée le 17/09**, neuf décisions · l'argument mesuré n'est pas celui qu'on croyait : un item refusé ne laisse **aucun trou** dans un bento publié, mais le délai médian de validation est de **6,9 jours** et personne n'est prévenu · envoi par déclencheur SQL vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · préalables : clé APNs et compte de service FCM, délai administratif · **à trancher avant le lot 1** : quand appliquer ses migrations en production, la sortie store attendant la fin de tous les chantiers · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
 | 18 | Publication automatique à la validation | Activation | M | 5 | ⬜ roadmap produit |
 | 8 | Signaux de retour : compteur de vues, relance | Rétention | M | 17 | ⬜ recadré le 15/09, le reste réparti dans les 17, 18 et 22 |
 | 19 | Émissions et podcasts dans « La table » | Contenu | M | 2 | ⬜ roadmap produit |
@@ -234,7 +236,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 24 | Zone de notifications dans l'app | Rétention | M | 22, 23 | ⬜ roadmap produit |
 | 25 | Comptes Instagram et TikTok | Appropriation | L | 21 | ⬜ roadmap produit |
 | 27 | Succès | Rétention | L | 13, 21 | ⬜ roadmap produit |
-| 29 | **La dette de recette sur appareil** | Qualité | M | rien | ⬜ **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers · **le chantier 13 y verse sa part le 17/09** : la fluidité du fil avec des boîtes de tailles différentes, le partage d'un bento d'édition dans deux messageries, et surtout « CRÉATEUR DE CONTENU » qui, **au calcul, déborde dans le fil sur iPhone SE** sans qu'aucun écran ne l'ait confirmé |
+| 29 | **La dette de recette sur appareil** | Qualité | M | rien | ⬜ **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers · **condition de la sortie store unique**, décidée le 17/09 : la liste doit être vide avant la soumission · **le chantier 13 y verse sa part le 17/09** : la fluidité du fil avec des boîtes de tailles différentes, le partage d'un bento d'édition dans deux messageries, et surtout « CRÉATEUR DE CONTENU » qui, **au calcul, déborde dans le fil sur iPhone SE** sans qu'aucun écran ne l'ait confirmé |
 
 **Arbitré le 15 septembre 2026 : la roadmap produit passe devant les
 chantiers 8 à 12.** Elle suit l'ordre donné par l'équipe, le 13 y prenant la
@@ -333,7 +335,9 @@ Chacune coûte moins cher posée une fois que redécouverte à chaque chantier.
    Une adresse hors de `/u/` aussi : les liens universels ne déclarent que ce
    chemin (`app.json`, `apple-app-site-association`). Le chantier 28 en
    demandera probablement une aussi, selon la connexion retenue. Regrouper ces
-   changements dans une même version évite une revue par chantier.
+   changements dans une même version évite une revue par chantier. **C'est ce
+   qui est décidé le 17 septembre 2026, pour toute la roadmap** : une seule
+   sortie, quand tous les chantiers sont terminés et recettés.
 
 **Quatre failles relevées en chemin**, sans rapport avec la liste, corrigées
 et fermées en production le même jour, cf.
@@ -735,7 +739,7 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 
 > **Recadré le 15 septembre 2026 par la roadmap produit.** Il s'appelait « Types de bento (hebdo, thématiques) » et commençait par lever la contrainte `unique (user_id)` : c'est désormais le chantier 16, dont celui-ci dépend.
 
-> **Livré le 17 septembre 2026** (PR #74), spécifié et arbitré la veille, cf. [la spécification](./UX-13-BENTO-HEBDOMADAIRE.md). Le « fait quand » est vérifié en recette sur Supabase local, contrôle d'horloge compris : une édition programmée sort à sa date sans relancer l'app. En production, il attend la nouvelle version de l'app ; la base, elle, est prête depuis le 17 septembre.
+> **Livré le 17 septembre 2026** (PR #74), spécifié et arbitré la veille, cf. [la spécification](./UX-13-BENTO-HEBDOMADAIRE.md). Le « fait quand » est vérifié en recette sur Supabase local, contrôle d'horloge compris : une édition programmée sort à sa date sans relancer l'app. En production, il attend la sortie store unique, qui n'aura lieu qu'une fois tous les chantiers terminés et recettés ; la base, elle, est prête depuis le 17 septembre.
 
 **Demandé.** Un système de bento hebdomadaire, configuré depuis l'administration : un titre, de 2 à 6 cases avec chacune un nom et une catégorie, une date de sortie.
 
@@ -1156,6 +1160,12 @@ fin de chaque chantier.
 avec une dette d'appareil, ou est-ce que la recette d'appareil devient une
 condition de fusion ? La deuxième réponse coûte une demi-journée par chantier
 et supprime cette liste.
+
+**Posé le 17 septembre 2026, quelle que soit la réponse** : la sortie store
+unique attend que cette liste soit vide. Proposé le même jour, à trancher :
+faire de ce chantier la recette de sortie, un parcours complet de tous les
+chantiers sur iPhone et Android, en build de production, juste avant la
+soumission.
 
 **Fait quand** : la liste est vide, et la question ci-dessus est tranchée.
 
