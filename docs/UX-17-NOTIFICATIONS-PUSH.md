@@ -22,6 +22,23 @@
 > sortie store. **Depuis le 17 septembre 2026, cette sortie est unique** : elle
 > attend que tous les chantiers de la roadmap soient terminés et recettés, cf.
 > §9.
+>
+> **Mis à jour le 17 septembre 2026, l'après-midi**, après trois décisions de
+> Clément valables pour toute la roadmap (une seule sortie store, migrations
+> appliquées en production au fur et à mesure, recette sur appareil seulement à
+> la sortie), trois vérifications et deux arbitrages, D10 et D11 de §11 :
+>
+> - **Le simulateur iOS et l'émulateur Android reçoivent les notifications**,
+>   contrairement à ce que disaient §6.4 et §7.3 : la recette se fait avant la
+>   fusion, sur ce Mac. Seul l'appareil réel attend la sortie, au chantier 29.
+> - **« Une édition est sortie » ne peut pas naître d'un déclencheur** : un
+>   déclencheur réagit à une écriture, pas au passage de l'heure. `pg_cron`
+>   appelle le back-office toutes les 5 minutes (D10).
+> - **La chaîne se branche en production dès que l'envoi est déployé**, et
+>   tourne sans destinataire jusqu'à la sortie (D11).
+> - **Le canal sortant est bien en place en production**, mesuré en lecture
+>   seule : `pg_net`, les deux déclencheurs de la landing, leurs secrets, et des
+>   appels réussis. La roadmap le disait à tort absent.
 
 ---
 
@@ -183,10 +200,20 @@ coalesce(new, old)` qui garantit qu'un appel raté n'empêche jamais l'écriture
 | `bentos_revalidate_landing` | `bentos` | `20260916120000:124` |
 | `editions_revalidate_landing` | `editions` | `20260917120000:103` |
 
+**Mesuré en production le 17 septembre 2026, en lecture seule** : `pg_net`
+0.20.0 installé, `bentos_revalidate_landing` et `editions_revalidate_landing`
+actifs, les secrets `landing_base_url` et `landing_revalidate_token` présents,
+et trois appels sortants réussis (200) le 15 septembre, les seuls que `pg_net`
+conserve encore. `pg_cron` est disponible (1.6.4), pas installé.
+
 **Les deux événements ont leur point d'accroche.** `items_touch_lifecycle_on_update`
 (`20260528120000_catalog_status_and_moderation.sql:126`) pose déjà
-`validated_at` et `rejected_at` : c'est là que naît l'information. Et
-`editions_revalidate_landing` se déclenche déjà à la sortie d'une édition.
+`validated_at` et `rejected_at` : c'est là que naît l'information. ~~Et
+`editions_revalidate_landing` se déclenche déjà à la sortie d'une édition.~~
+**Corrigé le 17 septembre 2026, l'après-midi** : il se déclenche quand l'équipe
+écrit l'édition (`after insert or update or delete`, `20260917120000:104-106`),
+pas quand sa date de sortie passe. Rien dans la base ne réagit au passage de
+l'heure : c'est l'objet de D10.
 
 **Une table par personne existe déjà comme modèle.** `public.user_telemetry`
 (`20260915000000_close_privilege_gaps.sql`) porte `user_id`, `platform` et
@@ -255,6 +282,23 @@ marketing direct. « Une nouvelle édition est sortie » s'en approche assez pou
 qu'on applique le régime strict sans discuter : accord explicite, formulé dans
 l'app, et retrait possible depuis l'app.
 
+**Le simulateur et l'émulateur, vérifiés à la source le 17 septembre 2026,
+l'après-midi.** La page d'installation des notifications d'Expo indique qu'on
+peut les tester sur un émulateur Android doté des services Google Play, et sur
+un simulateur iOS à partir d'Xcode 14, macOS 13 et iOS 16
+([source](https://docs.expo.dev/push-notifications/push-notifications-setup/)).
+Les notes de version d'Xcode 14 précisent que, sur un Mac Apple silicon ou à
+puce T2, le simulateur reçoit les notifications distantes par l'environnement
+*sandbox* d'APNs, avec des jetons propres au couple simulateur et Mac, de
+longueur variable
+([source](https://developer.apple.com/documentation/xcode-release-notes/xcode-14-release-notes)).
+Un compte développeur Apple payant reste nécessaire pour la clé.
+
+Ce Mac : Apple silicon, macOS 26.6, Xcode 26.4.1, simulateur iOS 26.4, et deux
+émulateurs avec Google Play, Pixel 8 (Android 37) et Pixel Tablet (Android 35).
+Deux conséquences : la recette de §7.3 se fait avant la fusion, et `token` ne
+suppose aucune longueur.
+
 ### 4.6 La télémétrie ne voit qu'un appareil, et ça dépasse ce chantier
 
 ```
@@ -301,7 +345,7 @@ parc réel sont antérieurs et ne remontent rien.
 | Type | Déclencheur | Texte | Tap ouvre | Régime |
 | --- | --- | --- | --- | --- |
 | `item_moderated` | `items.status` passe à `validated` ou `rejected` | « *Titre* est validé, ta case est en ligne. » ou « *Titre* n'a pas été retenu. » avec la raison si elle existe | le composer, sur la case concernée | transactionnel |
-| `edition_released` | `editions.released_at` devient passé | « *Titre de l'édition* est sortie. » | le composer, sur l'édition | éditorial |
+| `edition_released` | le travail planifié trouve une édition sortie et pas encore annoncée (D10) | « *Titre de l'édition* est sortie. » | le composer, sur l'édition | éditorial |
 
 **Le texte nomme l'item, pas l'action.** « Interstellar est validé » dit
 quelque chose ; « Un de vos items a été modéré » ne dit rien et se lit comme
@@ -377,9 +421,9 @@ deux interrupteurs qui ne servent à rien.
 ### 6.1 Le chemin d'une notification
 
 ```
-  items.status → 'validated'
+  items.status → 'validated' ou 'rejected'
         │
-        │  trigger items_notify_author        (Postgres)
+        │  trigger items_notify_moderation    (Postgres)
         ▼
   net.http_post  →  POST /api/push  (back-office)     jeton porteur, coffre
         │
@@ -387,17 +431,30 @@ deux interrupteurs qui ne servent à rien.
         ▼
   https://exp.host/--/api/v2/push/send
         │
-        │  tickets  →  stockés
         ▼
-  tâche planifiée, 15 min plus tard : accusés de réception
+  push_tickets : un ticket par envoi, relu plus tard
+```
+
+```
+  pg_cron, toutes les 5 minutes                     (Postgres, D10)
         │
-        └─ DeviceNotRegistered → push_tokens.revoked_at
+        │  push_tick(), inerte sans les secrets de coffre
+        ▼
+  net.http_post  →  POST /api/push/tick  (back-office)
+        │
+        ├─ éditions sorties, pas encore annoncées  →  envoi  →  editions.announced_at
+        │
+        └─ tickets de plus de 15 minutes  →  accusés de réception
+                 │
+                 └─ DeviceNotRegistered  →  push_tokens.revoked_at
 ```
 
 Le déclencheur ne fait **que** poster un événement : il n'ouvre pas de
 connexion à Expo, ne lit pas de jeton, ne décide de rien. Il suit le gabarit
 des trois déclencheurs existants, échec silencieux compris, parce qu'une
-notification ratée ne doit jamais empêcher une validation d'item.
+notification ratée ne doit jamais empêcher une validation d'item. Le travail
+planifié suit la même règle : `push_tick()` ne fait que poster un appel, et
+c'est le back-office qui décide.
 
 ### 6.2 Pourquoi le back-office, et pas la landing
 
@@ -434,6 +491,10 @@ select vault.create_secret('https://<back-office>', 'push_webhook_url');
 select vault.create_secret('<le même jeton>',       'push_webhook_token');
 ```
 
+Ils se posent **dès que l'envoi est déployé** (D11). Sans eux, le déclencheur
+et `push_tick()` ne font rien : la table, le déclencheur et le travail planifié
+peuvent donc précéder l'envoi en production sans aucun effet.
+
 ### 6.4 Les préalables qui prennent du délai
 
 - **Une clé APNs** (`.p8`) depuis le compte développeur Apple, avec son
@@ -442,9 +503,11 @@ select vault.create_secret('<le même jeton>',       'push_webhook_token');
 - **Un compte de service FCM** (JSON) depuis la console Firebase, projet
   Android `com.bentopop.mobile`, également téléversé dans EAS.
 
-Sans ces deux-là, **rien ne se teste**, pas même sur simulateur : iOS ne
+Sans ces deux-là, **rien ne se teste**, pas même au simulateur. ~~iOS ne
 délivre aucune notification distante à un simulateur sans certificat, et
-Android en émulateur exige les services Google Play.
+Android en émulateur exige les services Google Play.~~ **Corrigé le 17
+septembre 2026** : avec eux, le simulateur iOS et les émulateurs Android de ce
+Mac reçoivent les notifications, cf. §4.5.
 
 ### 6.5 Garde-fous
 
@@ -456,6 +519,14 @@ Android en émulateur exige les services Google Play.
   ligne : on veut pouvoir compter les appareils perdus.
 - La route refuse tout appel sans jeton porteur valide, comparé en temps
   constant, comme `/api/revalidate`.
+- Sans les secrets `push_webhook_url` et `push_webhook_token`, le déclencheur
+  et `push_tick()` ne postent rien.
+- Une édition ne s'annonce qu'une fois, et seulement dans les 24 heures qui
+  suivent sa sortie : une panne ne rattrape pas une édition de la semaine
+  précédente, et la mise en service n'annonce pas les éditions déjà sorties.
+- Un jeton déjà connu qu'un autre compte enregistre change de propriétaire, et
+  ses réglages reviennent aux valeurs par défaut : l'accord éditorial ne passe
+  pas d'un compte à l'autre.
 
 ---
 
@@ -477,16 +548,27 @@ Un `check-push.sql` sur le modèle de `check-editions.sql` : transaction
 annulée, témoin compris.
 
 1. Un client ne lit que ses propres jetons.
-2. Un client ne peut pas poser `revoked_at`.
+2. Un client ne peut pas poser `revoked_at`, ni changer `user_id`.
 3. Valider un item sans `submitted_by` ne déclenche rien.
-4. Le déclencheur ne lève pas sans secret de coffre.
+4. Le déclencheur ne lève pas sans secret de coffre, et la validation passe.
 5. Deux appareils du même compte reçoivent deux lignes distinctes.
+6. Un jeton déjà connu, enregistré par un autre compte, change de propriétaire
+   au lieu d'échouer, et ses réglages reviennent aux valeurs par défaut.
+7. Avec les secrets, modérer un item proposé met exactement un appel en file
+   (`net.http_request_queue`), avec le bon type et le bon item.
+8. Proposer un item avec un compte authentifié, comme le font la 1.1 et la
+   0.1.0, passe toujours.
 
 ### 7.3 Recette
 
-**Sur appareil réel, obligatoirement.** C'est le seul chantier du lot où le
+~~**Sur appareil réel, obligatoirement.** C'est le seul chantier du lot où le
 simulateur ne sert à rien : iOS ne délivre pas de notification distante à un
-simulateur, et l'émulateur Android exige les services Google Play.
+simulateur, et l'émulateur Android exige les services Google Play.~~
+
+**Corrigé le 17 septembre 2026, l'après-midi : au simulateur iOS et à
+l'émulateur Android, avant la fusion**, cf. §4.5. La recette sur appareil réel
+se fait seulement à la sortie, au chantier 29 : build de production,
+environnement de production d'APNs, écran verrouillé, désinstallation réelle.
 
 - Proposer un item, accorder l'autorisation, faire valider depuis le
   back-office, recevoir la notification en moins d'une minute.
@@ -495,9 +577,10 @@ simulateur, et l'émulateur Android exige les services Google Play.
   ne la redemande.
 - Couper « Mes items » : plus rien n'arrive, et « Les éditions » continue.
 - Désinstaller, attendre, envoyer : l'accusé finit par dire
-  `DeviceNotRegistered`, et le jeton se révoque.
+  `DeviceNotRegistered`, et le jeton se révoque. Expo ne promet aucun délai :
+  si l'accusé n'arrive pas pendant la recette, le point part au chantier 29.
 - Un contrôle de santé sur le tableau de bord du back-office affiche la date
-  du dernier envoi réussi.
+  du dernier envoi réussi et celle du dernier passage du travail planifié.
 
 ---
 
@@ -505,24 +588,50 @@ simulateur, et l'émulateur Android exige les services Google Play.
 
 ### Lot 0 · Les préalables, qui ne m'appartiennent pas
 
-La clé APNs et le compte de service FCM, téléversés dans EAS. **Rien de
-testable avant.** À lancer dès maintenant, le délai est administratif.
+La clé APNs et le compte de service FCM, téléversés dans EAS. **Rien ne se
+reçoit sans eux, même au simulateur.** Ils ne bloquent pas le lot 1, mais la
+recette des lots 2 à 5. À lancer dès maintenant, le délai est administratif.
 
-### Lot 1 · La table, ses droits, et le déclencheur
+### Lot 1 · La base : jetons, tickets, déclencheur
 
-`push_tokens`, ses `grant` colonne, sa RLS, le déclencheur sur `items` et
-celui sur `editions`, et `check-push.sql`. Rien de visible.
+Une migration, développée et prouvée sur Supabase local. **Rien de visible.**
+
+- `push_tokens` (§5.2), sa RLS et ses `grant` colonne : le client lit ses
+  lignes et règle `transactional` et `editorial`, rien d'autre.
+- `register_push_token(token, platform)`, en `security definer` : elle
+  enregistre ou rafraîchit le jeton de l'appareil, touche `last_seen_at`, lève
+  `revoked_at`, et reprend un jeton qu'un autre compte détenait (§6.5). Une
+  insertion directe ne suffit pas : une session anonyme perdue recrée un compte
+  sur le même appareil, et l'unicité du jeton ferait échouer l'enregistrement.
+- `push_tickets` : un ticket Expo par envoi, pour relire son accusé de
+  réception. Aucun droit client.
+- `editions.announced_at`, posé par le back-office une fois l'édition annoncée.
+- `items_notify_moderation`, déclencheur `after update of status`, qui poste
+  l'événement au back-office selon le gabarit de §4.3, inerte sans secret.
+- `push_tick()`, que `pg_cron` appellera au lot 3, inerte sans secret.
+- `check-push.sql`, les contrôles de §7.2.
+
+**Compatibilité avec la 1.1 et la 0.1.0**, prouvée avant d'appliquer : aucune
+ne lit `push_tokens`, `push_tickets` ni `editions`, créées après elles, et les
+clients ne peuvent plus modifier un item depuis le 15 septembre
+(`20260915000000_close_privilege_gaps.sql:213`) : le déclencheur ne part que
+d'une modération du back-office. Appliquée en production à la validation du
+lot, sur feu vert.
 
 ### Lot 2 · L'app enregistre son jeton
 
-`expo-notifications` et son plugin, la demande d'autorisation au bon moment,
-l'enregistrement du jeton, son rafraîchissement à chaque ouverture. Une build
-native, donc le premier vrai jalon.
+`expo-notifications` et son plugin, la demande d'autorisation juste après
+avoir proposé un item (D5), l'appel à `register_push_token` à chaque
+ouverture. Une build native, recettée au simulateur et à l'émulateur.
 
-### Lot 3 · L'envoi, côté back-office
+### Lot 3 · L'envoi, et la chaîne branchée en production
 
-La route `/api/push`, `expo-server-sdk-node`, le stockage des tickets, la
-tâche planifiée des accusés, la révocation. Le contrôle de santé.
+Les routes `/api/push` et `/api/push/tick` du back-office,
+`expo-server-sdk-node`, les tickets, les accusés, la révocation, l'annonce des
+éditions. La migration qui installe `pg_cron` et programme `push_tick()`
+toutes les 5 minutes (D10). Le contrôle de santé. Puis, l'envoi déployé, les
+secrets de coffre et les variables Coolify : la chaîne tourne en production
+sans destinataire (D11).
 
 ### Lot 4 · Les réglages, et le tap
 
@@ -531,8 +640,9 @@ La section Notifications du profil, deux interrupteurs, le premier composant
 
 ### Lot 5 · Recette et documents
 
-La recette de §7.3, sur appareil. Les pièges dans `RECETTE-MOBILE.md`, la
-roadmap, la DoD.
+La recette de §7.3, au simulateur iOS et à l'émulateur Android. Les pièges
+dans `RECETTE-MOBILE.md`, ce qui attend un appareil réel versé au chantier 29,
+la roadmap, la DoD.
 
 ---
 
@@ -547,15 +657,18 @@ roadmap, la DoD.
   17 septembre 2026 : chacune doit rester compatible avec la 1.1 et la 0.1.0
   pendant toute la durée des chantiers, et cette compatibilité se prouve avant
   de l'appliquer.
-- Les deux secrets de coffre et les deux variables Coolify se posent avant la
-  première validation d'item suivant le déploiement.
+- ~~Les deux secrets de coffre et les deux variables Coolify se posent avant la
+  première validation d'item suivant le déploiement.~~ **Les deux secrets de
+  coffre et les deux variables Coolify se posent dès que l'envoi est
+  déployé** : PR fusionnée et back-office redéployé (D11). Le travail planifié
+  tourne déjà, inerte jusque-là.
 
 ---
 
 ## 10. Definition of Done
 
-1. Un item validé prévient son auteur en moins d'une minute, sur iOS et sur
-   Android.
+1. Un item validé prévient son auteur en moins d'une minute, au simulateur iOS
+   et à l'émulateur Android ; sur appareil réel à la recette de sortie (29).
 2. Un item refusé aussi, avec sa raison quand elle existe.
 3. Une édition qui sort prévient ceux qui l'ont accepté, et personne d'autre.
 4. Un tap ouvre l'écran concerné.
@@ -563,10 +676,15 @@ roadmap, la DoD.
 6. Refuser l'autorisation ne change rien au fonctionnement de l'app.
 7. Un jeton signalé `DeviceNotRegistered` cesse d'être utilisé en moins de
    24 heures.
-8. Les cinq contrôles de `check-push.sql` passent sur Supabase local.
-9. Le tableau de bord du back-office montre la date du dernier envoi réussi.
+8. Les contrôles de `check-push.sql` passent sur Supabase local.
+9. Le tableau de bord du back-office montre la date du dernier envoi réussi et
+   celle du dernier passage du travail planifié.
 10. Aucune notification promotionnelle n'est envoyée sans accord explicite,
     et le retrait est accessible dans l'app.
+11. Les migrations sont appliquées en production, leur compatibilité avec la
+    1.1 et la 0.1.0 prouvée avant.
+12. La chaîne tourne en production sans destinataire : le contrôle de santé
+    montre le travail planifié passer toutes les 5 minutes.
 
 ---
 
@@ -583,6 +701,8 @@ roadmap, la DoD.
 | **D7** | Jetons purgés sur accusé de réception, et périmés à 60 jours | `DeviceNotRegistered` n'arrive qu'« un temps indéfini » après la désinstallation, d'après Expo. La péremption couvre le reste |
 | **D8** | Un jeton par appareil, pas par compte | Deux téléphones se règlent séparément, et `DeviceNotRegistered` désigne un jeton |
 | **D9** | Les deux variables Coolify sont **runtime** | Une `NEXT_PUBLIC_` posée au runtime est ignorée en silence, une variable serveur posée au build fige sa valeur dans l'image |
+| **D10** | Le travail planifié vit dans Supabase : `pg_cron` appelle le back-office toutes les 5 minutes | Choisi le 17 septembre, l'après-midi. Un déclencheur ne réagit pas au passage de l'heure. Tout est versionné dans le dépôt, rien à régler à la main dans Coolify, et `pg_cron` 1.6.4 est disponible en production |
+| **D11** | La chaîne se branche en production dès que l'envoi est déployé, sans attendre la sortie | Choisi le 17 septembre, l'après-midi. Elle tourne des mois sans destinataire, aucune app publique n'enregistrant d'appareil : on voit qu'elle marche bien avant la sortie |
 
 ---
 
