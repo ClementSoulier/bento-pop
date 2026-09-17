@@ -920,9 +920,9 @@ la production, et on s'arrête là.
 | 5 | Taper la case du haut | Modale titrée « Le film qui t'a fait pleurer », champ « Cherche… » **sans article** |
 | 6 | Remplir les deux cases | « 2 / 2 », bouton « Publier mon bento » actif |
 | 7 | Publier | La page publique s'ouvre sur `/u/<pseudo>/rec-deux` |
-| 8 | Regarder la page publique | Deux bandes, même géométrie qu'au composer. Sous le pseudo : « Le duel du samedi, publié le … » |
+| 8 | Regarder la page publique | Deux bandes, même géométrie qu'au composer. Sous le pseudo : « Le duel du samedi, publié le … ». Chaque case porte sa question dans son étiquette, jamais tronquée (D13) |
 | 9 | Onglet « La table » | Le bento d'édition porte une étiquette **jaune** au titre de l'édition |
-| 10 | Partager depuis la page publique | L'image 1080×1920 montre **deux cases**, pas six |
+| 10 | Partager depuis la page publique | L'image 1080×1920 montre **deux cases**, pas six, et « Le duel du samedi » dans le ruban rouge (D12) |
 | 11 | Composer « Le grand inventaire » | Six cases, disposition 1 + 2 + 3, **identique au bento principal** |
 | 12 | Comparer au pixel | Capture du bento principal et capture de `rec-six`, même géométrie de boîte. Différence d'image sur le cadre seul : nulle |
 | 13 | Revenir au bento principal par le sélecteur | Les six cases d'origine, rien de perdu |
@@ -1104,7 +1104,7 @@ plateformes, après quinze corrections.** Aucune n'était visible des 821 tests
 | 8 | Publier une édition ouvrait la page du bento principal | composer | l'adresse du bento courant, `bentoRoute` |
 | 9 | Titre d'un mot réduit à 5 pt à l'ouverture à froid, sur iOS | toutes les cases | taille mesurée, plus d'`adjustsFontSizeToFit` |
 | 10 | VoiceOver annonçait une édition sans aucune de ses cases | fil | énumération des cases du bento |
-| 11 | Titre d'édition long tronqué, y compris à la plus grande police | composer | réduit jusqu'à 21 pt, `composeTitleScale` |
+| 11 | Titre d'édition long tronqué, y compris à la plus grande police | composer | réduit jusqu'à 21 pt, `composeTitleScale` ; 17 pt depuis D11 |
 | 12 | Intitulé sur deux lignes aligné à gauche sous un « + » centré | case vide | centré ligne à ligne |
 | 13 | Changer de bento effaçait crédits d'image et état « en attente » | composer, dette du chantier 16 | une seule liste de colonnes, `REMOTE_SLOT_COLUMNS` |
 | 14 | Édition sortie invisible au retour de l'app au premier plan | composer, contrôle D | relecture sur `AppState` |
@@ -1131,10 +1131,37 @@ principal et l'édition à six cases, sur les deux plateformes.
   t'a fait pleurer » refusé en case 6, cerclé de rouge, enregistrement
   désactivé ; à 77 % en case 3 d'une édition à trois cases, enregistrable.
 
-**Arbitrages ouverts**, soumis en QCM : la longueur maximale d'un titre
-d'édition, que le composer n'affiche entier que jusqu'à 28 caractères environ ;
-deux cases au même tampon, indiscernables une fois remplies ; le titre de
-l'édition, absent de l'image de partage.
+**Trois arbitrages tranchés à l'issue de la recette**, D11 à D13 :
+
+- **un titre d'édition tient en 30 caractères**, en base, au back-office, et
+  entier dans le composer d'un iPhone SE, réduit jusqu'à 17 points ;
+- **le titre de l'édition remplace « Mon bento pop culture »** dans le ruban
+  rouge de l'image de partage ;
+- **une case remplie affiche la question de l'édition**, là où le bento
+  principal écrit « FILM ». Deux cases « FILM » du même duel ne disaient plus à
+  quelle question elles répondaient : c'est tout le sens d'une édition.
+
+La dernière a été **essayée avant d'être étendue** : trois propositions
+dessinées à la géométrie réelle, la A retenue, puis des captures sur iPhone et
+Pixel 8. L'essai a trouvé deux défauts, corrigés avant validation :
+
+| # | Ce que l'essai a montré | Correction |
+| --- | --- | --- |
+| 16 | « Ton voyage rêvé » tronqué en « TON / VOYAG… » dans une petite case de la page publique, iPhone 17 Pro | marge de l'étiquette 4 au lieu de 6, taille réduite jusqu'à 7 points, fond à la largeur de la plus longue ligne |
+| 17 | Une case choisie dans la recherche s'affichait vide au retour, alors qu'elle était enregistrée : la relecture du retour vidait les cases pendant l'écriture. Défaut du lot 4 | `setCases` ne vide plus rien quand le jeu de cases ne change pas, `clearSlots` au changement de bento |
+
+**La garantie de la proposition A est un test**, et non une impression :
+2 736 questions générées, trois rangées, le composer, le fil et la page
+publique sur iPhone SE, 17 Pro, Pro Max et Pixel 8, l'image de partage, trois
+tailles de police, puis la page web et l'aperçu de lien. **Aucune question
+acceptée par le back-office ne se tronque**, et sans la correction le test
+échoue. Seul un écran de 320 points de large en tronque encore quelques-unes,
+comme les titres à leur plancher.
+
+**Le bento principal ne bouge pas**, mesuré à chaque étage : étiquettes
+identiques au pixel dans l'app ; balisage de la boîte web identique à l'octet,
+12 398 octets, l'ancienne version ayant bien été servie puisque la page
+d'édition, elle, différait ; aperçu de lien identique, 0 pixel différent.
 
 **Vu et laissé en l'état**, faute d'être un défaut du chantier ou d'être
 atteignable :
@@ -1183,7 +1210,7 @@ se simule.
 | 8 | Une édition passée reste composable après deux suivantes | ✅ « Le duel du samedi », sortie la première, composée et publiée alors que deux éditions plus récentes étaient sorties, iOS et Android |
 | 9 | Le plafond permet une édition par semaine pendant des années | ✅ contrôles 7a à 7c, et le plafond ne compte plus que les bentos libres |
 | 10 | La première publication d'un compte neuf marche alors que des éditions existent | ✅ contrôle 6, avec son témoin sur l'ancienne forme |
-| 11 | Les **20** contrôles de `check-editions.sql` passent sur Supabase local | ✅ base reconstruite de zéro, 20 tenus, 0 manqué |
+| 11 | Les **21** contrôles de `check-editions.sql` passent sur Supabase local | ✅ base reconstruite de zéro, 21 tenus, 0 manqué, dont le refus d'un titre de 31 caractères (D11) |
 | 12 | Recette parcourue sur iPhone et Android, appareils réels compris | ✅ simulateur iOS et émulateur Android, seize étapes et contrôle D, lot 6. ⬜ appareils réels, chantier 29 |
 | 13 | Aucun compte créé en production, aucune écriture non autorisée | ✅ lectures `GET` seulement, `.app` de production contrôlé et non installé |
 | 14 | Les quatre types dormants ont du catalogue | ⬜ préalable du chantier 15 : 446 candidats dans le dépôt, zéro importé |
@@ -1211,6 +1238,9 @@ distinction est maintenue exprès.
 | **D8** | À la bascule, `ios_min_version` et `android_min_version` passent à la nouvelle version | Le mécanisme existe depuis le 28 mai et la 1.1 l'honore. Une version ancienne voit « mets à jour » plutôt qu'une page vide |
 | **D9** | La divergence de l'aperçu de lien se corrige tout de suite, en PR séparée | Le défaut est en production sur chaque lien partagé, et ce chantier est bloqué plusieurs semaines par les stores |
 | **D10** | ~~La migration B est amendée dans son fichier~~ **La migration B n'est pas touchée** | **Corrigée au lot 1.** Les deux défauts vivent dans le corps de `create_bento`, qu'un `create or replace` reprend : l'append-only est préservé, et rien ne diverge si B a déjà été appliquée quelque part |
+| **D11** | Un titre d'édition tient en 30 caractères, contrainte en base et au back-office | Choisi le 16 septembre, à la place d'une mesure. Le composer l'affiche entier sur iPhone SE en le réduisant jusqu'à 17 points ; seul un titre fait de lettres larges se tronque encore |
+| **D12** | L'image de partage d'une édition porte son titre dans le ruban rouge | Choisi le 16 septembre. Sans lui, l'image ne disait pas à quoi ses cases répondaient ; le bento principal garde « Mon bento pop culture » |
+| **D13** | Une case remplie d'édition affiche sa question dans l'étiquette, à la place du tampon : app, page web, fil, aperçu de lien, image de partage | Validée le 17 septembre après essai. Aucun rendu ne grandit et le bento principal est inchangé. Une seule implémentation, `fitLabel`, chaque rendu avec sa police : Bungee dans l'app et sur la page web, Extenda dans l'aperçu de lien, dont les largeurs rejoignent le package partagé |
 
 ---
 

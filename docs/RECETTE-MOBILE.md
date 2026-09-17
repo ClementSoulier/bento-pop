@@ -1133,3 +1133,60 @@ handled`. Ce n'est pas un défaut de l'app, mais une recette qui continue dans
 cet état capture des écrans faux.
 
 > Au premier `GO_BACK was not handled`, relancer l'app avant la suite.
+
+### Reposer un état identique ne doit rien effacer
+
+Le composer relit le bento courant à chaque retour sur l'onglet, et la
+relecture reposait son jeu de cases. Poser un jeu de cases vidait les cases
+remplies, ce qui est juste quand on change de bento et faux quand on repose le
+même. Pendant qu'une écriture était en vol, `hydrate` ignorait ensuite l'état
+distant, comme il le doit : **une case choisie à l'instant restait vide à
+l'écran alors qu'elle était enregistrée en base**. Vu à la recette de la
+proposition A, sur une case d'édition, en tapant vite.
+
+Le défaut dépend du rythme : à la première recette, les écritures finissaient
+avant la relecture, et rien ne se voyait. Reproduit ensuite dans un test du
+store, en rejouant l'ordre des événements, avant d'être corrigé.
+
+> **Une action qui efface ce qu'elle remplace compare d'abord.** Reposer la
+> même valeur ne touche à rien ; l'effacement voulu, au changement de bento,
+> devient une action explicite, `clearSlots`.
+
+### Un fond sous un texte qui passe à la ligne prend toute la largeur
+
+Sur React Native comme en CSS, une boîte ajustée à son texte prend **toute la
+largeur permise dès que le texte passe à la ligne**, et non celle de sa plus
+longue ligne. « TON VOYAGE / RÊVÉ » posait ainsi un pavé noir sur toute la
+largeur de la case, deux tiers de vide à droite de « RÊVÉ ».
+
+Aucune propriété ne rétrécit la boîte après la coupure. La coupe se calcule
+donc avant de dessiner, avec les largeurs de la police, et la boîte reçoit la
+largeur de la plus longue ligne, plus 2 % et un point de marge pour les écarts
+de rendu. Une seule implémentation pour l'app, la page web et l'aperçu de lien :
+`fitLabel`, dans le package partagé.
+
+### Prouver qu'un rendu web n'a pas bougé
+
+Pour montrer qu'un changement laisse le bento principal intact sur la page
+web : extraire la liste des cases du HTML servi, remettre les fichiers
+modifiés dans leur version du dernier commit, laisser le serveur de
+développement recompiler, extraire de nouveau, remettre les fichiers, et
+comparer à l'octet.
+
+**Une comparaison identique ne prouve rien si l'ancienne version n'a pas été
+servie**, par exemple si la recompilation n'a pas eu le temps de se faire.
+Extraire donc dans le même geste une page **témoin**, qui elle doit différer :
+la page d'une édition. Au chantier 13, la boîte du bento principal sortait
+identique, 12 398 octets, pendant que celle de l'édition passait de 12 230 à
+13 740 octets. Même méthode pour l'aperçu de lien, comparé au pixel : 0 pixel
+différent pour le bento principal, et des différences limitées aux étiquettes
+pour l'édition.
+
+### Un fichier `.env` de la landing pointe sur la production
+
+`apps/landing/.env` porte les adresses et une clé service-role de la
+production. Des variables passées au shell l'emportent sur lui, mais seulement
+pour celles qu'on pense à passer. Pour une recette locale, le mettre hors
+service, `mv .env .env.recette-hors-service`, lancer avec les seules variables
+locales, et le remettre en place à la fin, comme celui de l'app.
+
