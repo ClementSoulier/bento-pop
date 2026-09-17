@@ -38,6 +38,10 @@
 >   tourne sans destinataire jusqu'à la sortie (D11).
 > - **Une fusion prévient l'auteur comme une validation** (D12) : 19 des 146
 >   items proposés et modérés en production ont été fusionnés.
+> - **Un nouvel utilisateur ne pouvait pas proposer d'item** avant sa première
+>   publication : défaut du chantier 9, trouvé au lot 2 et corrigé avec lui
+>   (D13, D15). La proposition et l'appareil se rattachent au compte.
+> - **Une phrase de l'app précède la boîte du système** (D14).
 > - **Le canal sortant est bien en place en production**, mesuré en lecture
 >   seule : `pg_net`, les deux déclencheurs de la landing, leurs secrets, et des
 >   appels réussis. La roadmap le disait à tort absent.
@@ -394,6 +398,16 @@ préviendra quand il sera validé ». L'attente médiane étant de 6,9 jours, la
 promesse a de la valeur. Au premier lancement, la même boîte arrive avant tout
 geste, se refuse massivement, et **iOS ne la repropose jamais**.
 
+**La phrase de l'app vient d'abord** (D14) : « On te prévient quand « *Titre* »
+est validé ? », avec « Oui, préviens-moi » et « Plus tard ». La boîte du
+système ne s'ouvre que sur « Oui ». « Plus tard » ne retient rien : la phrase
+revient à la proposition suivante, tant que le système peut encore demander.
+Quand le système ne peut plus demander, plus rien ne s'affiche : dès le
+premier refus sur iOS, au second sur Android, qui accorde une seconde chance.
+C'est une alerte native, comme les confirmations du profil : accessible sans
+rien écrire. React Native la présente dans sa propre fenêtre, sans attendre
+la fermeture de la modale de recherche.
+
 L'accord éditorial se demande ailleurs et autrement : à la première ouverture
 d'une édition, avec une phrase qui dit ce qu'on enverra et à quelle fréquence.
 Deux demandes distinctes, parce que deux régimes.
@@ -504,6 +518,12 @@ peuvent donc précéder l'envoi en production sans aucun effet.
   identifiants EAS.
 - **Un compte de service FCM** (JSON) depuis la console Firebase, projet
   Android `com.bentopop.mobile`, également téléversé dans EAS.
+- **Le fichier `google-services.json`** du même projet Firebase, posé dans
+  l'app Android (`expo.android.googleServicesFile`). Ajouté le 17 septembre
+  2026 : d'après Expo, il est nécessaire pour que l'app Android soit
+  enregistrée auprès de FCM, donc pour obtenir un jeton
+  ([source](https://docs.expo.dev/push-notifications/fcm-credentials/)). Le
+  compte de service, lui, sert à l'envoi.
 
 Sans ces deux-là, **rien ne se teste**, pas même au simulateur. ~~iOS ne
 délivre aucune notification distante à un simulateur sans certificat, et
@@ -590,8 +610,9 @@ environnement de production d'APNs, écran verrouillé, désinstallation réelle
 
 ### Lot 0 · Les préalables, qui ne m'appartiennent pas
 
-La clé APNs et le compte de service FCM, téléversés dans EAS. **Rien ne se
-reçoit sans eux, même au simulateur.** Ils ne bloquent pas le lot 1, mais la
+La clé APNs et le compte de service FCM, téléversés dans EAS, et le fichier
+`google-services.json` dans l'app Android. **Rien ne se reçoit sans eux, même
+au simulateur**, et Android n'obtient pas de jeton sans le fichier. Ils ne bloquent pas le lot 1, mais la
 recette des lots 2 à 5. À lancer dès maintenant, le délai est administratif.
 
 ### Lot 1 · La base : jetons, tickets, déclencheur
@@ -643,6 +664,57 @@ comme la 1.1 le lit, la page publique en 200.
 `expo-notifications` et son plugin, la demande d'autorisation juste après
 avoir proposé un item (D5), l'appel à `register_push_token` à chaque
 ouverture. Une build native, recettée au simulateur et à l'émulateur.
+
+- **Correctif du chantier 9 (D13, D15)**, trouvé en préparant le lot : le
+  profil ne naît qu'à la première publication, et une proposition le
+  réclamait (`items_submitted_by_fkey`). Mesuré sur la base locale : un
+  nouvel utilisateur ne pouvait pas proposer d'item, donc pas publier un
+  bento dont un item manque. `20260917150000_author_is_account.sql` rattache
+  la proposition et l'appareil au compte (`auth.users`), et
+  `users_forget_author` garde l'effet d'une suppression de profil. Vérifié en
+  production en lecture seule : les 146 auteurs existants ont tous un compte.
+  Au back-office, un auteur sans profil s'affiche « un compte sans pseudo ».
+- `src/lib/push.ts`, la décision testée (16 tests) : la phrase seulement si le
+  système peut encore demander ; un réenregistrement au plus par heure, tout de
+  suite si le compte a changé ; aucun échec ne lève.
+- `src/lib/push-runtime.ts` : deux canaux Android, « Mes items » et « Les
+  éditions », créés avant toute demande ; le réenregistrement au démarrage et
+  au retour au premier plan, sans jamais rien demander ; la phrase puis la
+  boîte après une proposition (D14).
+- `check-push.sql` passe à 28 contrôles : sans profil, on propose et on
+  enregistre son appareil (10a et 10b échouent sans la migration), et
+  supprimer un profil efface toujours ses traces (11).
+
+**Recetté le 17 septembre 2026**, au simulateur iPhone 17 Pro (iOS 26.4) et à
+l'émulateur Pixel 8 (Android 17), sur la base locale, cible vérifiée dans la
+build et dans la session avant chaque lancement :
+
+| # | Geste | Constaté |
+| --- | --- | --- |
+| 1 | Premier lancement | Aucune demande, iOS comme Android |
+| 2 | Proposer un item avec un compte neuf, sans profil | Proposition acceptée, case « EN ATTENTE ». Le défaut du chantier 9 est levé |
+| 3 | Juste après | « On te prévient quand « Filet de » est validé ? », alerte iOS, dialogue Material sur Android |
+| 4 | « Plus tard », puis une autre proposition | Aucune boîte du système ; la phrase revient |
+| 5 | « Oui », puis « Autoriser » sur iOS | Un vrai jeton Expo obtenu au simulateur, enregistré au nom du compte sans profil, transactionnel actif, éditorial éteint |
+| 6 | Rouvrir l'app, puis revenir au premier plan dans l'heure | Même ligne, `last_seen_at` rafraîchi à la réouverture, inchangé au retour |
+| 7 | Réinstaller, proposer, « Oui », « Refuser » sur iOS | Rien d'enregistré ; à la proposition suivante, plus aucune demande |
+| 8 | Réinstaller et autoriser sur le même simulateur | Le même jeton passe au nouveau compte, réglages remis à défaut, une seule ligne |
+| 9 | « Oui », puis « Allow » sur Android | Autorisation accordée ; pas de jeton, faute de `google-services.json` (« Default FirebaseApp is not initialized »), comme prévu au lot 0. L'app continue |
+| 10 | Refuser deux fois sur Android | Après le premier refus, la phrase revient ; après le second, plus rien |
+| 11 | Canaux Android | « Mes items » et « Les éditions », importance par défaut |
+| 12 | Back-office, catalogue | « par un compte sans pseudo » pour ces propositions, « par @pseudo » pour les autres |
+
+Deux défauts trouvés et corrigés pendant la recette. `InteractionManager`,
+utilisé pour attendre la fermeture de la modale, est déprécié et levait un
+avertissement : retiré, l'alerte n'en a pas besoin. Et accorder l'autorisation
+enregistrait l'appareil deux fois de suite, par la demande et par le retour au
+premier plan : mesuré dans le journal de la passerelle locale, deux
+`register_push_token` dans la même seconde, un seul après
+`coalescePushRefresh` (4 tests de plus, 20 en tout).
+
+Un défaut antérieur vu en passant, hors du lot : sur une petite case en
+attente, la pastille « EN ATTENTE » recouvre l'étiquette (« LI » pour Lieu),
+sur iOS comme sur Android. Tâche séparée proposée.
 
 ### Lot 3 · L'envoi, et la chaîne branchée en production
 
@@ -724,6 +796,9 @@ la roadmap, la DoD.
 | **D10** | Le travail planifié vit dans Supabase : `pg_cron` appelle le back-office toutes les 5 minutes | Choisi le 17 septembre, l'après-midi. Un déclencheur ne réagit pas au passage de l'heure. Tout est versionné dans le dépôt, rien à régler à la main dans Coolify, et `pg_cron` 1.6.4 est disponible en production |
 | **D11** | La chaîne se branche en production dès que l'envoi est déployé, sans attendre la sortie | Choisi le 17 septembre, l'après-midi. Elle tourne des mois sans destinataire, aucune app publique n'enregistrant d'appareil : on voit qu'elle marche bien avant la sortie |
 | **D12** | Une fusion prévient l'auteur comme une validation, avec le titre de l'item conservé | Choisi le 17 septembre, l'après-midi. Mesuré en production : sur 146 items proposés et modérés, 123 validés, 19 fusionnés, 4 refusés. Pour l'auteur, sa case est remplie |
+| **D13** | La proposition d'un item et l'appareil se rattachent au compte (`auth.users`), plus au profil | Choisi le 17 septembre, l'après-midi. Depuis le chantier 9, le profil ne naît qu'à la première publication : un nouvel utilisateur ne pouvait pas proposer d'item. Supprimer un profil efface toujours ses traces |
+| **D14** | Une phrase de l'app précède la boîte d'autorisation du système | Choisi le 17 septembre, l'après-midi. iOS ne montre sa boîte qu'une fois : un refus par réflexe serait définitif |
+| **D15** | Le correctif du chantier 9 part dans le lot 2 | Choisi le 17 septembre, l'après-midi. Le lot 2 en dépend directement |
 
 ---
 

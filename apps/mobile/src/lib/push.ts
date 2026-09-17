@@ -73,6 +73,41 @@ export type PushRegistrationDeps = {
 };
 
 /**
+ * Une seule tentative à la fois.
+ *
+ * Accorder l'autorisation déclenche deux rafraîchissements presque ensemble :
+ * celui qu'on demande juste après la boîte du système, et celui du retour au
+ * premier plan, puisque la boîte l'avait fait quitter. Mesuré au simulateur et
+ * à l'émulateur le 17 septembre 2026 : deux appels, deux fois le même travail.
+ *
+ * Un appel pendant une tentative en cours la partage. Un appel forcé la
+ * partage aussi quand elle a enregistré l'appareil, et la refait sinon : la
+ * tentative en cours a pu lire l'autorisation avant qu'elle soit accordée.
+ */
+export function coalescePushRefresh(
+  run: (force: boolean) => Promise<PushRegistrationOutcome>,
+): (force?: boolean) => Promise<PushRegistrationOutcome> {
+  let inFlight: Promise<PushRegistrationOutcome> | null = null;
+
+  const start = (force: boolean) => {
+    const attempt = run(force).finally(() => {
+      if (inFlight === attempt) inFlight = null;
+    });
+    inFlight = attempt;
+    return attempt;
+  };
+
+  return async (force = false) => {
+    if (inFlight) {
+      const current = await inFlight;
+      if (!force || current.state === 'registered') return current;
+      if (inFlight) return inFlight;
+    }
+    return start(force);
+  };
+}
+
+/**
  * Enregistre l'appareil si l'autorisation est accordée. **Ne demande jamais
  * rien** et ne lève jamais : un échec se lit dans le résultat, l'app continue
  * exactement pareil (§2, critère 7).

@@ -1326,3 +1326,22 @@ supabase db reset --local
 **Règle : avant de conclure qu'une migration plante la base, rejouer le cas sur
 un conteneur vierge de la même image.** Si le conteneur vierge plante aussi,
 c'est l'image.
+
+### `pod install` échoue sur l'encodage, hors d'un terminal interactif
+
+Rencontré le 17 septembre 2026, au lot 2 du chantier 17, en régénérant le projet
+iOS par `npx expo prebuild --platform ios --clean` depuis un script :
+
+```
+Unicode Normalization not appropriate for ASCII-8BIT (Encoding::CompatibilityError)
+```
+
+CocoaPods lit le chemin du projet sans langue UTF-8 quand le shell n'en déclare
+aucune, ce qui arrive dans un script ou un terminal non interactif. `prebuild`
+laisse alors un dossier `ios` sans `MonBentoPop.xcworkspace`, et `xcodebuild`
+échoue ensuite sur un workspace introuvable, loin de la vraie cause.
+
+```bash
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+cd apps/mobile/ios && pod install
+```

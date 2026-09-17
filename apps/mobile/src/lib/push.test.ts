@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   PUSH_REFRESH_INTERVAL_MS,
+  coalescePushRefresh,
   pushAskTitle,
   refreshPushRegistration,
   shouldOfferPushAsk,
   type PushPermission,
   type PushRegistrationDeps,
   type PushRegistrationMemory,
+  type PushRegistrationOutcome,
 } from './push';
 
 /**
@@ -172,5 +174,70 @@ describe('refreshPushRegistration', () => {
     });
     const result = await refreshPushRegistration(deps, null);
     assert.equal(result.outcome.state === 'failed' && result.outcome.step, 'permission');
+  });
+});
+
+describe('coalescePushRefresh', () => {
+  /** Une tentative qu'on termine à la main, pour tenir deux appels simultanés. */
+  function manualRun() {
+    const calls: boolean[] = [];
+    const pending: ((outcome: PushRegistrationOutcome) => void)[] = [];
+    const run = (force: boolean) => {
+      calls.push(force);
+      return new Promise<PushRegistrationOutcome>((resolve) => pending.push(resolve));
+    };
+    return { run, calls, finish: (i: number, outcome: PushRegistrationOutcome) => pending[i]?.(outcome) };
+  }
+
+  const registered: PushRegistrationOutcome = { state: 'registered', token: 'ExponentPushToken[a]' };
+  const notGranted: PushRegistrationOutcome = { state: 'skipped', reason: 'not-granted' };
+
+  it('deux appels simultanés partagent une seule tentative', async () => {
+    const { run, calls, finish } = manualRun();
+    const refresh = coalescePushRefresh(run);
+    const first = refresh();
+    const second = refresh();
+    finish(0, registered);
+    assert.deepEqual(await first, registered);
+    assert.deepEqual(await second, registered);
+    assert.deepEqual(calls, [false]);
+  });
+
+  it('un appel forcé partage une tentative qui a enregistré l’appareil', async () => {
+    const { run, calls, finish } = manualRun();
+    const refresh = coalescePushRefresh(run);
+    const background = refresh();
+    const forced = refresh(true);
+    finish(0, registered);
+    assert.deepEqual(await background, registered);
+    assert.deepEqual(await forced, registered);
+    assert.deepEqual(calls, [false]);
+  });
+
+  it("un appel forcé refait une tentative qui a lu l'autorisation trop tôt", async () => {
+    // Le retour au premier plan a lu « pas autorisé » juste avant que la boîte
+    // du système ne rende son accord.
+    const { run, calls, finish } = manualRun();
+    const refresh = coalescePushRefresh(run);
+    const background = refresh();
+    const forced = refresh(true);
+    finish(0, notGranted);
+    assert.deepEqual(await background, notGranted);
+    await new Promise((resolve) => setImmediate(resolve));
+    finish(1, registered);
+    assert.deepEqual(await forced, registered);
+    assert.deepEqual(calls, [false, true]);
+  });
+
+  it('une fois la tentative finie, un nouvel appel en refait une', async () => {
+    const { run, calls, finish } = manualRun();
+    const refresh = coalescePushRefresh(run);
+    const first = refresh();
+    finish(0, notGranted);
+    await first;
+    const second = refresh();
+    finish(1, registered);
+    assert.deepEqual(await second, registered);
+    assert.deepEqual(calls, [false, false]);
   });
 });

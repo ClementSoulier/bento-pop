@@ -1,12 +1,13 @@
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
-import { Alert, AppState, InteractionManager, Platform, type AppStateStatus } from 'react-native';
+import { Alert, AppState, Platform, type AppStateStatus } from 'react-native';
 import { supabase } from '@/supabase/client';
 import { useSession } from '@/state/session';
 import {
   PUSH_ASK_ACCEPT,
   PUSH_ASK_LATER,
   PUSH_ASK_MESSAGE,
+  coalescePushRefresh,
   pushAskTitle,
   refreshPushRegistration,
   shouldOfferPushAsk,
@@ -84,8 +85,7 @@ const deps: PushRegistrationDeps = {
   now: () => Date.now(),
 };
 
-/** Réenregistre l'appareil si l'autorisation est accordée. Ne demande rien. */
-export async function refreshPush(force = false): Promise<PushRegistrationOutcome> {
+const refresh = coalescePushRefresh(async (force) => {
   const result = await refreshPushRegistration(deps, memory, { force });
   memory = result.memory;
   if (result.outcome.state === 'failed') {
@@ -94,6 +94,14 @@ export async function refreshPush(force = false): Promise<PushRegistrationOutcom
     console.warn(`[push] enregistrement impossible, étape ${result.outcome.step}`, result.outcome.error);
   }
   return result.outcome;
+});
+
+/**
+ * Réenregistre l'appareil si l'autorisation est accordée. Ne demande rien.
+ * Une seule tentative à la fois, cf. `coalescePushRefresh`.
+ */
+export function refreshPush(force = false): Promise<PushRegistrationOutcome> {
+  return refresh(force);
 }
 
 /**
@@ -130,10 +138,10 @@ export async function offerPushAfterProposal(itemTitle: string): Promise<void> {
     }
     if (!shouldOfferPushAsk(permission)) return;
 
-    // La modale de recherche se ferme : une alerte présentée pendant
-    // l'animation de fermeture peut être perdue sur iOS.
-    await new Promise<void>((resolve) => InteractionManager.runAfterInteractions(() => resolve()));
-
+    // Pas d'attente de la fermeture de la modale de recherche : sur iOS,
+    // React Native présente l'alerte dans sa propre fenêtre, au-dessus de
+    // tout (`RCTAlertController.mm`, `alertWindow`). `InteractionManager`,
+    // essayé d'abord, est déprécié : il levait un avertissement à chaque fois.
     Alert.alert(pushAskTitle(itemTitle), PUSH_ASK_MESSAGE, [
       { text: PUSH_ASK_LATER, style: 'cancel' },
       { text: PUSH_ASK_ACCEPT, isPreferred: true, onPress: () => void acceptPush() },
