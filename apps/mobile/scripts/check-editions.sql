@@ -354,12 +354,25 @@ begin
     v_ok := v_ok + 1;
   end;
 
+  -- Un titre d'édition tient en 30 caractères : c'est ce que le composer
+  -- affiche entier sur un iPhone SE. Arbitrage du 16 septembre 2026.
+  begin
+    insert into public.editions (slug, title, released_at)
+    values ('titre-trop-long', repeat('x', 31), null);
+    raise warning 'KO  8c un titre de 31 caractères est accepté';
+    v_ko := v_ko + 1;
+  exception when others then
+    raise notice 'ok  8c un titre de plus de 30 caractères est refusé';
+    v_ok := v_ok + 1;
+  end;
+
   -- ── 9. La purge de landing ne casse rien sans secret de coffre ──────
   -- Le déclencheur appelle la landing quand le titre d'une édition change.
   -- Sans `landing_base_url` en coffre, il doit sortir en silence : corriger
   -- un titre ne peut pas dépendre d'une landing joignable.
   begin
-    update public.editions set title = title || ' (corrigé)' where id = v_edition;
+    -- Un titre court : la borne est de 30 caractères depuis le 16 septembre.
+    update public.editions set title = 'Titre corrigé' where id = v_edition;
     raise notice 'ok  9a le titre se corrige sans coffre configuré';
     v_ok := v_ok + 1;
   exception when others then

@@ -81,7 +81,12 @@ export function editionStatus(releasedAt: string | null, now: Date = new Date())
 
 /** Même forme que `bentos_slug_format` : le slug devient celui des bentos. */
 export const EDITION_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
-export const EDITION_TITLE_MAX = 80;
+/**
+ * 30 caractères au plus, la même borne qu'en base : c'est ce que le composer
+ * affiche entier sur un iPhone SE. Arbitrage du 16 septembre 2026, à la place
+ * de 80, qui laissait passer des titres tronqués dans l'app.
+ */
+export const EDITION_TITLE_MAX = 30;
 export const STAMP_MAX = 8;
 
 export type EditionInput = { title: string; slug: string; releasedAt: string | null };

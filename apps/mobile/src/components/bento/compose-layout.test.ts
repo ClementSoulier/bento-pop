@@ -309,11 +309,26 @@ describe('composeTitleScale, le titre du composer sur une ligne', () => {
     assert.ok(Math.abs(width - (362 - TITLE_ROUNDING_SLACK)) < 1e-9, String(width));
   });
 
+  it('affiche entier un titre réaliste de 30 caractères sur iPhone SE', () => {
+    // 30 caractères, la borne de la base et du back-office. Le plus exigeant
+    // des titres essayés demande 17,6 points sur un écran de 375.
+    for (const nom of [
+      'Le mois des mangas incontourna',
+      'La rentrée des blockbusters 26',
+      'Les films qui ont marqué 2026!',
+    ]) {
+      assert.equal(nom.length, 30, nom);
+      const taille = 28 * composeTitleScale(nom, 375, 28);
+      const largeur = extendaTextWidth(nom.toUpperCase(), taille, COMPOSE_TITLE_LETTER_SPACING);
+      assert.ok(largeur <= 335 - TITLE_ROUNDING_SLACK + 1e-9, `${nom} : ${largeur} à ${taille} pt`);
+    }
+  });
+
   it('s’arrête au plancher, sous lequel le titre se tronque', () => {
-    // 0,74 demandé sur iPhone SE, et 0,43 pour un titre de 51 caractères.
-    assert.equal(28 * composeTitleScale('La semaine du film qui pique', 375, 28), COMPOSE_TITLE_MIN_FONT_SIZE);
+    // Trente M demandent 12,1 points : un titre que personne n'écrira, mais
+    // la borne tient.
     assert.equal(
-      28 * composeTitleScale('Les films qui ont bercé ton enfance et tes vacances', 402, 28),
+      28 * composeTitleScale('MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM', 375, 28),
       COMPOSE_TITLE_MIN_FONT_SIZE,
     );
   });

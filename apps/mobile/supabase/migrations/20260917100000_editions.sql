@@ -38,7 +38,9 @@ create table public.editions (
   -- Même forme que `bentos_slug_format` : le slug de l'édition devient celui
   -- du bento de chaque personne qui la compose.
   slug text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$'),
-  title text not null check (length(btrim(title)) between 1 and 80),
+  -- 30 caractères au plus : c'est ce que le composer affiche entier sur un
+  -- iPhone SE, titre réduit jusqu'à 17 points. Arbitrage du 16 septembre 2026.
+  title text not null check (length(btrim(title)) between 1 and 30),
   released_at timestamptz,
   -- Réservé au chantier 19, lire une édition liée à une émission. Aucun
   -- client ne le lit, aucune contrainte ne le vise : il est là pour que la

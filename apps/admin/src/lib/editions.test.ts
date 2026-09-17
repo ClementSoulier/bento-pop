@@ -62,9 +62,11 @@ describe('le cadre d’une édition', () => {
     assert.equal(res.ok, false);
   });
 
-  it('refuse un titre trop long', () => {
-    const res = validateEdition({ ...bon, title: 'x'.repeat(81) });
-    assert.equal(res.ok, false);
+  it('refuse un titre trop long : 30 caractères au plus, comme la base', () => {
+    assert.equal(validateEdition({ ...bon, title: 'x'.repeat(31) }).ok, false);
+    assert.equal(validateEdition({ ...bon, title: 'x'.repeat(30) }).ok, true);
+    // Le titre de la recette, 28 caractères, passe.
+    assert.equal(validateEdition({ ...bon, title: 'La semaine du film qui pique' }).ok, true);
   });
 
   for (const slug of ['Semaine-38', 'se', 'semaine_38', '-semaine', 'semaine-']) {

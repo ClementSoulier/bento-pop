@@ -143,21 +143,23 @@ export const SELECTOR_GAP = 10;
 export const SELECTOR_SIDE = 20;
 
 /**
- * Plancher du titre du composer, en points : les trois quarts de sa taille
- * par défaut, 28, comme le plancher des titres de case.
+ * Plancher du titre du composer, en points.
  *
  * Le titre tient sur une ligne, que le budget vertical compte au point : il
  * rétrécit donc au lieu de passer à la ligne. « La semaine du film qui pique »
- * s'affichait « LA SEMAINE DU FILM Q… » à la recette du 16 septembre ; il
- * demande 0,80 sur un iPhone 17 Pro et 0,74 sur un iPhone SE. Sous le
- * plancher, il se tronque : c'est au back-office de refuser un titre qui n'y
- * tiendrait pas.
+ * s'affichait « LA SEMAINE DU FILM Q… » à la recette du 16 septembre.
+ *
+ * **17 points, pour qu'un titre de 30 caractères s'affiche entier sur un
+ * iPhone SE.** 30, c'est la borne arbitrée le 16 septembre, en base et au
+ * back-office. Sur huit titres réalistes de cette longueur, le plus exigeant
+ * demande 17,6 points sur SE, le plus facile 19,9. Seul un titre fait de
+ * lettres larges, « MMMM… », descend plus bas et se tronque.
  *
  * **En points et non en facteur** : agrandi par la police système, un titre
- * peut rétrécir jusqu'à sa taille par défaut ou presque, au lieu de se
- * tronquer à la plus grande police alors qu'il tient entier à la normale.
+ * peut redescendre vers sa taille normale au lieu de se tronquer à la plus
+ * grande police alors qu'il tient entier à la normale.
  */
-export const COMPOSE_TITLE_MIN_FONT_SIZE = 21;
+export const COMPOSE_TITLE_MIN_FONT_SIZE = 17;
 
 /** Espacement des lettres du titre du composer. */
 export const COMPOSE_TITLE_LETTER_SPACING = -0.3;

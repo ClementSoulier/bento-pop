@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { EDITION_STATUS_LABELS, type EditionRow } from '@/lib/editions';
+import { EDITION_STATUS_LABELS, EDITION_TITLE_MAX, type EditionRow } from '@/lib/editions';
 import { createEditionAction, deleteEditionAction } from './actions';
 
 /** Jeudi 18 h de Paris, la sortie retenue au chantier 13 (D4). */
@@ -171,7 +171,7 @@ function NewEditionForm({ setError }: { setError: (e: string | null) => void }) 
             id="edition-title"
             className="admin-input h-[34px] w-[280px] py-0 text-[13px]"
             value={title}
-            maxLength={80}
+            maxLength={EDITION_TITLE_MAX}
             placeholder="La semaine du film qui pique"
             onChange={(e) => setTitle(e.target.value)}
           />

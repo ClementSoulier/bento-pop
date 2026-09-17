@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { BoxPreview } from '@/components/BoxPreview';
 import {
   EDITION_STATUS_LABELS,
+  EDITION_TITLE_MAX,
   type EditionCase,
   type EditionDetail,
   caseVerdicts,
@@ -163,7 +164,7 @@ export function EditionEditor({
               id="cadre-title"
               className="admin-input h-[34px] w-[280px] py-0 text-[13px]"
               value={title}
-              maxLength={80}
+              maxLength={EDITION_TITLE_MAX}
               onChange={(e) => setTitle(e.target.value)}
             />
           </label>
