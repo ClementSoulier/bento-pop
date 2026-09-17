@@ -543,10 +543,10 @@ roadmap, la DoD.
   septembre.~~ **Une seule sortie store, quand tous les chantiers de la roadmap
   sont terminés et recettés**, décidée le 17 septembre 2026. D'ici là, rien de
   ce chantier n'atteint les versions publiques, la 1.1 et la 0.1.0.
-- **À trancher avant le lot 1 : quand appliquer ses migrations en
-  production.** Appliquées au fil de l'eau, elles doivent rester compatibles
-  avec la 1.1 et la 0.1.0 pendant toute la durée des chantiers ; sinon, elles
-  attendent le jour de la sortie.
+- **Ses migrations s'appliquent en production au fur et à mesure**, décidé le
+  17 septembre 2026 : chacune doit rester compatible avec la 1.1 et la 0.1.0
+  pendant toute la durée des chantiers, et cette compatibilité se prouve avant
+  de l'appliquer.
 - Les deux secrets de coffre et les deux variables Coolify se posent avant la
   première validation d'item suivant le déploiement.
 
