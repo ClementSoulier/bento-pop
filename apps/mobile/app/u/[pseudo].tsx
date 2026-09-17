@@ -615,6 +615,7 @@ function FoundPage({
           pseudo={bento.pseudo}
           slug={bento.slug}
           isPrimary={bento.isPrimary}
+          editionTitle={bento.editionTitle}
         />
       </View>
     </View>

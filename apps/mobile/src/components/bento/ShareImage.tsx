@@ -6,6 +6,7 @@ import { publicBentoLabel } from '@/lib/share';
 import { BentoGrid } from './BentoGrid';
 import { MAIN_CASES, type CaseMeta } from '@bento-pop/supabase-mobile/bento';
 import { composerCases, type BentoItems } from './cases';
+import { SHARE_RIBBON, shareRibbonFontSize, shareRibbonText } from './share-layout';
 
 type ShareImageProps = {
   items: BentoItems;
@@ -23,6 +24,8 @@ type ShareImageProps = {
    */
   slug?: string | null;
   isPrimary?: boolean;
+  /** Le titre de l'édition, écrit dans le ruban rouge à la place de « Mon bento pop culture ». */
+  editionTitle?: string | null;
 };
 
 /** Largeur de la carte, et sa marge de chaque côté : la grille a le reste, 920 pt. */
@@ -64,8 +67,9 @@ const CARD_PADDING_H = 80;
  * `allowFontScaling={false}`, et la grille le transmet à ses cases.
  */
 export const ShareImage = forwardRef<View, ShareImageProps>(
-  ({ items, pseudo, slug, isPrimary = true, cases = MAIN_CASES }, ref) => {
+  ({ items, pseudo, slug, isPrimary = true, cases = MAIN_CASES, editionTitle = null }, ref) => {
   const safePseudo = pseudo?.trim() || 'anonyme';
+  const ruban = shareRibbonText(editionTitle);
   return (
     <View
       ref={ref}
@@ -98,23 +102,27 @@ export const ShareImage = forwardRef<View, ShareImageProps>(
           borderWidth: 3,
           borderColor: '#0a0a0a',
           borderRadius: 8,
-          paddingHorizontal: 24,
+          paddingHorizontal: SHARE_RIBBON.paddingH,
           paddingVertical: 12,
           marginBottom: 28,
           transform: [{ rotate: '-2deg' }],
         }}
       >
+        {/* Une ligne, à une taille mesurée : jamais `adjustsFontSizeToFit`,
+            cf. `shareRibbonFontSize`. Sans hauteur de ligne posée, comme
+            avant : le ruban du bento principal reste identique. */}
         <Text
           allowFontScaling={false}
+          numberOfLines={1}
           style={{
             color: '#ffffff',
             fontFamily: 'Bungee',
-            fontSize: 32,
-            letterSpacing: 2,
+            fontSize: shareRibbonFontSize(ruban),
+            letterSpacing: SHARE_RIBBON.letterSpacing,
             textTransform: 'uppercase',
           }}
         >
-          Mon bento pop culture
+          {ruban}
         </Text>
       </View>
 
