@@ -207,6 +207,96 @@ A et B dans la même heure.
 dans `cache/ReactNative-snapshot-image*.jpg`, par
 `adb exec-out run-as com.bentopop.mobile cat <chemin>`.
 
+### Recetter à côté d'une autre session : ne rien partager
+
+Le 17 septembre 2026, une session recettait le chantier 17 sur le simulateur,
+l'émulateur, Metro 8081 et le Supabase local, pendant qu'une seconde
+reproduisait un défaut d'affichage. Tout ce que touche une recette se double,
+sans rien arrêter chez l'autre.
+
+**Le Supabase local.** Celui du projet mobile écoute sur **54331** (API) et
+**54332** (base), et non 54321 : le 54321 de la machine appartient à un autre
+projet, « lokkal ». Une seconde pile se monte depuis une copie du dossier
+`supabase`, sous un autre `project_id` et d'autres ports. Sans
+`.temp/postgres-version`, la CLI y prend une image Postgres qui plante sur tout
+appel d'une fonction sans droit :
+
+```bash
+W=<dossier de travail>
+cp -R apps/mobile/supabase "$W/supabase" && rm -rf "$W/supabase/.temp" && mkdir "$W/supabase/.temp"
+printf '17.6.1.167' > "$W/supabase/.temp/postgres-version"
+sed -i '' -e 's/^project_id = .*/project_id = "bento-pop-recette2"/' \
+  -e 's/^port = 54331/port = 54341/' -e 's/^port = 54332/port = 54342/' \
+  -e 's/^shadow_port = 54330/shadow_port = 54340/' -e 's/^port = 54333/port = 54343/' \
+  "$W/supabase/config.toml"
+supabase start --workdir "$W" -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,supavisor
+docker exec -i supabase_db_bento-pop-recette2 psql -U postgres -c 'create schema recette_marker'
+```
+
+Le conteneur de l'autre session, `supabase_db_bento-pop-mobile`, répond aux
+mêmes commandes : tout script de données refuse une base qui ne porte pas le
+schéma marqueur, et ce refus s'éprouve une fois, dans une transaction qui retire
+le marqueur puis s'annule.
+
+**Les builds**, pointées sur `http://127.0.0.1:54341` et contrôlées comme plus
+bas, compilent dans leur propre `-derivedDataPath` : le
+`find … DerivedData/MonBentoPop-* | head -1` de l'autre session installerait
+sinon la leur.
+
+**Les simulateurs iOS, dans un jeu d'appareils à part.** Créés et démarrés par
+`xcrun simctl --set <dossier>`, ils n'apparaissent ni dans `simctl list`, ni
+dans Simulator.app, ni derrière un `booted` de l'autre session. `idb` s'y branche
+par un compagnon dédié :
+
+```bash
+xcrun simctl --set <dossier> create "Recette 17 Pro" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro <runtime>
+idb_companion --udid <UDID> --device-set-path <dossier> --grpc-port 10882 &
+idb connect localhost 10882
+```
+
+**Metro sur un autre port.** L'app de développement iOS charge
+`localhost:8081` : React Native est précompilé, `RCT_METRO_PORT` ne se change
+pas à la compilation. Sans rien de plus, elle exécute le code servi par le Metro
+de l'autre session. Le port se passe au lancement, et s'écrit aussi dans les
+préférences de l'app, pour un lancement sans argument :
+
+```bash
+xcrun simctl --set <dossier> launch <UDID> com.bentopop.mobile -RCT_jsLocation 127.0.0.1:8082
+D=$(xcrun simctl --set <dossier> get_app_container <UDID> com.bentopop.mobile data)
+/usr/libexec/PlistBuddy -c "Add :RCT_jsLocation string 127.0.0.1:8082" "$D/Library/Preferences/com.bentopop.mobile.plist"
+```
+
+Le journal de Metro doit afficher « iOS Bundled » au lancement : c'est la preuve
+que l'app lit le bon.
+
+**Android : un AVD dédié, et jamais deux émulateurs à la fois.** `adb shell`
+sans numéro de série échoue dès que deux appareils sont branchés : démarrer un
+second émulateur casse les commandes de l'autre session. Attendre que le sien
+soit arrêté, lancer l'AVD dédié sur un port à part, puis toujours
+`adb -s emulator-5580`. Un AVD se crée sans `avdmanager`, en recopiant le
+`config.ini` d'un AVD existant sous un autre `AvdId`.
+
+```bash
+emulator -avd Recette_Pixel_8 -no-window -no-snapshot -port 5580 &
+adb -s emulator-5580 reverse tcp:8082 tcp:8082
+adb -s emulator-5580 reverse tcp:54341 tcp:54341
+```
+
+**L'app Android d'un émulateur vise l'hôte en `10.0.2.2:8081`**, sans passer
+par `adb reverse` : « Unable to load script » si ce Metro n'existe pas, le code
+de l'autre session s'il existe. L'adresse du bundler s'écrit dans les
+préférences de l'app, app arrêtée :
+
+```bash
+printf '%s' "<?xml version='1.0' encoding='utf-8' standalone='yes' ?><map><string name=\"debug_http_host\">localhost:8082</string></map>" > /tmp/rn.xml
+adb -s emulator-5580 push /tmp/rn.xml /data/local/tmp/rn.xml
+adb -s emulator-5580 shell "run-as com.bentopop.mobile mkdir -p shared_prefs && run-as com.bentopop.mobile cp /data/local/tmp/rn.xml shared_prefs/com.bentopop.mobile_preferences.xml"
+```
+
+Enfin, un réglage posé juste avant `adb emu kill` peut ne pas survivre : la
+taille de police était restée à 2,0 au démarrage suivant. Relire le réglage
+après chaque démarrage.
+
 ---
 
 ## 2. iOS
