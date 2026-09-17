@@ -261,6 +261,9 @@ export async function editableBentoId(userId: string): Promise<string | null> {
 export async function switchBento(bentoId: string): Promise<void> {
   const store = useBento.getState();
   store.setOwn(store.own, bentoId);
+  // Les cases de l'ancien bento ne s'affichent pas sous le nom du nouveau,
+  // même quand les deux ont le même jeu de cases.
+  store.clearSlots();
   // Le jeu de cases AVANT les cases remplies : `slots` s'indexe par clé de
   // case, donc hydrater avec l'ancien jeu poserait des cases que la grille
   // n'afficherait pas et que la publication enverrait quand même.

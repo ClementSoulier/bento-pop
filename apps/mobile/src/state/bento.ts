@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { OwnBento } from '@/lib/own-bento';
 import type { TileData } from '@/components/bento/Tile';
-import { MAIN_CASE_SET, type CaseSet } from '@/lib/case-set';
+import { MAIN_CASE_SET, type CaseSet, sameCaseSet } from '@/lib/case-set';
 
 /**
  * État local du bento en cours de composition / édition.
@@ -131,13 +131,27 @@ type BentoState = {
    */
   setPublishedAt: (publishedAt: string | null) => void;
   /**
-   * Pose le jeu de cases, et **vide les cases remplies**.
+   * Pose le jeu de cases, et **vide les cases remplies quand il change**.
    *
    * Les deux vont ensemble : `slots` est indexé par clé de case, donc garder
    * les anciennes en changeant de jeu laisserait des cases orphelines que la
    * grille n'afficherait pas et que la publication enverrait quand même.
+   *
+   * **Le même jeu, reposé, ne touche à rien.** La relecture du retour sur le
+   * composer repose le jeu du bento courant à chaque fois. Elle vidait les
+   * cases, pendant qu'une écriture pouvait être en vol, et `hydrate` ignorait
+   * ensuite l'état distant, comme il le doit : une case choisie à l'instant
+   * restait vide à l'écran alors qu'elle était écrite en base. Recette du
+   * 16 septembre 2026. Elle remettait aussi le composer en chargement à
+   * chaque retour.
    */
   setCases: (cases: readonly CaseSet[]) => void;
+  /**
+   * Vide les cases remplies, jeu de cases inchangé : c'est ce que demande un
+   * changement de bento. Deux bentos peuvent partager le même jeu, le
+   * principal et un bento libre, et `setCases` ne vide plus rien dans ce cas.
+   */
+  clearSlots: () => void;
   /** À encadrer d'un `try` / `finally` autour de toute écriture optimiste. */
   beginWrite: () => void;
   endWrite: () => void;
@@ -185,7 +199,13 @@ export const useBento = create<BentoState>((set, get) => ({
     set({ slots, hydrated: true });
   },
   markHydrated: () => set({ hydrated: true }),
-  setCases: (cases) => set({ cases, slots: {}, lastFilled: null, hydrated: false }),
+  setCases: (cases) =>
+    set((s) =>
+      sameCaseSet(s.cases, cases)
+        ? { cases }
+        : { cases, slots: {}, lastFilled: null, hydrated: false },
+    ),
+  clearSlots: () => set({ slots: {}, lastFilled: null, hydrated: false }),
   setOwn: (own, currentId) =>
     set((s) => {
       const voulu = currentId ?? s.current?.id ?? null;

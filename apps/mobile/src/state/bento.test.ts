@@ -187,3 +187,54 @@ describe('première lecture', () => {
     assert.equal(state().hydrated, false);
   });
 });
+
+/**
+ * Recette de la proposition A, 16 septembre 2026 : une case choisie dans la
+ * recherche s'affichait vide au retour sur le composer, alors qu'elle était
+ * écrite en base. La relecture du retour sur l'onglet reposait le jeu de
+ * cases, ce qui vidait les cases remplies, pendant que l'écriture était encore
+ * en vol, et `hydrate` ignorait ensuite l'état distant, comme il le doit.
+ */
+describe('setCases face à la relecture du retour sur l’onglet', () => {
+  const DUEL = [
+    { id: 101, key: 'rec2_1', prompt: 'Le film qui t’a fait pleurer', stamp: 'FILM', gender: 'm' as const },
+    { id: 102, key: 'rec2_2', prompt: 'Celui qui t’a fait rire', stamp: 'FILM', gender: 'm' as const },
+  ];
+  const PLAY = { title: 'Play', itemId: 'item-play' };
+
+  it('garde la case posée quand le même jeu de cases est reposé pendant l’écriture', () => {
+    state().setCases(DUEL);
+    // Le choix dans la recherche : pose optimiste, écriture en vol.
+    state().beginWrite();
+    state().setSlot('rec2_1', PLAY);
+    // Retour sur le composer : relecture, même bento, même jeu de cases.
+    state().setCases(DUEL.map((c) => ({ ...c })));
+    state().hydrate({});
+    state().endWrite();
+    assert.deepEqual(state().slots.rec2_1, PLAY);
+  });
+
+  it('ne remet pas le composer en chargement quand le jeu de cases n’a pas changé', () => {
+    state().setCases(DUEL);
+    state().hydrate({ rec2_1: PLAY });
+    state().setCases(DUEL.map((c) => ({ ...c })));
+    assert.equal(state().hydrated, true);
+  });
+
+  it('vide les cases quand on change de jeu de cases, en changeant de bento', () => {
+    state().setCases(DUEL);
+    state().hydrate({ rec2_1: PLAY });
+    state().setCases([{ ...DUEL[0]!, id: 201, key: 'rec3_1' }]);
+    assert.deepEqual(state().slots, {});
+    assert.equal(state().hydrated, false);
+  });
+
+  it('clearSlots vide les cases sans toucher au jeu, pour changer de bento', () => {
+    state().setCases(DUEL);
+    state().hydrate({ rec2_1: PLAY });
+    state().clearSlots();
+    assert.deepEqual(state().slots, {});
+    assert.equal(state().cases.length, 2);
+    assert.equal(state().hydrated, false);
+  });
+});

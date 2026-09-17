@@ -39,6 +39,17 @@ export const MAIN_CASE_SET: readonly CaseSet[] = MAIN_CASES.map((meta) => ({
   id: CATEGORY_IDS[meta.key as CategoryKey],
 }));
 
+/**
+ * Deux jeux de cases sont-ils les mêmes, cases et ordre compris ?
+ *
+ * Deux lectures d'une même édition rendent des objets différents : la
+ * comparaison se fait sur ce qui s'écrit et s'affiche, l'identifiant et la
+ * clé de chaque case.
+ */
+export function sameCaseSet(a: readonly CaseSet[], b: readonly CaseSet[]): boolean {
+  return a.length === b.length && a.every((c, i) => c.id === b[i]?.id && c.key === b[i]?.key);
+}
+
 /** Correspondance identifiant vers clé, pour relire `bento_items`. */
 export function caseKeyById(cases: readonly CaseSet[]): Map<number, string> {
   return new Map(cases.map((c) => [c.id, c.key]));
