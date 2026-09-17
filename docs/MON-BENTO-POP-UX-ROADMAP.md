@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut au 15 septembre 2026 : chantiers 1 à 7 et 14 livrés, prochain le 15.** Les chantiers 6 et 7 sont sur `main`, dans aucune build ni mise à jour à distance. La 1.2.0 n'est publique sur aucun store : l'App Store sert toujours la 1.1, le Play Store la 0.1.0, relevé le 15 septembre. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 17 septembre 2026 : chantiers 1 à 7, 9, 11, 13, 14, 15 et 16 livrés, prochain le 17, dont la spécification est arbitrée.** La build 1.3.0 (chantiers 16 et 9) est construite depuis le 16 septembre ; l'App Store sert toujours la 1.1 et le Play Store la 0.1.0, relevé le 17 septembre. La base de production porte depuis le 17 septembre les migrations des chantiers 16, 9 et 13 : **aucune édition ne se compose en production** avant la sortie store et le relèvement du plancher de version. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -216,9 +216,9 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 7 | Page bento public : scale + React Query | Bug + perf | **M** | rien | ✅ 4 lots livrés (PR #59), recette faite (trois iPhone, quinze cas Android, compte de recette en production), DoD 19/19 · [spec](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) |
 | 15 | Types d'éléments et cases : jeux vidéo, livres, plats, activités | Contenu | L | rien | 🟡 spécification validée le 15/09 · lot 0 livré (PR #63), migration appliquée et vérifiée en production · lot 1 (back-office) livré et recetté (PR #64 et #65) · lot 2 (446 candidats en quatre listes, import depuis l'écran Types) livré (PR #66) · lot 3 recetté : bento principal identique au pixel sur iPhone et Android, recherche élargie vue en production · DoD 7 sur 9, restent à l'équipe après redéploiement du back-office sur Coolify : importer et relire jusqu'à 50 validés par type, fusionner les deux doublons · [spec](./UX-15-NOUVELLES-CATEGORIES.md) |
 | 11 | Accessibilité et polish | Qualité | **L** | rien | ✅ 5 lots livrés (PR #68, CI verte, fusionnée le 16/09) · effort réévalué S → L à la mesure · DoD 23/23 au simulateur, 432 tests verts, matrice parcourue sur 17 Pro, SE et Pixel 8 · build production 1.2.0 lancée (iOS 11, Android versionCode 13) · restent cinq points d'appareil réel (§7.3) · [spec](./UX-11-ACCESSIBILITE-POLISH.md) |
-| 16 | Plusieurs bentos par compte | Contenu | L | 5 | ✅ **6 lots livrés (PR #70, CI verte, fusionnée le 16/09)**, spécifiés et livrés dans la journée · migration A appliquée en production avec son correctif urgent · **B et `publish_first_bento` restent à appliquer** après adoption de la build 1.3.0 · DoD 12 sur 13 · recette d'appareil versée au 29 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
+| 16 | Plusieurs bentos par compte | Contenu | L | 5 | ✅ **6 lots livrés (PR #70, CI verte, fusionnée le 16/09)**, spécifiés et livrés dans la journée · migration A appliquée en production avec son correctif urgent · **B et `publish_first_bento` appliquées en production le 17/09**, avec le bloc du chantier 13 et sans attendre d'adoption : aucune version publiée ne lit l'embed dont B change la forme · DoD 12 sur 13 · recette d'appareil versée au 29 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ✅ **livré au lot 5 du 16 (PR #70)**, parcours vérifié de bout en bout au simulateur · brouillon local, zéro ligne serveur avant publication, CGU horodatées à l'acceptation · gain non prévu : on compose désormais **sans session**, ce qui répond au rejet App Store 2bf822e0 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
-| 13 | Bento hebdomadaire | Rétention | L | 15, 16 | 🟡 **lots 1 à 5 livrés le 16-17/09**, lot 6 préparé · la table des dispositions de 2 à 6 cases est partagée par les cinq rendus, et le bento principal est inchangé **au bit près** côté web · l'écran Éditions du back-office est recetté · ~~la PK interdit deux cases du même type~~ **faux depuis le chantier 15** · DoD 11 sur 14 : restent la recette d'appareil, une édition passée composée après deux suivantes, et le catalogue des quatre types dormants · **ne peut pas sortir avant la migration B**, donc avant une sortie store · [spec](./UX-13-BENTO-HEBDOMADAIRE.md) |
+| 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ✅ **6 lots livrés (PR #74, CI verte, fusionnée le 17/09)** · recette sur simulateur iOS et émulateur Android : seize étapes et contrôle d'horloge, 17 défauts corrigés · arbitrages D11 à D13 : titre en 30 caractères, titre de l'édition dans le ruban de partage, **question de l'édition sur la case remplie**, garantie par un test sur 2 736 questions · bento principal inchangé au bit sur le web et au pixel dans l'app · **bloc SQL appliqué en production le 17/09** : migration B, `publish_first_bento` et les trois migrations des éditions · DoD 12 sur 14 : restent l'appareil réel (29) et le catalogue des quatre types dormants (15) · **à faire** : redéployer la landing et le back-office sur Coolify ; **ne composer aucune édition en production** avant la sortie store et le plancher de version (D8) · [spec](./UX-13-BENTO-HEBDOMADAIRE.md) |
 | 17 | Notifications push | Rétention | L | build native | 🟡 **spécification écrite et arbitrée le 17/09**, neuf décisions · l'argument mesuré n'est pas celui qu'on croyait : un item refusé ne laisse **aucun trou** dans un bento publié, mais le délai médian de validation est de **6,9 jours** et personne n'est prévenu · envoi par déclencheur SQL vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · préalables : clé APNs et compte de service FCM, délai administratif · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
 | 18 | Publication automatique à la validation | Activation | M | 5 | ⬜ roadmap produit |
 | 8 | Signaux de retour : compteur de vues, relance | Rétention | M | 17 | ⬜ recadré le 15/09, le reste réparti dans les 17, 18 et 22 |
@@ -735,6 +735,8 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 
 > **Recadré le 15 septembre 2026 par la roadmap produit.** Il s'appelait « Types de bento (hebdo, thématiques) » et commençait par lever la contrainte `unique (user_id)` : c'est désormais le chantier 16, dont celui-ci dépend.
 
+> **Livré le 17 septembre 2026** (PR #74), spécifié et arbitré la veille, cf. [la spécification](./UX-13-BENTO-HEBDOMADAIRE.md). Le « fait quand » est vérifié en recette sur Supabase local, contrôle d'horloge compris : une édition programmée sort à sa date sans relancer l'app. En production, il attend la nouvelle version de l'app ; la base, elle, est prête depuis le 17 septembre.
+
 **Demandé.** Un système de bento hebdomadaire, configuré depuis l'administration : un titre, de 2 à 6 cases avec chacune un nom et une catégorie, une date de sortie.
 
 **Constat.**
@@ -751,12 +753,12 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 - Dans « La table », l'étiquette et le titre de l'édition.
 - Les grilles de 2 à 5 cases dessinées par la direction artistique avant tout développement.
 
-**À trancher quand on y arrive.**
+**Tranché les 16 et 17 septembre 2026.**
 
-- Une édition se remplit-elle seulement pendant sa semaine, ou à tout moment ? Et les éditions passées ?
-- La sortie : un jour et une heure de Paris, ou un jour ?
-- Le nom de la case (« Le film qui t'a fait pleurer ») remplace-t-il le tampon de catégorie ?
-- Une édition peut-elle être liée à une émission (19) ?
+- Une édition se remplit-elle seulement pendant sa semaine, ou à tout moment ? Et les éditions passées ? **À tout moment, et les éditions passées restent composables pour toujours** (D5).
+- La sortie : un jour et une heure de Paris, ou un jour ? **Le jeudi à 18 h de Paris** (D4).
+- Le nom de la case (« Le film qui t'a fait pleurer ») remplace-t-il le tampon de catégorie ? **Oui, sur la case remplie d'une édition**, validé après essai (D13) ; le bento principal garde ses tampons.
+- Une édition peut-elle être liée à une émission (19) ? **Prévu, pas fait** : `editions.show_id` est réservé, sans lecture ni contrainte.
 
 **Fait quand** : l'équipe programme une édition dans le back-office, elle sort à sa date sans nouvelle version de l'app, et quelqu'un qui a déjà publié son bento a une raison de revenir composer.
 
