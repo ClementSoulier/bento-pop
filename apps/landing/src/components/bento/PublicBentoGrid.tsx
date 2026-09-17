@@ -1,5 +1,10 @@
 import type { CSSProperties } from 'react';
-import { boxPlacements, boxRowHeights } from '@bento-pop/supabase-mobile/bento';
+import {
+  boxPlacements,
+  boxRowHeights,
+  filledCaseLabel,
+  isMainCaseKey,
+} from '@bento-pop/supabase-mobile/bento';
 import type { PublicCase } from './cases';
 import { PublicBentoEmptyTile } from './PublicBentoEmptyTile';
 import { PublicBentoTile } from './PublicBentoTile';
@@ -92,7 +97,10 @@ export function PublicBentoGrid({ cases, label, empty = false }: PublicBentoGrid
             return tile ? (
               <PublicBentoTile
                 key={item.key}
-                stamp={item.stamp}
+                // Le tampon pour le bento principal, la question pour une
+                // édition, comme dans l'app.
+                stamp={filledCaseLabel(item)}
+                question={!isMainCaseKey(item.key)}
                 tile={tile}
                 size={place.size as TileSize}
                 rotate={place.rotate}

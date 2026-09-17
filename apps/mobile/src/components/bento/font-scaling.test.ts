@@ -284,10 +284,15 @@ describe('cases du bento', () => {
   it('applique à ses textes la police que la case permet, figée quand la grille le demande', () => {
     const scaled = tileTexts.filter((t) => /\btextScale\b/.test(t.styleSource));
     assert.equal(scaled.length, 4, `textes à l’échelle de la case : ${linesOf(scaled)}`);
+    // `tileTextLayout` ou `tileTextScale` : le premier étend le second au
+    // nombre de lignes de l'étiquette, pour la question d'une édition
+    // (proposition A, 16 septembre 2026), et rend exactement le second pour une
+    // étiquette d'une ligne, ce que `tile-text.test.ts` vérifie sur toutes les
+    // tailles, échelles et polices. La règle de ce test ne change pas.
     const wrong = scaled.filter(
       (t) =>
         !fixed(t) ||
-        !/\btileTextScale\(/.test(t.styleSource) ||
+        !/\btileText(?:Scale|Layout)\(/.test(t.styleSource) ||
         !/\ballowFontScaling\s*\?/.test(t.styleSource) ||
         !/\blineHeight\b/.test(t.styleSource),
     );

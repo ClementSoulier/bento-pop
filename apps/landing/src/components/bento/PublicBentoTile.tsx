@@ -1,18 +1,27 @@
 import type { CSSProperties } from 'react';
-import { CATEGORY_META, PALETTES } from '@bento-pop/supabase-mobile/bento';
-import type { CategoryKey } from '@bento-pop/supabase-mobile/types';
+import { PALETTES } from '@bento-pop/supabase-mobile/bento';
 import { SmartImage } from '@/components/SmartImage';
 import type { BentoTile } from '@/lib/bento/map';
 import { paletteGradient } from '@/lib/bento/gradient';
 import { cleanTitle, initialOf } from '@/lib/bento/text';
 import { TILE, TILE_SCRIM, TILE_SIZES, TILE_TYPO, type TileSize } from './layout';
+import { QUESTION_PADDING_H, QUESTION_PADDING_V, webQuestionLabel } from './question-label';
 
 /** `u` = unité de design, cf. `layout.ts`. */
 const u = (n: number) => `calc(${n} * var(--u))`;
 
 type PublicBentoTileProps = {
-  /** Tampon court affiché en haut du compartiment. */
+  /**
+   * L'étiquette en haut du compartiment : le tampon court du bento principal,
+   * ou la question d'une édition, cf. `question`.
+   */
   stamp: string;
+  /**
+   * `stamp` est la question d'une édition : en Bungee comme dans l'app, sur
+   * deux lignes au plus, coupées et dimensionnées côté serveur. Absent pour le
+   * bento principal, dont l'étiquette ne change pas.
+   */
+  question?: boolean;
   tile: BentoTile;
   size: TileSize;
   rotate: number;
@@ -44,6 +53,7 @@ export function PublicBentoTile({
   rotate,
   placement,
   priority = false,
+  question = false,
 }: PublicBentoTileProps) {
   const typo = TILE_TYPO[size];
   const palette = PALETTES[tile.paletteKey];
@@ -105,23 +115,32 @@ export function PublicBentoTile({
           />
         ) : null}
 
-        {/* Couche 3 : tampon de catégorie */}
-        <span
-          className="font-display-sm absolute"
-          style={{
-            top: u(typo.padding),
-            left: u(typo.padding),
-            padding: `${u(2)} ${u(6)}`,
-            borderRadius: u(4),
-            background: hasImage ? 'var(--bento-ink)' : palette.ink,
-            color: hasImage ? '#ffffff' : palette.colors[0],
-            fontSize: `max(8px, ${u(typo.stamp)})`,
-            letterSpacing: '0.08em',
-            lineHeight: 1.2,
-          }}
-        >
-          {stamp}
-        </span>
+        {/* Couche 3 : tampon de catégorie, ou question d'une édition */}
+        {question ? (
+          <QuestionLabel
+            question={stamp}
+            size={size}
+            background={hasImage ? 'var(--bento-ink)' : palette.ink}
+            color={hasImage ? '#ffffff' : palette.colors[0]}
+          />
+        ) : (
+          <span
+            className="font-display-sm absolute"
+            style={{
+              top: u(typo.padding),
+              left: u(typo.padding),
+              padding: `${u(2)} ${u(6)}`,
+              borderRadius: u(4),
+              background: hasImage ? 'var(--bento-ink)' : palette.ink,
+              color: hasImage ? '#ffffff' : palette.colors[0],
+              fontSize: `max(8px, ${u(typo.stamp)})`,
+              letterSpacing: '0.08em',
+              lineHeight: 1.2,
+            }}
+          >
+            {stamp}
+          </span>
+        )}
 
         {/* Couche 3 : titre et sous-titre */}
         <div
@@ -166,6 +185,67 @@ export function PublicBentoTile({
             de ce composant pour le raisonnement. */}
       </div>
     </li>
+  );
+}
+
+/**
+ * La question d'une édition, là où le bento principal écrit « FILM ».
+ *
+ * Coupée en lignes côté serveur, en unités de design : la boîte se met à
+ * l'échelle en unités de conteneur, donc la coupe vaut à toute largeur. Le
+ * fond prend la largeur de la plus longue ligne, et non toute la largeur de la
+ * case, ce que le navigateur ferait d'un texte qui passe à la ligne.
+ *
+ * Pas de plancher en pixels, contrairement au tampon : il ferait grossir le
+ * texte sans grossir la case, et la coupe calculée ne vaudrait plus. Le titre
+ * de la case n'en a pas non plus.
+ *
+ * Les lignes sont masquées aux lecteurs d'écran, qui entendent la question
+ * telle qu'écrite, en minuscules, plutôt que ses morceaux en capitales.
+ */
+function QuestionLabel({
+  question,
+  size,
+  background,
+  color,
+}: {
+  question: string;
+  size: TileSize;
+  background: string;
+  color: string;
+}) {
+  const typo = TILE_TYPO[size];
+  const { fit, boxTextWidth } = webQuestionLabel(question, size);
+  const [premiere = '', ...suite] = fit.lines;
+  const seconde = suite.join(' ');
+  return (
+    <>
+      <span
+        aria-hidden
+        className="absolute"
+        style={{
+          top: u(typo.padding),
+          left: u(typo.padding),
+          width: u(boxTextWidth + QUESTION_PADDING_H * 2),
+          padding: `${u(QUESTION_PADDING_V)} ${u(QUESTION_PADDING_H)}`,
+          borderRadius: u(4),
+          background,
+          color,
+          fontFamily: 'var(--font-bungee), sans-serif',
+          fontSize: u(fit.fontSize),
+          lineHeight: 1.25,
+          letterSpacing: u(1),
+        }}
+      >
+        <span className="block overflow-hidden whitespace-nowrap">{premiere}</span>
+        {seconde ? (
+          // Une question que le back-office a acceptée tient en deux lignes ;
+          // si ce n'était pas le cas, la seconde se tronque au lieu de déborder.
+          <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{seconde}</span>
+        ) : null}
+      </span>
+      <span className="sr-only">{question}</span>
+    </>
   );
 }
 

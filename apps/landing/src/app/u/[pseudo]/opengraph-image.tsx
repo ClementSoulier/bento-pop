@@ -1,6 +1,18 @@
 import { ImageResponse } from 'next/og';
-import { MAIN_CASES, PALETTES, boxPlacements, boxRowHeights } from '@bento-pop/supabase-mobile/bento';
-import { mainBentoCases, publicCases, type PublicCase } from '@/components/bento/cases';
+import {
+  MAIN_CASES,
+  PALETTES,
+  boxPlacements,
+  boxRowHeights,
+  filledCaseLabel,
+  isMainCaseKey,
+} from '@bento-pop/supabase-mobile/bento';
+import { publicCases, type PublicCase } from '@/components/bento/cases';
+import {
+  QUESTION_PADDING_H,
+  QUESTION_PADDING_V,
+  ogQuestionLabel,
+} from '@/components/bento/question-label';
 import { logoDataUrl } from '@/app/_og/assets';
 import { bentoImageAlt } from '@/lib/bento/metadata';
 import { cleanTitle, initialOf } from '@/lib/bento/text';
@@ -99,7 +111,8 @@ export default async function OpenGraphImage({ params }: ImageParams) {
       `@${pseudo}`,
       lookup.kind === 'published' ? (lookup.bento.displayName ?? '') : '',
       ...Object.values(slots).flatMap((tile) => (tile ? [cleanTitle(tile.title), tile.subtitle ?? ''] : [])),
-      ...mainBentoCases({}).flatMap((c) => [c.stamp, c.prompt]),
+      // Les étiquettes du bento dessiné, questions d'édition comprises.
+      ...cases.flatMap((c) => [c.stamp, c.prompt]),
     ];
 
     const [fallbackFont, imageMap] = await Promise.all([
@@ -189,7 +202,10 @@ function BentoBox({ cases, images }: { cases: readonly PublicCase[]; images: Map
             return tile ? (
               <Tile
                 key={item.key}
-                stamp={item.stamp}
+                // Le tampon pour le bento principal, la question pour une
+                // édition, comme dans l'app et sur la page web.
+                stamp={filledCaseLabel(item)}
+                question={!isMainCaseKey(item.key)}
                 title={cleanTitle(tile.title, TITLE_MAX[place.size])}
                 subtitle={tile.subtitle}
                 image={tile.imageUrl ? images.get(tile.imageUrl) : undefined}
@@ -208,6 +224,7 @@ function BentoBox({ cases, images }: { cases: readonly PublicCase[]; images: Map
 
 function Tile({
   stamp,
+  question,
   title,
   subtitle,
   image,
@@ -215,6 +232,8 @@ function Tile({
   size: tileSize,
 }: {
   stamp: string;
+  /** `stamp` est la question d'une édition, cf. `QuestionLabel`. */
+  question: boolean;
   title: string;
   subtitle: string | null;
   image?: string;
@@ -283,22 +302,31 @@ function Tile({
         />
       ) : null}
 
-      <div
-        style={{
-          position: 'absolute',
-          top: u(typo.padding),
-          left: u(typo.padding),
-          display: 'flex',
-          padding: `${u(2)}px ${u(6)}px`,
-          borderRadius: u(4),
-          background: image ? INK : palette.ink,
-          color: image ? '#ffffff' : palette.colors[0],
-          fontSize: u(typo.stamp + 1),
-          letterSpacing: 0.6,
-        }}
-      >
-        {stamp}
-      </div>
+      {question ? (
+        <QuestionLabel
+          question={normalizeForOg(stamp)}
+          size={tileSize}
+          background={image ? INK : palette.ink}
+          color={image ? '#ffffff' : palette.colors[0]}
+        />
+      ) : (
+        <div
+          style={{
+            position: 'absolute',
+            top: u(typo.padding),
+            left: u(typo.padding),
+            display: 'flex',
+            padding: `${u(2)}px ${u(6)}px`,
+            borderRadius: u(4),
+            background: image ? INK : palette.ink,
+            color: image ? '#ffffff' : palette.colors[0],
+            fontSize: u(typo.stamp + 1),
+            letterSpacing: 0.6,
+          }}
+        >
+          {stamp}
+        </div>
+      )}
 
       <div
         style={{
@@ -336,6 +364,57 @@ function Tile({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * La question d'une édition, là où le bento principal écrit « FILM ».
+ *
+ * Une ligne par élément, coupée et dimensionnée par `ogQuestionLabel` avec les
+ * largeurs d'Extenda : satori ne sait ni rétrécir un texte ni ajuster un fond
+ * à sa plus longue ligne, et coupe à sa façon ce qu'on lui laisse couper. Une
+ * question que le back-office a acceptée tient en deux lignes ; sinon, la
+ * seconde s'arrête sur des points de suspension.
+ */
+function QuestionLabel({
+  question,
+  size: tileSize,
+  background,
+  color,
+}: {
+  question: string;
+  size: keyof typeof TILE_TYPO;
+  background: string;
+  color: string;
+}) {
+  const typo = TILE_TYPO[tileSize];
+  const { fit, boxTextWidth } = ogQuestionLabel(question, tileSize, SCALE, u);
+  const lignes = fit.truncated ? [fit.lines[0] ?? '', `${fit.lines[1] ?? ''}…`] : fit.lines;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: u(typo.padding),
+        left: u(typo.padding),
+        display: 'flex',
+        flexDirection: 'column',
+        width: boxTextWidth + u(QUESTION_PADDING_H) * 2,
+        padding: `${u(QUESTION_PADDING_V)}px ${u(QUESTION_PADDING_H)}px`,
+        borderRadius: u(4),
+        background,
+        color,
+        fontSize: fit.fontSize,
+        lineHeight: 1.2,
+        letterSpacing: 0.6,
+        overflow: 'hidden',
+      }}
+    >
+      {lignes.slice(0, 2).map((ligne, index) => (
+        <div key={index} style={{ display: 'flex', whiteSpace: 'nowrap' }}>
+          {ligne}
+        </div>
+      ))}
     </div>
   );
 }

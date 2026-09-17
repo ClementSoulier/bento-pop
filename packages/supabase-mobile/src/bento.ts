@@ -117,6 +117,35 @@ export const MAIN_CASES: readonly CaseMeta[] = CATEGORY_ORDER.map((key) => ({
   gender: CATEGORY_META[key].gender,
 }));
 
+/**
+ * Ce que l'étiquette d'une case **remplie** affiche.
+ *
+ * Le tampon pour une case du bento principal, « FILM », qui ne change pas. La
+ * question pour une case d'édition, « Le film qui t'a fait pleurer ».
+ *
+ * Avant, une case d'édition remplie n'affichait que son tampon : les deux
+ * cases de « Le duel du samedi » disaient FILM et FILM, et la question, qui
+ * est tout le sens d'une édition, disparaissait de la page publique, du fil
+ * et de l'image de partage. Proposition A de la planche du 16 septembre 2026.
+ *
+ * La clé suffit à trancher : les six cases du bento principal portent les clés
+ * de `CATEGORY_ORDER`, uniques en base, et une case d'édition n'en porte
+ * jamais une.
+ */
+export function filledCaseLabel(meta: Pick<CaseMeta, 'key' | 'prompt' | 'stamp'>): string {
+  return isMainCaseKey(meta.key) ? meta.stamp : meta.prompt;
+}
+
+/**
+ * La case appartient-elle au bento principal ?
+ *
+ * Les six cases du bento principal portent les clés de `CATEGORY_ORDER`,
+ * uniques en base ; une case d'édition n'en porte jamais une.
+ */
+export function isMainCaseKey(key: string): boolean {
+  return (CATEGORY_ORDER as readonly string[]).includes(key);
+}
+
 // ─── Dispositions de la boîte ──────────────────────────────────────────
 
 /**
@@ -461,6 +490,129 @@ export function promptFit(prompt: string, casesInRow: number): PromptFit {
     widestLine,
     usableWidth,
   };
+}
+
+// ─── La question sur une case remplie ──────────────────────────────────
+
+/**
+ * Lignes au plus de la question d'une édition dans l'étiquette d'une case
+ * remplie. Proposition A, validée le 17 septembre 2026.
+ */
+export const QUESTION_LABEL_MAX_LINES = 2;
+
+/**
+ * Plancher de sa taille : 7, en points dans l'app, en pixels dans l'aperçu de
+ * lien, en unités de design sur la page web. Le même que celui des tampons.
+ */
+export const QUESTION_LABEL_MIN_FONT = 7;
+
+/**
+ * Coupe un texte en lignes entre les mots, comme un moteur de texte : chaque
+ * mot passe à la ligne suivante dès qu'il ne rentre plus, un mot plus large
+ * que la ligne reste entier sur la sienne, et une espace insécable ne coupe
+ * pas. Même coupure que `promptFit`, la règle du back-office.
+ */
+export function wrapWords(
+  text: string,
+  maxWidth: number,
+  widthOf: (line: string) => number,
+): string[] {
+  const mots = text.trim().split(COUPURE).filter(Boolean);
+  const lignes: string[] = [];
+  let courante = '';
+  for (const mot of mots) {
+    const essai = courante ? `${courante} ${mot}` : mot;
+    if (!courante || widthOf(essai) <= maxWidth) {
+      courante = essai;
+    } else {
+      lignes.push(courante);
+      courante = mot;
+    }
+  }
+  if (courante) lignes.push(courante);
+  return lignes;
+}
+
+export type LabelFit = {
+  /** Taille à demander au rendu. */
+  readonly fontSize: number;
+  /** Les lignes, en capitales, toutes : au-delà de `maxLines`, le rendu coupe. */
+  readonly lines: readonly string[];
+  /** Largeur de la plus longue, à la taille dessinée. */
+  readonly widest: number;
+  /** Même au plancher, la question demande plus de `maxLines` lignes. */
+  readonly truncated: boolean;
+};
+
+export type LabelFitOptions = {
+  /**
+   * Largeur d'une ligne telle que le rendu la dessine : Bungee dans l'app et
+   * sur la page web, Extenda dans l'aperçu de lien. Bungee, interlettrage 1,
+   * par défaut.
+   */
+  readonly measure?: (line: string, fontSize: number) => number;
+  readonly minFontSize?: number;
+  readonly maxLines?: number;
+  /** Android seulement : la taille y est arrondie au pixel supérieur. */
+  readonly pixelRatio?: number;
+};
+
+/**
+ * La question d'une édition, prête à dessiner dans l'étiquette d'une case
+ * remplie : `fontSize`, ou juste assez moins pour tenir en `maxLines` lignes,
+ * sans descendre sous `minFontSize`.
+ *
+ * **Une seule implémentation pour les trois rendus**, l'app, la page web et
+ * l'aperçu de lien : chacun lui passe sa police et sa largeur. Trois copies
+ * auraient coupé la même question à trois endroits différents.
+ *
+ * Mesurée et non confiée au moteur de texte, pour la raison écrite dans
+ * `tileTitleScale` côté app : la plateforme rétrécit mal, et satori ne sait
+ * ni rétrécir ni couper proprement.
+ */
+export function fitLabel(
+  label: string,
+  textWidth: number,
+  fontSize: number,
+  options: LabelFitOptions = {},
+): LabelFit {
+  const {
+    measure = (line: string, size: number) => bungeeTextWidth(line, size, 1),
+    minFontSize = QUESTION_LABEL_MIN_FONT,
+    maxLines = QUESTION_LABEL_MAX_LINES,
+    pixelRatio,
+  } = options;
+  const texte = label.trim().toUpperCase();
+  const drawn = (size: number) =>
+    pixelRatio === undefined ? size : Math.ceil(size * pixelRatio) / pixelRatio;
+  const snapped = (size: number) =>
+    pixelRatio === undefined ? size : (Math.floor(size * pixelRatio) - 0.01) / pixelRatio;
+  const lignesA = (size: number) =>
+    textWidth <= 0
+      ? [texte]
+      : wrapWords(texte, textWidth, (line) => measure(line, drawn(size)));
+  const tient = (size: number) => lignesA(size).length <= maxLines;
+
+  let taille = fontSize;
+  if (!tient(fontSize)) {
+    const plancher = Math.min(fontSize, minFontSize);
+    if (!tient(plancher)) {
+      taille = plancher;
+    } else {
+      let ok = plancher;
+      let trop = fontSize;
+      // Vingt pas : il reste moins d'un cent-millième de point.
+      for (let pas = 0; pas < 20; pas++) {
+        const milieu = (ok + trop) / 2;
+        if (tient(snapped(milieu))) ok = milieu;
+        else trop = milieu;
+      }
+      taille = Math.max(plancher, snapped(ok));
+    }
+  }
+  const lines = texte ? lignesA(taille) : [];
+  const widest = lines.reduce((max, line) => Math.max(max, measure(line, drawn(taille))), 0);
+  return { fontSize: taille, lines, widest, truncated: lines.length > maxLines };
 }
 
 // ─── Hash stable ───────────────────────────────────────────────────────

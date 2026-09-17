@@ -69,8 +69,8 @@ begin
   insert into public.bento_categories
     (key, label_fr, prompt, stamp, gender, display_order, api_source, type_id, edition_id)
   values
-    ('rec2_1', 'Film pleurer', 'Le film qui t''a fait pleurer', 'FILM', 'm', 1, 'admin', v_type_film, v_deux),
-    ('rec2_2', 'Film rire',    'Celui qui t''a fait rire',      'FILM', 'm', 2, 'admin', v_type_film, v_deux);
+    ('rec2_1', 'Film pleurer', 'Le film qui t’a fait pleurer', 'FILM', 'm', 1, 'admin', v_type_film, v_deux),
+    ('rec2_2', 'Film rire',    'Celui qui t’a fait rire',      'FILM', 'm', 2, 'admin', v_type_film, v_deux);
 
   -- ── 3 cases, sortie ─────────────────────────────────────────────────
   -- Une vedette de 220 puis une paire de 244. Les deux cases du bas font
@@ -88,8 +88,10 @@ begin
 
   -- ── 6 cases, sortie ─────────────────────────────────────────────────
   -- La boîte du bento principal, avec des cases d'édition : c'est le cas qui
-  -- prouve que le dessin n'a pas bougé. Intitulés COURTS, parce que la
-  -- rangée à trois n'offre que 81 points utiles.
+  -- prouve que le dessin n'a pas bougé. De vraies questions, courtes en
+  -- rangée à trois, qui n'offre que 81 points utiles : toutes passent la règle
+  -- du back-office, « Ton voyage rêvé » de justesse. Ce sont elles que
+  -- l'étiquette d'une case remplie affiche depuis la proposition A.
   insert into public.editions (slug, title, released_at)
   values ('rec-six', 'Le grand inventaire', now() - interval '3 hours')
   returning id into v_six;
@@ -97,12 +99,12 @@ begin
   insert into public.bento_categories
     (key, label_fr, prompt, stamp, gender, display_order, api_source, type_id, edition_id)
   values
-    ('rec6_1', 'Film', 'Ton film',     'FILM',  'm', 1, 'admin', v_type_film,  v_six),
-    ('rec6_2', 'Série', 'Ta série',    'SÉRIE', 'f', 2, 'admin', v_type_serie, v_six),
-    ('rec6_3', 'Son', 'Ton son',       'SON',   'm', 3, 'admin', v_type_son,   v_six),
-    ('rec6_4', 'Lieu', 'Ton lieu',     'LIEU',  'm', 4, 'admin', v_type_lieu,  v_six),
-    ('rec6_5', 'Personne', 'Ta star',  'STAR',  'f', 5, 'admin', v_type_perso, v_six),
-    ('rec6_6', 'Film bis', 'Un autre film', 'FILM', 'm', 6, 'admin', v_type_film, v_six);
+    ('rec6_1', 'Film ce soir', 'Le film que tu reverrais ce soir', 'FILM',  'm', 1, 'admin', v_type_film,  v_six),
+    ('rec6_2', 'Série cachée', 'La série que tu caches',           'SÉRIE', 'f', 2, 'admin', v_type_serie, v_six),
+    ('rec6_3', 'Son été',      'Le son de ton été',                'SON',   'm', 3, 'admin', v_type_son,   v_six),
+    ('rec6_4', 'Voyage',       'Ton voyage rêvé',                  'LIEU',  'm', 4, 'admin', v_type_lieu,  v_six),
+    ('rec6_5', 'Idole',        'Ton idole d’ado',                  'STAR',  'f', 5, 'admin', v_type_perso, v_six),
+    ('rec6_6', 'Film doudou',  'Ton film doudou',                  'FILM',  'm', 6, 'admin', v_type_film,  v_six);
 
   -- ── 1 case, programmée : doit rester invisible ──────────────────────
   -- Une seule case, donc hors des dispositions dessinées. Si elle

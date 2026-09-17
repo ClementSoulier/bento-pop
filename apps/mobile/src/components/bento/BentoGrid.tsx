@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import type { ViewStyle } from 'react-native';
-import { boxPlacements } from '@bento-pop/supabase-mobile/bento';
+import { boxPlacements, filledCaseLabel, isMainCaseKey } from '@bento-pop/supabase-mobile/bento';
 import { EmptyTile } from './EmptyTile';
 import { GRID_GEOMETRY, gridBorderWidth, gridTileWidth } from './geometry';
 import type { BentoCase } from './cases';
@@ -113,7 +113,9 @@ export function BentoGrid({
     return (
       <TilePulse trigger={pulse?.caseKey === item.key ? pulse.seq : null}>
         <Tile
-          stamp={item.stamp}
+          // Le tampon pour le bento principal, la question pour une édition.
+          stamp={filledCaseLabel(item)}
+          question={!isMainCaseKey(item.key)}
           prompt={item.prompt}
           data={item.tile}
           height={height}
