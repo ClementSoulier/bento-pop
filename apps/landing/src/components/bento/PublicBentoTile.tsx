@@ -6,6 +6,7 @@ import { paletteGradient } from '@/lib/bento/gradient';
 import { cleanTitle, initialOf } from '@/lib/bento/text';
 import { TILE, TILE_SCRIM, TILE_SIZES, TILE_TYPO, type TileSize } from './layout';
 import { QUESTION_PADDING_H, QUESTION_PADDING_V, webQuestionLabel } from './question-label';
+import { webTitleClamped } from './title-clamp';
 
 /** `u` = unité de design, cf. `layout.ts`. */
 const u = (n: number) => `calc(${n} * var(--u))`;
@@ -152,7 +153,13 @@ export function PublicBentoTile({
           }}
         >
           <p
-            className="bento-tile-title"
+            // Un titre coupé à deux lignes rogne le haut de la 3e, cf.
+            // `title-clamp.ts` ; les autres gardent le bas de leur 2e ligne.
+            className={
+              webTitleClamped(title, size)
+                ? 'bento-tile-title bento-tile-title-clamped'
+                : 'bento-tile-title'
+            }
             style={{
               color: ink,
               fontSize: u(typo.title),

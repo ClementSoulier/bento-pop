@@ -12,6 +12,29 @@ const extenda = localFont({
   weight: '900',
 });
 
+/**
+ * Extenda pour les titres des cases du bento public, métriques verticales
+ * imposées : celles de sa table `hhea`, que macOS, iOS et Android lisent déjà.
+ * Sous Windows, les navigateurs lisent `usWinAscent` et `usWinDescent`, 2293 et
+ * 627, qui descendent la ligne de base de 0,164 em ; le rognage d'un titre
+ * coupé y entamerait le pied des lettres. Cf. `.bento-tile-title`.
+ *
+ * Même fichier que `extenda`, donc même adresse une fois construit : un seul
+ * téléchargement.
+ */
+const extendaTitre = localFont({
+  src: '../../../../packages/brand/assets/fonts/extenda-100-yotta.otf',
+  variable: '--font-extenda-titre',
+  display: 'swap',
+  weight: '900',
+  // 1521, 527 et 872 unités sur 2048, valeurs exactes.
+  declarations: [
+    { prop: 'ascent-override', value: '74.267578125%' },
+    { prop: 'descent-override', value: '25.732421875%' },
+    { prop: 'line-gap-override', value: '42.578125%' },
+  ],
+});
+
 const fredoka = Fredoka({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -127,7 +150,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="fr"
-      className={`${extenda.variable} ${fredoka.variable} ${bungee.variable} ${yujiSyuku.variable}`}
+      className={`${extenda.variable} ${extendaTitre.variable} ${fredoka.variable} ${bungee.variable} ${yujiSyuku.variable}`}
     >
       <body suppressHydrationWarning>
         <a href="#main" className="skip-link">

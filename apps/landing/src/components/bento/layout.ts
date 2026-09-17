@@ -86,6 +86,9 @@ export const TILE_TYPO = {
 
 export type TileSize = keyof typeof TILE_TYPO;
 
+/** Cases d'une rangée selon le gabarit, cf. `boxPlacements`. */
+export const CASES_PAR_RANGEE: Readonly<Record<TileSize, number>> = { lg: 1, md: 2, sm: 3 };
+
 /**
  * Nombre de colonnes de la grille interne.
  *
