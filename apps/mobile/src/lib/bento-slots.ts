@@ -1,6 +1,6 @@
-import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
+import { paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
+import { MAIN_CASE_SET } from './case-set';
 import type { TileData } from '@/components/bento/Tile';
-import type { CategoryKey } from '@/supabase/types';
 
 /**
  * Les cases d'un bento, de la forme rendue par PostgREST à celle du store.
@@ -12,6 +12,19 @@ import type { CategoryKey } from '@/supabase/types';
  * La palette est choisie cycliquement selon l'identifiant de l'item : elle
  * n'est pas persistée, c'est purement décoratif.
  */
+
+/**
+ * Ce que `mapRemoteSlots` lit d'une case, dans la syntaxe de `select()` : la
+ * **seule** liste de colonnes des lectures qui hydratent le composer.
+ *
+ * Il y en avait deux, et elles avaient divergé. Celle du changement de bento,
+ * `loadBentoById`, ne lisait ni `image_credit` ni `status` : à la recette du
+ * 16 septembre, revenir au bento principal par le sélecteur effaçait les
+ * crédits d'image, qu'une photo sous licence CC BY exige, et l'état « en
+ * attente », qui bloque la publication d'une case non modérée.
+ */
+export const REMOTE_SLOT_COLUMNS =
+  'category_id, items ( id, title, subtitle, image_url, image_credit, status )';
 
 type RemoteSlotRow = {
   category_id: number;
@@ -27,19 +40,35 @@ type RemoteItem = {
   status?: string;
 };
 
-export type Slots = Partial<Record<CategoryKey, TileData & { itemId?: string }>>;
+/**
+ * Les cases remplies, indexées par **clé de case**.
+ *
+ * `string` et non `CategoryKey` depuis le chantier 13 : les six cases du
+ * bento principal portent une clé de catégorie, une case d'édition porte
+ * `ed<édition>_<rang>`. Le premier reste un cas particulier du second, donc
+ * tout le code qui indexe par catégorie continue de valoir.
+ */
+export type Slots = Partial<Record<string, TileData & { itemId?: string }>>;
 
 /**
  * Deux règles, les mêmes que sur la page publique :
  *
- * - une case de catégorie inconnue est ignorée, pour qu'une septième
- *   catégorie déployée en base avant les clients n'écrase aucune case ;
+ * - une case dont l'identifiant n'est pas dans le jeu attendu est ignorée,
+ *   pour qu'une case déployée en base avant les clients n'en écrase aucune ;
  * - une case dont l'item est masqué par la RLS devient vide.
+ *
+ * `cases` dit quelles cases on attend et sous quelle clé : les six du bento
+ * principal, ou celles d'une édition. Sans lui, la fonction devinait, et
+ * `CATEGORY_BY_ID` ne connaît que les six.
  */
-export function mapRemoteSlots(rows: readonly RemoteSlotRow[] | null | undefined): Slots {
+export function mapRemoteSlots(
+  rows: readonly RemoteSlotRow[] | null | undefined,
+  cases: readonly { readonly id: number; readonly key: string }[] = MAIN_CASE_SET,
+): Slots {
+  const parId = new Map(cases.map((c) => [c.id, c.key]));
   const slots: Slots = {};
   for (const row of rows ?? []) {
-    const cat = CATEGORY_BY_ID[row.category_id];
+    const cat = parId.get(row.category_id);
     const item = row.items as RemoteItem | null;
     if (!cat || !item) continue;
     slots[cat] = {

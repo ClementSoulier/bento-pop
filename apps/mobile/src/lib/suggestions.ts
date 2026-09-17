@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cleanTitle } from './text';
-import type { CategoryKey, Database } from '@/supabase/types';
+import type { Database } from '@/supabase/types';
 
 /**
  * Propositions par défaut de la recherche d'item, le bloc « AU MENU ».
@@ -91,7 +91,7 @@ export function suggestionAccessibilityLabel(item: SuggestedItem): string {
  */
 export async function loadSuggestions(
   client: SuggestionsClient,
-  category: CategoryKey,
+  category: string,
   options?: { excludeItemId?: string | null; limit?: number },
 ): Promise<SuggestedItem[]> {
   const { data, error } = await client.rpc('popular_items', {

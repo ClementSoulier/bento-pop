@@ -40,6 +40,7 @@ const NAV = [
   { id: 'team',      href: '/team',     label: 'Team',       Icon: UsersIcon },
   { id: 'users',     href: '/utilisateurs', label: 'Utilisateurs (mobile)', Icon: UsersIcon },
   { id: 'bentos',    href: '/bentos',   label: 'Bentos (mobile)', Icon: DashboardIcon },
+  { id: 'editions',  href: '/editions', label: 'Éditions (mobile)', Icon: CalendarIcon },
   { id: 'catalogue', href: '/catalogue', label: 'Catalogue (mobile)', Icon: EyeIcon },
   { id: 'reports',   href: '/reports',  label: 'Modération',      Icon: PollIcon },
 ] as const;

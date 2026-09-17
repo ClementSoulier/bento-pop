@@ -156,6 +156,52 @@ describe('feedAccessibilityLabel', () => {
     );
   });
 
+  /**
+   * Recette du 16 septembre 2026 : le bento « Le duel du samedi » s'annonçait
+   * « Bento de @bento_culture, publié il y a 8 min. », et rien d'autre. La
+   * boucle parcourait les six cases du principal, qu'une édition n'a pas.
+   */
+  it('énumère les cases d’une édition par leur question, titre de l’édition en tête', () => {
+    const bento = mapFeedRow(
+      row({
+        is_primary: false,
+        slug: 'rec-deux',
+        edition_id: 7,
+        editions: {
+          title: 'Le duel du samedi',
+          bento_categories: [
+            { key: 'rec2_2', prompt: 'Celui qui t’a fait rire', stamp: 'FILM', gender: 'm', display_order: 2 },
+            { key: 'rec2_1', prompt: 'Le film qui t’a fait pleurer', stamp: 'FILM', gender: 'm', display_order: 1 },
+          ],
+        },
+        bento_items: [
+          { category_id: 101, bento_categories: { key: 'rec2_1' }, items: item('it-a', 'Titanic') },
+          { category_id: 102, bento_categories: { key: 'rec2_2' }, items: item('it-b', 'Play') },
+        ],
+      }),
+    );
+    assert.ok(bento);
+    assert.equal(
+      feedAccessibilityLabel(bento, NOW),
+      'Bento de @dark_hifus, publié il y a 2 jours. Édition « Le duel du samedi ». ' +
+        'Le film qui t’a fait pleurer : Titanic. Celui qui t’a fait rire : Play.',
+    );
+  });
+
+  it('annonce l’invité avant l’édition, comme l’étiquette', () => {
+    const bento = mapFeedRow(
+      row({
+        users: { pseudo: 'dark_hifus', display_name: null, kind: 'editorial' },
+        edition_id: 7,
+        editions: { title: 'Le duel du samedi', bento_categories: [] },
+      }),
+    );
+    assert.ok(bento);
+    const label = feedAccessibilityLabel(bento, NOW);
+    assert.match(label, /Bento invité/);
+    assert.ok(!label.includes('Le duel du samedi'), label);
+  });
+
   it('annonce le coup de cœur', () => {
     const bento = mapFeedRow(row({ is_featured: true }));
     assert.ok(bento);

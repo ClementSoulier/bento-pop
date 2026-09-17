@@ -1,6 +1,4 @@
-import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
 import type { Slots } from './bento-slots';
-import type { CategoryKey } from '@/supabase/types';
 
 /**
  * Le brouillon, dans la forme que `publish_first_bento` attend.
@@ -14,11 +12,19 @@ import type { CategoryKey } from '@/supabase/types';
  * case affichée sans identifiant. L'envoyer ferait échouer toute la
  * transaction sur une clé étrangère, et la personne perdrait sa publication à
  * cause d'une case qu'elle croit remplie.
+ *
+ * `cases` donne la correspondance clé vers identifiant. Elle était en dur
+ * avant le chantier 13, quand les six cases suffisaient ; une case d'édition
+ * n'a pas de catégorie, donc son identifiant ne se devine pas. Une case dont
+ * la clé n'est pas dans le jeu est écartée pour la même raison qu'une case
+ * sans item : mieux vaut publier ce qui est sûr que tout perdre.
  */
 export function publishItemsFromSlots(
   slots: Slots,
+  cases: readonly { readonly id: number; readonly key: string }[],
 ): { category_id: number; item_id: string }[] {
-  return (Object.entries(slots) as [CategoryKey, Slots[CategoryKey]][])
-    .filter(([, tile]) => Boolean(tile?.itemId))
-    .map(([cat, tile]) => ({ category_id: CATEGORY_IDS[cat], item_id: tile!.itemId! }));
+  const parCle = new Map(cases.map((c) => [c.key, c.id]));
+  return Object.entries(slots)
+    .filter(([cle, tile]) => Boolean(tile?.itemId) && parCle.has(cle))
+    .map(([cle, tile]) => ({ category_id: parCle.get(cle)!, item_id: tile!.itemId! }));
 }

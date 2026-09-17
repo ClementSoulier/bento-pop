@@ -10,17 +10,21 @@ import {
 import type { ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { CategoryKey } from '@/supabase/types';
-import { CATEGORY_META } from './categories';
-import { TILE_MAX_FONT_MULTIPLIER } from './font-scaling';
+import { TILE_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
 import { PALETTES, type PaletteKey } from './palettes';
 import {
   TILE_BORDER,
+  TILE_LABEL_MAX_LINES,
   TILE_LINE,
+  TILE_QUESTION_PADDING_H,
+  TILE_STAMP_LETTER_SPACING,
+  TILE_STAMP_PADDING_H,
   TILE_STAMP_PADDING_V,
   TILE_SUBTITLE_GAP,
   tileConf,
-  tileTextScale,
+  tileLabelFit,
+  tileLabelTextWidth,
+  tileTextLayout,
   type TileSize,
 } from './tile-text';
 import { tileTitleFit, tileTitleScale } from './tile-title';
@@ -52,7 +56,19 @@ export type TileData = {
 };
 
 type TileProps = {
-  cat: CategoryKey;
+  /**
+   * L'étiquette en haut de la tuile : le tampon court du bento principal,
+   * « FILM », ou la question d'une édition, cf. `question`.
+   */
+  stamp: string;
+  /**
+   * `stamp` est la question d'une édition : jusqu'à deux lignes, une marge plus
+   * serrée et une taille mesurée. Absent pour le bento principal, dont
+   * l'étiquette reste exactement ce qu'elle était.
+   */
+  question?: boolean;
+  /** Intitulé de la case, lu par les lecteurs d'écran. */
+  prompt: string;
   data: TileData;
   height: number;
   /**
@@ -96,7 +112,8 @@ const RADIUS = 18;
  * Cf. design Claude Design — `Tile` dans `bento-tiles.jsx`.
  */
 export function Tile({
-  cat,
+  stamp,
+  prompt,
   data,
   height,
   width,
@@ -105,8 +122,8 @@ export function Tile({
   rotate = 0,
   onPress,
   allowFontScaling = true,
+  question = false,
 }: TileProps) {
-  const meta = CATEGORY_META[cat];
   const palette = PALETTES[data.paletteKey ?? 'neutral'];
   // Applique le scale aux dims qui font la mise en page : cf. `tileConf`.
   const conf = tileConf(size, scale);
@@ -117,11 +134,49 @@ export function Tile({
   // système, hauteurs de ligne comprises, sans dépasser ce que la case permet :
   // cf. `tileTextScale`. Figée à 1 quand la grille ne suit pas le système.
   const { fontScale } = useWindowDimensions();
-  const textScale = allowFontScaling ? tileTextScale(height, size, scale, fontScale) : 1;
+  // L'étiquette : un tampon, « FILM », sur une ligne ; ou la question d'une
+  // édition, sur deux lignes au plus, cf. `filledCaseLabel`. Ses lignes se
+  // comptent à la plus grande taille que la case lui donnera, réduite comme
+  // elle le sera : jamais sous-estimées.
+  const pixelRatio = Platform.OS === 'android' ? PixelRatio.get() : undefined;
+  const labelPaddingH = question ? TILE_QUESTION_PADDING_H : TILE_STAMP_PADDING_H;
+  const labelWidth =
+    width === undefined ? 0 : tileLabelTextWidth(width, conf.pad, labelPaddingH);
+  const labelLines = question
+    ? tileLabelFit(
+        stamp,
+        labelWidth,
+        conf.stamp * (allowFontScaling ? fontScaleFor(fontScale, TILE_MAX_FONT_MULTIPLIER) : 1),
+        pixelRatio,
+      ).lines
+    : 1;
+  // Une question sur deux lignes prend la place d'une ligne de plus : là où
+  // elle ferait rétrécir le texte, le sous-titre s'efface d'abord, cf.
+  // `tileTextLayout`. Une étiquette d'une ligne garde exactement le calcul
+  // d'avant : le bento principal ne bouge pas.
+  const layout = allowFontScaling
+    ? tileTextLayout(height, size, scale, fontScale, labelLines)
+    : labelLines > 1
+      ? tileTextLayout(height, size, scale, 1, labelLines)
+      : { textScale: 1, subtitle: true };
+  const textScale = layout.textScale;
+  // La question se réduit, jusqu'à 7 points, pour tenir en deux lignes : cf.
+  // `tileLabelFontSize`. Sur deux lignes, le fond noir prend la largeur de la
+  // plus longue, et non toute la largeur permise, avec une marge pour le rendu
+  // de la plateforme, sans dépasser la case.
+  const labelFit = question
+    ? tileLabelFit(stamp, labelWidth, conf.stamp * textScale, pixelRatio)
+    : null;
+  const labelFontSize = labelFit ? labelFit.fontSize : conf.stamp * textScale;
+  const labelBoxWidth =
+    labelFit && labelFit.lines > 1
+      ? Math.min(labelWidth, Math.ceil(labelFit.widest * 1.02 + 1)) + labelPaddingH * 2
+      : undefined;
   // Le titre rétrécit encore jusqu'à tenir entier dans ses deux lignes, sans
   // descendre sous `TITLE_MIN_SCALE`, et toujours assez pour que son premier mot
-  // ne se coupe pas au milieu : cf. `tileTitleScale`. La mesure prend la taille
-  // qu'Android arrondit au pixel supérieur.
+  // ne se coupe pas au milieu : cf. `tileTitleScale`. Un mot seul, lui, remplit
+  // sa ligne au plus. La mesure prend la taille qu'Android arrondit au pixel
+  // supérieur.
   const titleScale =
     textScale *
     tileTitleScale(
@@ -255,8 +310,13 @@ export function Tile({
           position: 'absolute',
           top: conf.pad,
           left: conf.pad,
+          // La question d'une édition ne déborde pas de la case : elle passe
+          // à la ligne dans la largeur que la case lui laisse.
+          maxWidth:
+            question && width !== undefined ? width - TILE_BORDER * 2 - conf.pad * 2 : undefined,
+          width: labelBoxWidth,
           backgroundColor: hasImage ? '#0a0a0a' : palette.ink,
-          paddingHorizontal: 6,
+          paddingHorizontal: labelPaddingH,
           paddingVertical: TILE_STAMP_PADDING_V,
           borderRadius: 4,
           alignSelf: 'flex-start',
@@ -264,15 +324,17 @@ export function Tile({
       >
         <Text
           allowFontScaling={false}
+          numberOfLines={question ? TILE_LABEL_MAX_LINES : undefined}
           style={{
             color: hasImage ? '#ffffff' : palette.colors[0],
             fontFamily: 'Bungee',
-            fontSize: conf.stamp * textScale,
-            lineHeight: conf.stamp * TILE_LINE.stamp * textScale,
-            letterSpacing: 1,
+            fontSize: labelFontSize,
+            lineHeight: labelFontSize * TILE_LINE.stamp,
+            letterSpacing: TILE_STAMP_LETTER_SPACING,
+            textTransform: question ? 'uppercase' : undefined,
           }}
         >
-          {meta.stamp}
+          {stamp}
         </Text>
       </View>
 
@@ -315,8 +377,9 @@ export function Tile({
         }}
       >
         <Text
-          // Deux lignes, ou une seule qui rétrécit pour un mot seul : cf.
-          // `tile-title.ts`.
+          // Deux lignes, ou une seule pour un mot seul, à une taille mesurée :
+          // jamais `adjustsFontSizeToFit`, qui combiné à `lineHeight` réduisait
+          // le titre à 5 pt sur iOS. Cf. `tile-title.ts`.
           numberOfLines={titleFit.numberOfLines}
           adjustsFontSizeToFit={titleFit.adjustsFontSizeToFit}
           allowFontScaling={false}
@@ -345,7 +408,7 @@ export function Tile({
         >
           {title}
         </Text>
-        {data.subtitle ? (
+        {data.subtitle && layout.subtitle ? (
           <Text
             numberOfLines={1}
             allowFontScaling={false}
@@ -397,7 +460,7 @@ export function Tile({
     </>
   );
 
-  const a11yLabel = `${meta.label} : ${title}${data.subtitle ? `, ${data.subtitle}` : ''}`;
+  const a11yLabel = `${prompt} : ${title}${data.subtitle ? `, ${data.subtitle}` : ''}`;
   const inner = onPress ? (
     <Pressable
       onPress={onPress}

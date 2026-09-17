@@ -41,30 +41,78 @@ export type Database = {
   public: {
     Tables: {
       /**
-       * Les six cases du bento principal. Le nom est historique : depuis la
-       * migration `20260915100000_item_types_and_cases.sql`, ce qu'est un
-       * item vit dans `item_types`, et chaque case porte un type.
+       * Les cases. Celles du bento principal ont `edition_id` nul ; les
+       * autres décrivent une édition hebdomadaire. Le nom est historique :
+       * depuis `20260915100000_item_types_and_cases.sql`, ce qu'est un item
+       * vit dans `item_types`, et chaque case porte un type.
+       *
+       * ⚠️ `key` n'est plus une `CategoryKey` depuis le chantier 13 : les six
+       * cases du bento principal en portent une, les cases d'édition portent
+       * une clé construite, `ed<édition>_<rang>`. Le type s'élargit donc à
+       * `string`, et les clients qui n'attendent que les six la retraduisent
+       * par `CATEGORY_BY_ID`, qui saute déjà ce qu'il ne connaît pas.
        */
       bento_categories: {
         Row: {
           id: number;
-          key: CategoryKey;
+          key: CategoryKey | (string & {});
           label_fr: string;
           display_order: number;
-          api_source: ExternalSource;
+          api_source: ExternalSource | (string & {});
           is_active: boolean;
           created_at: string;
           /** Type des items qu'accepte la case. Artiste et Créateur : Personne. */
           type_id: number;
+          /** L'édition décrite, ou nul pour une case du bento principal. */
+          edition_id: number | null;
+          /** Ce que lit l'utilisateur. Pour une édition, la question. */
+          prompt: string;
+          /** Tampon court de la tuile pleine, capitales. */
+          stamp: string;
+          /** Genre grammatical de `prompt`, pour accorder les phrases. */
+          gender: 'm' | 'f';
         };
         Insert: {
-          key: CategoryKey;
+          key: string;
           label_fr: string;
           display_order?: number;
-          api_source: ExternalSource;
+          api_source: ExternalSource | (string & {});
           is_active?: boolean;
+          type_id: number;
+          edition_id?: number | null;
+          prompt: string;
+          stamp: string;
+          gender: 'm' | 'f';
         };
         Update: Partial<Database['public']['Tables']['bento_categories']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Les éditions hebdomadaires, modèles de bento.
+       *
+       * `released_at` porte à la fois la date de sortie et le fait d'être
+       * sortie : nul, l'édition est un brouillon que personne ne voit. La
+       * lecture publique filtre `released_at <= now()`, donc la visibilité se
+       * lit et ne se déclenche pas.
+       */
+      editions: {
+        Row: {
+          id: number;
+          slug: string;
+          title: string;
+          released_at: string | null;
+          /** Réservé au chantier 19, aucun client ne le lit. */
+          show_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          slug: string;
+          title: string;
+          released_at?: string | null;
+          show_id?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['editions']['Insert']>;
         Relationships: [];
       };
       users: {
@@ -254,6 +302,13 @@ export type Database = {
           slug: string;
           /** Le bento que `/u/<pseudo>` met en avant. Un seul par compte. */
           is_primary: boolean;
+          /**
+           * L'édition que ce bento compose, ou nul pour un bento libre.
+           *
+           * Absente d'`Insert` pour la même raison que `slug` : seule
+           * `create_edition_bento()` l'écrit côté client. Chantier 13.
+           */
+          edition_id: number | null;
           is_featured: boolean;
           featured_order: number | null;
           published_at: string | null;
@@ -272,6 +327,14 @@ export type Database = {
             foreignKeyName: 'bentos_user_id_fkey';
             columns: ['user_id'];
             referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            // Chantier 13 : ce qui type `select('…, editions ( title )')`,
+            // la jointure qui nomme un bento d'édition.
+            foreignKeyName: 'bentos_edition_id_fkey';
+            columns: ['edition_id'];
+            referencedRelation: 'editions';
             referencedColumns: ['id'];
           },
         ];
@@ -442,7 +505,7 @@ export type Database = {
     Views: { [_: string]: never };
     Functions: {
       search_items: {
-        Args: { q: string; category_key: CategoryKey; lim?: number };
+        Args: { q: string; category_key: string; lim?: number };
         Returns: Array<{
           id: string;
           title: string;
@@ -456,7 +519,7 @@ export type Database = {
       find_similar_items: {
         Args: {
           q: string;
-          category_key: CategoryKey;
+          category_key: string;
           threshold?: number;
           lim?: number;
         };
@@ -471,7 +534,7 @@ export type Database = {
       };
       popular_items: {
         Args: {
-          category_key: CategoryKey;
+          category_key: string;
           lim?: number;
           /**
            * Retire un item du résultat. Sert à ne pas reproposer celui qui
@@ -506,6 +569,16 @@ export type Database = {
        */
       create_bento: {
         Args: { p_slug: string };
+        Returns: string;
+      };
+      /**
+       * Le bento d'une édition sortie, pour le compte connecté. Chantier 13.
+       *
+       * Refuse une édition non sortie et un doublon. L'adresse est celle de
+       * l'édition, suffixée si un bento libre l'occupait déjà.
+       */
+      create_edition_bento: {
+        Args: { p_edition: number };
         Returns: string;
       };
       /**

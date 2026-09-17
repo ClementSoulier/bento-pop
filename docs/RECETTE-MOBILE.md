@@ -940,3 +940,253 @@ Remettre aussi ce que la recette a changé sur les émulateurs : police,
 densité, taille, navigation par gestes, réseau, rotation. Désinstaller l'app
 d'un AVD où elle n'était pas. Et après un compte de recette en production
 (§1), vérifier que profil et compte d'authentification sont supprimés.
+
+### Un garde-fou qui lit la mauvaise variable ne garde rien
+
+Le 16 septembre 2026, la recette du back-office a été montée avec deux
+bouchons portant chacun un contrôle de cible : refuser toute base qui ne soit
+pas `127.0.0.1`. Ils lisaient `NEXT_PUBLIC_MOBILE_SUPABASE_URL`.
+
+Le client réel, lui, lit `MOBILE_SUPABASE_URL` (`lib/supabase/mobile.ts:28`).
+Les deux variables n'ont pas à porter la même valeur, et ce jour-là la seconde
+n'était pas définie du tout : le contrôle voyait une chaîne vide, la jugeait
+non conforme ou conforme selon l'écriture, et **n'avait aucun rapport avec la
+base réellement interrogée**. Il aurait laissé passer la production.
+
+> **Un contrôle de cible lit exactement la variable que le code contrôlé
+> utilise.** Pas une qui lui ressemble, pas une qui la préfixe. Et on l'éprouve
+> en lui présentant une cible interdite, une fois, avant de s'en servir.
+
+Même règle pour les scripts SQL de données de recette :
+`seed-editions-local.sql` refuse une base qui porte un pseudo de l'équipe, et
+ce refus a été vérifié en faisant passer la base locale pour la production.
+
+### Une règle d'affichage qui refuse ce qui existe déjà est fausse
+
+En écrivant la règle qui dit si un intitulé de case tient à l'écran, une marge
+de 7 % a paru prudente : elle couvrait le fil sur iPhone SE, mesuré 6 % plus
+serré que l'échelle de référence.
+
+Elle refusait « Créateur de contenu », affiché dans la rangée à trois du bento
+principal **depuis le premier jour**.
+
+> **Avant d'écrire une règle de validation, la passer sur les données qui
+> existent.** Si elle en refuse une seule, c'est la règle qui est fausse, pas
+> la donnée. Une règle prudente qui interdit le présent n'est pas prudente,
+> elle est inapplicable, et elle finira contournée.
+
+La règle rend donc deux verdicts : `fits`, qui bloque, et `tight`, qui
+avertit. L'avertissement a servi tout de suite : « CRÉATEUR DE CONTENU »
+occupe 96 % de sa ligne, et **au calcul il déborde dans le fil sur iPhone
+SE**. À confirmer sur appareil, chantier 29.
+
+### Mesurer du texte sans canevas, et le prouver deux fois
+
+Un back-office en Node n'a pas de canevas, et l'app ne peut pas mesurer avant
+de dessiner. Les largeurs de Bungee sont donc extraites du vrai fichier de
+police, `Bungee_400Regular.ttf` de `@expo-google-fonts` : tables `head`,
+`hhea`, `hmtx` et `cmap` format 4, une centaine de lignes, aucune dépendance.
+
+Deux précautions rendent la table fiable :
+
+- `bungee-metrics.test.ts` **la redérive du fichier** à chaque exécution, donc
+  elle ne peut pas dormir périmée après une montée de version ;
+- elle a été recoupée avec une mesure au canevas dans un vrai navigateur,
+  police réellement chargée : 199,8 contre 199,3 pour « LE FILM QUI T'A FAIT
+  PLEURER », soit 0,3 % d'écart.
+
+> Deux méthodes indépendantes qui tombent d'accord valent mieux qu'une méthode
+> sûre d'elle.
+
+### Un module « pur » cesse de l'être au premier import distrait
+
+`bento-actions-pure.ts` existe pour une raison écrite dans son en-tête : rester
+chargeable sous `node:test`, sans monter React Native. Le 17 septembre, un
+nouveau module de domaine a importé le client Supabase pour y ajouter deux
+lectures, et `bento-actions-pure.ts` a cessé de se tester, avec une erreur
+d'esbuild sur `react-native/index.js` qui ne nomme aucun des deux fichiers.
+
+> **Quand un module porte « ne rien importer de lourd » dans son en-tête,
+> c'est une contrainte, pas une préférence.** Les lectures en base vont dans un
+> module voisin, et le module pur porte l'avertissement en tête.
+
+### Une jointure qui manque ne casse pas, elle efface
+
+Depuis le chantier 13, une case peut appartenir à une édition, et sa clé n'est
+plus forcément l'une des six. Le code qui traduisait `category_id` vers une
+clé passait par une table compilée dans l'app : pour une case d'édition, elle
+rend `undefined`, et la boucle **saute la case en silence**.
+
+Le résultat n'est pas une erreur, c'est une boîte qui se dessine avec des
+cases vides. Les requêtes publiques joignent donc la case pour obtenir sa clé,
+avec l'ancienne table en repli :
+
+```ts
+const cat = link.bento_categories?.key ?? CATEGORY_BY_ID[link.category_id];
+```
+
+> Chercher les endroits où une donnée inconnue est **sautée** plutôt que
+> signalée : ce sont ceux qui mentiront le plus longtemps.
+
+### Les cases vides n'ont pas de ligne, et c'est la disposition qui en dépend
+
+Une case qu'on n'a pas remplie n'existe pas dans `bento_items`. Déduire la
+liste des cases des lignes présentes marche tant que les bentos sont complets,
+et casse dès qu'ils ne le sont pas : la boîte **rétrécit** au lieu de montrer
+des emplacements vides, parce que c'est le nombre de cases qui décide de la
+disposition.
+
+La liste complète vient donc de l'édition, imbriquée dans la même requête :
+
+```
+editions ( slug, title, bento_categories ( key, prompt, … ) )
+```
+
+> Quand une liste décide d'une mise en page, la lire à sa source, pas la
+> déduire de ce qui la remplit.
+
+### Un défaut qui ne se montre qu'à froid
+
+Le piège « `adjustsFontSizeToFit` avec une hauteur de ligne posée » décrit plus
+haut ne se déclenche pas à chaque rendu. Le 16 septembre 2026, « TITANIC »
+s'écrivait en 5 pt dans la grande case d'une édition, **à la première ouverture
+de la page publique**, et à sa taille normale dès la seconde, page en cache.
+Une recette qui revient sur la page pour « vérifier » voit un écran juste.
+
+Le reproduire, c'est tuer l'app et rouvrir la page à froid, trois fois, en
+mesurant la capture : la hauteur du plus grand bloc de pixels blancs du titre
+passait de 51 px à 8 px, trois fois sur trois. Après correction, 51 px trois
+fois sur trois.
+
+> **Un défaut intermittent se reproduit dans l'état où il est apparu**, ici
+> une page sans cache, avant d'être déclaré corrigé ou imaginaire.
+
+La correction n'a pas été de retirer la hauteur de ligne, que le budget vertical
+compte, mais de ne plus déléguer la taille à la plateforme : un titre d'un mot
+se mesure désormais comme les autres, `lineFitScale`.
+
+### Deux lectures de la même chose finissent par diverger
+
+Le composer se remplit par deux lectures : celle du démarrage, et celle du
+changement de bento. Chacune écrivait sa liste de colonnes. La seconde avait
+perdu `image_credit` et `status` : revenir à son bento principal par le
+sélecteur **effaçait les crédits d'image**, qu'une photo sous licence CC BY
+exige, et **l'état « en attente »**, qui bloque la publication d'une case non
+modérée. Rien ne cassait, les cases s'affichaient, un peu moins complètes.
+
+Vu en comparant deux captures du même bento à une heure d'écart, pas en
+regardant l'écran.
+
+> **Une liste de colonnes lue par une même fonction de mapping s'écrit une
+> fois**, `REMOTE_SLOT_COLUMNS`, et un test vérifie que les deux lectures s'en
+> servent.
+
+### Revenir au premier plan n'est pas revenir sur l'onglet
+
+`useFocusEffect` se déclenche quand l'onglet reprend le focus de navigation,
+pas quand l'app revient de l'arrière-plan. Une édition programmée qui sortait
+pendant que l'app dormait n'apparaissait qu'après un changement d'onglet :
+contrôle D de la recette du chantier 13, même processus avant et après,
+vérifié par son pid.
+
+> Ce qui doit se relire « au retour » se branche sur les deux :
+> `useFocusEffect` **et** `AppState` à `active`, abonnement retiré quand
+> l'onglet perd le focus.
+
+### Un tap hors de l'écran tombe sur le voisin
+
+`idb ui tap` à une abscisse au-delà de la largeur de l'écran ne refuse rien :
+le tap est ramené au bord, et touche l'élément qui s'y trouve. Le 16 septembre,
+viser une pastille défilée hors champ a sélectionné sa voisine, et l'écran
+suivant montrait un autre bento que celui demandé.
+
+> **Taper au centre de la partie visible**, et refuser un élément dont il reste
+> moins de 8 points à l'écran : faire défiler d'abord.
+
+### Un test ajusté à une régression la protège
+
+« Commence par ton film » était devenu « Commence par film » pendant la
+généralisation du bouton aux éditions, et le test avait été modifié pour
+accepter la nouvelle chaîne. La recette l'a vu, pas la suite de tests, qui
+passait.
+
+> Quand un refactor oblige à changer l'assertion d'un test existant, **l'ancienne
+> assertion est la spécification** jusqu'à preuve du contraire. Changer le test
+> demande une raison écrite, pas un rendu différent.
+
+### `find … | head -1` installe n'importe quelle build
+
+Pour installer « la » build du simulateur, `find DerivedData -name "*.app" |
+head -1` a pris une build Release d'une session précédente, pointée sur un
+proxy local. Aucun compte n'a été créé, mais la cible n'était plus celle
+vérifiée.
+
+> Installer par le **chemin exact** de la build qu'on vient de produire, puis
+> contrôler son `app.config` et la clé de session, comme en §2, avant de lancer.
+
+### Un rechargement complet peut rouvrir une modale comme écran racine
+
+Après certaines modifications à chaud, Metro recharge tout le bundle, et
+l'app peut revenir sur la modale de recherche **sans écran derrière** :
+« Fermer » ne fait rien, et LogBox affiche `The action 'GO_BACK' was not
+handled`. Ce n'est pas un défaut de l'app, mais une recette qui continue dans
+cet état capture des écrans faux.
+
+> Au premier `GO_BACK was not handled`, relancer l'app avant la suite.
+
+### Reposer un état identique ne doit rien effacer
+
+Le composer relit le bento courant à chaque retour sur l'onglet, et la
+relecture reposait son jeu de cases. Poser un jeu de cases vidait les cases
+remplies, ce qui est juste quand on change de bento et faux quand on repose le
+même. Pendant qu'une écriture était en vol, `hydrate` ignorait ensuite l'état
+distant, comme il le doit : **une case choisie à l'instant restait vide à
+l'écran alors qu'elle était enregistrée en base**. Vu à la recette de la
+proposition A, sur une case d'édition, en tapant vite.
+
+Le défaut dépend du rythme : à la première recette, les écritures finissaient
+avant la relecture, et rien ne se voyait. Reproduit ensuite dans un test du
+store, en rejouant l'ordre des événements, avant d'être corrigé.
+
+> **Une action qui efface ce qu'elle remplace compare d'abord.** Reposer la
+> même valeur ne touche à rien ; l'effacement voulu, au changement de bento,
+> devient une action explicite, `clearSlots`.
+
+### Un fond sous un texte qui passe à la ligne prend toute la largeur
+
+Sur React Native comme en CSS, une boîte ajustée à son texte prend **toute la
+largeur permise dès que le texte passe à la ligne**, et non celle de sa plus
+longue ligne. « TON VOYAGE / RÊVÉ » posait ainsi un pavé noir sur toute la
+largeur de la case, deux tiers de vide à droite de « RÊVÉ ».
+
+Aucune propriété ne rétrécit la boîte après la coupure. La coupe se calcule
+donc avant de dessiner, avec les largeurs de la police, et la boîte reçoit la
+largeur de la plus longue ligne, plus 2 % et un point de marge pour les écarts
+de rendu. Une seule implémentation pour l'app, la page web et l'aperçu de lien :
+`fitLabel`, dans le package partagé.
+
+### Prouver qu'un rendu web n'a pas bougé
+
+Pour montrer qu'un changement laisse le bento principal intact sur la page
+web : extraire la liste des cases du HTML servi, remettre les fichiers
+modifiés dans leur version du dernier commit, laisser le serveur de
+développement recompiler, extraire de nouveau, remettre les fichiers, et
+comparer à l'octet.
+
+**Une comparaison identique ne prouve rien si l'ancienne version n'a pas été
+servie**, par exemple si la recompilation n'a pas eu le temps de se faire.
+Extraire donc dans le même geste une page **témoin**, qui elle doit différer :
+la page d'une édition. Au chantier 13, la boîte du bento principal sortait
+identique, 12 398 octets, pendant que celle de l'édition passait de 12 230 à
+13 740 octets. Même méthode pour l'aperçu de lien, comparé au pixel : 0 pixel
+différent pour le bento principal, et des différences limitées aux étiquettes
+pour l'édition.
+
+### Un fichier `.env` de la landing pointe sur la production
+
+`apps/landing/.env` porte les adresses et une clé service-role de la
+production. Des variables passées au shell l'emportent sur lui, mais seulement
+pour celles qu'on pense à passer. Pour une recette locale, le mettre hors
+service, `mv .env .env.recette-hors-service`, lancer avec les seules variables
+locales, et le remettre en place à la fin, comme celui de l'app.
+

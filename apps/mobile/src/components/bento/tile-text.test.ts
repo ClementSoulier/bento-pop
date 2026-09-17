@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { TILE_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
 import { GRID_GEOMETRY } from './geometry';
+import { MAIN_CASES, bungeeTextWidth, filledCaseLabel } from '@bento-pop/supabase-mobile/bento';
 import {
   EMPTY_TILE_MIN_INSET,
   TILE_MIN_CLEARANCE,
@@ -9,7 +10,11 @@ import {
   emptyTileConf,
   emptyTileLabelScale,
   tileConf,
+  tileLabelLines,
+  tileLabelTextWidth,
+  tileLabelWrap,
   tileTextClearance,
+  tileTextLayout,
   tileTextScale,
   type EmptyTileContent,
   type TileSize,
@@ -253,5 +258,106 @@ describe('emptyTileLabelScale', () => {
       withCircle: true,
     });
     assert.ok(Math.abs(clearance - 5.6) < 0.1, clearance.toFixed(2));
+  });
+});
+
+/**
+ * La question d'une édition sur la case remplie, proposition A du 16 septembre
+ * 2026. Le bento principal garde son tampon, et doit rester identique.
+ */
+describe('filledCaseLabel', () => {
+  it('garde le tampon des six cases du bento principal', () => {
+    assert.deepEqual(MAIN_CASES.map(filledCaseLabel), MAIN_CASES.map((c) => c.stamp));
+  });
+
+  it('affiche la question d’une case d’édition, et non son tampon', () => {
+    const duel = { key: 'rec2_1', prompt: 'Le film qui t’a fait pleurer', stamp: 'FILM' };
+    assert.equal(filledCaseLabel(duel), 'Le film qui t’a fait pleurer');
+  });
+});
+
+describe('tileLabelLines, l’étiquette d’une case remplie', () => {
+  // Largeurs de texte à l'échelle 1 : case pleine largeur 323, rangée à deux
+  // 156,5, rangée à trois 101, cf. la géométrie de la boîte.
+  const TEXTE = {
+    lg: tileLabelTextWidth(323, tileConf('lg', 1).pad),
+    md: tileLabelTextWidth(156.5, tileConf('md', 1).pad),
+    sm: tileLabelTextWidth(101, tileConf('sm', 1).pad),
+  };
+
+  it('laisse les tampons du bento principal sur une ligne, partout', () => {
+    for (const c of MAIN_CASES) {
+      assert.equal(tileLabelLines(c.stamp, TEXTE.sm, tileConf('sm', 1).stamp), 1, c.stamp);
+    }
+  });
+
+  it('mesure une question comme la planche l’a mesurée : 1 ligne pleine largeur, 2 en rangée à deux', () => {
+    const q = 'Le film qui t’a fait pleurer';
+    assert.equal(tileLabelLines(q, TEXTE.lg, tileConf('lg', 1).stamp), 1);
+    assert.equal(tileLabelLines(q, TEXTE.md, tileConf('md', 1).stamp), 2);
+    assert.equal(tileLabelLines('Ton son de l’été', TEXTE.sm, tileConf('sm', 1).stamp), 2);
+  });
+
+  it('ne coupe jamais un mot seul, même trop large', () => {
+    assert.equal(tileLabelLines('Anticonstitutionnellement', 20, 9), 1);
+  });
+
+  it('mesure la plus longue ligne, pour que le fond épouse le texte', () => {
+    // Première capture de la proposition A : « TON VOYAGE / RÊVÉ » posait un
+    // fond noir sur toute la largeur de la case.
+    const taille = tileConf('sm', 1).stamp;
+    const { lines, widest } = tileLabelWrap('Ton voyage rêvé', TEXTE.sm, taille);
+    assert.equal(lines, 2);
+    assert.ok(widest < TEXTE.sm, `${widest} pour ${TEXTE.sm}`);
+    assert.equal(widest, Math.max(
+      bungeeTextWidth('TON VOYAGE', taille, 1),
+      bungeeTextWidth('RÊVÉ', taille, 1),
+    ));
+  });
+});
+
+describe('tileTextLayout, place d’une question sur deux lignes', () => {
+  it('rend exactement `tileTextScale` pour une étiquette d’une ligne : le bento principal ne bouge pas', () => {
+    for (const size of SIZES) {
+      for (const scale of GRID_SCALES) {
+        for (const fontScale of FONT_SCALES) {
+          const h = HEIGHTS[size] * scale;
+          assert.deepEqual(
+            tileTextLayout(h, size, scale, fontScale, 1),
+            { textScale: tileTextScale(h, size, scale, fontScale), subtitle: true },
+            `${size} ${scale} ${fontScale}`,
+          );
+        }
+      }
+    }
+  });
+
+  it('efface le sous-titre plutôt que de rétrécir le texte, dans une petite case de la page publique', () => {
+    // Page publique d'un téléphone de 320 pt : échelle 0,709.
+    const scale = 0.709;
+    const h = HEIGHTS.sm * scale;
+    const avecSousTitre = tileTextScale(h, 'sm', scale, 1, { stampLines: 2 });
+    assert.ok(avecSousTitre < 1, `le texte rétrécirait à ${avecSousTitre}`);
+    const layout = tileTextLayout(h, 'sm', scale, 1, 2);
+    assert.equal(layout.subtitle, false);
+    assert.ok(layout.textScale > avecSousTitre, `${layout.textScale} contre ${avecSousTitre}`);
+  });
+
+  it('garde toujours la place minimale entre l’étiquette et le titre', () => {
+    for (const size of SIZES) {
+      for (const scale of GRID_SCALES) {
+        for (const fontScale of FONT_SCALES) {
+          const h = HEIGHTS[size] * scale;
+          const { textScale, subtitle } = tileTextLayout(h, size, scale, fontScale, 2);
+          const place = tileTextClearance(h, size, scale, textScale, { stampLines: 2, subtitle });
+          assert.ok(textScale === 0 || place >= TILE_MIN_CLEARANCE - 1e-9, `${size} ${scale} ${fontScale} : ${place}`);
+        }
+      }
+    }
+  });
+
+  it('garde le sous-titre là où la question tient sans rien rétrécir', () => {
+    // Case pleine largeur du composer : la place ne manque pas.
+    assert.deepEqual(tileTextLayout(HEIGHTS.lg, 'lg', 1, 1, 2), { textScale: 1, subtitle: true });
   });
 });

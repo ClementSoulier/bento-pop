@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CATEGORY_BY_ID, CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
 import { cleanTitle } from './text';
-import type { CategoryKey, Database } from '@/supabase/types';
+import type { Database } from '@/supabase/types';
 
 /**
  * Couche de données de l'onglet « Trouver ».
@@ -47,7 +47,7 @@ export type SearchMatch = {
    * correspondu. C'est ce qui permet à la ligne d'afficher sa raison plutôt
    * que de laisser deviner pourquoi cette personne sort sur « inception ».
    */
-  item: { id: string; title: string; category: CategoryKey } | null;
+  item: { id: string; title: string; category: string } | null;
 };
 
 export type SearchResults = {
@@ -60,7 +60,7 @@ export type SearchResults = {
 export type SharedItem = {
   id: string;
   title: string;
-  category: CategoryKey;
+  category: string;
   /**
    * Nombre de **personnes distinctes** ayant cet item dans un bento publié.
    * Toujours >= 2. Comptait des bentos avant le chantier 16, ce qui laissait
@@ -180,7 +180,10 @@ export function isEmpty(results: SearchResults): boolean {
 export function matchAccessibilityLabel(match: SearchMatch): string {
   const who = match.displayName ? `@${match.pseudo}, ${match.displayName}` : `@${match.pseudo}`;
   if (!match.item) return `Voir le bento de ${who}`;
-  const label = CATEGORY_META[match.item.category].label.toLowerCase();
+  // Une case d'édition n'est pas dans `CATEGORY_META` : on tombe alors sur
+  // sa clé, faute de mieux, plutôt que sur « undefined ».
+  const meta = (CATEGORY_META as Record<string, { label: string } | undefined>)[match.item.category];
+  const label = (meta?.label ?? match.item.category).toLowerCase();
   return `Voir le bento de ${who}, qui a ${cleanTitle(match.item.title)} dans sa case ${label}`;
 }
 

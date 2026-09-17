@@ -1,4 +1,9 @@
-import { CATEGORY_BY_ID, paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
+import {
+  CATEGORY_BY_ID,
+  MAIN_CASES,
+  type CaseMeta,
+  paletteKeyForItem,
+} from '@bento-pop/supabase-mobile/bento';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { BentoItems } from '@/components/bento';
 import type { Database } from '@/supabase/types';
@@ -63,10 +68,17 @@ const PUBLIC_BENTO_SELECT = `
     id,
     slug,
     is_primary,
+    edition_id,
     published_at,
     is_featured,
+    editions (
+      slug,
+      title,
+      bento_categories ( key, prompt, stamp, gender, display_order )
+    ),
     bento_items (
       category_id,
+      bento_categories ( key ),
       items ( id, title, subtitle, image_url, image_credit )
     )
   )
@@ -90,11 +102,26 @@ type RawPublicBento = {
   id: string;
   slug: string;
   is_primary: boolean;
+  /** L'édition composée, ou `null` pour un bento libre. Chantier 13. */
+  edition_id?: number | null;
   published_at: string | null;
   is_featured: boolean;
+  /**
+   * L'édition et **toutes** ses cases, vides comprises : une case vide n'a
+   * pas de ligne `bento_items`, et sans elle la disposition serait déduite
+   * des seules cases remplies.
+   */
+  editions?: {
+    slug: string;
+    title: string;
+    bento_categories: {
+      key: string; prompt: string; stamp: string; gender: string | null; display_order: number;
+    }[] | null;
+  } | null;
   bento_items:
     | {
         category_id: number;
+        bento_categories?: { key: string } | null;
         items: {
           id: string;
           title: string;
@@ -126,12 +153,21 @@ export type PublicBento = {
   /** Chaîne PostgREST, reprise telle quelle. */
   publishedAt: string;
   slots: BentoItems;
+  /** Les cases du bento, vides comprises. Leur nombre fait la disposition. */
+  cases: readonly CaseMeta[];
+  /** Le titre de l'édition composée, ou `null` pour un bento libre. */
+  editionTitle: string | null;
 };
 
 /** De quoi lister les autres bentos d'un compte sans charger leurs cases. */
 export type PublicBentoRef = {
   id: string;
   slug: string;
+  /**
+   * Le titre de l'édition composée, ou `null` pour un bento libre. C'est lui
+   * qui nomme la pastille : le slug est une adresse, pas un titre.
+   */
+  editionTitle: string | null;
   isFeatured: boolean;
   publishedAt: string;
 };
@@ -210,13 +246,16 @@ export function mapPublicBento(
     .map((b) => ({
       id: b.id,
       slug: b.slug,
+      editionTitle: b.editions?.title ?? null,
       isFeatured: b.is_featured,
       publishedAt: b.published_at,
     }));
 
   const slots: BentoItems = {};
   for (const link of chosen.bento_items ?? []) {
-    const cat = CATEGORY_BY_ID[link.category_id];
+    // La clé jointe d'abord : une case d'édition n'est pas dans la table des
+    // six, et la deviner reviendrait à poser un item dans la mauvaise case.
+    const cat = link.bento_categories?.key ?? CATEGORY_BY_ID[link.category_id];
     const item = link.items;
     if (!cat || !item) continue;
     slots[cat] = {
@@ -236,6 +275,17 @@ export function mapPublicBento(
       id: chosen.id,
       slug: chosen.slug,
       isPrimary: chosen.is_primary,
+      // Les cases du bento, vides comprises : leur nombre fait la
+      // disposition, et une édition n'a pas les six du principal.
+      cases: chosen.edition_id != null
+        ? [...(chosen.editions?.bento_categories ?? [])]
+            .sort((a, b) => a.display_order - b.display_order)
+            .map((c) => ({
+              key: c.key, prompt: c.prompt, stamp: c.stamp,
+              gender: c.gender === 'f' ? ('f' as const) : ('m' as const),
+            }))
+        : MAIN_CASES,
+      editionTitle: chosen.editions?.title ?? null,
       pseudo: row.pseudo,
       displayName: row.display_name,
       // Comparaison à la chaîne, comme dans le fil : une valeur inconnue se

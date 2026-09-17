@@ -46,6 +46,7 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
 import { publicSupabase } from '@/supabase/client';
+import { composerCases } from '@/components/bento/cases';
 
 /**
  * Page publique d'un compte, `/u/<pseudo>`, et d'un bento nommé,
@@ -205,8 +206,9 @@ export default function PublicBentoScreen() {
  * qu'un deuxième bento n'existe pas. C'est la promesse du §5.4 de la spéc, et
  * `publicOthersStripHeight` rend zéro dans ce cas.
  *
- * Le libellé est le slug, tel quel : c'est l'adresse, et c'est tout ce qu'un
- * bento porte aujourd'hui. Le chantier 13 lui donnera un titre.
+ * Le libellé est le titre de l'édition pour un bento d'édition, chantier 13,
+ * et le slug tel quel pour un bento libre : c'est son adresse, et c'est tout
+ * ce qu'il porte.
  */
 function OtherBentos({
   pseudo,
@@ -232,7 +234,7 @@ function OtherBentos({
           key={other.id}
           onPress={() => router.push(`/u/${pseudo}/${other.slug}` as const)}
           accessibilityRole="button"
-          accessibilityLabel={`Voir le bento ${other.slug} de @${pseudo}`}
+          accessibilityLabel={`Voir le bento ${other.editionTitle ?? other.slug} de @${pseudo}`}
           style={[
             {
               height: OTHERS_CHIP_H * scale,
@@ -257,7 +259,7 @@ function OtherBentos({
               color: '#0a0a0a',
             }}
           >
-            {other.slug}
+            {other.editionTitle ?? other.slug}
           </Text>
         </Pressable>
       ))}
@@ -531,7 +533,7 @@ function FoundPage({
     setSharing(true);
     try {
       const imageUrls = Object.values(bento.slots)
-        .map((s) => s.imageUrl)
+        .map((s) => s?.imageUrl)
         .filter((u): u is string => Boolean(u));
       const outcome = await shareBentoImage(
         bento.pseudo,
@@ -550,7 +552,14 @@ function FoundPage({
     }
   };
 
-  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}bento publié le ${formatDate(bento.publishedAt)}`;
+  // Le titre de l'édition passe devant la date : sans lui, on ne comprend
+  // pas pourquoi cette boîte n'a pas les cases du bento principal. Le bento
+  // principal garde sa phrase d'origine, sans virgule : la recette du
+  // chantier 13 a relevé « bento, publié le », régression du lot 5.
+  const quoi = bento.editionTitle
+    ? `${bento.editionTitle}, publié le`
+    : 'bento publié le';
+  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}${quoi} ${formatDate(bento.publishedAt)}`;
 
   return (
     <View style={{ flex: 1 }}>
@@ -571,7 +580,7 @@ function FoundPage({
         <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
         {/* Marge et non largeur, cf. `publicSideInset`. */}
         <View style={{ marginHorizontal: sideInset }}>
-          <BentoGrid items={bento.slots} scale={scale} width={boxWidth} readOnly />
+          <BentoGrid cases={composerCases(bento.cases, bento.slots)} scale={scale} width={boxWidth} readOnly />
         </View>
       </ScrollView>
 
@@ -602,9 +611,11 @@ function FoundPage({
         <ShareImage
           ref={shareImageRef}
           items={bento.slots}
+          cases={bento.cases}
           pseudo={bento.pseudo}
           slug={bento.slug}
           isPrimary={bento.isPrimary}
+          editionTitle={bento.editionTitle}
         />
       </View>
     </View>

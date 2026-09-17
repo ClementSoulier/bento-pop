@@ -9,7 +9,8 @@ import {
 } from '@/components/bento/BentoPageShell';
 import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
 import { bentoPath } from '@/lib/bento/metadata';
-import type { FeaturedBento, PublicBento } from '@/lib/bento/queries';
+import type { OtherBento, PublicBento } from '@/lib/bento/queries';
+import { mainBentoCases, publicCases } from './cases';
 
 /**
  * Le rendu d'une page publique de bento, partagé par les deux routes.
@@ -49,7 +50,7 @@ export function BentoUnpublishedView({
                 qui va arriver, et donne une raison de revenir. Aucune
                 donnée du bento non publié n'est lisible ici, la RLS
                 l'interdit au client anonyme. */}
-            <PublicBentoGrid slots={{}} label={`Bento de @${pseudo}, pas encore terminé`} empty />
+            <PublicBentoGrid cases={mainBentoCases({})} label={`Bento de @${pseudo}, pas encore terminé`} empty />
           </div>
           <p className="mt-6 text-center text-[15px] leading-[1.55] text-bento-ink/80">
             <span className="font-display block text-[clamp(20px,5vw,26px)] text-bento-ink">
@@ -75,10 +76,10 @@ export function BentoUnpublishedView({
  *
  * Ne rend rien tant qu'un compte n'a qu'un bento, ce qui est le cas de tous
  * au 16 septembre 2026 : aucune page existante ne change d'aspect. Le libellé
- * est le slug, seule chose qu'un bento porte aujourd'hui ; le chantier 13 lui
- * donnera un titre.
+ * est le titre de l'édition pour un bento d'édition, chantier 13, et le slug
+ * pour un bento libre, seule chose qu'il porte.
  */
-function OtherBentos({ others }: { others: readonly FeaturedBento[] }) {
+function OtherBentos({ others }: { others: readonly OtherBento[] }) {
   if (others.length === 0) return null;
   return (
     <nav aria-label="Les autres bentos de ce compte" className="mt-5">
@@ -89,7 +90,7 @@ function OtherBentos({ others }: { others: readonly FeaturedBento[] }) {
               href={bentoPath(other.pseudo, other.isPrimary ? null : other.slug)}
               className="font-display inline-block rounded-full border-[2.5px] border-bento-ink bg-bento-cream px-3.5 py-1.5 text-[13px] tracking-wide text-bento-ink shadow-stamp"
             >
-              {other.slug}
+              {other.editionTitle ?? other.slug}
             </Link>
           </li>
         ))}
@@ -105,7 +106,7 @@ export function BentoPublishedView({
   canonicalUrl,
 }: {
   bento: PublicBento;
-  others: readonly FeaturedBento[];
+  others: readonly OtherBento[];
   canonicalUrl: string;
 }) {
   return (
@@ -148,6 +149,16 @@ export function BentoPublishedView({
             pseudo={bento.pseudo}
             displayName={bento.displayName}
             publishedAt={bento.publishedAt}
+            {...(bento.edition
+              ? {
+                  // Le titre de l'édition passe devant la date : sans lui, on
+                  // ne comprend pas pourquoi cette boîte n'a pas les cases du
+                  // bento principal.
+                  subtitle: `${bento.edition.title}, publié le ${new Intl.DateTimeFormat('fr-FR', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                  }).format(new Date(bento.publishedAt))}`,
+                }
+              : {})}
             isFeatured={bento.isFeatured}
             isGuest={bento.isGuest}
           />
@@ -155,7 +166,7 @@ export function BentoPublishedView({
         </div>
 
         <div className="lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <PublicBentoGrid slots={bento.slots} label={`Les six choix de @${bento.pseudo}`} />
+          <PublicBentoGrid cases={publicCases(bento.cases, bento.slots)} label={`Les six choix de @${bento.pseudo}`} />
         </div>
 
         <div className="lg:col-start-2 lg:row-start-2">

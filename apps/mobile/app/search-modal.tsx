@@ -20,11 +20,11 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import {
   CONTENT_MAX_FONT_MULTIPLIER,
   CONTROL_MAX_FONT_MULTIPLIER,
+  TITLE_MAX_FONT_MULTIPLIER,
   scaledType,
 } from '@/components/bento/font-scaling';
 import { SearchIcon } from '@/components/TabIcons';
 import { useOfflineInset } from '@/lib/use-offline-inset';
-import { CATEGORY_META } from '@/components/bento/categories';
 import { paletteKeyForItem } from '@/components/bento/palettes';
 import { INK_MUTED, INK_PLACEHOLDER, useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
@@ -44,6 +44,7 @@ import { failureFeedback, slotFilledFeedback, tapFeedback } from '@/lib/haptics'
 import { supabase } from '@/supabase/client';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
+import { MAIN_CASE_SET } from '@/lib/case-set';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { searchItems, submitItem, type ItemSearchResult } from '@/lib/items';
@@ -118,8 +119,22 @@ type SlotSnapshot = ReturnType<typeof useBento.getState>['slots'][CategoryKey] |
 
 export default function SearchModal() {
   const params = useLocalSearchParams<{ category?: string }>();
-  const category = (params.category ?? 'film') as CategoryKey;
-  const meta = CATEGORY_META[category];
+  // La clé de la case à remplir. Pour le bento principal c'est une clé de
+  // catégorie, pour une édition `ed<édition>_<rang>` : c'est le store qui
+  // sait laquelle, et `search_items` la reçoit telle quelle puisqu'elle est
+  // la clé en base.
+  const category = (params.category ?? 'film') as string;
+  const cases = useBento((s) => s.cases);
+  const caseMeta = cases.find((c) => c.key === category) ?? cases[0];
+  // L'identifiant de la case, ce que `bento_items` référence. Une case
+  // introuvable dans le jeu courant ne s'écrit pas : mieux vaut ne rien
+  // poser que de poser sur la case de quelqu'un d'autre.
+  const caseId = caseMeta?.id ?? null;
+  // Les six cases du bento principal portent un nom commun, une case
+  // d'édition porte une question : l'article ne s'accorde que sur les
+  // premières.
+  const estBentoPrincipal = MAIN_CASE_SET.some((c) => c.key === category);
+  const meta = { label: caseMeta?.prompt ?? '', stamp: caseMeta?.stamp ?? '', gender: caseMeta?.gender ?? 'm' };
 
   const [query, setQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -205,13 +220,13 @@ export default function SearchModal() {
       if (previous?.itemId) {
         // `bentoId` nul : brouillon d'avant compte, il n'y a rien à défaire
         // côté serveur, seulement localement. Chantier 9.
-        if (bentoId) await setBentoSlot(bentoId, category, previous.itemId);
+        if (bentoId && caseId !== null) await setBentoSlot(bentoId, caseId, previous.itemId);
         setSlot(category, previous);
       } else {
         // Le cas qui manquerait si on se contentait de réécrire l'ancien
         // item : remplir une case vide puis annuler doit la revider, pas la
         // laisser telle quelle.
-        if (bentoId) await clearBentoSlot(bentoId, category);
+        if (bentoId && caseId !== null) await clearBentoSlot(bentoId, caseId);
         clearSlot(category);
       }
     } catch (e) {
@@ -279,7 +294,7 @@ export default function SearchModal() {
       // case est déjà posée localement et le miroir l'a mise sur l'appareil ;
       // elle partira en base à la publication. Chantier 9.
       const bentoId = userId ? await editableBentoId(userId) : null;
-      if (bentoId) await setBentoSlot(bentoId, category, item.id);
+      if (bentoId && caseId !== null) await setBentoSlot(bentoId, caseId, item.id);
       slotFilledFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
         variant: 'success',
@@ -325,9 +340,10 @@ export default function SearchModal() {
 
     setSubmitting(true);
     try {
-      const itemId = await submitItem(category, title);
+      if (caseId === null) throw new Error('Case inconnue.');
+      const itemId = await submitItem(caseId, title);
       const bentoId = await editableBentoId(userId);
-      if (bentoId) await setBentoSlot(bentoId, category, itemId);
+      if (bentoId && caseId !== null) await setBentoSlot(bentoId, caseId, itemId);
       setSlot(category, {
         title,
         subtitle: undefined,
@@ -358,7 +374,7 @@ export default function SearchModal() {
     setSubmitting(true);
     try {
       const bentoId = await editableBentoId(userId);
-      if (bentoId) await clearBentoSlot(bentoId, category);
+      if (bentoId && caseId !== null) await clearBentoSlot(bentoId, caseId);
       clearSlot(category);
       router.back();
       showToast('Case vidée', {
@@ -472,11 +488,15 @@ export default function SearchModal() {
           </Text>
         </Pressable>
         {/* Le tampon est une abréviation, « CRÉA » : le lecteur d'écran entend
-            l'intitulé entier. */}
+            l'intitulé entier. Sur une case d'édition, l'intitulé est la
+            question affichée juste en dessous, qui porte le rôle d'en-tête :
+            le tampon ne dit plus que ce qu'on cherche. */}
         <Text
           numberOfLines={1}
-          accessibilityRole="header"
-          accessibilityLabel={`Case ${meta.label}`}
+          accessibilityRole={estBentoPrincipal ? 'header' : 'text'}
+          accessibilityLabel={
+            estBentoPrincipal ? `Case ${meta.label}` : `Case ${meta.stamp.toLowerCase()}`
+          }
           maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
           style={[styles.headerLabel, { flexShrink: 1 }]}
         >
@@ -507,6 +527,21 @@ export default function SearchModal() {
         ) : null}
       </View>
 
+      {/* La question d'une case d'édition, en entier et jamais coupée : c'est
+          elle qu'on remplit. La recette du 16 septembre l'a montré, le titre
+          ne disait que « Case · Film », et sur « Le duel du samedi » les deux
+          cases sont des films. Le tampon reste au-dessus, parce que « Celui
+          qui t'a fait rire » ne dit pas, lui, qu'on cherche un film. */}
+      {!estBentoPrincipal && meta.label ? (
+        <Text
+          accessibilityRole="header"
+          maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER}
+          style={styles.question}
+        >
+          {meta.label}
+        </Text>
+      ) : null}
+
       {/* Search input */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 14 }}>
         <View style={[styles.searchInput, SHADOWS.stamp]}>
@@ -523,7 +558,7 @@ export default function SearchModal() {
             ref={inputRef}
             value={query}
             onChangeText={setQuery}
-            placeholder={searchPlaceholder(category)}
+            placeholder={searchPlaceholder(meta, estBentoPrincipal)}
             autoCapitalize="none"
             autoCorrect={false}
             // Le clavier est levé d'emblée : six cases à remplir, c'est six
@@ -531,7 +566,7 @@ export default function SearchModal() {
             // iPhone SE, mesuré, soit une rangée de tuiles entière.
             autoFocus
             returnKeyType="search"
-            accessibilityLabel={searchPlaceholder(category)}
+            accessibilityLabel={searchPlaceholder(meta, estBentoPrincipal)}
             // La recherche tourne déjà en continu sur le debounce : la touche
             // entrée ne relance rien, elle replie le clavier pour découvrir
             // le reste de la grille.
@@ -685,6 +720,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2,
     textTransform: 'uppercase',
+  },
+  question: {
+    fontFamily: 'Bungee',
+    fontSize: 16,
+    lineHeight: 21,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: '#0a0a0a',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
   searchInput: {
     backgroundColor: '#ffffff',

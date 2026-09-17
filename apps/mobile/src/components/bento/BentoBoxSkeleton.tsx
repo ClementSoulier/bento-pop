@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { boxPlacements } from '@bento-pop/supabase-mobile/bento';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { GRID_GEOMETRY, gridBorderWidth } from './geometry';
 
@@ -8,6 +9,12 @@ export const SKELETON_BONE = 'rgba(10,10,10,0.09)';
 type BentoBoxSkeletonProps = {
   /** Échelle de la boîte à venir, la même que celle passée à `BentoGrid`. */
   scale: number;
+  /**
+   * Nombre de cases de la boîte à venir, qui décide de la disposition.
+   * Six par défaut, le bento principal : c'est ce que le fil et la page
+   * publique attendent tant qu'ils n'ont pas lu leur bento.
+   */
+  caseCount?: number;
 };
 
 /**
@@ -23,9 +30,16 @@ type BentoBoxSkeletonProps = {
  * de seconde sur un réseau normal, et une animation demanderait un worklet
  * Reanimated pour un gain nul.
  */
-export function BentoBoxSkeleton({ scale }: BentoBoxSkeletonProps) {
+export function BentoBoxSkeleton({ scale, caseCount = 6 }: BentoBoxSkeletonProps) {
   const g = GRID_GEOMETRY;
   const s = (value: number) => value * scale;
+
+  // Les positions regroupées par rangée, depuis la même table que la grille.
+  const rangees: { height: number; cases: number }[] = [];
+  for (const place of boxPlacements(caseCount)) {
+    const rang = place.row - 1;
+    rangees[rang] = { height: place.height, cases: (rangees[rang]?.cases ?? 0) + 1 };
+  }
 
   return (
     <View
@@ -41,16 +55,17 @@ export function BentoBoxSkeleton({ scale }: BentoBoxSkeletonProps) {
         SHADOWS.stampLg,
       ]}
     >
-      <Bone height={s(g.H_FILM)} radius={s(g.TILE_RADIUS)} />
-      <View style={{ flexDirection: 'row', gap: s(g.GAP) }}>
-        <Bone height={s(g.H_MID)} radius={s(g.TILE_RADIUS)} grow />
-        <Bone height={s(g.H_MID)} radius={s(g.TILE_RADIUS)} grow />
-      </View>
-      <View style={{ flexDirection: 'row', gap: s(g.GAP) }}>
-        <Bone height={s(g.H_SM)} radius={s(g.TILE_RADIUS)} grow />
-        <Bone height={s(g.H_SM)} radius={s(g.TILE_RADIUS)} grow />
-        <Bone height={s(g.H_SM)} radius={s(g.TILE_RADIUS)} grow />
-      </View>
+      {rangees.map((rangee, rang) =>
+        rangee.cases === 1 ? (
+          <Bone key={rang} height={s(rangee.height)} radius={s(g.TILE_RADIUS)} />
+        ) : (
+          <View key={rang} style={{ flexDirection: 'row', gap: s(g.GAP) }}>
+            {Array.from({ length: rangee.cases }, (_, i) => (
+              <Bone key={i} height={s(rangee.height)} radius={s(g.TILE_RADIUS)} grow />
+            ))}
+          </View>
+        ),
+      )}
     </View>
   );
 }

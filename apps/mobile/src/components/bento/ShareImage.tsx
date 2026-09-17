@@ -3,10 +3,19 @@ import { Image, Text, View } from 'react-native';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import popy from '@bento-pop/brand/assets/mascot/popy-content.png';
 import { publicBentoLabel } from '@/lib/share';
-import { BentoGrid, type BentoItems } from './BentoGrid';
+import { BentoGrid } from './BentoGrid';
+import { MAIN_CASES, type CaseMeta } from '@bento-pop/supabase-mobile/bento';
+import { composerCases, type BentoItems } from './cases';
+import { SHARE_RIBBON, shareRibbonFontSize, shareRibbonText } from './share-layout';
 
 type ShareImageProps = {
   items: BentoItems;
+  /**
+   * Les cases du bento partagé, vides comprises. Leur nombre fait la
+   * disposition : une édition à trois cases ne se partage pas dans une boîte
+   * à six. Les six du bento principal par défaut.
+   */
+  cases?: readonly CaseMeta[];
   pseudo: string;
   /**
    * L'adresse imprimée en pied de carte. Chantier 16 : elle nommait le
@@ -15,6 +24,8 @@ type ShareImageProps = {
    */
   slug?: string | null;
   isPrimary?: boolean;
+  /** Le titre de l'édition, écrit dans le ruban rouge à la place de « Mon bento pop culture ». */
+  editionTitle?: string | null;
 };
 
 /** Largeur de la carte, et sa marge de chaque côté : la grille a le reste, 920 pt. */
@@ -56,8 +67,9 @@ const CARD_PADDING_H = 80;
  * `allowFontScaling={false}`, et la grille le transmet à ses cases.
  */
 export const ShareImage = forwardRef<View, ShareImageProps>(
-  ({ items, pseudo, slug, isPrimary = true }, ref) => {
+  ({ items, pseudo, slug, isPrimary = true, cases = MAIN_CASES, editionTitle = null }, ref) => {
   const safePseudo = pseudo?.trim() || 'anonyme';
+  const ruban = shareRibbonText(editionTitle);
   return (
     <View
       ref={ref}
@@ -90,23 +102,27 @@ export const ShareImage = forwardRef<View, ShareImageProps>(
           borderWidth: 3,
           borderColor: '#0a0a0a',
           borderRadius: 8,
-          paddingHorizontal: 24,
+          paddingHorizontal: SHARE_RIBBON.paddingH,
           paddingVertical: 12,
           marginBottom: 28,
           transform: [{ rotate: '-2deg' }],
         }}
       >
+        {/* Une ligne, à une taille mesurée : jamais `adjustsFontSizeToFit`,
+            cf. `shareRibbonFontSize`. Sans hauteur de ligne posée, comme
+            avant : le ruban du bento principal reste identique. */}
         <Text
           allowFontScaling={false}
+          numberOfLines={1}
           style={{
             color: '#ffffff',
             fontFamily: 'Bungee',
-            fontSize: 32,
-            letterSpacing: 2,
+            fontSize: shareRibbonFontSize(ruban),
+            letterSpacing: SHARE_RIBBON.letterSpacing,
             textTransform: 'uppercase',
           }}
         >
-          Mon bento pop culture
+          {ruban}
         </Text>
       </View>
 
@@ -141,7 +157,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(
         }}
       >
         <BentoGrid
-          items={items}
+          cases={composerCases(cases, items)}
           scale={2.5}
           width={CARD_WIDTH - CARD_PADDING_H * 2}
           readOnly
@@ -194,7 +210,7 @@ export const ShareImage = forwardRef<View, ShareImageProps>(
               marginTop: 4,
             }}
           >
-            Compose le tien · 6 cases pop culture
+            Compose le tien sur Mon Bento Pop
           </Text>
         </View>
       </View>

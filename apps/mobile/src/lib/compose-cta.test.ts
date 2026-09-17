@@ -1,21 +1,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CATEGORY_ORDER } from '@bento-pop/supabase-mobile/bento';
-import type { CategoryKey } from '@/supabase/types';
-import { composeCta, firstEmptyCategory } from './compose-cta';
+import { MAIN_CASES } from '@bento-pop/supabase-mobile/bento';
+import { composeCta, firstEmptyCase } from './compose-cta';
 
 const ALL = [...CATEGORY_ORDER];
+const CASES = MAIN_CASES;
 const cta = (
-  filled: CategoryKey[],
+  filled: readonly string[],
   over: { hasPending?: boolean; publishing?: boolean; published?: boolean } = {},
-) => composeCta({ filled, hasPending: false, publishing: false, published: false, ...over });
+) =>
+  composeCta({ cases: CASES, filled, hasPending: false, publishing: false, published: false, ...over });
 
 test('bento vide : oriente vers la première case, jamais inerte', () => {
   const r = cta([]);
   assert.equal(r.kind, 'open-slot');
   assert.equal(r.disabled, false);
+  // « ton film », et pas « film » : c'était le libellé d'origine, perdu au
+  // lot 4 du chantier 13 et retrouvé à la recette. Ce test l'avait suivi au
+  // lieu de l'attraper ; il redit maintenant l'exigence.
   assert.equal(r.label, 'Commence par ton film');
-  assert.equal(r.kind === 'open-slot' && r.category, CATEGORY_ORDER[0]);
+  assert.equal(r.kind === 'open-slot' && r.caseKey, CATEGORY_ORDER[0]);
 });
 
 test('bento partiel : le bouton AGIT, c’est le bug du 13 septembre', () => {
@@ -25,7 +30,7 @@ test('bento partiel : le bouton AGIT, c’est le bug du 13 septembre', () => {
     const r = cta(ALL.slice(0, n));
     assert.equal(r.kind, 'open-slot', `${n} case(s) rempli(es)`);
     assert.equal(r.disabled, false, `${n} case(s) : le bouton doit rester actif`);
-    assert.ok(r.kind === 'open-slot' && r.category, `${n} case(s) : une cible est requise`);
+    assert.ok(r.kind === 'open-slot' && r.caseKey, `${n} case(s) : une cible est requise`);
   }
 });
 
@@ -33,7 +38,7 @@ test('la case ouverte est la première vide dans l’ordre de la boîte', () => 
   // Trou au milieu : on ouvre le trou, pas la suite de la liste.
   const filled = [CATEGORY_ORDER[0]!, CATEGORY_ORDER[2]!, CATEGORY_ORDER[3]!];
   const r = cta(filled);
-  assert.equal(r.kind === 'open-slot' && r.category, CATEGORY_ORDER[1]);
+  assert.equal(r.kind === 'open-slot' && r.caseKey, CATEGORY_ORDER[1]);
 });
 
 test('le décompte restant est juste, et s’accorde', () => {
@@ -89,7 +94,7 @@ test('aucun état ne rend un bouton actif sans action', () => {
   for (const filled of cases) {
     for (const hasPending of [false, true]) {
       for (const published of [false, true]) {
-        const r = composeCta({ filled, hasPending, publishing: false, published });
+        const r = composeCta({ cases: CASES, filled, hasPending, publishing: false, published });
         if (!r.disabled) {
           assert.ok(
             r.kind === 'open-slot' || r.kind === 'publish' || r.kind === 'view-public',
@@ -102,5 +107,5 @@ test('aucun état ne rend un bouton actif sans action', () => {
 });
 
 test('firstEmptyCategory rend null sur un bento complet', () => {
-  assert.equal(firstEmptyCategory(ALL), null);
+  assert.equal(firstEmptyCase(CASES, ALL), null);
 });

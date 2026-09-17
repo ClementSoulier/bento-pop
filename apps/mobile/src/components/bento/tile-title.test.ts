@@ -11,8 +11,10 @@ import {
   tileTitleScale,
 } from './tile-title';
 
-const ONE_LINE = { numberOfLines: 1, adjustsFontSizeToFit: true } as const;
+const ONE_LINE = { numberOfLines: 1, adjustsFontSizeToFit: false } as const;
 const TWO_LINES = { numberOfLines: 2, adjustsFontSizeToFit: false } as const;
+/** Un libellé de case vide, lui, rétrécit encore sous la main de la plateforme. */
+const LABEL_ONE_LINE = { numberOfLines: 1, adjustsFontSizeToFit: true } as const;
 
 describe('tileTitleFit', () => {
   it('garde un mot seul sur une ligne, qui rétrécit plutôt que de se couper', () => {
@@ -234,10 +236,52 @@ describe('tileTitleScale', () => {
     );
   });
 
-  it('laisse à la plateforme les titres que `tileTitleFit` règle sans mesure', () => {
-    // Un mot seul, qui rétrécit de lui-même, et une écriture qui se coupe entre deux caractères.
-    assert.equal(scaleOn('Montpellier', { ...IPHONE_17_PRO_SM, lineWidth: 10 }), 1);
+  it('laisse à la plateforme les écritures qui se coupent entre deux caractères', () => {
     assert.equal(scaleOn('千と千尋の神隠し', { ...IPHONE_17_PRO_SM, lineWidth: 10 }), 1);
+  });
+
+  /**
+   * Un mot seul rétrécissait sous `adjustsFontSizeToFit`, qui l'a réduit à 5 pt
+   * sur iOS à la recette du chantier 13. Il se mesure désormais comme le reste.
+   */
+  it('rétrécit un mot seul juste assez pour remplir sa ligne', () => {
+    const { lineWidth, fontSize, letterSpacing } = IPHONE_17_PRO_SM;
+    const room = lineWidth - TITLE_ROUNDING_SLACK;
+    for (const word of ['Montpellier', 'Ardèche', 'Squeezie']) {
+      const scale = scaleOn(word, IPHONE_17_PRO_SM);
+      const upper = word.normalize('NFC').toUpperCase();
+      const width = extendaTextWidth(upper, fontSize * scale, letterSpacing);
+      if (scale < 1) assert.ok(Math.abs(width - room) < 1e-9, `${word} : ${width} pour ${room}`);
+      else assert.ok(width <= room, `${word} : ${width} pour ${room}`);
+    }
+    // Et ne touche pas un mot qui tient.
+    assert.equal(scaleOn('Jaws', IPHONE_17_PRO_SM), 1);
+  });
+
+  it('passe sous le plancher pour un mot seul, qui n’a pas d’autre ligne', () => {
+    const scale = scaleOn('Montpellier', { ...IPHONE_17_PRO_SM, lineWidth: 30 });
+    assert.ok(scale < TITLE_MIN_SCALE, String(scale));
+  });
+
+  it('mesure un mot à traits d’union sur sa ligne entière, et non jusqu’au premier', () => {
+    // Une seule ligne : « SPIDER-MAN » entier doit y tenir, pas seulement « SPIDER- ».
+    const { fontSize, letterSpacing, lineWidth } = IPHONE_17_PRO_SM;
+    const line: Line = { lineWidth: 40, fontSize, letterSpacing };
+    const scale = scaleOn('Spider-Man', line);
+    const width = extendaTextWidth('SPIDER-MAN', fontSize * scale, letterSpacing);
+    assert.ok(width <= 40 - TITLE_ROUNDING_SLACK, `${width} pour 40`);
+    assert.ok(scale < scaleOn('Spider', line), 'le mot entier est plus large que sa première partie');
+    assert.ok(lineWidth > 40);
+  });
+
+  it('mesure sur Android un mot seul à la police arrondie, et s’arrête sur un pixel entier', () => {
+    const { fontSize } = ANDROID_411_SM;
+    const scale = scaleOn('Montpellier', { ...ANDROID_411_SM, lineWidth: 50 });
+    const pixels = fontSize * scale * 2.625;
+    assert.ok(pixels < Math.ceil(pixels), String(pixels));
+    assert.ok(
+      androidWidth('MONTPELLIER', fontSize * scale, ANDROID_411_SM) <= 50 - TITLE_ROUNDING_SLACK,
+    );
   });
 
   it('ne mesure rien sans largeur de ligne', () => {
@@ -251,12 +295,12 @@ describe('emptyTileLabelFit', () => {
       Object.values(CATEGORY_META).map(({ label }) => [label, emptyTileLabelFit(label)]),
     );
     assert.deepEqual(fits, {
-      Film: ONE_LINE,
-      Série: ONE_LINE,
-      Artiste: ONE_LINE,
-      Chanson: ONE_LINE,
+      Film: LABEL_ONE_LINE,
+      Série: LABEL_ONE_LINE,
+      Artiste: LABEL_ONE_LINE,
+      Chanson: LABEL_ONE_LINE,
       'Créateur de contenu': { numberOfLines: 2, adjustsFontSizeToFit: true },
-      Lieu: ONE_LINE,
+      Lieu: LABEL_ONE_LINE,
     });
   });
 });

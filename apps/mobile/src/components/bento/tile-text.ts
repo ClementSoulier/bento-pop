@@ -15,6 +15,13 @@
  * Aucun import de `react-native` : testé sous `node:test`.
  */
 
+import {
+  QUESTION_LABEL_MAX_LINES,
+  QUESTION_LABEL_MIN_FONT,
+  bungeeTextWidth,
+  fitLabel,
+  wrapWords,
+} from '@bento-pop/supabase-mobile/bento';
 import { TILE_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
 
 export type TileSize = 'sm' | 'md' | 'lg';
@@ -50,6 +57,130 @@ export const TILE_LINE = { stamp: 1.25, title: 1, subtitle: 1.3, emptyLabel: 1.3
 
 /** Marge verticale du fond de l'étiquette, au-dessus et au-dessous du texte. */
 export const TILE_STAMP_PADDING_V = 2;
+
+/** Marge horizontale du fond de l'étiquette, de chaque côté du texte. */
+export const TILE_STAMP_PADDING_H = 6;
+
+/**
+ * La même marge, pour la question d'une édition : 4 et non 6.
+ *
+ * Une question tient sur deux lignes dans une case large de 85 points, sur
+ * la page publique d'un iPhone SE ou d'un 17 Pro. Là, 4 points de texte en
+ * plus font la différence entre « TON VOYAGE / RÊVÉ » et « TON / VOYAG… »,
+ * vu à la première capture de la proposition A. Le tampon du bento principal
+ * garde sa marge : il ne change pas d'un pixel.
+ */
+export const TILE_QUESTION_PADDING_H = 4;
+
+/** Plancher de l'étiquette, le même que celui de `tileConf` : jamais sous 7 points. */
+export const TILE_LABEL_MIN_FONT = QUESTION_LABEL_MIN_FONT;
+
+/** Espacement des lettres de l'étiquette. */
+export const TILE_STAMP_LETTER_SPACING = 1;
+
+/**
+ * Lignes au plus d'une étiquette. Une seule pour un tampon, « FILM » ; deux
+ * pour la question d'une édition, cf. `filledCaseLabel`.
+ */
+export const TILE_LABEL_MAX_LINES = QUESTION_LABEL_MAX_LINES;
+
+/**
+ * Largeur offerte au texte de l'étiquette dans une case de `tileWidth`, cadre
+ * compris : la case moins sa bordure, ses marges et celles du fond noir.
+ */
+export function tileLabelTextWidth(
+  tileWidth: number,
+  pad: number,
+  paddingH: number = TILE_STAMP_PADDING_H,
+): number {
+  return Math.max(0, tileWidth - TILE_BORDER * 2 - pad * 2 - paddingH * 2);
+}
+
+/**
+ * Taille de la question d'une édition : `fontSize`, ou juste assez moins pour
+ * tenir en `TILE_LABEL_MAX_LINES` lignes, sans descendre sous
+ * `TILE_LABEL_MIN_FONT`. Sous ce plancher, elle se tronque.
+ *
+ * Même règle que les titres, `tileTitleScale` : mesurée et non confiée à la
+ * plateforme, et arrondie comme Android l'arrondit quand `pixelRatio` est
+ * donné. Le plancher est **en points** : agrandie par la police système, une
+ * question peut redescendre vers sa taille normale au lieu de se tronquer.
+ *
+ * Garantie, vérifiée par `question-label.test.ts` : toute question que le
+ * back-office accepte s'affiche entière sur les téléphones mesurés, composer,
+ * fil et page publique, à toute taille de police.
+ */
+export function tileLabelFontSize(
+  label: string,
+  textWidth: number,
+  fontSize: number,
+  pixelRatio?: number,
+): number {
+  return fitLabel(label, textWidth, fontSize, {
+    measure: (line, size) => bungeeTextWidth(line, size, TILE_STAMP_LETTER_SPACING),
+    minFontSize: TILE_LABEL_MIN_FONT,
+    maxLines: TILE_LABEL_MAX_LINES,
+    pixelRatio,
+  }).fontSize;
+}
+
+/**
+ * Lignes que prend l'étiquette, coupée entre les mots comme la plateforme la
+ * coupe, et mesurée sur les largeurs de Bungee en capitales.
+ *
+ * Plafonnée par l'appelant à `TILE_LABEL_MAX_LINES` : au-delà, le texte se
+ * tronque, et c'est au back-office de refuser une question qui ne tiendrait
+ * pas.
+ */
+/**
+ * La question d'une édition, prête à dessiner : sa taille, ses lignes, et la
+ * largeur de sa plus longue ligne, mesurées à la taille que la plateforme
+ * dessinera. Tronquée au plancher, elle prend toute la largeur permise.
+ */
+export function tileLabelFit(
+  label: string,
+  textWidth: number,
+  fontSize: number,
+  pixelRatio?: number,
+): { fontSize: number; lines: number; widest: number } {
+  const fit = fitLabel(label, textWidth, fontSize, {
+    measure: (line, size) => bungeeTextWidth(line, size, TILE_STAMP_LETTER_SPACING),
+    minFontSize: TILE_LABEL_MIN_FONT,
+    maxLines: TILE_LABEL_MAX_LINES,
+    pixelRatio,
+  });
+  return {
+    fontSize: fit.fontSize,
+    lines: Math.max(1, Math.min(TILE_LABEL_MAX_LINES, fit.lines.length)),
+    widest: fit.truncated ? textWidth : Math.min(textWidth > 0 ? textWidth : Infinity, fit.widest),
+  };
+}
+
+export function tileLabelLines(label: string, textWidth: number, fontSize: number): number {
+  return tileLabelWrap(label, textWidth, fontSize).lines;
+}
+
+/**
+ * La mise en lignes de l'étiquette : combien de lignes, et la largeur de la
+ * plus longue.
+ *
+ * La seconde sert à dessiner le fond noir. Un texte qui passe à la ligne
+ * prend toute la largeur permise, et le fond avec lui : « TON VOYAGE / RÊVÉ »
+ * posait une dalle noire sur toute la case, à la première capture de la
+ * proposition A. Le fond prend la largeur de la plus longue ligne.
+ */
+export function tileLabelWrap(
+  label: string,
+  textWidth: number,
+  fontSize: number,
+): { lines: number; widest: number } {
+  const largeur = (texte: string) => bungeeTextWidth(texte, fontSize, TILE_STAMP_LETTER_SPACING);
+  const texte = label.trim().toUpperCase();
+  if (!texte) return { lines: 1, widest: 0 };
+  if (textWidth <= 0) return { lines: 1, widest: largeur(texte) };
+  const lignes = wrapWords(texte, textWidth, largeur);
+  return { lines: lignes.length, widest: Math.max(...lignes.map(largeur)) };
+}
 
 /** Écart entre le titre et le sous-titre. */
 export const TILE_SUBTITLE_GAP = 4;
@@ -97,20 +228,39 @@ export function tileTextClearance(
   size: TileSize,
   scale: number,
   textScale: number,
+  options: TileTextOptions = {},
 ): number {
-  const { fixed, perTextScale } = clearanceTerms(height, size, scale);
+  const { fixed, perTextScale } = clearanceTerms(height, size, scale, options);
   return fixed - perTextScale * textScale;
 }
 
+/** Ce qui change la place du texte d'une case, en plus de sa taille. */
+export type TileTextOptions = {
+  /** Lignes de l'étiquette, 1 par défaut. Deux pour une question d'édition. */
+  stampLines?: number;
+  /** Le sous-titre est-il affiché ? Oui par défaut. */
+  subtitle?: boolean;
+};
+
 /** La place libre est affine en `textScale` : ce qui ne grossit pas, moins ce qui grossit. */
-function clearanceTerms(height: number, size: TileSize, scale: number) {
+function clearanceTerms(
+  height: number,
+  size: TileSize,
+  scale: number,
+  { stampLines = 1, subtitle = true }: TileTextOptions = {},
+) {
   const conf = tileConf(size, scale);
   return {
-    fixed: height - TILE_BORDER * 2 - conf.pad * 2 - TILE_STAMP_PADDING_V * 2 - TILE_SUBTITLE_GAP,
+    fixed:
+      height -
+      TILE_BORDER * 2 -
+      conf.pad * 2 -
+      TILE_STAMP_PADDING_V * 2 -
+      (subtitle ? TILE_SUBTITLE_GAP : 0),
     perTextScale:
-      conf.stamp * TILE_LINE.stamp +
+      conf.stamp * TILE_LINE.stamp * stampLines +
       conf.title * TILE_LINE.title * 2 +
-      conf.sub * TILE_LINE.subtitle,
+      (subtitle ? conf.sub * TILE_LINE.subtitle : 0),
   };
 }
 
@@ -129,11 +279,38 @@ export function tileTextScale(
   size: TileSize,
   scale: number,
   fontScale: number,
+  options: TileTextOptions = {},
 ): number {
   const wanted = fontScaleFor(fontScale, TILE_MAX_FONT_MULTIPLIER);
-  const { fixed, perTextScale } = clearanceTerms(height, size, scale);
+  const { fixed, perTextScale } = clearanceTerms(height, size, scale, options);
   const fits = (fixed - TILE_MIN_CLEARANCE) / perTextScale;
   return Math.max(0, Math.min(wanted, fits));
+}
+
+/**
+ * Le texte d'une case : son facteur de police, et si le sous-titre s'affiche.
+ *
+ * Une étiquette sur une ligne, celle du bento principal, rend exactement
+ * `tileTextScale` avec le sous-titre : rien ne change pour lui.
+ *
+ * Une question d'édition sur deux lignes prend la hauteur d'une ligne de
+ * plus. Là où elle ferait rétrécir le texte, **le sous-titre s'efface
+ * d'abord** : l'année d'un film compte moins que la question à laquelle il
+ * répond, et un titre rétréci se lit moins bien qu'un sous-titre absent.
+ */
+export function tileTextLayout(
+  height: number,
+  size: TileSize,
+  scale: number,
+  fontScale: number,
+  stampLines = 1,
+): { textScale: number; subtitle: boolean } {
+  const avec = tileTextScale(height, size, scale, fontScale, { stampLines });
+  if (stampLines < 2 || avec >= fontScaleFor(fontScale, TILE_MAX_FONT_MULTIPLIER)) {
+    return { textScale: avec, subtitle: true };
+  }
+  const sans = tileTextScale(height, size, scale, fontScale, { stampLines, subtitle: false });
+  return sans > avec ? { textScale: sans, subtitle: false } : { textScale: avec, subtitle: true };
 }
 
 /*

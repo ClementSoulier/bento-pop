@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { FEATURED_RIBBON, GUEST_RIBBON, ribbonFor } from './ribbon';
+import { FEATURED_RIBBON, GUEST_RIBBON, ribbonFor , editionRibbon} from './ribbon';
 
 describe('ribbonFor', () => {
   it('ne pose rien sur un bento ordinaire', () => {
@@ -41,5 +41,41 @@ describe('ribbonFor', () => {
     for (const r of [GUEST_RIBBON, FEATURED_RIBBON]) {
       assert.ok(r.label.length <= 14, `${r.label} risque de déborder`);
     }
+  });
+});
+
+describe('l’étiquette d’une édition', () => {
+  const base = { isGuest: false, isFeatured: false };
+
+  it('porte le titre de l’édition, pas le mot « hebdomadaire »', () => {
+    const r = ribbonFor({ ...base, editionTitle: 'La semaine du film qui pique' });
+    assert.equal(r?.label, 'La semaine du film qui pique');
+  });
+
+  /**
+   * L'ordre est une décision, pas un hasard. La boîte d'une édition n'a pas
+   * les cases du bento principal : sans son titre, le lecteur ne comprend
+   * pas pourquoi. C'est une information sur ce qu'il voit, quand « coup de
+   * cœur » est un avis dessus.
+   */
+  it('passe devant le coup de cœur', () => {
+    const r = ribbonFor({ ...base, isFeatured: true, editionTitle: 'Semaine 38' });
+    assert.equal(r?.label, 'Semaine 38');
+  });
+
+  it('cède devant « invité », la seule chose qui ne se devine pas', () => {
+    const r = ribbonFor({ isGuest: true, isFeatured: true, editionTitle: 'Semaine 38' });
+    assert.deepEqual(r, GUEST_RIBBON);
+  });
+
+  it('ne s’affiche pas pour un bento libre', () => {
+    assert.equal(ribbonFor({ ...base, editionTitle: null }), null);
+    assert.equal(ribbonFor(base), null);
+  });
+
+  it('reste lisible : encre sur jaune de la marque', () => {
+    const r = editionRibbon('Semaine 38');
+    assert.equal(r.color, '#fbbf24');
+    assert.equal(r.textColor, '#0a0a0a');
   });
 });

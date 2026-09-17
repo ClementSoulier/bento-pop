@@ -6,7 +6,8 @@ import { FRAME, TILE } from './layout';
 const u = (n: number) => `calc(${n} * var(--u))`;
 
 type PublicBentoEmptyTileProps = {
-  category: CategoryKey;
+  /** Intitulé de la case. Pour une édition, la question posée. */
+  prompt: string;
   rotate: number;
   /** Placement dans la grille, fourni par `PublicBentoGrid`. */
   placement: CSSProperties;
@@ -25,11 +26,10 @@ type PublicBentoEmptyTileProps = {
  * comme un chargement qui aurait échoué.
  */
 export function PublicBentoEmptyTile({
-  category,
+  prompt,
   rotate,
   placement,
 }: PublicBentoEmptyTileProps) {
-  const meta = CATEGORY_META[category];
 
   return (
     <li
@@ -69,7 +69,7 @@ export function PublicBentoEmptyTile({
         className="font-display-sm text-bento-ink"
         style={{ fontSize: `max(8px, ${u(10)})`, letterSpacing: '0.12em' }}
       >
-        {meta.label}
+        {prompt}
       </span>
       <span className="sr-only">Case non remplie</span>
     </li>

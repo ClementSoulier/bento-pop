@@ -1,5 +1,11 @@
 import type { CSSProperties } from 'react';
-import type { BentoSlots } from '@/lib/bento/map';
+import {
+  boxPlacements,
+  boxRowHeights,
+  filledCaseLabel,
+  isMainCaseKey,
+} from '@bento-pop/supabase-mobile/bento';
+import type { PublicCase } from './cases';
 import { PublicBentoEmptyTile } from './PublicBentoEmptyTile';
 import { PublicBentoTile } from './PublicBentoTile';
 import {
@@ -7,14 +13,17 @@ import {
   FRAME,
   GRID_COLUMNS,
   MAX_RENDERED_WIDTH,
-  ROW_HEIGHTS,
-  TILE_LAYOUT,
+  type TileSize,
 } from './layout';
 
 const u = (n: number) => `calc(${n} * var(--u))`;
 
 type PublicBentoGridProps = {
-  slots: BentoSlots;
+  /**
+   * Les cases, dans l'ordre de lecture. Leur nombre décide de la disposition,
+   * comme dans l'app ; une case sans `tile` se rend vide.
+   */
+  cases: readonly PublicCase[];
   /** Étiquette accessible de la liste, par exemple « Le bento de @kerem ». */
   label: string;
   /** Force toutes les cases en vide (écran « pas encore terminé »). */
@@ -41,7 +50,9 @@ type PublicBentoGridProps = {
  *
  * Composant serveur : aucun `'use client'`, aucun JavaScript expédié.
  */
-export function PublicBentoGrid({ slots, label, empty = false }: PublicBentoGridProps) {
+export function PublicBentoGrid({ cases, label, empty = false }: PublicBentoGridProps) {
+  const places = boxPlacements(cases.length);
+  const rowHeights = boxRowHeights(cases.length);
   return (
     <div className="bento-scope mx-auto w-full" style={{ maxWidth: MAX_RENDERED_WIDTH }}>
       <div
@@ -71,34 +82,41 @@ export function PublicBentoGrid({ slots, label, empty = false }: PublicBentoGrid
             // ou le libellé « Créateur de contenu » d'une case vide
             // pourrait alors élargir la boîte au-delà de son conteneur.
             gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
-            gridTemplateRows: ROW_HEIGHTS.map((h) => u(h)).join(' '),
+            gridTemplateRows: rowHeights.map((h) => u(h)).join(' '),
             gap: u(FRAME.gap),
           }}
         >
-          {TILE_LAYOUT.map((slot) => {
-            const tile = empty ? undefined : slots[slot.category];
+          {places.map((place) => {
+            const item = cases[place.index];
+            if (!item) return null;
+            const tile = empty ? undefined : item.tile;
             const placement: CSSProperties = {
-              gridRow: slot.row,
-              gridColumn: `span ${slot.span}`,
+              gridRow: place.row,
+              gridColumn: `span ${place.span}`,
             };
             return tile ? (
               <PublicBentoTile
-                key={slot.category}
-                category={slot.category}
+                key={item.key}
+                // Le tampon pour le bento principal, la question pour une
+                // édition, comme dans l'app.
+                stamp={filledCaseLabel(item)}
+                question={!isMainCaseKey(item.key)}
                 tile={tile}
-                size={slot.size}
-                rotate={slot.rotate}
+                size={place.size as TileSize}
+                rotate={place.rotate}
                 placement={placement}
-                // Le compartiment film est le plus grand élément au-dessus
-                // de la ligne de flottaison : c'est lui le LCP, et lui seul
-                // échappe au chargement différé.
-                priority={slot.category === 'film'}
+                // La première case est la plus grande au-dessus de la ligne de
+                // flottaison : c'est elle le LCP, et elle seule échappe au
+                // chargement différé. Avant, la règle visait la catégorie
+                // `film` ; toute disposition ouvre sur une case unique, donc
+                // l'index dit la même chose et vaut pour une édition.
+                priority={place.index === 0}
               />
             ) : (
               <PublicBentoEmptyTile
-                key={slot.category}
-                category={slot.category}
-                rotate={slot.rotate}
+                key={item.key}
+                prompt={item.prompt}
+                rotate={place.rotate}
                 placement={placement}
               />
             );

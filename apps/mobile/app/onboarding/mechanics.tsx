@@ -9,6 +9,7 @@ import {
 } from '@/components/bento/font-scaling';
 import { Pagination, Sticker, StampButton, YellowBg } from '@/components/primitives';
 import { displayTitleScale, extendaAccentRoom } from '@/lib/display-title';
+import { mainBentoCases } from '@/components/bento/cases';
 
 const SIDE_PADDING = 20;
 const TITLE = 'Une boîte.\nSix envies.';
@@ -73,7 +74,7 @@ export default function MechanicsOnboarding() {
 
             {/* Bento demi-échelle + annotations */}
             <View style={{ paddingHorizontal: 32, marginTop: 20, position: 'relative' }}>
-              <BentoGrid items={{}} scale={0.78} empty />
+              <BentoGrid cases={mainBentoCases({})} scale={0.78} empty />
 
               {/* Annotation FILM PRÉFÉRÉ (cellule du haut, à droite). Posée sur le
                   dessin de la boîte, à échelle fixe : sa police ne suit pas. */}

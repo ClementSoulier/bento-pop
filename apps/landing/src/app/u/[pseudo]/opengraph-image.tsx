@@ -1,5 +1,18 @@
 import { ImageResponse } from 'next/og';
-import { CATEGORY_META, PALETTES } from '@bento-pop/supabase-mobile/bento';
+import {
+  MAIN_CASES,
+  PALETTES,
+  boxPlacements,
+  boxRowHeights,
+  filledCaseLabel,
+  isMainCaseKey,
+} from '@bento-pop/supabase-mobile/bento';
+import { publicCases, type PublicCase } from '@/components/bento/cases';
+import {
+  QUESTION_PADDING_H,
+  QUESTION_PADDING_V,
+  ogQuestionLabel,
+} from '@/components/bento/question-label';
 import { logoDataUrl } from '@/app/_og/assets';
 import { bentoImageAlt } from '@/lib/bento/metadata';
 import { cleanTitle, initialOf } from '@/lib/bento/text';
@@ -18,9 +31,7 @@ import {
   DESIGN_HEIGHT,
   DESIGN_WIDTH,
   FRAME,
-  ROW_HEIGHTS,
   TILE,
-  TILE_LAYOUT,
   TILE_SCRIM,
   TILE_TYPO,
 } from '@/components/bento/layout';
@@ -87,6 +98,9 @@ export default async function OpenGraphImage({ params }: ImageParams) {
           ? lookup.bento.pseudo
           : lookup.pseudo;
     const slots: BentoSlots = lookup.kind === 'published' ? lookup.bento.slots : {};
+    // Les cases du bento, vides comprises : leur nombre décide de la
+    // disposition, comme dans l'app et sur la page web.
+    const cases = lookup.kind === 'published' ? lookup.bento.cases : MAIN_CASES;
 
     const extenda = await loadExtenda();
     const covered = coveredCodePoints(extenda);
@@ -96,13 +110,14 @@ export default async function OpenGraphImage({ params }: ImageParams) {
     const rendered = [
       `@${pseudo}`,
       lookup.kind === 'published' ? (lookup.bento.displayName ?? '') : '',
-      ...Object.values(slots).flatMap((tile) => [cleanTitle(tile.title), tile.subtitle ?? '']),
-      ...Object.values(CATEGORY_META).map((meta) => meta.stamp),
+      ...Object.values(slots).flatMap((tile) => (tile ? [cleanTitle(tile.title), tile.subtitle ?? ''] : [])),
+      // Les étiquettes du bento dessiné, questions d'édition comprises.
+      ...cases.flatMap((c) => [c.stamp, c.prompt]),
     ];
 
     const [fallbackFont, imageMap] = await Promise.all([
       fetchFallbackFont(missingGlyphs(rendered, covered)),
-      prefetchImages(Object.values(slots).map((tile) => tile.imageUrl)),
+      prefetchImages(Object.values(slots).map((tile) => tile?.imageUrl ?? null)),
     ]);
 
     const fonts = [
@@ -125,7 +140,7 @@ export default async function OpenGraphImage({ params }: ImageParams) {
             padding: '0 44px',
           }}
         >
-          <BentoBox slots={slots} images={imageMap} />
+          <BentoBox cases={publicCases(cases, slots)} images={imageMap} />
           <SidePanel
             pseudo={pseudo}
             displayName={lookup.kind === 'published' ? lookup.bento.displayName : null}
@@ -157,7 +172,9 @@ export default async function OpenGraphImage({ params }: ImageParams) {
  * plutôt que d'un littéral `[1, 2, 3]` qui ne disait rien de leur taille.
  * `layout.test.ts` verrouille la somme.
  */
-function BentoBox({ slots, images }: { slots: BentoSlots; images: Map<string, string> }) {
+function BentoBox({ cases, images }: { cases: readonly PublicCase[]; images: Map<string, string> }) {
+  const places = boxPlacements(cases.length);
+  const rowHeights = boxRowHeights(cases.length);
   return (
     <div
       style={{
@@ -173,25 +190,30 @@ function BentoBox({ slots, images }: { slots: BentoSlots; images: Map<string, st
         boxShadow: `0 ${u(8)}px 0 ${INK}`,
       }}
     >
-      {ROW_HEIGHTS.map((rowHeight, index) => (
+      {rowHeights.map((rowHeight, index) => (
         <div
           key={index + 1}
           style={{ display: 'flex', gap: u(FRAME.gap), height: u(rowHeight) }}
         >
-          {TILE_LAYOUT.filter((slot) => slot.row === index + 1).map((slot) => {
-            const tile = slots[slot.category];
+          {places.filter((place) => place.row === index + 1).map((place) => {
+            const item = cases[place.index];
+            if (!item) return null;
+            const tile = item.tile;
             return tile ? (
               <Tile
-                key={slot.category}
-                stamp={CATEGORY_META[slot.category].stamp}
-                title={cleanTitle(tile.title, TITLE_MAX[slot.size])}
+                key={item.key}
+                // Le tampon pour le bento principal, la question pour une
+                // édition, comme dans l'app et sur la page web.
+                stamp={filledCaseLabel(item)}
+                question={!isMainCaseKey(item.key)}
+                title={cleanTitle(tile.title, TITLE_MAX[place.size])}
                 subtitle={tile.subtitle}
                 image={tile.imageUrl ? images.get(tile.imageUrl) : undefined}
                 paletteKey={tile.paletteKey}
-                size={slot.size}
+                size={place.size}
               />
             ) : (
-              <EmptyTile key={slot.category} label={CATEGORY_META[slot.category].label} />
+              <EmptyTile key={item.key} label={item.prompt} />
             );
           })}
         </div>
@@ -202,6 +224,7 @@ function BentoBox({ slots, images }: { slots: BentoSlots; images: Map<string, st
 
 function Tile({
   stamp,
+  question,
   title,
   subtitle,
   image,
@@ -209,6 +232,8 @@ function Tile({
   size: tileSize,
 }: {
   stamp: string;
+  /** `stamp` est la question d'une édition, cf. `QuestionLabel`. */
+  question: boolean;
   title: string;
   subtitle: string | null;
   image?: string;
@@ -277,22 +302,31 @@ function Tile({
         />
       ) : null}
 
-      <div
-        style={{
-          position: 'absolute',
-          top: u(typo.padding),
-          left: u(typo.padding),
-          display: 'flex',
-          padding: `${u(2)}px ${u(6)}px`,
-          borderRadius: u(4),
-          background: image ? INK : palette.ink,
-          color: image ? '#ffffff' : palette.colors[0],
-          fontSize: u(typo.stamp + 1),
-          letterSpacing: 0.6,
-        }}
-      >
-        {stamp}
-      </div>
+      {question ? (
+        <QuestionLabel
+          question={normalizeForOg(stamp)}
+          size={tileSize}
+          background={image ? INK : palette.ink}
+          color={image ? '#ffffff' : palette.colors[0]}
+        />
+      ) : (
+        <div
+          style={{
+            position: 'absolute',
+            top: u(typo.padding),
+            left: u(typo.padding),
+            display: 'flex',
+            padding: `${u(2)}px ${u(6)}px`,
+            borderRadius: u(4),
+            background: image ? INK : palette.ink,
+            color: image ? '#ffffff' : palette.colors[0],
+            fontSize: u(typo.stamp + 1),
+            letterSpacing: 0.6,
+          }}
+        >
+          {stamp}
+        </div>
+      )}
 
       <div
         style={{
@@ -330,6 +364,57 @@ function Tile({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * La question d'une édition, là où le bento principal écrit « FILM ».
+ *
+ * Une ligne par élément, coupée et dimensionnée par `ogQuestionLabel` avec les
+ * largeurs d'Extenda : satori ne sait ni rétrécir un texte ni ajuster un fond
+ * à sa plus longue ligne, et coupe à sa façon ce qu'on lui laisse couper. Une
+ * question que le back-office a acceptée tient en deux lignes ; sinon, la
+ * seconde s'arrête sur des points de suspension.
+ */
+function QuestionLabel({
+  question,
+  size: tileSize,
+  background,
+  color,
+}: {
+  question: string;
+  size: keyof typeof TILE_TYPO;
+  background: string;
+  color: string;
+}) {
+  const typo = TILE_TYPO[tileSize];
+  const { fit, boxTextWidth } = ogQuestionLabel(question, tileSize, SCALE, u);
+  const lignes = fit.truncated ? [fit.lines[0] ?? '', `${fit.lines[1] ?? ''}…`] : fit.lines;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: u(typo.padding),
+        left: u(typo.padding),
+        display: 'flex',
+        flexDirection: 'column',
+        width: boxTextWidth + u(QUESTION_PADDING_H) * 2,
+        padding: `${u(QUESTION_PADDING_V)}px ${u(QUESTION_PADDING_H)}px`,
+        borderRadius: u(4),
+        background,
+        color,
+        fontSize: fit.fontSize,
+        lineHeight: 1.2,
+        letterSpacing: 0.6,
+        overflow: 'hidden',
+      }}
+    >
+      {lignes.slice(0, 2).map((ligne, index) => (
+        <div key={index} style={{ display: 'flex', whiteSpace: 'nowrap' }}>
+          {ligne}
+        </div>
+      ))}
     </div>
   );
 }

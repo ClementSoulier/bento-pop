@@ -1,6 +1,4 @@
 import { supabase } from '@/supabase/client';
-import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
-import type { CategoryKey } from '@/supabase/types';
 
 /**
  * Wrapper sur le catalogue maison (table `items`) côté mobile.
@@ -38,7 +36,7 @@ export type SimilarItem = {
  * autant économiser le round-trip).
  */
 export async function searchItems(
-  category: CategoryKey,
+  category: string,
   query: string,
 ): Promise<ItemSearchResult[]> {
   const q = query.trim();
@@ -67,7 +65,7 @@ export async function searchItems(
  * anti-doublon AVANT soumission user. Threshold 0.4 par défaut côté SQL.
  */
 export async function findSimilarItems(
-  category: CategoryKey,
+  category: string,
   query: string,
 ): Promise<SimilarItem[]> {
   const q = query.trim();
@@ -99,7 +97,13 @@ export async function findSimilarItems(
  * une chaîne vide.
  */
 export async function submitItem(
-  category: CategoryKey,
+  /**
+   * `bento_categories.id` de la case ouverte. Le déclencheur
+   * `items_set_type_from_case` en dérive le `type_id`, qui est la colonne
+   * qui compte depuis le chantier 15 ; `category_id` n'est plus lu par
+   * aucun client. Une case d'édition marche donc sans rien de plus.
+   */
+  caseId: number,
   rawTitle: string,
 ): Promise<string> {
   const title = rawTitle.trim();
@@ -109,7 +113,7 @@ export async function submitItem(
   const { data, error } = await supabase
     .from('items')
     .insert({
-      category_id: CATEGORY_IDS[category],
+      category_id: caseId,
       external_source: 'user',
       title,
     })

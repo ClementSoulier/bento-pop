@@ -6,9 +6,11 @@ import { supabase } from '@/supabase/client';
 import { describeApp, recordVisit } from '@/lib/telemetry';
 import type { Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
-import { mapRemoteSlots } from '@/lib/bento-slots';
+import { REMOTE_SLOT_COLUMNS, mapRemoteSlots } from '@/lib/bento-slots';
 import { hydrateFromDraft } from '@/state/draft-hydrate';
 import { withTimeout } from '@/lib/with-timeout';
+import { caseSetFor } from '@/lib/editions';
+import { type OwnBentoRow, toOwnBento } from '@/lib/own-bento';
 
 type Profile = Database['public']['Tables']['users']['Row'];
 
@@ -170,14 +172,7 @@ async function hydrateBentoFromRemote(userId: string) {
     return;
   }
 
-  useBento.getState().setOwn(
-    rows.map((b) => ({
-      id: b.id,
-      slug: b.slug,
-      isPrimary: b.is_primary,
-      publishedAt: b.published_at,
-    })),
-  );
+  useBento.getState().setOwn(rows.map(toOwnBento));
 
   const courant = useBento.getState().current;
   const ligne = courant ? rows.find((b) => b.id === courant.id) : undefined;
@@ -186,15 +181,14 @@ async function hydrateBentoFromRemote(userId: string) {
     return;
   }
 
-  const slots = mapRemoteSlots(ligne.bento_items);
-  useBento.getState().hydrate(slots);
+  // Le jeu de cases du bento courant, avant ses cases remplies : une édition
+  // n'a pas les six du principal, et `slots` s'indexe par clé de case.
+  const cases = await caseSetFor(useBento.getState().current);
+  useBento.getState().setCases(cases);
+  useBento.getState().hydrate(mapRemoteSlots(ligne.bento_items, cases));
 }
 
-type RemoteBento = {
-  id: string;
-  slug: string;
-  is_primary: boolean;
-  published_at: string | null;
+type RemoteBento = OwnBentoRow & {
   bento_items:
     | { category_id: number; items: unknown }[]
     | null;
@@ -214,11 +208,10 @@ async function readBentos(userId: string): Promise<RemoteBento[] | null> {
         `id,
        slug,
        is_primary,
+       edition_id,
        published_at,
-       bento_items (
-         category_id,
-         items ( id, title, subtitle, image_url, image_credit, status )
-       )`,
+       editions ( title ),
+       bento_items ( ${REMOTE_SLOT_COLUMNS} )`,
       )
       .eq('user_id', userId)
       .order('is_primary', { ascending: false })

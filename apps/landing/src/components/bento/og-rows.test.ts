@@ -100,16 +100,24 @@ describe('rangées de l’aperçu de lien', () => {
     }
   });
 
-  it('dérive ses hauteurs de `ROW_HEIGHTS`', () => {
+  it('dérive ses hauteurs de la table partagée', () => {
+    // Depuis le chantier 13, la source n'est plus `ROW_HEIGHTS` mais
+    // `boxRowHeights(n)` : la même table que l'app et la grille web, et elle
+    // vaut pour une édition de 2 à 6 cases, pas seulement pour six.
     assert.match(
       text,
-      /import\s*\{[^}]*\bROW_HEIGHTS\b[^}]*\}\s*from\s*'@\/components\/bento\/layout'/s,
-      'les hauteurs de rangée doivent venir de `layout.ts`, seule source',
+      /import\s*\{[^}]*\bboxRowHeights\b[^}]*\}\s*from\s*'@bento-pop\/supabase-mobile\/bento'/s,
+      'les hauteurs de rangée doivent venir de la table partagée, seule source',
     );
     assert.doesNotMatch(
       text,
       /const\s+rows\s*=\s*\[\s*1\s*,\s*2\s*,\s*3\s*\]/,
       'un littéral `[1, 2, 3]` ne dit rien de la taille des rangées',
+    );
+    assert.doesNotMatch(
+      text,
+      /\bTILE_LAYOUT\b/,
+      'la disposition ne se lit plus dans une table propre au web',
     );
   });
 });
