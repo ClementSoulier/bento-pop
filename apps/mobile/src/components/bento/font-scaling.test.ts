@@ -258,7 +258,10 @@ describe('cases du bento', () => {
   const emptyTileTexts = tagsNamed(parse(EMPTY_TILE), 'Text');
 
   it('trouve les textes des cases', () => {
-    assert.ok(tileTexts.length >= 6, `Tile : ${tileTexts.length} textes`);
+    // Cinq et non plus six depuis le 17 septembre 2026 : « En attente » n'est
+    // plus un texte, la pastille d'un item en attente est un sablier dessiné,
+    // qui ne suit pas la police, cf. `tile-pending.ts`.
+    assert.ok(tileTexts.length >= 5, `Tile : ${tileTexts.length} textes`);
     assert.ok(emptyTileTexts.length >= 3, `EmptyTile : ${emptyTileTexts.length} textes`);
   });
 
@@ -278,12 +281,14 @@ describe('cases du bento', () => {
   });
 
   /**
-   * L'étiquette, « En attente », le titre et le sous-titre : les textes dont
-   * la hauteur décide de la place restante dans la case, cf. `tile-text.ts`.
+   * L'étiquette, le titre et le sous-titre : les textes dont la hauteur décide
+   * de la place restante dans la case, cf. `tile-text.ts`. « En attente » en
+   * était un jusqu'au 17 septembre 2026 ; la pastille ne porte plus de texte et
+   * ne prend plus de place au texte, cf. `tile-pending.ts`.
    */
   it('applique à ses textes la police que la case permet, figée quand la grille le demande', () => {
     const scaled = tileTexts.filter((t) => /\btextScale\b/.test(t.styleSource));
-    assert.equal(scaled.length, 4, `textes à l’échelle de la case : ${linesOf(scaled)}`);
+    assert.equal(scaled.length, 3, `textes à l’échelle de la case : ${linesOf(scaled)}`);
     // `tileTextLayout` ou `tileTextScale` : le premier étend le second au
     // nombre de lignes de l'étiquette, pour la question d'une édition
     // (proposition A, 16 septembre 2026), et rend exactement le second pour une

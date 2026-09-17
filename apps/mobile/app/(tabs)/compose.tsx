@@ -134,7 +134,7 @@ export default function ComposeTab() {
 
   // Re-synchronise le bento depuis Supabase à chaque retour sur l'onglet.
   // Sans ça, un item validé (ou refusé) par l'équipe pendant que l'app est
-  // ouverte garde son badge « En attente » jusqu'au prochain cold start :
+  // ouverte garde sa pastille « en attente » jusqu'au prochain cold start :
   // le composer lit le store Zustand, jamais re-fetché en cours de session.
   // `refreshProfile` → `hydrateBentoFromRemote` relit `items.status` ; les
   // slots étant déjà persistés en base, re-hydrater ne perd aucune saisie.

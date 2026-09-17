@@ -10,8 +10,10 @@ import {
 import type { ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { TILE_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
 import { PALETTES, type PaletteKey } from './palettes';
+import { TILE_PENDING_RING, tileAccessibilityLabel, tilePendingBadge } from './tile-pending';
 import {
   TILE_BORDER,
   TILE_LABEL_MAX_LINES,
@@ -48,9 +50,9 @@ export type TileData = {
   paletteKey?: PaletteKey;
   /**
    * `true` si l'item référencé est `status='pending'` (proposé par
-   * l'utilisateur, en attente de modération admin). Affiche un badge et
-   * empêche la publication du bento tant qu'au moins un slot est dans
-   * cet état.
+   * l'utilisateur, en attente de modération admin). Pose la pastille sablier,
+   * cf. `tile-pending.ts`, et empêche la publication du bento tant qu'au moins
+   * un slot est dans cet état.
    */
   pending?: boolean;
 };
@@ -338,35 +340,6 @@ export function Tile({
         </Text>
       </View>
 
-      {data.pending ? (
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: conf.pad,
-            right: conf.pad,
-            backgroundColor: '#e63946',
-            paddingHorizontal: 6,
-            paddingVertical: TILE_STAMP_PADDING_V,
-            borderRadius: 4,
-            transform: [{ rotate: '4deg' }],
-          }}
-        >
-          <Text
-            allowFontScaling={false}
-            style={{
-              color: '#ffffff',
-              fontFamily: 'Bungee',
-              fontSize: conf.stamp * textScale,
-              lineHeight: conf.stamp * TILE_LINE.stamp * textScale,
-              letterSpacing: 1,
-            }}
-          >
-            En attente
-          </Text>
-        </View>
-      ) : null}
-
       <View
         pointerEvents="none"
         style={{
@@ -460,7 +433,12 @@ export function Tile({
     </>
   );
 
-  const a11yLabel = `${prompt} : ${title}${data.subtitle ? `, ${data.subtitle}` : ''}`;
+  const a11yLabel = tileAccessibilityLabel({
+    prompt,
+    title,
+    subtitle: data.subtitle,
+    pending: data.pending,
+  });
   const inner = onPress ? (
     <Pressable
       onPress={onPress}
@@ -481,5 +459,51 @@ export function Tile({
     </View>
   );
 
-  return <View style={outerStyle}>{inner}</View>;
+  // La pastille d'un item en attente, à cheval sur le coin haut droit : dans
+  // `outer`, et non dans `inner`, qui rogne ce qui dépasse de la case. Elle ne
+  // prend aucune place au texte, cf. `tile-pending.ts`.
+  const badge = data.pending ? tilePendingBadge(size, scale) : null;
+
+  return (
+    <View style={outerStyle}>
+      {inner}
+      {badge ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -badge.overhang,
+            right: -badge.overhang,
+            width: badge.diameter,
+            height: badge.diameter,
+            borderRadius: badge.diameter / 2,
+            borderWidth: TILE_PENDING_RING,
+            borderColor: '#0a0a0a',
+            backgroundColor: '#e63946',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Hourglass size={badge.diameter * 0.62} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Sablier blanc de la pastille, dessiné comme les icônes de la barre d'onglets,
+ * cf. `TabIcons.tsx` : une icône se dessine, elle ne dépend d'aucune police.
+ */
+function Hourglass({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x="5" y="2.5" width="14" height="3" rx="1.2" fill="#ffffff" />
+      <Rect x="5" y="18.5" width="14" height="3" rx="1.2" fill="#ffffff" />
+      <Path
+        d="M7.5 5.5 H16.5 C16.5 9.5 12.8 10.6 12.8 12 C12.8 13.4 16.5 14.5 16.5 18.5 H7.5 C7.5 14.5 11.2 13.4 11.2 12 C11.2 10.6 7.5 9.5 7.5 5.5 Z"
+        fill="#ffffff"
+      />
+    </Svg>
+  );
 }
