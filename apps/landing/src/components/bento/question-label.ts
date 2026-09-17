@@ -5,7 +5,7 @@ import {
   type LabelFit,
 } from '@bento-pop/supabase-mobile/bento';
 import { extendaTextWidth } from '@bento-pop/supabase-mobile/extenda';
-import { TILE, TILE_TYPO, type TileSize } from './layout';
+import { CASES_PAR_RANGEE, TILE, TILE_TYPO, type TileSize } from './layout';
 
 /**
  * La question d'une édition dans l'étiquette d'une case remplie, pour les deux
@@ -23,9 +23,6 @@ export const QUESTION_PADDING_H = 4;
 
 /** Marge verticale de l'étiquette. */
 export const QUESTION_PADDING_V = 2;
-
-/** Cases d'une rangée selon le gabarit, cf. `boxPlacements`. */
-const CASES_PAR_RANGEE: Record<TileSize, number> = { lg: 1, md: 2, sm: 3 };
 
 /**
  * Marge ajoutée à la plus longue ligne pour dessiner le fond : le rendu du

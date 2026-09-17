@@ -404,10 +404,28 @@ button {
  * navigateur choisirait une police arbitraire, voire afficherait des carrés.
  *
  * `overflow-wrap: anywhere` : certains titres sont un seul mot très long
- * (« Anticonstitutionnellement ») qui déborderait d'un petit compartiment. */
+ * (« Anticonstitutionnellement ») qui déborderait d'un petit compartiment.
+ *
+ * Accents et hauteur de ligne 1. Extenda occupe pile 1 em (table `hhea`, 1521
+ * et 527 sur 2048) : la ligne de base tombe à 0,743 em du haut de chaque ligne,
+ * quand É monte à 0,830 em et Å à 0,897. Chaque accent dépasse donc de sa
+ * ligne, et `overflow: hidden`, qui coupe la boîte pile à deux lignes, rognait
+ * ceux de la 1re ligne, 13 des 162 cases publiées le 17 septembre 2026
+ * (« SACRÉ GRAAL », « ARDÈCHE »). `padding-top` agrandit la zone visible vers
+ * le haut et `margin-top` rend la place : aucune ligne ne bouge. 0,4 em couvre
+ * le plus haut glyphe de la police, 1,062 em, arrondis au pixel compris.
+ *
+ * Vers le bas, la 3e ligne que `-webkit-line-clamp` dessine quand même laissait
+ * dépasser ses accents sous la 2e : cf. `.bento-tile-title-clamped`.
+ *
+ * `--font-extenda-titre` est Extenda aux métriques `hhea` imposées
+ * (`layout.tsx`). Sous Windows, Chrome, Edge et Firefox lisent sinon
+ * `usWinAscent` et `usWinDescent`, qui descendent la ligne de base de 0,164 em :
+ * le rognage du bas y couperait le pied des lettres. WebKit ignore ces
+ * descripteurs, mais lit déjà `hhea`. */
 .bento-tile-title {
   font-family:
-    var(--font-extenda), var(--font-bungee), var(--font-fredoka), system-ui, sans-serif;
+    var(--font-extenda-titre), var(--font-bungee), var(--font-fredoka), system-ui, sans-serif;
   font-weight: 900;
   text-transform: uppercase;
   line-height: 1;
@@ -416,6 +434,27 @@ button {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  padding-top: 0.4em;
+  margin-top: -0.4em;
+}
+
+/* Titre coupé à deux lignes : masque le haut de la 3e, dont les accents
+ * flottaient sous la 2e (« LA… » du Seigneur des anneaux).
+ *
+ * Posé par `PublicBentoTile` quand `webTitleClamped` prévoit plus de deux
+ * lignes, et sur ces titres seulement, parce que le rognage entame aussi le bas
+ * de la 2e ligne : entre le pied de ses lettres et le haut d'un accent de la 3e,
+ * il reste de 0 à 2 px selon la taille, et les arrondis des moteurs déplacent
+ * cette bande d'un pixel. Aucune hauteur fixe ne tombe dedans à toutes les
+ * tailles.
+ *
+ * 0,215 em + 0,05 px, mesuré le 17 septembre 2026 dans Chrome 152 et WebKit
+ * (macOS 26.6), de 12 à 33 px : aux densités 2 et 3, aucun pixel ne reste des
+ * accents du français (É, Ê, È, Ë, À…), et le pied des lettres de la 2e ligne
+ * perd au pire 0,47 px. Ö, Ñ et Å peuvent laisser 0,65 px ; la queue des Q et
+ * des virgules de la 2e ligne raccourcit. */
+.bento-tile-title-clamped {
+  clip-path: inset(0 0 calc(0.215em + 0.05px) 0);
 }
 
 /* Initiale en filigrane des compartiments sans illustration (72 des 277
