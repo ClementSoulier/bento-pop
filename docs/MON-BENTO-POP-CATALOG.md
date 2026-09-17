@@ -446,3 +446,97 @@ Côté BO, le correctif part avec le déploiement Coolify habituel.
 L'instance déployée sur le projet mobile n'appelle plus rien et n'écrit
 rien ; elle peut être supprimée depuis le dashboard (Edge Functions →
 suggest-item-image → Delete) quand l'occasion se présente.
+
+## 11. Sous-titres (septembre 2026)
+
+Le sous-titre est la seule ligne d'information sous le titre d'un élément :
+dans les cases du composer, du fil et des bentos publics de l'app, dans les
+résultats de recherche, sur la page publique de la landing et dans son image
+de partage. Il tient sur une ligne, le reste est coupé. Mesuré le
+17 septembre 2026 sur `bento-pop.com/u/dark_hifus`, à 375 px de large : une
+case d'une rangée à deux en affiche environ 23 caractères (la case Artiste du
+bento principal), une case d'une rangée à trois environ 16.
+
+### 11.1 La règle
+
+Arbitrée par Clément le 17 septembre 2026.
+
+- **En français, court, et seulement quand il est sûr.** Sinon aucun
+  sous-titre, ce qui est un cas normal. Jamais de code (« JP »), de
+  vocabulaire de base de données (« Person ») ni de texte en anglais.
+- **Ce qu'il dit dépend du type** :
+
+| Type | Sous-titre | Exemples |
+|---|---|---|
+| Film, Série | l'année de sortie | 2010 |
+| Personne | le rôle, en minuscules, avec la nationalité quand elle tient et qu'elle est sûre | rappeur français, compositeur de films |
+| Chanson | l'artiste, sans année | Linkin Park |
+| Lieu | le pays, dans sa forme courante | États-Unis |
+| Livre | l'auteur | Victor Hugo |
+| Jeu vidéo | le studio, rien quand il prête à discussion | Nintendo |
+| Plat, Activité | rien | |
+
+Les trois dernières lignes sont celles des listes de départ du chantier 15
+(§5.7 de `UX-15-NOUVELLES-CATEGORIES.md`). Une chanson ne reprend pas
+l'année : celle des anciens imports était souvent celle d'une réédition, et
+une année douteuse est pire qu'une année absente. Les descriptions de
+créateurs héritées de Wikidata (« vidéaste web et musicien français ») restent
+telles quelles, même quand la petite case les coupe.
+
+### 11.2 L'inventaire du 17 septembre 2026
+
+Relevé en lecture seule (GET PostgREST, clé anonyme) après avoir vu
+« 浦沢直樹 · JP · Person » sur la page de dark_hifus : 277 items validés, dont
+151 avec un sous-titre, et 27 bentos publiés. Les types Jeu vidéo, Livre,
+Plat et Activité n'avaient encore aucun item validé.
+
+| Case d'origine | Items | Avec sous-titre | Source | Constat |
+|---|---|---|---|---|
+| Artiste | 48 | 25 | MusicBrainz | « pays · type · précision », en anglais, sur 19 des 27 bentos publiés |
+| Créateur | 39 | 24 | Wikidata | en français, dont 4 hors sujet : Botch (en anglais), Ego, J., Laos |
+| Chanson | 54 | 32 | MusicBrainz | « artiste · année », année fausse pour au moins 4 (Lithium 1994 pour 1991) |
+| Film | 53 | 30 | TMDb | année de sortie |
+| Série | 43 | 22 | TMDb | année de sortie |
+| Lieu | 40 | 17 | OSM | pays en français, dont 2 « États-Unis d'Amérique » coupés sur téléphone |
+
+Les items proposés depuis l'app n'ont presque jamais de sous-titre : 5 sur
+130. Ces formats ne se recréent plus, les versions publiées n'appelant plus
+aucune API (vérifié sur le code de la 0.1.0 du Play Store) : ils ne peuvent
+revenir que par une saisie au back-office.
+
+### 11.3 Le correctif
+
+`apps/mobile/supabase/corrections/20260917130000_sous_titres_catalogue.sql`
+change la seule colonne `subtitle` de 55 items, sans rien supprimer :
+
+- **25 artistes** : 20 rôles (« mangaka japonais », « compositeur de
+  films »…) et 5 sous-titres vidés faute de certitude ([unknown],
+  AJ DiSpirito, Alan Lee, Interstate Intercourse, Yuston XIII) ;
+- **5 créateurs** : les 4 descriptions hors sujet vidées, « Streameuse
+  québécoise » en minuscule ;
+- **23 chansons** : l'année retirée, l'artiste gardé ;
+- **2 lieux** : « États-Unis d'Amérique » devient « États-Unis ».
+
+Ce n'est pas une migration : aucun schéma ne change, et ces identifiants
+n'existent qu'en production. Aucun outil ne lit le dossier `corrections/`.
+Le fichier porte son mode d'emploi : aperçu en lecture seule, écriture qui
+n'écrase jamais une retouche faite entre-temps, contrôle, retour arrière. Il
+a été éprouvé sur le Supabase local, dans une transaction annulée.
+
+**Appliqué en production le 17 septembre 2026**, par le serveur MCP, sur le
+feu vert de Clément :
+
+- la requête A a rendu les 55 items `validated`, et un doublon « Daft Punk »
+  au statut `merged` qui portait le même sous-titre anglais, laissé tel quel
+  puisqu'il ne s'affiche nulle part ;
+- la requête B a écrit les 55 items, sans en ignorer aucun, et A relancée ne
+  rend plus que ce doublon ;
+- vérifié ensuite par GET : les 55 sous-titres sont ceux du fichier, et les
+  222 autres items visibles n'ont pas bougé ;
+- la page de dark_hifus affiche « 浦沢直樹 · mangaka japonais » depuis sa
+  régénération, sous-titre entier à 375 px.
+
+Restent hors du correctif : la colonne `year` des chansons, qui garde ces
+années douteuses mais ne s'affiche nulle part hors du back-office, et le
+titre « [unknown] », qui s'affiche vide (suivi ouvert par le chantier 7 dans
+la roadmap).
