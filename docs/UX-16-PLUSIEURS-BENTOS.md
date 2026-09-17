@@ -845,7 +845,7 @@ L'ordre juste, les deux migrations n'ayant pas les mêmes contraintes (§6.1) :
 | 1 | **Migration A** appliquée en production ✅ **faite le 16/09** | **aucun** : elle n'ajoute que des colonnes, la relation reste un un-à-un, les apps en circulation ne voient rien |
 | 2 | **Fusion de la PR** : landing et back-office se déploient | aucun : la base sait déjà répondre |
 | 3 | **Build mobile 1.3.0**, puis adoption | aucun : dormante pour tout ce qui concerne les secondaires |
-| 4 | **Migration B**, sur feu vert, quand l'adoption suffit | c'est **la** fenêtre : une app restée sur l'ancienne requête dirait « rien en ligne » |
+| 4 | **Migration B**, sur feu vert, quand l'adoption suffit ✅ **appliquée le 17/09**, avec le bloc du chantier 13 | c'est **la** fenêtre : une app restée sur l'ancienne requête dirait « rien en ligne ». **Corrigé le 17/09** : aucune version publiée n'a cette requête, cf. ci-dessous |
 | 5 | **Premier bento secondaire** créé depuis le back-office | aucun |
 
 Entre les étapes 1 et 4, rien ne change pour personne.
@@ -865,6 +865,13 @@ se redéploie à la fusion. Deux leviers pour réduire la fenêtre :
   `runtimeVersion` suit `appVersion` (`app.json:82`), donc une OTA construite
   pour 1.3.0 ne touchera **que** les appareils déjà en 1.3.0. Elle accélère la
   diffusion d'un correctif, elle ne rattrape pas les versions antérieures.
+
+> **Corrigé le 17 septembre 2026, mesuré.** « L'ancienne requête » n'est dans
+> aucune version publiée : elle est arrivée avec le chantier 7, fusionné le 15
+> septembre. L'App Store sert la 1.1 et le Play Store la 0.1.0, qui lisent leur
+> bento avec `maybeSingle()` et ne voient pas la forme de l'embed. La migration B
+> a donc été appliquée le 17 septembre sans attendre d'adoption, avec le bloc du
+> chantier 13 (cf. sa spécification, §6.2).
 
 ### 6.3 Types et garde-fous
 
@@ -1085,7 +1092,7 @@ la branche. Ce qui suit la fusion, dans l'ordre de §6.2 :
 | 2 | Fusion après CI verte, déploiement des deux apps web | moi, sur ton accord |
 | 3 | Build mobile 1.3.0, iOS et Android, profil `production` | moi, sur ton accord |
 | 4 | Mesure de l'adoption de la 1.3.0 | toi, clé privilégiée |
-| 5 | **Migration B** puis `publish_first_bento`, dans l'éditeur SQL | toi |
+| 5 | **Migration B** puis `publish_first_bento`, dans l'éditeur SQL ✅ **17/09**, avec le bloc du chantier 13 | toi |
 | 6 | Création d'un premier bento secondaire depuis le back-office | toi ou moi |
 | 7 | Recette de bout en bout sur les trois appareils | moi |
 

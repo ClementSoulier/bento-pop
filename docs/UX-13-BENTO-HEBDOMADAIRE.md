@@ -16,9 +16,17 @@
 > bascule pose un plancher de version, l'aperçu de lien se corrige tout de
 > suite en PR séparée, et le développement se fait sur Supabase local.
 >
-> **Ce chantier ne peut pas sortir seul.** Une édition est un second bento,
-> donc elle dépend de la migration B du chantier 16, qui dépend de l'adoption
-> d'une version que les stores n'ont pas encore. Le calendrier est en §6.2.
+> **Livré le 17 septembre 2026.** PR #74 fusionnée après CI verte, et bloc SQL
+> appliqué en production le même jour : la migration B et `publish_first_bento`
+> du chantier 16, puis les trois migrations des éditions. **Aucune édition ne se
+> compose en production** avant que la nouvelle version soit sur les stores et
+> que le plancher de version soit relevé (D8) : un compte à deux bentos casse sa
+> page publique dans les versions publiées. Créer une édition au back-office ne
+> pose pas ce problème.
+>
+> ~~**Ce chantier ne peut pas sortir seul**, la migration B dépendant de
+> l'adoption d'une version.~~ **Corrigé le 17 septembre** : elle n'en dépendait
+> pas, cf. §6.2.
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 13,
 > [le chantier 15](./UX-15-NOUVELLES-CATEGORIES.md) qui a séparé le type de la
@@ -726,6 +734,17 @@ Vérifié en production le 16 septembre, avant toute décision :
 users?select=pseudo,bentos(id,slug,is_primary)&pseudo=eq.dark_hifus
 type de .bentos : OBJET
 ```
+
+> **Corrigé le 17 septembre 2026, mesuré.** Aucune version publiée ne lit cet
+> embed. L'App Store sert la 1.1 et le Play Store la 0.1.0 : leur page publique
+> lit l'utilisateur, puis son bento avec `maybeSingle()`. La requête par l'embed
+> est arrivée avec le chantier 7, fusionné le 15 septembre, après toutes ces
+> versions et après la build 1.2.0. La migration B leur est donc indifférente
+> tant qu'aucun compte n'a deux bentos, ce qu'elles ne peuvent pas créer : une
+> seconde insertion viole `bentos_user_slug`. Le bloc a été appliqué le 17
+> septembre sur ce constat, rejoué d'abord sur une base locale remise dans
+> l'état de la production, et la requête des versions publiées revérifiée en
+> production juste après : un bento unique, ses six cases.
 
 **L'état du parc, mesuré.** L'App Store sert la version **1.1**, sortie le 7
 septembre. La 1.2.0 a été soumise le 13 septembre et ne l'a pas remplacée. Les
