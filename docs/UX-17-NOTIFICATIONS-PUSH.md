@@ -716,6 +716,14 @@ Un défaut antérieur vu en passant, hors du lot : sur une petite case en
 attente, la pastille « EN ATTENTE » recouvre l'étiquette (« LI » pour Lieu),
 sur iOS comme sur Android. Tâche séparée proposée.
 
+**Appliqué en production le 17 septembre 2026**, par le connecteur Supabase,
+depuis le fichier du dépôt. Vérifié en lecture seule juste après : les deux
+clés pointent sur `auth.users` et sont validées sur les données existantes,
+le déclencheur `users_forget_author` est actif et réservé au service, et rien
+n'a bougé : 146 items avec auteur, 277 validés, 61 profils, aucun appareil,
+aucun secret `push_*`. Les lectures des versions publiées rendent la même
+chose qu'avant, `search_items` comprise, et la page publique répond 200.
+
 ### Lot 3 · L'envoi, et la chaîne branchée en production
 
 Les routes `/api/push` et `/api/push/tick` du back-office,
