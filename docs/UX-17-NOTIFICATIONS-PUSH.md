@@ -629,6 +629,15 @@ qui suit le jeton, fusion oubliée. `check-editions.sql` tient ses 21
 contrôles, `check-privileges.ts` et `check-types.ts` sont conformes, parcours
 des versions publiées compris.
 
+**Appliqué en production le 17 septembre 2026**, par le connecteur Supabase,
+depuis le fichier du dépôt. Vérifié en lecture seule juste après : les deux
+tables sous RLS et vides, le client authentifié limité à la lecture et aux
+deux interrupteurs, l'anonyme refusé (`42501`), les quatre fonctions et le
+déclencheur en place, **aucun secret `push_*` dans le coffre**, donc la chaîne
+inerte. Les lectures des versions publiées rendent exactement la même chose
+qu'avant : 277 items validés, 27 bentos publiés, le bento de dark_hifus lu
+comme la 1.1 le lit, la page publique en 200.
+
 ### Lot 2 · L'app enregistre son jeton
 
 `expo-notifications` et son plugin, la demande d'autorisation juste après
