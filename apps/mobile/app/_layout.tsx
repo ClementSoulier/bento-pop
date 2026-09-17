@@ -19,6 +19,7 @@ import { ForceUpdateScreen, MaintenanceScreen } from '@/components/AppBlocker';
 import { ToastHost } from '@/components/primitives';
 import { runStartupUpdateWithExpo } from '@/lib/ota-runtime';
 import type { OtaPhase } from '@/lib/ota';
+import { startPushRegistration } from '@/lib/push-runtime';
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
@@ -45,13 +46,18 @@ export default function RootLayout() {
   useEffect(() => startDraft(), []);
 
   useEffect(() => {
-    init().catch((err) => {
-      // Safety net : init() pose déjà initialized=true dans son finally,
-      // mais on garde un fallback ici au cas où une erreur synchrone
-      // remonterait avant l'entrée dans le try.
-      console.error('[session.init] failed', err);
-      setInitialized(true);
-    });
+    init()
+      .catch((err) => {
+        // Safety net : init() pose déjà initialized=true dans son finally,
+        // mais on garde un fallback ici au cas où une erreur synchrone
+        // remonterait avant l'entrée dans le try.
+        console.error('[session.init] failed', err);
+        setInitialized(true);
+      })
+      // Chantier 17 : une fois la session posée, l'appareil se réenregistre,
+      // à chaque ouverture et à chaque retour au premier plan. Sans jamais
+      // rien demander, et sans rien bloquer.
+      .finally(() => startPushRegistration());
     // Charge le verdict app-config (maintenance / force update) en parallèle
     // de session.init. Le store gère lui-même son timeout / fail-open et
     // attache un listener AppState pour refetch sur retour foreground.

@@ -48,6 +48,7 @@ import { MAIN_CASE_SET } from '@/lib/case-set';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { searchItems, submitItem, type ItemSearchResult } from '@/lib/items';
+import { offerPushAfterProposal } from '@/lib/push-runtime';
 import {
   clearBentoSlot,
   editableBentoId,
@@ -357,6 +358,9 @@ export default function SearchModal() {
         variant: 'neutral',
         durationMs: 4000,
       });
+      // Chantier 17 (D5, D14) : c'est le moment où « on te prévient quand il
+      // sera validé » a un sens. Ne bloque rien, ne lève pas.
+      void offerPushAfterProposal(title);
     } catch (e) {
       reportWriteFailure('soumission d\'item', e);
       showToast("La proposition n'a pas pu être envoyée. Réessaie.", {

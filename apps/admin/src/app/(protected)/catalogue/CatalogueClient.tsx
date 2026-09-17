@@ -25,7 +25,8 @@ export type CatalogueItemRow = {
   typeLabel: string;
   typeKey: string | null;
   submittedAt: string | null;
-  authorPseudo: string | null;
+  /** `null` sans auteur ; `pseudo` à `null` pour un compte qui n'a pas encore de profil. */
+  author: { pseudo: string | null } | null;
   status: 'pending' | 'validated' | 'rejected';
   rejectedReason?: string | null;
 };
@@ -384,10 +385,15 @@ function PendingRow({
                   minute: '2-digit',
                 })
               : '—'}
-            {item.authorPseudo ? (
+            {item.author ? (
               <>
                 {' · '}
-                par <span className="text-admin-ink">@{item.authorPseudo}</span>
+                par{' '}
+                {item.author.pseudo ? (
+                  <span className="text-admin-ink">@{item.author.pseudo}</span>
+                ) : (
+                  'un compte sans pseudo'
+                )}
               </>
             ) : null}
           </div>

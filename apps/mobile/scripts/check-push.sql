@@ -1,4 +1,4 @@
--- Contrôles « notifications push », chantier 17, lot 1.
+-- Contrôles « notifications push », chantier 17, lots 1 et 2.
 --
 -- À rejouer sur le Supabase LOCAL après avoir appliqué les migrations du
 -- dépôt. Tout se passe dans une transaction annulée à la fin : le script ne
@@ -30,7 +30,12 @@
 --   7. avec les secrets, valider, fusionner ou refuser un item proposé met
 --      exactement un appel en file, avec le bon type (D12) ;
 --   8. ⚠️ proposer un item comme le fait la 1.1 passe toujours ;
---   9. aucune fonction d'envoi ni table de tickets n'est ouverte aux clients.
+--   9. aucune fonction d'envoi ni table de tickets n'est ouverte aux clients ;
+--  10. ⚠️ sans profil, on propose un item et on enregistre son appareil : le
+--      profil ne naît qu'à la première publication depuis le chantier 9, et
+--      les deux le réclamaient (D13) ;
+--  11. supprimer un profil efface toujours ses traces : ses propositions
+--      perdent leur auteur, ses appareils disparaissent.
 
 begin;
 
@@ -40,6 +45,10 @@ declare
   v_ko       int := 0;
   v_a        uuid := gen_random_uuid();
   v_b        uuid := gen_random_uuid();
+  v_c        uuid := gen_random_uuid();
+  v_d        uuid := gen_random_uuid();
+  v_prop_c   uuid;
+  v_prop_d   uuid;
   v_tok_a1   text := 'ExponentPushToken[controle-push-a-iphone]';
   v_tok_a2   text := 'ExponentPushToken[controle-push-a-ipad]';
   v_tok_b    text := 'ExponentPushToken[controle-push-b-pixel]';
@@ -482,6 +491,81 @@ begin
     v_ok := v_ok + 1;
   else
     raise warning 'KO  7d battement : rendu %, % en file, adresse %', v_posted, v_file, v_url;
+    v_ko := v_ko + 1;
+  end if;
+
+  -- ── 10. ⚠️ Sans profil, on propose et on enregistre son appareil ────
+  -- Le défaut du chantier 9 (D13) : le profil ne naît qu'à la première
+  -- publication, et la proposition comme l'appareil le réclamaient. Un compte
+  -- anonyme, sans ligne dans `public.users`, comme juste après l'installation.
+  insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
+  values (v_d, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'controle-push-d@exemple.test', now(), now());
+
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_d, 'role', 'authenticated')::text,
+    true
+  );
+  set local role authenticated;
+
+  begin
+    insert into public.items (category_id, external_source, title)
+    values (v_film, 'user', 'Proposition sans profil') returning id into v_prop_d;
+    raise notice 'ok  10a sans profil, proposer un item passe';
+    v_ok := v_ok + 1;
+  exception when others then
+    raise warning 'KO  10a sans profil, la proposition est refusée : % (%)', sqlerrm, sqlstate;
+    v_ko := v_ko + 1;
+  end;
+
+  begin
+    v_row := public.register_push_token('ExponentPushToken[controle-push-d-sans-profil]', 'ios');
+    if v_row.user_id = v_d then
+      raise notice 'ok  10b sans profil, l''appareil s''enregistre au nom du compte';
+      v_ok := v_ok + 1;
+    else
+      raise warning 'KO  10b appareil enregistré au nom de %', v_row.user_id;
+      v_ko := v_ko + 1;
+    end if;
+  exception when others then
+    raise warning 'KO  10b sans profil, l''appareil est refusé : % (%)', sqlerrm, sqlstate;
+    v_ko := v_ko + 1;
+  end;
+
+  reset role;
+
+  -- ── 11. Supprimer un profil efface toujours ses traces ──────────────
+  -- Un compte avec profil, une proposition et un appareil, puis le profil
+  -- supprimé comme le fait `admin_delete_user`.
+  insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
+  values (v_c, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'controle-push-c@exemple.test', now(), now());
+  insert into public.users (id, pseudo, terms_accepted_at)
+  values (v_c, 'controle.push.c', now());
+
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_c, 'role', 'authenticated')::text,
+    true
+  );
+  set local role authenticated;
+  insert into public.items (category_id, external_source, title)
+  values (v_film, 'user', 'Proposition d''un profil supprimé') returning id into v_prop_c;
+  perform public.register_push_token('ExponentPushToken[controle-push-c-pixel]', 'android');
+  reset role;
+  perform set_config('request.jwt.claims', null, true);
+
+  delete from public.users where id = v_c;
+
+  if (select submitted_by from public.items where id = v_prop_c) is null
+     and not exists (select 1 from public.push_tokens where user_id = v_c) then
+    raise notice 'ok  11  supprimer un profil retire l''auteur de ses propositions et ses appareils';
+    v_ok := v_ok + 1;
+  else
+    raise warning 'KO  11  après suppression du profil : auteur %, % appareils',
+      (select submitted_by from public.items where id = v_prop_c),
+      (select count(*) from public.push_tokens where user_id = v_c);
     v_ko := v_ko + 1;
   end if;
 

@@ -110,7 +110,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Se
     typeLabel: typeById.get(i.type_id)?.label_fr ?? '?',
     typeKey: typeById.get(i.type_id)?.key ?? null,
     submittedAt: i.submitted_at ?? i.created_at,
-    authorPseudo: i.submitted_by ? (pseudoById.get(i.submitted_by) ?? '(supprimé)') : null,
+    // L'auteur est le compte, pas le profil (chantier 17, D13) : on propose
+    // avant sa première publication, donc avant d'avoir un pseudo. Un profil
+    // supprimé, lui, retire l'auteur (`users_forget_author`).
+    author: i.submitted_by ? { pseudo: pseudoById.get(i.submitted_by) ?? null } : null,
     status: 'pending',
   }));
 
