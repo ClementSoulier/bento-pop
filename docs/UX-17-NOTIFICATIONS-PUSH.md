@@ -26,7 +26,7 @@
 > **Mis à jour le 17 septembre 2026, l'après-midi**, après trois décisions de
 > Clément valables pour toute la roadmap (une seule sortie store, migrations
 > appliquées en production au fur et à mesure, recette sur appareil seulement à
-> la sortie), trois vérifications et deux arbitrages, D10 et D11 de §11 :
+> la sortie), trois vérifications et trois arbitrages, D10 à D12 de §11 :
 >
 > - **Le simulateur iOS et l'émulateur Android reçoivent les notifications**,
 >   contrairement à ce que disaient §6.4 et §7.3 : la recette se fait avant la
@@ -36,6 +36,8 @@
 >   appelle le back-office toutes les 5 minutes (D10).
 > - **La chaîne se branche en production dès que l'envoi est déployé**, et
 >   tourne sans destinataire jusqu'à la sortie (D11).
+> - **Une fusion prévient l'auteur comme une validation** (D12) : 19 des 146
+>   items proposés et modérés en production ont été fusionnés.
 > - **Le canal sortant est bien en place en production**, mesuré en lecture
 >   seule : `pg_net`, les deux déclencheurs de la landing, leurs secrets, et des
 >   appels réussis. La roadmap le disait à tort absent.
@@ -344,7 +346,7 @@ parc réel sont antérieurs et ne remontent rien.
 
 | Type | Déclencheur | Texte | Tap ouvre | Régime |
 | --- | --- | --- | --- | --- |
-| `item_moderated` | `items.status` passe à `validated` ou `rejected` | « *Titre* est validé, ta case est en ligne. » ou « *Titre* n'a pas été retenu. » avec la raison si elle existe | le composer, sur la case concernée | transactionnel |
+| `item_moderated` | `items.status` passe à `validated`, `merged` ou `rejected` (D12) | « *Titre* est validé, ta case est en ligne. », avec le titre de l'item conservé pour une fusion, ou « *Titre* n'a pas été retenu. » avec la raison si elle existe | le composer, sur la case concernée | transactionnel |
 | `edition_released` | le travail planifié trouve une édition sortie et pas encore annoncée (D10) | « *Titre de l'édition* est sortie. » | le composer, sur l'édition | éditorial |
 
 **Le texte nomme l'item, pas l'action.** « Interstellar est validé » dit
@@ -421,7 +423,7 @@ deux interrupteurs qui ne servent à rien.
 ### 6.1 Le chemin d'une notification
 
 ```
-  items.status → 'validated' ou 'rejected'
+  items.status → 'validated', 'merged' ou 'rejected'
         │
         │  trigger items_notify_moderation    (Postgres)
         ▼
@@ -606,8 +608,9 @@ Une migration, développée et prouvée sur Supabase local. **Rien de visible.**
 - `push_tickets` : un ticket Expo par envoi, pour relire son accusé de
   réception. Aucun droit client.
 - `editions.announced_at`, posé par le back-office une fois l'édition annoncée.
-- `items_notify_moderation`, déclencheur `after update of status`, qui poste
-  l'événement au back-office selon le gabarit de §4.3, inerte sans secret.
+- `items_notify_moderation`, déclencheur `after update of status` sur une
+  validation, une fusion ou un refus, qui poste l'événement au back-office
+  selon le gabarit de §4.3, inerte sans secret.
 - `push_tick()`, que `pg_cron` appellera au lot 3, inerte sans secret.
 - `check-push.sql`, les contrôles de §7.2.
 
@@ -617,6 +620,14 @@ clients ne peuvent plus modifier un item depuis le 15 septembre
 (`20260915000000_close_privilege_gaps.sql:213`) : le déclencheur ne part que
 d'une modération du back-office. Appliquée en production à la validation du
 lot, sur feu vert.
+
+**Fait le 17 septembre 2026, en local**, sur une base rejouée depuis les
+migrations : `20260917140000_push_notifications.sql` et `check-push.sql`, 25
+contrôles tenus. Quatre défauts introduits exprès sont tous attrapés : droit
+client sur `revoked_at`, déclencheur sans condition d'auteur, accord éditorial
+qui suit le jeton, fusion oubliée. `check-editions.sql` tient ses 21
+contrôles, `check-privileges.ts` et `check-types.ts` sont conformes, parcours
+des versions publiées compris.
 
 ### Lot 2 · L'app enregistre son jeton
 
@@ -703,6 +714,7 @@ la roadmap, la DoD.
 | **D9** | Les deux variables Coolify sont **runtime** | Une `NEXT_PUBLIC_` posée au runtime est ignorée en silence, une variable serveur posée au build fige sa valeur dans l'image |
 | **D10** | Le travail planifié vit dans Supabase : `pg_cron` appelle le back-office toutes les 5 minutes | Choisi le 17 septembre, l'après-midi. Un déclencheur ne réagit pas au passage de l'heure. Tout est versionné dans le dépôt, rien à régler à la main dans Coolify, et `pg_cron` 1.6.4 est disponible en production |
 | **D11** | La chaîne se branche en production dès que l'envoi est déployé, sans attendre la sortie | Choisi le 17 septembre, l'après-midi. Elle tourne des mois sans destinataire, aucune app publique n'enregistrant d'appareil : on voit qu'elle marche bien avant la sortie |
+| **D12** | Une fusion prévient l'auteur comme une validation, avec le titre de l'item conservé | Choisi le 17 septembre, l'après-midi. Mesuré en production : sur 146 items proposés et modérés, 123 validés, 19 fusionnés, 4 refusés. Pour l'auteur, sa case est remplie |
 
 ---
 

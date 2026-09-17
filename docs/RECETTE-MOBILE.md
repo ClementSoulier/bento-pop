@@ -141,6 +141,8 @@ supabase start -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,
 supabase db reset --local
 npx tsx scripts/check-privileges.ts
 npx tsx scripts/check-types.ts
+docker exec -i supabase_db_bento-pop-mobile psql -U postgres -d postgres -q < scripts/check-editions.sql
+docker exec -i supabase_db_bento-pop-mobile psql -U postgres -d postgres -q < scripts/check-push.sql
 cd ../admin && npx tsx scripts/check-catalogue-types.ts
 ```
 
@@ -1280,3 +1282,47 @@ pour celles qu'on pense à passer. Pour une recette locale, le mettre hors
 service, `mv .env .env.recette-hors-service`, lancer avec les seules variables
 locales, et le remettre en place à la fin, comme celui de l'app.
 
+### La base locale plante sur une fonction sans droit : l'image Postgres
+
+Rencontré le 17 septembre 2026, au lot 1 du chantier 17. Après un
+`supabase db reset --local` lancé depuis un worktree neuf, **tout appel d'une
+fonction sans droit d'exécution fait planter Postgres** au lieu de répondre
+`permission denied for function` :
+
+```
+server closed the connection unexpectedly
+LOG:  server process (PID 317) was terminated by signal 11: Segmentation fault
+```
+
+Le processus serveur tombe, et Postgres redémarre toutes les connexions.
+
+**La cause est l'image, pas la migration.** Mesuré sur des conteneurs vierges,
+avec une fonction neuve et le rôle `anon` : les images `17.6.1.105`, `106` et
+`111` plantent, la `17.6.1.167` répond normalement. Le coupable est
+`supautils` 3.2.0, qui ajoute un conseil (« Grant the required privileges… »)
+aux erreurs de droits et supposait l'objet refusé toujours une table. Corrigé
+dans `supautils` 3.2.2 ([PR 190](https://github.com/supabase/supautils/pull/190),
+dont le test rejoue exactement ce cas).
+
+**La production n'est pas concernée** : elle tourne en `17.6.1.121`, qui
+embarque `supautils` 3.2.2 d'après `nix/ext/supautils.nix` du dépôt
+`supabase/postgres` à cette étiquette. Ne jamais le vérifier en production :
+le test lui-même la ferait tomber si c'était faux.
+
+**Pourquoi un worktree neuf.** La CLI choisit l'image d'après
+`apps/mobile/supabase/.temp/postgres-version`, ignoré par git, donc absent
+d'un worktree neuf : elle prend alors son image par défaut, `17.6.1.106` pour
+la CLI 2.98.2. La parade, sans rien télécharger quand l'image est déjà là :
+
+```bash
+cd apps/mobile
+docker images | grep supabase/postgres     # images disponibles
+printf '17.6.1.167' > supabase/.temp/postgres-version
+supabase stop
+supabase start -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,supavisor
+supabase db reset --local
+```
+
+**Règle : avant de conclure qu'une migration plante la base, rejouer le cas sur
+un conteneur vierge de la même image.** Si le conteneur vierge plante aussi,
+c'est l'image.
