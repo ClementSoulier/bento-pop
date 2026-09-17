@@ -24,6 +24,12 @@
 > page publique dans les versions publiées. Créer une édition au back-office ne
 > pose pas ce problème.
 >
+> **D7 remplacée le 17 septembre 2026.** La sortie store n'embarque plus les
+> seuls chantiers 13, 17, 21 et 29 : Clément a décidé qu'elle n'aurait lieu
+> qu'une fois **tous** les chantiers de la roadmap terminés et recettés. Les
+> étapes 4 et 5 de §6.2 tiennent : plancher de version relevé une fois la
+> version servie par les deux stores, première édition après.
+>
 > ~~**Ce chantier ne peut pas sortir seul**, la migration B dépendant de
 > l'adoption d'une version.~~ **Corrigé le 17 septembre** : elle n'en dépendait
 > pas, cf. §6.2.
@@ -771,8 +777,10 @@ déclenche jamais sur Android. Versé aux suivis.
 1. **Pendant tout le développement, la production ne bouge pas.** Le modèle,
    les droits et les migrations s'éprouvent sur le Supabase local, comme au
    chantier 16. Aucune version déployée ne voit quoi que ce soit.
-2. **La sortie store embarque les chantiers 13, 17, 21 et 29** (D7). Elle est
-   soumise quand les quatre sont recettés.
+2. ~~**La sortie store embarque les chantiers 13, 17, 21 et 29** (D7). Elle est
+   soumise quand les quatre sont recettés.~~ **Remplacé le 17 septembre 2026 :
+   la sortie store n'a lieu qu'une fois tous les chantiers de la roadmap
+   terminés et recettés** (D7).
 3. **Le jour de la bascule**, dans cet ordre : `maintenance_mode` à vrai, les
    trois migrations et la migration B, redéploiement de la landing et du
    back-office, contrôles rejoués, `maintenance_mode` à faux.
@@ -1203,9 +1211,13 @@ Ce qui attend un appareil réel part au chantier 29, §7.3 E.
 
 - Une branche `feat/ux-13-bento-hebdomadaire`, une PR, fusionnée après CI
   verte.
-- **Aucune migration appliquée en production avant la bascule de §6.2.**
-- La sortie store embarque les chantiers 13, 17, 21 et 29 (D7), et n'est
-  soumise qu'après recette des quatre.
+- ~~**Aucune migration appliquée en production avant la bascule de §6.2.**~~
+  **Appliquées le 17 septembre 2026**, avant la sortie store, cf. la note de
+  §6.2.
+- ~~La sortie store embarque les chantiers 13, 17, 21 et 29 (D7), et n'est
+  soumise qu'après recette des quatre.~~ **La sortie store n'a lieu qu'une fois
+  tous les chantiers de la roadmap terminés et recettés** (D7, remplacée le 17
+  septembre 2026).
 - Le mode maintenance n'est activé que pour la fenêtre de bascule, minutes et
   non jours.
 
@@ -1253,7 +1265,7 @@ distinction est maintenue exprès.
 | **D4** | Sortie hebdomadaire, jeudi 18 h de Paris | Le nom du chantier promet la semaine. L'heure ne coûte rien : la visibilité est un filtre de lecture, pas un ordonnanceur |
 | **D5** | Les éditions passées restent composables pour toujours | 25 bentos sur 27 n'ont plus rien à faire depuis plus d'une semaine. Après dix éditions, un nouvel arrivant en a dix à composer |
 | **D6** | Une case porte un tampon court et un intitulé long ; le back-office refuse un intitulé qui ne tient pas | Mesuré : une case d'une rangée à trois n'accepte pas une question (§4.6) |
-| **D7** | La sortie store embarque les chantiers 13, 17, 21 et 29 | Choisi le 16 septembre. Une édition hebdomadaire sans notification n'atteint que ceux qui ouvrent l'app d'eux-mêmes |
+| **D7** | ~~La sortie store embarque les chantiers 13, 17, 21 et 29~~ **La sortie store n'a lieu qu'une fois tous les chantiers de la roadmap terminés et recettés** | **Remplacée le 17 septembre 2026**, décision de Clément. Le choix du 16 septembre partait d'un constat qui tient toujours : une édition hebdomadaire sans notification n'atteint que ceux qui ouvrent l'app d'eux-mêmes |
 | **D8** | À la bascule, `ios_min_version` et `android_min_version` passent à la nouvelle version | Le mécanisme existe depuis le 28 mai et la 1.1 l'honore. Une version ancienne voit « mets à jour » plutôt qu'une page vide |
 | **D9** | La divergence de l'aperçu de lien se corrige tout de suite, en PR séparée | Le défaut est en production sur chaque lien partagé, et ce chantier est bloqué plusieurs semaines par les stores |
 | **D10** | ~~La migration B est amendée dans son fichier~~ **La migration B n'est pas touchée** | **Corrigée au lot 1.** Les deux défauts vivent dans le corps de `create_bento`, qu'un `create or replace` reprend : l'append-only est préservé, et rien ne diverge si B a déjà été appliquée quelque part |
