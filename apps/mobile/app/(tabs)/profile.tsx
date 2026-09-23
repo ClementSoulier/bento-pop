@@ -28,6 +28,7 @@ import {
 import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, StampButton, YellowBg, useToast } from '@/components/primitives';
 import { useBlocked } from '@/state/blocked';
 import { userErrorMessage } from '@/lib/user-error-message';
+import { NotificationSettings } from '@/components/NotificationSettings';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 const TERMS_URL = 'https://bento-pop.com/mentions-legales';
@@ -291,6 +292,10 @@ export default function ProfileTab() {
               onPress={exporting ? () => {} : onExport}
             />
           </View>
+
+          {/* Chantier 17, lot 4 : les deux types de notification, sur ce
+              téléphone. Entre « À propos » et « Compte », cf. §5.4. */}
+          <NotificationSettings />
 
           {/* Comptes bloqués. Sans cette liste, bloquer était une porte à sens
               unique : le menu qui débloque vit sur la page du compte bloqué,

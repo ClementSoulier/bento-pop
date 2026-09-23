@@ -141,6 +141,8 @@ supabase start -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,
 supabase db reset --local
 npx tsx scripts/check-privileges.ts
 npx tsx scripts/check-types.ts
+docker exec -i supabase_db_bento-pop-mobile psql -U postgres -d postgres -q < scripts/check-editions.sql
+docker exec -i supabase_db_bento-pop-mobile psql -U postgres -d postgres -q < scripts/check-push.sql
 cd ../admin && npx tsx scripts/check-catalogue-types.ts
 ```
 
@@ -1280,3 +1282,223 @@ pour celles qu'on pense à passer. Pour une recette locale, le mettre hors
 service, `mv .env .env.recette-hors-service`, lancer avec les seules variables
 locales, et le remettre en place à la fin, comme celui de l'app.
 
+### La base locale plante sur une fonction sans droit : l'image Postgres
+
+Rencontré le 17 septembre 2026, au lot 1 du chantier 17. Après un
+`supabase db reset --local` lancé depuis un worktree neuf, **tout appel d'une
+fonction sans droit d'exécution fait planter Postgres** au lieu de répondre
+`permission denied for function` :
+
+```
+server closed the connection unexpectedly
+LOG:  server process (PID 317) was terminated by signal 11: Segmentation fault
+```
+
+Le processus serveur tombe, et Postgres redémarre toutes les connexions.
+
+**La cause est l'image, pas la migration.** Mesuré sur des conteneurs vierges,
+avec une fonction neuve et le rôle `anon` : les images `17.6.1.105`, `106` et
+`111` plantent, la `17.6.1.167` répond normalement. Le coupable est
+`supautils` 3.2.0, qui ajoute un conseil (« Grant the required privileges… »)
+aux erreurs de droits et supposait l'objet refusé toujours une table. Corrigé
+dans `supautils` 3.2.2 ([PR 190](https://github.com/supabase/supautils/pull/190),
+dont le test rejoue exactement ce cas).
+
+**La production n'est pas concernée** : elle tourne en `17.6.1.121`, qui
+embarque `supautils` 3.2.2 d'après `nix/ext/supautils.nix` du dépôt
+`supabase/postgres` à cette étiquette. Ne jamais le vérifier en production :
+le test lui-même la ferait tomber si c'était faux.
+
+**Pourquoi un worktree neuf.** La CLI choisit l'image d'après
+`apps/mobile/supabase/.temp/postgres-version`, ignoré par git, donc absent
+d'un worktree neuf : elle prend alors son image par défaut, `17.6.1.106` pour
+la CLI 2.98.2. La parade, sans rien télécharger quand l'image est déjà là :
+
+```bash
+cd apps/mobile
+docker images | grep supabase/postgres     # images disponibles
+printf '17.6.1.167' > supabase/.temp/postgres-version
+supabase stop
+supabase start -x studio,logflare,vector,imgproxy,edge-runtime,realtime,mailpit,supavisor
+supabase db reset --local
+```
+
+**Règle : avant de conclure qu'une migration plante la base, rejouer le cas sur
+un conteneur vierge de la même image.** Si le conteneur vierge plante aussi,
+c'est l'image.
+
+### `pod install` échoue sur l'encodage, hors d'un terminal interactif
+
+Rencontré le 17 septembre 2026, au lot 2 du chantier 17, en régénérant le projet
+iOS par `npx expo prebuild --platform ios --clean` depuis un script :
+
+```
+Unicode Normalization not appropriate for ASCII-8BIT (Encoding::CompatibilityError)
+```
+
+CocoaPods lit le chemin du projet sans langue UTF-8 quand le shell n'en déclare
+aucune, ce qui arrive dans un script ou un terminal non interactif. `prebuild`
+laisse alors un dossier `ios` sans `MonBentoPop.xcworkspace`, et `xcodebuild`
+échoue ensuite sur un workspace introuvable, loin de la vraie cause.
+
+```bash
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+cd apps/mobile/ios && pod install
+```
+
+### `pg_net` abandonne à 3 secondes, et une route lente perd son travail
+
+Rencontré le 23 septembre 2026, au lot 3 du chantier 17, en recettant le
+battement de `pg_cron` contre un back-office en mode développement. La route
+venait d'être recompilée, elle a mis 3 secondes à répondre, et `pg_net` l'a
+abandonnée :
+
+```sql
+select status_code, timed_out, error_msg from net._http_response order by created desc limit 1;
+-- sans statut · true · Timeout of 3000 ms reached
+```
+
+Le battement avait été noté, mais le travail prévu après la réponse, par
+`after()`, n'a jamais tourné. Deux conséquences :
+
+- **une route appelée par `pg_net` répond sans rien attendre**, et fait tout
+  après la réponse, battement compris ;
+- **en développement, préchauffer la route avant le passage de `pg_cron`**,
+  par un appel au faux jeton qui la compile sans rien faire :
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:3101/api/push/tick \
+  -H 'Authorization: Bearer faux' -H 'Content-Type: application/json' -d '{"type":"tick"}'
+```
+
+`pg_net` atteint le back-office local par `http://host.docker.internal:<port>`,
+même quand `next dev` n'écoute que sur `127.0.0.1`. Ces secrets de coffre ne se
+posent que dans la base **locale**, et `supabase db reset --local` les efface :
+`check-push.sql` refuse de tourner tant qu'ils existent.
+
+### Le back-office de recette dans une copie : lier `node_modules` et `packages`
+
+La copie de `apps/admin` qui sert à la recette (sans `.env` de production, avec
+une session simulée) doit lier `node_modules` **et** `packages` depuis le
+worktree : la mise en page racine charge sa police par un chemin relatif,
+`../../../../packages/brand/assets/fonts/`, et sans lui toutes les routes
+répondent 500, API comprises.
+
+### Une image Docker se teste en la lançant, pas seulement en la construisant
+
+Le 23 septembre 2026, l'image du back-office se construisait sans erreur, et
+**chaque envoi de notification y aurait échoué** : le SDK d'Expo 6.1.0 relit son
+`package.json` à chaque requête par un `createRequire` que webpack ne suit pas,
+et la sortie autonome de Next ne l'embarquait pas. En développement, tout
+marchait. Seul l'appel réel, dans le conteneur lancé contre la base locale, l'a
+montré :
+
+```
+RequestFailed : Cannot find module '../package.json'
+```
+
+Corrigé par `serverExternalPackages: ['expo-server-sdk']` dans
+`apps/admin/next.config.ts`. Pour construire et lancer l'image comme Coolify :
+
+```bash
+docker build -f apps/admin/Dockerfile -t bento-admin:recette \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=http://localhost:54331 \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=cle-factice \
+  --build-arg NEXT_PUBLIC_ADMIN_URL=http://localhost:3300 .
+docker run -d --name bento-admin-recette -p 127.0.0.1:3300:3300 \
+  -e MOBILE_SUPABASE_URL=http://host.docker.internal:54331 \
+  -e MOBILE_SUPABASE_SERVICE_ROLE_KEY=<clé de service LOCALE> \
+  -e PUSH_WEBHOOK_TOKEN=<jeton local> bento-admin:recette
+```
+
+Depuis le même jour, `.dockerignore` écarte `apps/mobile/ios` et
+`apps/mobile/android` : 8 Go ignorés par git mais envoyés à Docker depuis un
+worktree, qui rendaient la construction locale impossible. Coolify part d'un
+clone et ne les a jamais vus.
+
+### `postgres` n'écrit pas dans l'historique de `pg_cron` sans numéro de passage
+
+Pour éprouver une purge de `cron.job_run_details` dans un contrôle,
+`insert … values (…)` échoue sur `permission denied for sequence runid_seq` :
+seul le travailleur de `pg_cron` avance cette séquence. Donner un `runid`
+explicite, négatif pour ne jamais croiser un vrai passage. La purge elle-même
+ne fait qu'effacer, et n'en a pas besoin.
+
+### Simuler une notification distante au simulateur iOS, sans clé APNs
+
+`xcrun simctl push` livre au simulateur une notification distante, que
+l'app reçoit comme d'Expo. Rencontré le 23 septembre 2026 au lot 4 du chantier
+17 : les données doivent être sous la clé `body`, où `expo-notifications` les
+lit pour une notification distante (`NotificationRecords.swift`).
+
+```bash
+cat > notif.json <<'JSON'
+{
+  "aps": { "alert": { "title": "Proposition validée", "body": "« Titre » est au catalogue : ta case est en ligne." }, "sound": "default" },
+  "body": { "type": "item_moderated", "status": "validated", "itemId": "<uuid>" }
+}
+JSON
+xcrun simctl push <UDID> com.bentopop.mobile notif.json
+```
+
+Trois pièges :
+
+- **la bannière disparaît en quelques secondes** : la toucher aussitôt, sans
+  capture entre l'envoi et le tap. Sinon le tap tombe sur ce qui est dessous,
+  une icône de l'écran d'accueil par exemple ;
+- **toucher la notification sur l'écran verrouillé n'ouvre pas l'app** dans le
+  simulateur : repasser par l'écran d'accueil et la bannière ;
+- sur Android, sans compte de service FCM, aucune notification distante ne se
+  simule : le tap s'y recette avec le lot 0.
+
+### L'émulateur Android reprend son instantané, app comprise
+
+`emulator -avd Pixel_8` recharge l'instantané `default_boot`, et avec lui le
+processus de l'app tel qu'il était ce jour-là : son ancien JavaScript, déjà
+chargé, sans rien demander à Metro. Rencontré le 23 septembre 2026 : l'app
+affichait l'état du 17 septembre, et aucune ligne « Android Bundled » n'était
+apparue dans Metro. Avant toute recette :
+
+```bash
+adb shell am force-stop com.bentopop.mobile
+adb shell am start -n com.bentopop.mobile/.MainActivity
+# puis vérifier « Android Bundled » dans le journal de Metro
+```
+
+Même vigilance que pour la cible : un compte créé à ce moment-là doit
+apparaître dans la base locale, et jamais en production.
+
+### L'onglet que le panneau navigateur ouvre sur Metro est l'app, en version web
+
+Lancer Metro par `preview_start` ouvre un onglet sur `localhost:8081`, qui
+charge la **version web** de l'app. Elle s'ouvre, se connecte en anonyme et
+crée un compte dans la base visée par Metro. Le 23 septembre 2026, c'était la
+base locale : un compte de trop, et une énigme de plus. Fermer l'onglet aussitôt.
+
+### Remettre une autorisation Android à « jamais demandée »
+
+Android ne dit pas si une autorisation n'a jamais été demandée ou si elle a été
+refusée pour de bon : `expo-notifications` le déduit, en partie d'un repère
+qu'il garde dans les données de l'app. `pm revoke` suivi de
+`pm clear-permission-flags … user-set user-fixed` ne suffit donc pas : l'app
+continue de répondre « refusée ». Seul un effacement des données de l'app
+rend l'état neuf, session et brouillon compris :
+
+```bash
+adb shell pm clear com.bentopop.mobile
+```
+
+### Mesurer une animation de moins d'une demi-seconde
+
+Une capture fixe ne prouve pas un pouls de 230 ms. Filmer le simulateur, puis
+mesurer l'élément image par image, avec un témoin voisin qui ne doit pas
+bouger :
+
+```bash
+xcrun simctl io <UDID> recordVideo --codec=h264 --force tap.mov &   # arrêter par SIGINT
+ffmpeg -ss 3.3 -t 1.6 -i tap.mov -vf "fps=60,crop=700:170:380:505" p%03d.png
+```
+
+puis compter les pixels sombres de chaque image (Python et Pillow). Le 23
+septembre 2026 : la pastille de l'édition passait de 616 à 640 px et revenait,
+quand la pastille voisine restait à 340 px sur les 77 images.

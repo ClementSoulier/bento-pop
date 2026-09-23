@@ -103,6 +103,11 @@ export type Database = {
           released_at: string | null;
           /** Réservé au chantier 19, aucun client ne le lit. */
           show_id: string | null;
+          /**
+           * Posé par le back-office une fois l'édition annoncée par
+           * notification : une édition ne s'annonce qu'une fois. Chantier 17.
+           */
+          announced_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -111,6 +116,7 @@ export type Database = {
           title: string;
           released_at?: string | null;
           show_id?: string | null;
+          announced_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['editions']['Insert']>;
         Relationships: [];
@@ -477,6 +483,97 @@ export type Database = {
         Relationships: [];
       };
       /**
+       * Un jeton Expo par appareil, chantier 17. Le client lit ses appareils et
+       * règle ses deux interrupteurs ; il s'enregistre par
+       * `register_push_token`, jamais par insertion. `user_id` est le compte,
+       * pas le profil : un appareil s'enregistre avant la première publication.
+       */
+      push_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token: string;
+          platform: 'ios' | 'android';
+          /** Validations, fusions et refus de ses items. Actif par défaut. */
+          transactional: boolean;
+          /** Sorties d'édition. Éteint tant que la personne n'a pas accepté. */
+          editorial: boolean;
+          created_at: string;
+          last_seen_at: string;
+          revoked_at: string | null;
+        };
+        /** Pour le back-office : le client n'a aucun droit d'insertion. */
+        Insert: {
+          user_id: string;
+          token: string;
+          platform: 'ios' | 'android';
+          transactional?: boolean;
+          editorial?: boolean;
+          last_seen_at?: string;
+          revoked_at?: string | null;
+        };
+        /** Le client ne peut modifier que `transactional` et `editorial`. */
+        Update: Partial<Database['public']['Tables']['push_tokens']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Un ticket Expo par envoi, lu et écrit par le back-office seulement.
+       * Gardé 30 jours après la lecture de son accusé (D18 du chantier 17).
+       */
+      push_tickets: {
+        Row: {
+          id: string;
+          ticket_id: string;
+          token_id: string;
+          kind: 'item_moderated' | 'edition_released';
+          /** L'item proposé dont la modération a été notifiée. */
+          item_id: string | null;
+          /** L'édition annoncée. */
+          edition_id: number | null;
+          created_at: string;
+          checked_at: string | null;
+          /** `ok`, un code d'erreur d'Expo, ou `expired` sans accusé. */
+          receipt_status: string | null;
+        };
+        Insert: {
+          ticket_id: string;
+          token_id: string;
+          kind: 'item_moderated' | 'edition_released';
+          item_id?: string | null;
+          edition_id?: number | null;
+          checked_at?: string | null;
+          receipt_status?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['push_tickets']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Une seule ligne : le contrôle de santé des notifications, tenu par les
+       * routes d'envoi du back-office et lu par son tableau de bord (D19).
+       */
+      push_health: {
+        Row: {
+          id: boolean;
+          /** Le dernier battement authentifié reçu de `pg_cron`. */
+          last_tick_at: string | null;
+          /** Le dernier envoi accepté par Expo, et ce qu'il portait. */
+          last_sent_at: string | null;
+          last_sent_kind: 'item_moderated' | 'edition_released' | null;
+          last_error_at: string | null;
+          last_error: string | null;
+        };
+        Insert: {
+          id?: boolean;
+          last_tick_at?: string | null;
+          last_sent_at?: string | null;
+          last_sent_kind?: 'item_moderated' | 'edition_released' | null;
+          last_error_at?: string | null;
+          last_error?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['push_health']['Insert']>;
+        Relationships: [];
+      };
+      /**
        * Ce qu'est un élément du catalogue, qui décide où l'on cherche.
        * Distinct de la case qui l'accueille : Artiste et Créateur de contenu
        * sont deux cases de type Personne. Lisible quand il est actif, écrit
@@ -590,6 +687,16 @@ export type Database = {
        * Refuse un compte qui a déjà un profil, un bento incomplet, un pseudo
        * pris ou mal formé, et l'absence d'acceptation des règles.
        */
+      /**
+       * Enregistre ou rafraîchit l'appareil du compte connecté, chantier 17.
+       * Reprend un jeton qu'un autre compte détenait, réglages remis à défaut.
+       * Refuse sans session (`42501`), et un jeton qui n'est pas un jeton Expo
+       * ou une plateforme inconnue (`22023`).
+       */
+      register_push_token: {
+        Args: { p_token: string; p_platform: 'ios' | 'android' };
+        Returns: Database['public']['Tables']['push_tokens']['Row'];
+      };
       publish_first_bento: {
         Args: {
           p_pseudo: string;

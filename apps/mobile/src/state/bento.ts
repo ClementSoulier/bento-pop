@@ -125,6 +125,11 @@ type BentoState = {
    */
   setOwn: (own: OwnBento[], currentId?: string | null) => void;
   /**
+   * Fait pulser une case sans la remplir : celle qu'ouvre le tap d'une
+   * notification. Chantier 17, lot 4.
+   */
+  pulseCase: (caseKey: string) => void;
+  /**
    * Pose l'état de publication. Volontairement séparé d'`hydrate` : une
    * écriture de case en vol ne dit rien de l'état de publication, donc le
    * verrou `pendingWrites` n'a pas à s'y appliquer.
@@ -214,6 +219,8 @@ export const useBento = create<BentoState>((set, get) => ({
       // regarde pour choisir entre « Publier » et « Voir mon bento public ».
       return { own, current, publishedAt: current?.publishedAt ?? null };
     }),
+  pulseCase: (caseKey) =>
+    set((s) => ({ lastFilled: { caseKey, seq: (s.lastFilled?.seq ?? 0) + 1 } })),
   setPublishedAt: (publishedAt) => set({ publishedAt }),
   beginWrite: () => set((s) => ({ pendingWrites: s.pendingWrites + 1 })),
   // `Math.max` plutôt qu'une simple décrémentation : un `endWrite` en trop,

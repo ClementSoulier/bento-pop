@@ -99,8 +99,9 @@ export async function validateItem(input: { itemId: string }): Promise<ActionRes
  * SQL en V1, ça vivra côté UI), mais l'utilisateur verra son slot
  * disparaître au prochain hydrate.
  *
- * `rejected_reason` est optionnel et ne sert pour l'instant qu'à
- * la traçabilité admin (pas de notification user en V1).
+ * `rejected_reason` est optionnel. Depuis le chantier 17, il part chez
+ * l'auteur dans la notification de refus : `items_notify_moderation`
+ * prévient `/api/push`, qui le relit.
  */
 export async function rejectItem(input: { itemId: string; reason?: string }): Promise<ActionResult> {
   const admin = await requireAdmin();

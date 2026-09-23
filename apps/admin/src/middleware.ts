@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { isPushWebhookPath } from '@/lib/push/paths';
 
 /**
  * Middleware d'auth Supabase, suivant le pattern officiel @supabase/ssr :
@@ -14,6 +15,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
  *      role pour les Server Components via `requireAdmin()` (lib/auth.ts).
  */
 export async function middleware(request: NextRequest) {
+  // Les routes d'envoi des notifications sont appelées par `pg_net`, sans
+  // session : sans cette sortie, elles seraient renvoyées vers /login. Chacune
+  // vérifie elle-même son jeton porteur. Chantier 17.
+  if (isPushWebhookPath(request.nextUrl.pathname)) return NextResponse.next();
+
   let supabaseResponse = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

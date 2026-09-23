@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { REMOTE_SLOT_COLUMNS, mapRemoteSlots } from './bento-slots';
+import { type DraftItemRow, REMOTE_SLOT_COLUMNS, mapRemoteSlots, refreshDraftSlots } from './bento-slots';
 
 /**
  * Les lectures qui hydratent le composer, et ce qu'elles lisent.
@@ -45,5 +45,91 @@ describe('mapRemoteSlots', () => {
     const slots = mapRemoteSlots([{ category_id: 6, items: ITEM }]);
     assert.equal(slots.place?.imageCredit, 'Photo : Connormah (CC BY-SA 3.0)');
     assert.equal(slots.place?.pending, true);
+  });
+
+  it('une case dont l’item est refusé devient vide, même lue par son auteur (chantier 17, D28)', () => {
+    // La RLS laisse l'auteur lire sa proposition quel que soit son statut :
+    // sans ce filtre, un refus s'affichait comme un item accepté, sans
+    // pastille, et le bento se publiait avec. Mesuré le 23 septembre 2026.
+    const slots = mapRemoteSlots([
+      { category_id: 6, items: { ...ITEM, status: 'rejected' } },
+      { category_id: 1, items: { ...ITEM, id: 'it-2', status: 'validated' } },
+    ]);
+    assert.equal(slots.place, undefined);
+    assert.equal(slots.film?.itemId, 'it-2');
+    assert.equal(slots.film?.pending, false);
+  });
+});
+
+describe('refreshDraftSlots (chantier 17, D25)', () => {
+  const ligne = (over: Partial<DraftItemRow> & { id: string }): DraftItemRow => ({
+    title: 'Titre en base',
+    subtitle: null,
+    image_url: null,
+    image_credit: null,
+    status: 'pending',
+    merged_into_id: null,
+    ...over,
+  });
+  const propose = (itemId: string, title = 'Le Voyqge de Recette') => ({
+    title,
+    paletteKey: undefined,
+    itemId,
+    pending: true,
+  });
+
+  it('une proposition validée perd sa pastille, et prend le titre et l’image validés', () => {
+    const { slots, changed } = refreshDraftSlots({ film: propose('p-1') }, [
+      ligne({ id: 'p-1', status: 'validated', title: 'Le Voyage de Recette', image_url: 'https://x/affiche.jpg' }),
+    ]);
+    assert.equal(changed, true);
+    assert.equal(slots.film?.pending, false);
+    assert.equal(slots.film?.title, 'Le Voyage de Recette');
+    assert.equal(slots.film?.imageUrl, 'https://x/affiche.jpg');
+    assert.equal(slots.film?.itemId, 'p-1');
+  });
+
+  it('une proposition refusée vide sa case', () => {
+    const { slots, changed } = refreshDraftSlots({ film: propose('p-1'), serie: propose('p-2') }, [
+      ligne({ id: 'p-1', status: 'rejected' }),
+    ]);
+    assert.equal(changed, true);
+    assert.equal(slots.film, undefined);
+    assert.equal(slots.serie?.itemId, 'p-2');
+  });
+
+  it('une proposition fusionnée prend l’item conservé', () => {
+    const { slots, changed } = refreshDraftSlots({ film: propose('p-1') }, [
+      ligne({ id: 'p-1', status: 'merged', merged_into_id: 'canon' }),
+      ligne({ id: 'canon', status: 'validated', title: 'Interstellar' }),
+    ]);
+    assert.equal(changed, true);
+    assert.equal(slots.film?.itemId, 'canon');
+    assert.equal(slots.film?.title, 'Interstellar');
+    assert.equal(slots.film?.pending, false);
+  });
+
+  it('une fusion dont l’item conservé n’est pas lu ne touche à rien', () => {
+    const avant = { film: propose('p-1') };
+    const { slots, changed } = refreshDraftSlots(avant, [
+      ligne({ id: 'p-1', status: 'merged', merged_into_id: 'canon' }),
+    ]);
+    assert.equal(changed, false);
+    assert.equal(slots.film, avant.film);
+  });
+
+  it('toujours en attente, ou introuvable : rien ne change', () => {
+    const avant = { film: propose('p-1'), serie: propose('p-perdu') };
+    const { slots, changed } = refreshDraftSlots(avant, [ligne({ id: 'p-1', status: 'pending', title: 'Le Voyqge de Recette' })]);
+    assert.equal(changed, false);
+    assert.deepEqual(slots, avant);
+  });
+
+  it('une case déjà à jour n’est pas réécrite', () => {
+    const { slots: une } = refreshDraftSlots({ film: propose('p-1') }, [
+      ligne({ id: 'p-1', status: 'validated' }),
+    ]);
+    const { changed } = refreshDraftSlots(une, [ligne({ id: 'p-1', status: 'validated' })]);
+    assert.equal(changed, false);
   });
 });

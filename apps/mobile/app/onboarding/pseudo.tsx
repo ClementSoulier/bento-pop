@@ -28,6 +28,7 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import { useSession } from '@/state/session';
 import { useDraft } from '@/state/draft';
 import { publishFirstBento } from '@/lib/bento-actions';
+import { offerEditorialConsent } from '@/lib/push-runtime';
 
 /**
  * Le pseudo, demandé **au moment de publier**.
@@ -87,6 +88,9 @@ export default function PseudoOnboarding() {
       clearDraft();
       await refreshProfile();
       router.replace(`/u/${pseudo}` as const);
+      // Chantier 17, D20 : juste après la première publication, l'accord pour
+      // les éditions. Une seule fois par téléphone, et jamais bloquant.
+      void offerEditorialConsent();
     } catch (e) {
       console.warn('[publication] premier bento', e);
       Alert.alert('Oups', userErrorMessage('create-profile', e));

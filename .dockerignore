@@ -39,3 +39,11 @@ supabase/.temp
 
 # Builds standalone des autres apps (évite de copier inutilement)
 apps/quiz-wheel/.next
+
+# Dossiers natifs et sorties de l'app mobile : ignorés par git, donc absents
+# du clone de Coolify, mais 8 Go dans un worktree local. Sans eux, une image
+# du back-office ou de la landing se construit en local depuis le worktree.
+apps/mobile/ios
+apps/mobile/android
+apps/mobile/dist
+apps/mobile/.expo

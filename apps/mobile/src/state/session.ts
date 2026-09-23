@@ -8,6 +8,7 @@ import type { Database } from '@/supabase/types';
 import { useBento } from '@/state/bento';
 import { REMOTE_SLOT_COLUMNS, mapRemoteSlots } from '@/lib/bento-slots';
 import { hydrateFromDraft } from '@/state/draft-hydrate';
+import { refreshDraftStatuses } from '@/state/draft-refresh';
 import { withTimeout } from '@/lib/with-timeout';
 import { caseSetFor } from '@/lib/editions';
 import { type OwnBentoRow, toOwnBento } from '@/lib/own-bento';
@@ -134,6 +135,9 @@ export const useSession = create<SessionState>((set, get) => ({
     // l'appareil, et non une boîte vide : chantier 9.
     if (!get().profile) {
       hydrateFromDraft();
+      // Chantier 17, D25 : les propositions du brouillon, relues en base. Une
+      // proposition validée n'y reste plus « en attente ».
+      void refreshDraftStatuses();
       return;
     }
     useBento.getState().markHydrated();
