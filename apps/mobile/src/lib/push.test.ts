@@ -382,6 +382,16 @@ describe('planItemTarget', () => {
     assert.equal(planItemTarget(valide(), rien), null);
   });
 
+  it('un refus d’un compte avec profil : sa case lue en base, dans le bento affiché (D28)', () => {
+    // Le composer n'affiche plus un item refusé, mais la case le désigne
+    // toujours en base : on reste sur le bento, et la recherche s'ouvre.
+    const plan = planItemTarget(valide({ status: 'rejected' }), {
+      ...rien,
+      placements: [{ bentoId: 'courant', categoryId: 1, itemId: ITEM }],
+    });
+    assert.deepEqual(plan, { where: 'bento', bentoId: 'courant', categoryId: 1, openSearch: true });
+  });
+
   it('un refus déjà retiré du brouillon : la recherche de sa case d’origine (D25)', () => {
     assert.deepEqual(planItemTarget(valide({ status: 'rejected' }), { ...rien, originCaseKey: 'film' }), {
       where: 'shown',

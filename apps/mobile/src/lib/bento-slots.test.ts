@@ -46,6 +46,19 @@ describe('mapRemoteSlots', () => {
     assert.equal(slots.place?.imageCredit, 'Photo : Connormah (CC BY-SA 3.0)');
     assert.equal(slots.place?.pending, true);
   });
+
+  it('une case dont l’item est refusé devient vide, même lue par son auteur (chantier 17, D28)', () => {
+    // La RLS laisse l'auteur lire sa proposition quel que soit son statut :
+    // sans ce filtre, un refus s'affichait comme un item accepté, sans
+    // pastille, et le bento se publiait avec. Mesuré le 23 septembre 2026.
+    const slots = mapRemoteSlots([
+      { category_id: 6, items: { ...ITEM, status: 'rejected' } },
+      { category_id: 1, items: { ...ITEM, id: 'it-2', status: 'validated' } },
+    ]);
+    assert.equal(slots.place, undefined);
+    assert.equal(slots.film?.itemId, 'it-2');
+    assert.equal(slots.film?.pending, false);
+  });
 });
 
 describe('refreshDraftSlots (chantier 17, D25)', () => {

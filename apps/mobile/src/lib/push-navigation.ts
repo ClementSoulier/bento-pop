@@ -32,7 +32,8 @@ export async function followPushTarget(target: PushTarget): Promise<void> {
   const ownIds = bento.own.map((b) => b.id);
 
   // La base seulement si le composer ne l'affiche pas : un item refusé n'y
-  // est plus visible, la RLS le masque, mais sa case le désigne toujours.
+  // est plus affiché, `mapRemoteSlots` l'écarte (D28), mais sa case le
+  // désigne toujours.
   let placements: ItemPlacement[] = [];
   if (!shown.some((s) => ids.includes(s.itemId)) && ownIds.length > 0) {
     const { data, error } = await supabase

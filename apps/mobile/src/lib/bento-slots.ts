@@ -51,11 +51,16 @@ type RemoteItem = {
 export type Slots = Partial<Record<string, TileData & { itemId?: string }>>;
 
 /**
- * Deux règles, les mêmes que sur la page publique :
+ * Trois règles, les deux premières les mêmes que sur la page publique :
  *
  * - une case dont l'identifiant n'est pas dans le jeu attendu est ignorée,
  *   pour qu'une case déployée en base avant les clients n'en écrase aucune ;
- * - une case dont l'item est masqué par la RLS devient vide.
+ * - une case dont l'item est masqué par la RLS devient vide ;
+ * - une case dont l'item est refusé devient vide aussi (chantier 17, D28).
+ *   La RLS laisse l'auteur lire sa proposition quel que soit son statut, et
+ *   rien ne retire la case au refus : sans cette règle, l'auteur voyait son
+ *   item refusé comme accepté, sans pastille, et publiait avec, quand tout
+ *   autre lecteur voyait une case vide. Mesuré le 23 septembre 2026.
  *
  * `cases` dit quelles cases on attend et sous quelle clé : les six du bento
  * principal, ou celles d'une édition. Sans lui, la fonction devinait, et
@@ -70,7 +75,7 @@ export function mapRemoteSlots(
   for (const row of rows ?? []) {
     const cat = parId.get(row.category_id);
     const item = row.items as RemoteItem | null;
-    if (!cat || !item) continue;
+    if (!cat || !item || item.status === 'rejected') continue;
     slots[cat] = tileFromItem(item);
   }
   return slots;
@@ -122,8 +127,8 @@ function sameTile(a: TileData & { itemId?: string }, b: TileData & { itemId?: st
  *
  * - validée : la case prend l'item tel que l'équipe l'a validé, titre et
  *   image compris, sans pastille ;
- * - refusée : la case se vide, comme pour un compte avec profil, où la RLS
- *   masque l'item ;
+ * - refusée : la case se vide, comme pour un compte avec profil, où
+ *   `mapRemoteSlots` l'écarte (D28) ;
  * - fusionnée : la case prend l'item conservé, s'il est lu et validé ;
  * - en attente, ou introuvable : rien ne change.
  */
