@@ -1,3 +1,4 @@
+export { SettingSwitch } from './SettingSwitch';
 export { StampButton } from './StampButton';
 export { Sticker } from './Sticker';
 export { YellowBg } from './YellowBg';

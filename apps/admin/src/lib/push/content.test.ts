@@ -10,11 +10,23 @@ import {
 } from './content';
 
 describe('ce que dit la notification d’un item modéré', () => {
-  it('une validation nomme l’item', () => {
+  it('une validation : le verdict en titre, l’item nommé dessous (D24)', () => {
     assert.deepEqual(itemModeratedText({ status: 'validated', title: 'Interstellar' }), {
-      title: '« Interstellar » est validé',
-      body: 'Ta case est en ligne.',
+      title: 'Proposition validée',
+      body: '« Interstellar » est au catalogue : ta case est en ligne.',
     });
+  });
+
+  it('chaque verdict tient dans la ligne de titre mesurée, 28 caractères', () => {
+    // Mesuré le 23 septembre 2026 au simulateur iPhone 17 Pro : au-delà, le
+    // titre d'une notification se coupe, et le verdict disparaissait.
+    const titres = [
+      itemModeratedText({ status: 'validated', title: 'x' }).title,
+      itemModeratedText({ status: 'merged', title: 'x', keptTitle: 'y' }).title,
+      itemModeratedText({ status: 'rejected', title: 'x', reason: 'z' }).title,
+      editionReleasedText('x').title,
+    ];
+    for (const titre of titres) assert.ok(Array.from(titre).length <= 28, titre);
   });
 
   it('une fusion nomme l’item conservé, qui remplit la case (D12)', () => {
@@ -23,18 +35,19 @@ describe('ce que dit la notification d’un item modéré', () => {
       title: 'interstelar',
       keptTitle: 'Interstellar',
     });
-    assert.equal(text.title, '« Interstellar » est validé');
+    assert.equal(text.title, 'Proposition validée');
+    assert.equal(text.body, '« Interstellar » est au catalogue : ta case est en ligne.');
   });
 
   it('une fusion sans titre conservé retombe sur le titre proposé', () => {
     const text = itemModeratedText({ status: 'merged', title: 'Interstellar', keptTitle: '  ' });
-    assert.equal(text.title, '« Interstellar » est validé');
+    assert.equal(text.body, '« Interstellar » est au catalogue : ta case est en ligne.');
   });
 
   it('un refus donne sa raison quand elle existe', () => {
     assert.deepEqual(
       itemModeratedText({ status: 'rejected', title: 'Film X', reason: 'Déjà au catalogue sous un autre titre.' }),
-      { title: '« Film X » n\'a pas été retenu', body: 'Déjà au catalogue sous un autre titre.' },
+      { title: 'Proposition non retenue', body: '« Film X » : Déjà au catalogue sous un autre titre.' },
     );
   });
 
@@ -42,7 +55,7 @@ describe('ce que dit la notification d’un item modéré', () => {
     for (const reason of [null, undefined, '', '   ']) {
       assert.equal(
         itemModeratedText({ status: 'rejected', title: 'Film X', reason }).body,
-        'Tu peux choisir un autre item pour cette case.',
+        '« Film X » n\'a pas été retenu. Tu peux choisir un autre item pour cette case.',
       );
     }
   });
@@ -53,16 +66,21 @@ describe('ce que dit la notification d’un item modéré', () => {
       title: 'Film X',
       reason: `Trop\n\nlong ${'mot '.repeat(80)}`,
     }).body;
-    assert.ok(Array.from(body).length <= 200, `${Array.from(body).length} caractères`);
-    assert.ok(body.startsWith('Trop long mot'));
+    const raison = body.slice('« Film X » : '.length);
+    assert.ok(body.startsWith('« Film X » : Trop long mot'));
+    assert.ok(Array.from(raison).length <= 200, `${Array.from(raison).length} caractères`);
     assert.ok(body.endsWith('…'));
   });
 
   it('un titre vide ne laisse pas de guillemets orphelins', () => {
-    assert.equal(itemModeratedText({ status: 'validated', title: '  ' }).title, 'Ton item est validé');
+    assert.equal(itemModeratedText({ status: 'validated', title: '  ' }).body, 'Ta case est en ligne.');
     assert.equal(
-      itemModeratedText({ status: 'rejected', title: '' }).title,
-      'Ton item n\'a pas été retenu',
+      itemModeratedText({ status: 'rejected', title: '' }).body,
+      'Tu peux choisir un autre item pour cette case.',
+    );
+    assert.equal(
+      itemModeratedText({ status: 'rejected', title: '', reason: 'Doublon.' }).body,
+      'Doublon.',
     );
   });
 
@@ -71,27 +89,30 @@ describe('ce que dit la notification d’un item modéré', () => {
     // fait avant ce mot, et la virgule qui le précédait tombe.
     const title = 'Le Seigneur des anneaux : La Communauté de l’anneau, version longue restaurée';
     const text = itemModeratedText({ status: 'validated', title });
-    assert.equal(text.title, '« Le Seigneur des anneaux : La Communauté de l’anneau… » est validé');
+    assert.equal(
+      text.body,
+      '« Le Seigneur des anneaux : La Communauté de l’anneau… » est au catalogue : ta case est en ligne.',
+    );
   });
 
   it('des guillemets dans le titre restent tels quels', () => {
     assert.equal(
-      itemModeratedText({ status: 'validated', title: 'Le « Parrain » "II"' }).title,
-      '« Le « Parrain » "II" » est validé',
+      itemModeratedText({ status: 'validated', title: 'Le « Parrain » "II"' }).body,
+      '« Le « Parrain » "II" » est au catalogue : ta case est en ligne.',
     );
   });
 });
 
 describe('ce que dit la notification d’une édition', () => {
-  it('le titre de l’édition, et l’invitation à composer', () => {
+  it('le verdict en titre, l’édition nommée dessous, et l’invitation à composer', () => {
     assert.deepEqual(editionReleasedText('Les films de l’été'), {
-      title: '« Les films de l’été » est sortie',
-      body: 'Compose ton bento de la semaine.',
+      title: 'Nouvelle édition',
+      body: '« Les films de l’été » est sortie. Compose ton bento de la semaine.',
     });
   });
 
-  it('sans titre, une phrase générique', () => {
-    assert.equal(editionReleasedText(' ').title, 'Une nouvelle édition est sortie');
+  it('sans titre, l’invitation seule', () => {
+    assert.equal(editionReleasedText(' ').body, 'Compose ton bento de la semaine.');
   });
 });
 

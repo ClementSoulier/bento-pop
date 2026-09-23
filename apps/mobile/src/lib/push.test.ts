@@ -3,13 +3,18 @@ import { describe, it } from 'node:test';
 import {
   PUSH_REFRESH_INTERVAL_MS,
   coalescePushRefresh,
+  notificationSection,
+  planItemTarget,
   pushAskTitle,
+  pushTargetFromData,
   refreshPushRegistration,
+  shouldOfferEditorialAsk,
   shouldOfferPushAsk,
   type PushPermission,
   type PushRegistrationDeps,
   type PushRegistrationMemory,
   type PushRegistrationOutcome,
+  type PushTarget,
 } from './push';
 
 /**
@@ -239,5 +244,224 @@ describe('coalescePushRefresh', () => {
     finish(1, registered);
     assert.deepEqual(await second, registered);
     assert.deepEqual(calls, [false, false]);
+  });
+});
+
+/**
+ * Chantier 17, lot 4. Ce qu'ouvre le tap d'une notification, ce que montre la
+ * section du profil, et quand proposer l'accord éditorial.
+ */
+const ITEM = '0f8d7a3c-2b1e-4c5d-9e6f-7a8b9c0d1e2f';
+const KEPT = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
+
+describe('pushTargetFromData', () => {
+  it('une validation mène à son item', () => {
+    assert.deepEqual(pushTargetFromData({ type: 'item_moderated', status: 'validated', itemId: ITEM }), {
+      kind: 'item',
+      status: 'validated',
+      itemId: ITEM,
+      keptItemId: null,
+    });
+  });
+
+  it('une fusion garde l’item conservé', () => {
+    const target = pushTargetFromData({
+      type: 'item_moderated',
+      status: 'merged',
+      itemId: ITEM,
+      keptItemId: KEPT,
+    });
+    assert.equal(target?.kind === 'item' && target.keptItemId, KEPT);
+  });
+
+  it('un item conservé mal formé est ignoré, pas la notification', () => {
+    const target = pushTargetFromData({ type: 'item_moderated', status: 'merged', itemId: ITEM, keptItemId: 'x' });
+    assert.equal(target?.kind === 'item' && target.keptItemId, null);
+  });
+
+  it('une édition mène à son identifiant, nombre ou chiffres', () => {
+    assert.deepEqual(pushTargetFromData({ type: 'edition_released', editionId: 7, slug: 'x' }), {
+      kind: 'edition',
+      editionId: 7,
+    });
+    assert.deepEqual(pushTargetFromData({ type: 'edition_released', editionId: '7' }), {
+      kind: 'edition',
+      editionId: 7,
+    });
+  });
+
+  it('rien d’inattendu ne mène nulle part', () => {
+    const refus: unknown[] = [
+      null,
+      undefined,
+      'item_moderated',
+      [],
+      {},
+      { type: 'autre', itemId: ITEM },
+      { type: 'item_moderated', status: 'pending', itemId: ITEM },
+      { type: 'item_moderated', status: 'validated', itemId: 'pas-un-uuid' },
+      { type: 'item_moderated', status: 'validated' },
+      { type: 'edition_released', editionId: 0 },
+      { type: 'edition_released', editionId: -3 },
+      { type: 'edition_released', editionId: 2.5 },
+      { type: 'edition_released', editionId: 40000 },
+      { type: 'edition_released', editionId: '7; drop' },
+      { type: 'edition_released', url: 'https://ailleurs.example' },
+    ];
+    for (const data of refus) assert.equal(pushTargetFromData(data), null, JSON.stringify(data));
+  });
+});
+
+describe('planItemTarget', () => {
+  const valide = (over: Partial<Extract<PushTarget, { kind: 'item' }>> = {}) => ({
+    kind: 'item' as const,
+    status: 'validated' as const,
+    itemId: ITEM,
+    keptItemId: null,
+    ...over,
+  });
+  const rien = { shown: [], placements: [], currentBentoId: 'courant', primaryBentoId: 'principal' };
+
+  it('l’item dans ce que le composer affiche, brouillon compris : on reste', () => {
+    const plan = planItemTarget(valide(), { ...rien, shown: [{ caseKey: 'film', itemId: ITEM }] });
+    assert.deepEqual(plan, { where: 'shown', caseKey: 'film', openSearch: false });
+  });
+
+  it('un refus ouvre en plus la recherche de la case (D22)', () => {
+    const plan = planItemTarget(valide({ status: 'rejected' }), {
+      ...rien,
+      shown: [{ caseKey: 'film', itemId: ITEM }],
+    });
+    assert.equal(plan?.openSearch, true);
+  });
+
+  it('une fusion cherche d’abord l’item conservé', () => {
+    const plan = planItemTarget(valide({ status: 'merged', keptItemId: KEPT }), {
+      ...rien,
+      shown: [
+        { caseKey: 'livre', itemId: ITEM },
+        { caseKey: 'film', itemId: KEPT },
+      ],
+    });
+    assert.deepEqual(plan, { where: 'shown', caseKey: 'film', openSearch: false });
+  });
+
+  it('dans un autre bento : celui qu’on édite, puis le principal, puis un autre', () => {
+    const ailleurs = { bentoId: 'autre', categoryId: 3, itemId: ITEM };
+    const principal = { bentoId: 'principal', categoryId: 1, itemId: ITEM };
+    const courant = { bentoId: 'courant', categoryId: 2, itemId: ITEM };
+    assert.deepEqual(planItemTarget(valide(), { ...rien, placements: [ailleurs, principal, courant] }), {
+      where: 'bento',
+      bentoId: 'courant',
+      categoryId: 2,
+      openSearch: false,
+    });
+    assert.equal(planItemTarget(valide(), { ...rien, placements: [ailleurs, principal] })?.where, 'bento');
+    assert.deepEqual(
+      planItemTarget(valide(), { ...rien, placements: [ailleurs, principal] }),
+      { where: 'bento', bentoId: 'principal', categoryId: 1, openSearch: false },
+    );
+    assert.deepEqual(planItemTarget(valide(), { ...rien, placements: [ailleurs] }), {
+      where: 'bento',
+      bentoId: 'autre',
+      categoryId: 3,
+      openSearch: false,
+    });
+  });
+
+  it('ce qui est affiché passe avant la base', () => {
+    const plan = planItemTarget(valide(), {
+      ...rien,
+      shown: [{ caseKey: 'film', itemId: ITEM }],
+      placements: [{ bentoId: 'autre', categoryId: 3, itemId: ITEM }],
+    });
+    assert.equal(plan?.where, 'shown');
+  });
+
+  it('l’item remplacé entre-temps : nulle part où aller', () => {
+    assert.equal(planItemTarget(valide(), rien), null);
+  });
+
+  it('un refus déjà retiré du brouillon : la recherche de sa case d’origine (D25)', () => {
+    assert.deepEqual(planItemTarget(valide({ status: 'rejected' }), { ...rien, originCaseKey: 'film' }), {
+      where: 'shown',
+      caseKey: 'film',
+      openSearch: true,
+    });
+  });
+
+  it('la case d’origine ne sert qu’à un refus', () => {
+    assert.equal(planItemTarget(valide(), { ...rien, originCaseKey: 'film' }), null);
+  });
+});
+
+describe('notificationSection', () => {
+  const sans = { items: false, editions: false };
+  const reglages = { transactional: true, editorial: false };
+
+  it('jamais demandée : on propose d’activer', () => {
+    assert.deepEqual(
+      notificationSection({ permission: { granted: false, canAskAgain: true }, device: null, channels: sans }),
+      { state: 'ask' },
+    );
+  });
+
+  it('refusée pour de bon : on renvoie aux réglages du téléphone', () => {
+    assert.deepEqual(
+      notificationSection({ permission: { granted: false, canAskAgain: false }, device: reglages, channels: sans }),
+      { state: 'blocked' },
+    );
+  });
+
+  it('accordée sans appareil enregistré : indisponible, pas deux interrupteurs inertes', () => {
+    assert.deepEqual(
+      notificationSection({ permission: { granted: true, canAskAgain: true }, device: null, channels: sans }),
+      { state: 'unavailable' },
+    );
+  });
+
+  it('accordée : les deux interrupteurs, et le canal qu’Android a coupé', () => {
+    assert.deepEqual(
+      notificationSection({
+        permission: { granted: true, canAskAgain: false },
+        device: reglages,
+        channels: { items: false, editions: true },
+      }),
+      {
+        state: 'ready',
+        items: { on: true, blockedBySystem: false },
+        editions: { on: false, blockedBySystem: true },
+      },
+    );
+  });
+});
+
+describe('shouldOfferEditorialAsk', () => {
+  const peutDemander = { granted: false, canAskAgain: true };
+
+  it('la première fois, autorisation accordée ou encore demandable', () => {
+    assert.equal(
+      shouldOfferEditorialAsk({ permission: { granted: true, canAskAgain: false }, editorialOn: false, alreadyAnswered: false }),
+      true,
+    );
+    assert.equal(shouldOfferEditorialAsk({ permission: peutDemander, editorialOn: false, alreadyAnswered: false }), true);
+  });
+
+  it('jamais deux fois : après un oui comme après un non, le profil décide', () => {
+    assert.equal(shouldOfferEditorialAsk({ permission: peutDemander, editorialOn: false, alreadyAnswered: true }), false);
+  });
+
+  it('pas quand les éditions sont déjà allumées', () => {
+    assert.equal(
+      shouldOfferEditorialAsk({ permission: { granted: true, canAskAgain: true }, editorialOn: true, alreadyAnswered: false }),
+      false,
+    );
+  });
+
+  it('pas quand le système ne peut plus demander : le oui n’ouvrirait rien', () => {
+    assert.equal(
+      shouldOfferEditorialAsk({ permission: { granted: false, canAskAgain: false }, editorialOn: false, alreadyAnswered: false }),
+      false,
+    );
   });
 });

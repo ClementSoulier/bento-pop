@@ -3,6 +3,12 @@
  *
  * Le texte nomme l'item, pas l'action : « Interstellar est validé » dit
  * quelque chose, « un de vos items a été modéré » ne dit rien.
+ *
+ * **Le verdict en titre, le nom dessous** (D24). Mesuré au simulateur le 23
+ * septembre 2026 : un titre de notification ne montre qu'une ligne, environ
+ * 28 caractères sur un iPhone 17 Pro, et « « Le Voyage de Recette » est… »
+ * perdait son verdict. Sur les 146 propositions réelles, 40 % des validations
+ * et 79 % des refus l'auraient perdu. Le corps, lui, se lit sur deux lignes.
  */
 
 export type PushKind = 'item_moderated' | 'edition_released';
@@ -18,7 +24,7 @@ export const PUSH_CHANNEL: Record<PushKind, string> = {
   edition_released: 'editions',
 };
 
-/** Au-delà, un titre se coupe : le système n'en montre pas plus sur une ligne. */
+/** Au-delà, un nom se coupe : le corps n'en montre pas plus sur deux lignes. */
 export const PUSH_TITLE_MAX = 60;
 /** Une raison de refus s'écrit au back-office, sans limite. */
 export const PUSH_REASON_MAX = 200;
@@ -59,27 +65,30 @@ export function itemModeratedText(input: {
   if (input.status === 'rejected') {
     const name = quoted(input.title);
     const reason = shorten(input.reason ?? '', PUSH_REASON_MAX);
-    return {
-      title: name ? `${name} n'a pas été retenu` : "Ton item n'a pas été retenu",
-      body: reason || 'Tu peux choisir un autre item pour cette case.',
-    };
+    const next = 'Tu peux choisir un autre item pour cette case.';
+    let body: string;
+    if (name && reason) body = `${name} : ${reason}`;
+    else if (name) body = `${name} n'a pas été retenu. ${next}`;
+    else body = reason || next;
+    return { title: 'Proposition non retenue', body };
   }
 
   const shown =
     input.status === 'merged' && input.keptTitle?.trim() ? input.keptTitle : input.title;
   const name = quoted(shown);
   return {
-    title: name ? `${name} est validé` : 'Ton item est validé',
-    body: 'Ta case est en ligne.',
+    title: 'Proposition validée',
+    body: name ? `${name} est au catalogue : ta case est en ligne.` : 'Ta case est en ligne.',
   };
 }
 
 /** Une édition vient de sortir. Son titre tient en 30 caractères. */
 export function editionReleasedText(title: string): PushText {
   const name = quoted(title);
+  const next = 'Compose ton bento de la semaine.';
   return {
-    title: name ? `${name} est sortie` : 'Une nouvelle édition est sortie',
-    body: 'Compose ton bento de la semaine.',
+    title: 'Nouvelle édition',
+    body: name ? `${name} est sortie. ${next}` : next,
   };
 }
 

@@ -170,8 +170,8 @@ describe('un item validé prévient son auteur', () => {
     ]);
     assert.deepEqual(calls.sent[0]?.[0], {
       to: 'ExponentPushToken[iphone]',
-      title: '« Interstellar » est validé',
-      body: 'Ta case est en ligne.',
+      title: 'Proposition validée',
+      body: '« Interstellar » est au catalogue : ta case est en ligne.',
       data: { type: 'item_moderated', status: 'validated', itemId: 'item-1' },
       channelId: 'items',
       sound: 'default',
@@ -195,7 +195,7 @@ describe('un item validé prévient son auteur', () => {
     const { calls, sender } = fauxExpo();
     await notifyItemModerated({ itemId: 'item-1', status: 'merged' }, deps(store, sender));
     const message = calls.sent[0]?.[0];
-    assert.equal(message?.title, '« Interstellar » est validé');
+    assert.equal(message?.body, '« Interstellar » est au catalogue : ta case est en ligne.');
     assert.deepEqual(message?.data, {
       type: 'item_moderated',
       status: 'merged',
@@ -211,7 +211,7 @@ describe('un item validé prévient son auteur', () => {
     });
     const { calls, sender } = fauxExpo();
     await notifyItemModerated({ itemId: 'item-1', status: 'rejected' }, deps(store, sender));
-    assert.equal(calls.sent[0]?.[0]?.body, 'Déjà au catalogue.');
+    assert.equal(calls.sent[0]?.[0]?.body, '« Interstellar » : Déjà au catalogue.');
   });
 
   it('validé puis refusé aussitôt : l’événement périmé n’envoie rien', async () => {
@@ -303,8 +303,8 @@ describe('le battement annonce l’édition sortie', () => {
     assert.deepEqual(calls.sent[0], [
       {
         to: 'ExponentPushToken[accepte]',
-        title: '« Les films de l’été » est sortie',
-        body: 'Compose ton bento de la semaine.',
+        title: 'Nouvelle édition',
+        body: '« Les films de l’été » est sortie. Compose ton bento de la semaine.',
         data: { type: 'edition_released', editionId: 7, slug: 'films-de-l-ete' },
         channelId: 'editions',
         sound: 'default',

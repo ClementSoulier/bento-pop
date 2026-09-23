@@ -162,3 +162,188 @@ export async function refreshPushRegistration(
     memory: { token, userId, at: deps.now() },
   };
 }
+
+// ─── Lot 4 : ce qu'ouvre une notification ────────────────────────────────
+
+/**
+ * Où mène le tap d'une notification. Chantier 17, lot 4, §5.1, D21 et D22.
+ *
+ * `data` vient de dehors : on n'en garde que ce qu'on connaît, et un type, un
+ * statut ou un identifiant inattendus ne mènent nulle part. Le back-office n'y
+ * met que le type et des identifiants, jamais d'adresse (§6.5) : l'app
+ * n'ouvre que des écrans qu'elle connaît.
+ */
+export type PushTarget =
+  | {
+      kind: 'item';
+      status: 'validated' | 'merged' | 'rejected';
+      itemId: string;
+      /** Pour une fusion, l'item conservé : c'est lui qui remplit la case. */
+      keptItemId: string | null;
+    }
+  | { kind: 'edition'; editionId: number };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MODERATION_STATUSES = ['validated', 'merged', 'rejected'] as const;
+/** `editions.id` est un `smallint`. */
+const SMALLINT_MAX = 32767;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
+/** Un entier positif, ou sa forme en chiffres : un service de push peut tout rendre en texte. */
+function positiveInt(value: unknown): number | null {
+  const n = typeof value === 'string' && /^\d{1,5}$/.test(value) ? Number(value) : value;
+  return typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= SMALLINT_MAX ? n : null;
+}
+
+export function pushTargetFromData(data: unknown): PushTarget | null {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const d = data as Record<string, unknown>;
+
+  if (d.type === 'item_moderated') {
+    const status = MODERATION_STATUSES.find((s) => s === d.status);
+    if (!status || !isUuid(d.itemId)) return null;
+    return {
+      kind: 'item',
+      status,
+      itemId: d.itemId,
+      keptItemId: isUuid(d.keptItemId) ? d.keptItemId : null,
+    };
+  }
+
+  if (d.type === 'edition_released') {
+    const editionId = positiveInt(d.editionId);
+    return editionId === null ? null : { kind: 'edition', editionId };
+  }
+
+  return null;
+}
+
+/** Une case d'un bento du compte, en base, où l'item est posé. */
+export type ItemPlacement = { bentoId: string; categoryId: number; itemId: string };
+
+/** Une case affichée par le composer, brouillon compris. */
+export type ShownSlot = { caseKey: string; itemId: string };
+
+export type ItemTargetPlan =
+  /** L'item est dans le bento affiché : on reste, et on montre sa case. */
+  | { where: 'shown'; caseKey: string; openSearch: boolean }
+  /** L'item est dans un autre bento du compte : on bascule d'abord. */
+  | { where: 'bento'; bentoId: string; categoryId: number; openSearch: boolean };
+
+/**
+ * Le bento et la case qu'ouvre la notification d'un item (D22).
+ *
+ * D'abord ce que le composer affiche : sans profil, on compose un brouillon
+ * gardé sur le téléphone, qui n'existe pas en base avant la première
+ * publication, et c'est le cas le plus courant chez qui propose un item.
+ * Ensuite les bentos du compte en base : celui qu'on édite, puis le
+ * principal, puis n'importe lequel.
+ *
+ * L'item conservé d'une fusion passe avant l'item proposé :
+ * `admin_merge_items` a réécrit les cases vers lui. Un refus ouvre en plus la
+ * recherche de la case, puisque le texte invite à choisir un autre item.
+ *
+ * Un refus que le brouillon a déjà retiré de sa case (D25) ne se retrouve
+ * plus : `originCaseKey`, la case d'où venait la proposition, prend le relais.
+ */
+export function planItemTarget(
+  target: Extract<PushTarget, { kind: 'item' }>,
+  where: {
+    shown: ShownSlot[];
+    placements: ItemPlacement[];
+    currentBentoId: string | null;
+    primaryBentoId: string | null;
+    /** La case d'origine de la proposition, dans le bento affiché, si on la connaît. */
+    originCaseKey?: string | null;
+  },
+): ItemTargetPlan | null {
+  const openSearch = target.status === 'rejected';
+  const ids = target.keptItemId ? [target.keptItemId, target.itemId] : [target.itemId];
+
+  for (const id of ids) {
+    const slot = where.shown.find((s) => s.itemId === id);
+    if (slot) return { where: 'shown', caseKey: slot.caseKey, openSearch };
+  }
+
+  for (const id of ids) {
+    const found = where.placements.filter((p) => p.itemId === id);
+    const pick =
+      found.find((p) => p.bentoId === where.currentBentoId) ??
+      found.find((p) => p.bentoId === where.primaryBentoId) ??
+      found[0];
+    if (pick) return { where: 'bento', bentoId: pick.bentoId, categoryId: pick.categoryId, openSearch };
+  }
+
+  if (openSearch && where.originCaseKey) {
+    return { where: 'shown', caseKey: where.originCaseKey, openSearch };
+  }
+  return null;
+}
+
+// ─── Lot 4 : la section Notifications du profil ──────────────────────────
+
+/** Les deux réglages de cet appareil, tels que la base les garde (D8). */
+export type DeviceSettings = { transactional: boolean; editorial: boolean };
+
+/** Android laisse couper un canal depuis ses propres réglages (§1.4). */
+export type ChannelBlocks = { items: boolean; editions: boolean };
+
+export type NotificationSection =
+  /** Jamais demandée : « Activer les notifications ». */
+  | { state: 'ask' }
+  /** Refusée, le système ne demandera plus : « Ouvrir les réglages ». */
+  | { state: 'blocked' }
+  /** Accordée, mais l'appareil n'a pas pu s'enregistrer. */
+  | { state: 'unavailable' }
+  | {
+      state: 'ready';
+      items: { on: boolean; blockedBySystem: boolean };
+      editions: { on: boolean; blockedBySystem: boolean };
+    };
+
+/**
+ * Ce que montre la section (§5.4). Couper un type dans l'app ne retire pas
+ * l'autorisation du système, et l'inverse non plus : l'écran dit lequel des
+ * deux bloque, sinon on coupe sans comprendre pourquoi rien ne change.
+ */
+export function notificationSection(input: {
+  permission: PushPermission;
+  device: DeviceSettings | null;
+  channels: ChannelBlocks;
+}): NotificationSection {
+  if (!input.permission.granted) {
+    return { state: input.permission.canAskAgain ? 'ask' : 'blocked' };
+  }
+  if (!input.device) return { state: 'unavailable' };
+  return {
+    state: 'ready',
+    items: { on: input.device.transactional, blockedBySystem: input.channels.items },
+    editions: { on: input.device.editorial, blockedBySystem: input.channels.editions },
+  };
+}
+
+// ─── Lot 4 : l'accord éditorial ──────────────────────────────────────────
+
+/**
+ * Proposer la phrase de l'accord éditorial (D20) ?
+ *
+ * Une seule fois par téléphone : après une réponse, oui comme non, seul
+ * l'interrupteur du profil décide. Pas si « Les éditions » est déjà allumé.
+ * Et pas si le système ne peut plus demander : le « Oui » n'ouvrirait rien.
+ */
+export function shouldOfferEditorialAsk(input: {
+  permission: PushPermission;
+  editorialOn: boolean;
+  alreadyAnswered: boolean;
+}): boolean {
+  if (input.alreadyAnswered || input.editorialOn) return false;
+  return input.permission.granted || input.permission.canAskAgain;
+}
+
+export const EDITORIAL_ASK_TITLE = 'On te prévient quand une édition sort ?';
+export const EDITORIAL_ASK_MESSAGE = 'Une notification par semaine, le jeudi à 18 h.';
+export const EDITORIAL_ASK_ACCEPT = 'Oui';
+export const EDITORIAL_ASK_DECLINE = 'Non merci';

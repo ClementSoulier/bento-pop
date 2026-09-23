@@ -12,16 +12,20 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useIsFocused } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
 import { BentoBoxSkeleton } from '@/components/bento/BentoBoxSkeleton';
+import { TilePulse } from '@/components/bento/TilePulse';
 import { ProgressBar } from '@/components/bento/ProgressBar';
 import { INK_MUTED, SHADOWS, StampButton, YellowBg, useToast } from '@/components/primitives';
 import { failureFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
+import { usePushTarget } from '@/state/push-target';
 import { editableBentoId, listOwnBentos, publishBento, switchBento } from '@/lib/bento-actions';
+import { followPushTarget } from '@/lib/push-navigation';
+import { offerEditorialConsent } from '@/lib/push-runtime';
 import { bentoRoute } from '@/lib/bento-address';
 import { type Edition, createEditionBento, loadReleasedEditions } from '@/lib/editions';
 import { type OwnBento, bentoName } from '@/lib/own-bento';
@@ -144,6 +148,19 @@ export default function ComposeTab() {
     }, [refreshProfile]),
   );
 
+  // Chantier 17, lot 4 : le tap d'une notification, suivi une fois le bento
+  // lu et l'écran affiché, au démarrage comme app ouverte. Pas avant d'être à
+  // l'écran : l'onglet reste monté quand on en change, et suivre la cible
+  // depuis un onglet caché ouvrirait la recherche par-dessus un autre.
+  // `take` l'oublie aussitôt : un tap ne se suit qu'une fois.
+  const focused = useIsFocused();
+  const pushTarget = usePushTarget((s) => s.target);
+  useEffect(() => {
+    if (!pushTarget || !hydrated || !focused) return;
+    const target = usePushTarget.getState().take();
+    if (target) void followPushTarget(target).catch((e) => console.warn('[push] tap', e));
+  }, [pushTarget, hydrated, focused]);
+
   // Libellé, action et état désactivé viennent d'une seule décision, testée
   // dans `lib/compose-cta.ts`. Les avoir calculés séparément avait produit un
   // bouton actif qui ne faisait rien : cf. le commentaire de ce fichier.
@@ -202,6 +219,9 @@ export default function ComposeTab() {
         variant: 'success',
         durationMs: 3500,
       });
+      // Le premier des deux moments de l'accord éditorial (D20) : on est
+      // désormais dans le fil, l'édition de jeudi a un sens.
+      void offerEditorialConsent();
     } catch (e) {
       failureFeedback();
       console.warn('[compose] publication', e);
@@ -487,6 +507,8 @@ function BentoSelector({
   const scale = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
   const showToast = useToast((s) => s.show);
   const [creating, setCreating] = useState<number | null>(null);
+  // L'édition qu'a annoncée une notification tapée (D21).
+  const spotlight = usePushTarget((s) => s.spotlight);
 
   // Ce qu'il faut pour garder la pastille active à l'écran : où est chaque
   // pastille, ce que la bande laisse voir, et où elle en est. Des refs et non
@@ -506,6 +528,11 @@ function BentoSelector({
   useEffect(() => {
     montrer(currentId);
   }, [currentId, montrer]);
+  // L'édition annoncée, si sa pastille est déjà mesurée. Sinon, elle se
+  // montre elle-même à sa première mesure : les éditions se lisent après.
+  useEffect(() => {
+    if (spotlight) montrer(`edition-${spotlight.editionId}`);
+  }, [spotlight, montrer]);
 
   // Les éditions sorties que ce compte n'a pas encore composées.
   const aComposer = editions;
@@ -523,6 +550,9 @@ function BentoSelector({
       const userId = useSession.getState().user?.id;
       if (userId) useBento.getState().setOwn(await listOwnBentos(userId), bentoId);
       await switchBento(bentoId);
+      // L'autre moment de l'accord éditorial (D20) : rejoindre une édition.
+      // La phrase ne vient qu'une fois par téléphone, cf. `offerEditorialConsent`.
+      void offerEditorialConsent();
     } catch (e) {
       showToast(
         e instanceof Error ? e.message : 'L’édition n’a pas pu s’ouvrir.',
@@ -603,43 +633,58 @@ function BentoSelector({
       })}
 
       {/* Les éditions sorties qu'on n'a pas encore composées. Un tap crée
-          leur bento et bascule dessus. */}
+          leur bento et bascule dessus. Celle qu'annonce une notification
+          tapée pulse, et vient à l'écran (D21) : la rejoindre reste un geste. */}
       {aComposer.map((edition) => (
-        <Pressable
+        <TilePulse
           key={`edition-${edition.id}`}
-          onPress={() => void rejoindre(edition)}
-          disabled={creating !== null}
-          accessibilityRole="button"
-          accessibilityLabel={`Composer l’édition ${edition.title}`}
-          accessibilityState={{ disabled: creating !== null }}
-          style={[
-            {
-              height: SELECTOR_CHIP_H * scale,
-              justifyContent: 'center',
-              paddingHorizontal: 14,
-              borderRadius: 999,
-              borderWidth: 2.5,
-              borderStyle: 'dashed',
-              borderColor: '#0a0a0a',
-              backgroundColor: '#fbbf24',
-              opacity: creating !== null && creating !== edition.id ? 0.5 : 1,
-            },
-          ]}
+          trigger={spotlight?.editionId === edition.id ? spotlight.seq : null}
         >
-          <Text
-            allowFontScaling={false}
-            numberOfLines={1}
-            style={{
-              fontFamily: 'Bungee',
-              fontSize: 11 * scale,
-              lineHeight: 15 * scale,
-              letterSpacing: 0.5,
-              color: '#0a0a0a',
+          <Pressable
+            onLayout={(e) => {
+              const { x, width } = e.nativeEvent.layout;
+              pastilles.current.set(`edition-${edition.id}`, { x, width });
+              if (spotlight?.editionId === edition.id) {
+                montrer(`edition-${edition.id}`);
+                // Une fois montrée, l'annonce s'oublie : revenir sur l'onglet
+                // ne la rejoue pas.
+                setTimeout(() => usePushTarget.getState().clearSpotlight(), 1500);
+              }
             }}
+            onPress={() => void rejoindre(edition)}
+            disabled={creating !== null}
+            accessibilityRole="button"
+            accessibilityLabel={`Composer l’édition ${edition.title}`}
+            accessibilityState={{ disabled: creating !== null }}
+            style={[
+              {
+                height: SELECTOR_CHIP_H * scale,
+                justifyContent: 'center',
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                borderWidth: 2.5,
+                borderStyle: 'dashed',
+                borderColor: '#0a0a0a',
+                backgroundColor: '#fbbf24',
+                opacity: creating !== null && creating !== edition.id ? 0.5 : 1,
+              },
+            ]}
           >
-            {creating === edition.id ? '…' : `+ ${edition.title}`}
-          </Text>
-        </Pressable>
+            <Text
+              allowFontScaling={false}
+              numberOfLines={1}
+              style={{
+                fontFamily: 'Bungee',
+                fontSize: 11 * scale,
+                lineHeight: 15 * scale,
+                letterSpacing: 0.5,
+                color: '#0a0a0a',
+              }}
+            >
+              {creating === edition.id ? '…' : `+ ${edition.title}`}
+            </Text>
+          </Pressable>
+        </TilePulse>
       ))}
     </ScrollView>
   );
