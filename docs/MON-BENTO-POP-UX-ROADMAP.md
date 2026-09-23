@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut au 17 septembre 2026 : chantiers 1 à 7, 9, 11, 13, 14, 15 et 16 livrés, prochain le 17, dont la spécification est arbitrée.** **Décidé le 17 septembre 2026 : la prochaine sortie store n'aura lieu qu'une fois tous les chantiers de cette roadmap terminés et recettés**, le 29 compris, donc la dette de recette sur appareil soldée ; plus aucune sortie par lot. Décidé le même jour : les migrations des chantiers suivants s'appliquent en production au fur et à mesure, chacune compatible avec la 1.1 et la 0.1.0, et le chantier 29 devient la recette de sortie, seule recette sur appareil. D'ici là, l'App Store sert la 1.1 et le Play Store la 0.1.0, relevé le 17 septembre, et la build 1.3.0 (chantiers 16 et 9), construite le 16 septembre, ne sera pas publiée. La base de production porte depuis le 17 septembre les migrations des chantiers 16, 9 et 13 : **aucune édition ne se compose en production** avant cette sortie et le relèvement du plancher de version. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 23 septembre 2026 : chantiers 1 à 7, 9, 11, 13, 14, 15 et 16 livrés ; le 17 a ses quatre lots faits et recettés, et sa recette de bout en bout attend la clé APNs et le compte FCM ; prochain le 18.** **Décidé le 17 septembre 2026 : la prochaine sortie store n'aura lieu qu'une fois tous les chantiers de cette roadmap terminés et recettés**, le 29 compris, donc la dette de recette sur appareil soldée ; plus aucune sortie par lot. Décidé le même jour : les migrations des chantiers suivants s'appliquent en production au fur et à mesure, chacune compatible avec la 1.1 et la 0.1.0, et le chantier 29 devient la recette de sortie, seule recette sur appareil. D'ici là, l'App Store sert la 1.1 et le Play Store la 0.1.0, relevé le 17 septembre, et la build 1.3.0 (chantiers 16 et 9), construite le 16 septembre, ne sera pas publiée. La base de production porte depuis le 17 septembre les migrations des chantiers 16, 9 et 13 : **aucune édition ne se compose en production** avant cette sortie et le relèvement du plancher de version. Elle porte aussi les trois du chantier 17, appliquées les 17 et 23 septembre : son battement y passe toutes les 5 minutes, inerte jusqu'à la mise en service. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -224,7 +224,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 16 | Plusieurs bentos par compte | Contenu | L | 5 | ✅ **6 lots livrés (PR #70, CI verte, fusionnée le 16/09)**, spécifiés et livrés dans la journée · migration A appliquée en production avec son correctif urgent · **B et `publish_first_bento` appliquées en production le 17/09**, avec le bloc du chantier 13 et sans attendre d'adoption : aucune version publiée ne lit l'embed dont B change la forme · DoD 12 sur 13 · recette d'appareil versée au 29 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ✅ **livré au lot 5 du 16 (PR #70)**, parcours vérifié de bout en bout au simulateur · brouillon local, zéro ligne serveur avant publication, CGU horodatées à l'acceptation · gain non prévu : on compose désormais **sans session**, ce qui répond au rejet App Store 2bf822e0 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ✅ **6 lots livrés (PR #74, CI verte, fusionnée le 17/09)** · recette sur simulateur iOS et émulateur Android : seize étapes et contrôle d'horloge, 17 défauts corrigés · arbitrages D11 à D13 : titre en 30 caractères, titre de l'édition dans le ruban de partage, **question de l'édition sur la case remplie**, garantie par un test sur 2 736 questions · bento principal inchangé au bit sur le web et au pixel dans l'app · **bloc SQL appliqué en production le 17/09** : migration B, `publish_first_bento` et les trois migrations des éditions · DoD 12 sur 14 : restent l'appareil réel (29) et le catalogue des quatre types dormants (15) · landing et back-office redéployés sur Coolify le 17/09, pages publiques vérifiées en production : boîte du bento principal identique à l'octet près à celle d'avant le redéploiement · **ne composer aucune édition en production** avant la sortie store unique et le plancher de version (D8) · [spec](./UX-13-BENTO-HEBDOMADAIRE.md) |
-| 17 | Notifications push | Rétention | L | build native | 🟡 **spécification écrite et arbitrée le 17/09**, neuf décisions, **mise à jour l'après-midi** : recette au simulateur iOS et à l'émulateur Android, qui reçoivent les notifications ; « édition sortie » par `pg_cron` (D10) ; chaîne branchée en production dès l'envoi déployé (D11) · **lot 1 fait le 17/09** (la base : appareils, tickets, déclencheur de modération, 25 contrôles, quatre mutations attrapées) et **appliqué en production** le même jour, inerte sans secret, lectures des versions publiées inchangées · **lot 2 fait et recetté le 17/09** au simulateur iPhone 17 Pro et à l'émulateur Pixel 8 : l'app enregistre son appareil, la phrase précède la boîte du système (D14), et **le défaut du chantier 9 est corrigé** (D13), une proposition d'item ne demandant plus de profil ; migration appliquée en production le même jour · **lot 3 fait le 23/09 en local**, après quatre arbitrages (D16 à D19 : annonce dans les 24 heures, jeton d'accès d'un robot Expo, tickets gardés 30 jours, carte de santé au tableau de bord) : `pg_cron` toutes les 5 minutes, routes `/api/push` et `/api/push/tick`, 35 contrôles de base et 83 tests, seize défauts introduits exprès tous attrapés ; chaîne prouvée de bout en bout jusqu'au vrai service d'Expo, et dans l'image Docker du back-office, où **chaque envoi aurait échoué** faute d'un fichier du SDK, corrigé · **migration appliquée en production le 23/09**, lectures des versions publiées inchangées, battement qui tourne sans rien poster · reste la mise en service au redéploiement du back-office · **lot 4 fait et recetté le 23/09** au simulateur et à l'émulateur, après quatre arbitrages (D20 à D23) : section Notifications du profil et premier interrupteur de l'app, tap qui ouvre le bon écran, accord éditorial après une publication ou une première édition, bannière app ouverte · deux constats de recette arbitrés : **le verdict passe en titre** des notifications (D24), qui se coupaient vers 28 caractères, et **le brouillon relit ses propositions** (D25), défaut du chantier 9 qui empêchait de publier après une validation · l'argument mesuré n'est pas celui qu'on croyait : un item refusé ne laisse **aucun trou** dans un bento publié, mais le délai médian de validation est de **6,9 jours** et personne n'est prévenu · envoi par déclencheur SQL vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · préalables : clé APNs et compte de service FCM, délai administratif · **migrations appliquées en production au fur et à mesure**, décidé le 17/09 : chacune doit rester compatible avec la 1.1 et la 0.1.0, prouvé avant de l'appliquer · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
+| 17 | Notifications push | Rétention | L | build native | 🟡 **spécifié et arbitré le 17/09**, 28 décisions au 23/09 · **lots 1 à 4 faits et recettés du 17 au 23/09**, en local, au simulateur iPhone 17 Pro et à l'émulateur Pixel 8 : la base (appareils, tickets, déclencheur de modération), l'app qui enregistre son appareil, l'envoi par le back-office et son battement `pg_cron` toutes les 5 minutes (D10), les réglages du profil et le tap · **trois migrations appliquées en production** les 17 et 23/09, chacune prouvée compatible avec la 1.1 et la 0.1.0 avant, lectures des versions publiées inchangées après ; le battement y passe sans rien poster jusqu'à la mise en service (D11) · la recette a trouvé ce qu'aucun test ne voyait : **chaque envoi aurait échoué dans l'image Docker** du back-office, faute d'un fichier du SDK ; des titres coupés vers 28 caractères (D24) ; **deux défauts antérieurs au chantier**, le brouillon qui ne relisait pas ses propositions (D25) et l'item refusé affiché comme accepté à son auteur (D28) · **lot 5a fait le 23/09** : DoD 7 sur 12, le tap fait sur iOS, le point 12 à la mise en service, les points 1 à 3 à la recette de bout en bout · **reste** : la PR, sa fusion et la mise en service au redéploiement du back-office ; puis le lot 5b, la recette de bout en bout, à l'arrivée de la clé APNs et du compte FCM (délai administratif) ; l'appareil réel est versé au 29 · le besoin mesuré : **6,9 jours** de validation en médiane, sans que personne soit prévenu · envoi par déclencheur SQL et `pg_cron` vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
 | 18 | Publication automatique à la validation | Activation | M | 5 | ⬜ roadmap produit |
 | 8 | Signaux de retour : compteur de vues, relance | Rétention | M | 17 | ⬜ recadré le 15/09, le reste réparti dans les 17, 18 et 22 |
 | 19 | Émissions et podcasts dans « La table » | Contenu | M | 2 | ⬜ roadmap produit |
@@ -239,7 +239,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 24 | Zone de notifications dans l'app | Rétention | M | 22, 23 | ⬜ roadmap produit |
 | 25 | Comptes Instagram et TikTok | Appropriation | L | 21 | ⬜ roadmap produit |
 | 27 | Succès | Rétention | L | 13, 21 | ⬜ roadmap produit |
-| 29 | **La dette de recette sur appareil** | Qualité | M | rien | ⬜ **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers · **devient la recette de sortie**, décidé le 17/09 : la liste vidée, puis tous les chantiers parcourus sur iPhone et Android, en build de production, juste avant la soumission · **le chantier 13 y verse sa part le 17/09** : la fluidité du fil avec des boîtes de tailles différentes, le partage d'un bento d'édition dans deux messageries, et surtout « CRÉATEUR DE CONTENU » qui, **au calcul, déborde dans le fil sur iPhone SE** sans qu'aucun écran ne l'ait confirmé |
+| 29 | **La dette de recette sur appareil** | Qualité | M | rien | ⬜ **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers · **devient la recette de sortie**, décidé le 17/09 : la liste vidée, puis tous les chantiers parcourus sur iPhone et Android, en build de production, juste avant la soumission · **le chantier 13 y verse sa part le 17/09** : la fluidité du fil avec des boîtes de tailles différentes, le partage d'un bento d'édition dans deux messageries, et surtout « CRÉATEUR DE CONTENU » qui, **au calcul, déborde dans le fil sur iPhone SE** sans qu'aucun écran ne l'ait confirmé · **le chantier 17 y verse sa part le 23/09** : la réception sur un vrai iPhone et un vrai Android en build de production, donc l'environnement de production d'APNs ; l'écran verrouillé ; « Ouvrir les réglages » sur iOS ; une désinstallation réelle et son `DeviceNotRegistered` |
 
 **Arbitré le 15 septembre 2026 : la roadmap produit passe devant les
 chantiers 8 à 12.** Elle suit l'ordre donné par l'équipe, le 13 y prenant la
@@ -328,11 +328,16 @@ Chacune coûte moins cher posée une fois que redécouverte à chaque chantier.
    planifiée (« le projet n'a pas d'ordonnanceur »,
    `20260913000000_admin_users.sql:145`), ni Edge Function dans le dépôt, ni
    webhook, ni Realtime. `pg_net` n'apparaît que dans la migration de
-   revalidation, toujours pas appliquée. Or une sortie datée (13), un push (17,
+   revalidation, ~~toujours pas appliquée~~ appliquée en fait, mesuré le 17
+   septembre, cf. [ménage en attente](#ménage-en-attente). Or une sortie datée (13), un push (17,
    18), un mail (22), une purge (24) et un succès attribué (27) doivent tous
    agir sans qu'un client ouvre l'app. Le lieu se choisit une fois : Supabase,
    dont le plan gratuit comprend les Edge Functions et a priori `pg_cron`, ou
    le serveur Coolify qui héberge déjà le back-office et sa clé de service.
+   **Posée par le chantier 17, le 23 septembre 2026** : les deux. `pg_cron`
+   appelle toutes les 5 minutes le back-office, qui détient la clé de service
+   et envoie ; un déclencheur l'appelle au moment d'un événement. Le même
+   battement peut servir les 18, 22, 24 et 27.
 4. **Une build native.** `expo-notifications` impose une nouvelle build, pas
    une mise à jour à distance, plus une clé APNs et un compte de service FCM.
    Une adresse hors de `/u/` aussi : les liens universels ne déclarent que ce
@@ -773,6 +778,8 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 
 ## 17. Notifications push
 
+> **Lots 1 à 4 faits et recettés du 17 au 23 septembre 2026, lot 5a le 23**, cf. [la spécification](./UX-17-NOTIFICATIONS-PUSH.md), qui tient ses décisions, D1 à D28. Le « fait quand » se vérifie en deux temps : au simulateur et à l'émulateur au lot 5b, à l'arrivée de la clé APNs et du compte FCM ; sur appareil réel, en build de production, au chantier 29. Le constat ci-dessous est celui du 15 septembre.
+
 **Demandé.** Deux notifications : un nouveau bento à compléter, et un bento prêt à être publié parce que tous ses éléments sont validés.
 
 **Constat.**
@@ -789,11 +796,11 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 - La demande d'autorisation au moment où elle a un sens, par exemple juste après avoir proposé un item, plutôt qu'au premier lancement.
 - Un réglage par type de notification (26), et un tap qui ouvre le bon écran.
 
-**À trancher quand on y arrive.**
+**Tranché les 17 et 23 septembre 2026.**
 
-- Où vit l'envoi : Supabase, ou le serveur Coolify du back-office ?
-- Quand demander l'autorisation, et quelles notifications sont actives par défaut.
-- Un compte anonyme perdu laisse des jetons orphelins : acceptable avant la fondation 1 ?
+- Où vit l'envoi : Supabase, ou le serveur Coolify du back-office ? **Les deux** : un déclencheur et `pg_cron` dans Supabase appellent le back-office, qui détient la clé de service et envoie par le SDK d'Expo (D1, D2, D10).
+- Quand demander l'autorisation, et quelles notifications sont actives par défaut. **Juste après avoir proposé un item**, une phrase de l'app précédant la boîte du système ; le transactionnel actif d'emblée, l'éditorial sur accord explicite (D5, D6, D14, D20).
+- Un compte anonyme perdu laisse des jetons orphelins : acceptable avant la fondation 1 ? **Oui** : un jeton se révoque à `DeviceNotRegistered` et se périme à 60 jours (D7), et le chantier 28 supprimera le problème à sa racine.
 
 **Fait quand** : sur iOS et Android, en build de production, quelqu'un qui l'a autorisé est prévenu de la sortie d'une édition et de la validation de ses items, arrive au bon écran d'un tap, et peut couper chaque type.
 
@@ -1123,6 +1130,24 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 fin de chaque chantier.
 
 **Constat.** Au 16 septembre, cinq chantiers en portent.
+
+### Du chantier 17, notifications push
+
+> **Versé le 23 septembre 2026**, au lot 5a : ce que le simulateur et
+> l'émulateur ne montrent pas, cf. §7.3 et §10 de
+> [la spécification](./UX-17-NOTIFICATIONS-PUSH.md).
+
+- **La réception sur un vrai iPhone et un vrai Android**, en build de
+  production : c'est l'environnement de production d'APNs, qu'aucune build de
+  développement ne touche. Valider un item depuis le back-office, recevoir la
+  notification en moins d'une minute, la taper.
+- **L'écran verrouillé** : la notification s'y affiche, et son tap mène au bon
+  écran une fois le téléphone déverrouillé.
+- **« Ouvrir les réglages » sur iOS**, dans la section Notifications du profil
+  quand l'autorisation est refusée : au simulateur iOS 26.4, il arrive à la
+  racine des Réglages et non sur la fiche de l'app.
+- **Une désinstallation réelle et son `DeviceNotRegistered`**, si la recette
+  du lot 5b ne l'a pas vu : Expo ne promet aucun délai.
 
 ### Du chantier 16, plusieurs bentos par compte
 

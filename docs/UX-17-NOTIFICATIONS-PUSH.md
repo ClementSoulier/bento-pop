@@ -80,6 +80,15 @@
 >   titre se coupe vers 28 caractères ; et le brouillon d'un compte sans profil
 >   relit ses propositions en base, une proposition validée n'y restant plus
 >   « en attente », ce qui empêchait de publier.
+> - **Au début du lot 5, D26 et D27** : la PR du chantier se fusionne avant
+>   le lot 0, et la recette de bout en bout suit à son arrivée ; le fichier
+>   `google-services.json` entre dans le dépôt.
+> - **Au lot 5a, D28** : un item refusé s'affichait comme accepté dans le
+>   composer de son auteur, et le bento se publiait avec. Défaut antérieur au
+>   chantier, trouvé en relisant le catalogue contre le code : la RLS laisse
+>   l'auteur lire sa proposition quel que soit son statut, et rien ne vide sa
+>   case au refus, contrairement à ce que disait le catalogue. Le composer la
+>   vide désormais.
 
 ---
 
@@ -675,6 +684,9 @@ l'émulateur Android, avant la fusion**, cf. §4.5. La recette sur appareil rée
 se fait seulement à la sortie, au chantier 29 : build de production,
 environnement de production d'APNs, écran verrouillé, désinstallation réelle.
 
+**Depuis le 23 septembre 2026 (D26)**, la réception de bout en bout se
+recette après la fusion, à l'arrivée du lot 0 : c'est le lot 5b.
+
 - Proposer un item, accorder l'autorisation, faire valider depuis le
   back-office, recevoir la notification en moins d'une minute.
 - Taper dessus : le composer s'ouvre sur la bonne case.
@@ -1015,6 +1027,79 @@ La recette de §7.3, au simulateur iOS et à l'émulateur Android. Les pièges
 dans `RECETTE-MOBILE.md`, ce qui attend un appareil réel versé au chantier 29,
 la roadmap, la DoD.
 
+**Planifié le 23 septembre 2026**, après D26 et D27, en deux temps.
+
+**5a, sans attendre le lot 0 :**
+
+- La DoD de §10, point par point : fait, à la recette de bout en bout, ou au
+  chantier 29.
+- Ce que le chantier 29 reçoit : un vrai iPhone et un vrai Android, en build
+  de production, donc l'environnement de production d'APNs ; l'écran
+  verrouillé ; « Ouvrir les réglages » sur iOS, qui arrive à la racine des
+  Réglages au simulateur ; une désinstallation réelle et son
+  `DeviceNotRegistered`.
+- Les trois passages de `MON-BENTO-POP-CATALOG.md` qui disent encore « pas de
+  notification » (§12), la roadmap et son en-tête.
+- La PR unique du chantier, sur accord : sa CI, puis la fusion, sur accord.
+- **La mise en service**, au redéploiement du back-office (D11) :
+  `PUSH_WEBHOOK_TOKEN` en variable **runtime** sur Coolify, d'une valeur que je
+  tire au hasard et vous remets dans un fichier local, jamais affichée ; puis
+  les secrets de coffre `push_webhook_url` et `push_webhook_token`, que je
+  pose par le connecteur. La carte du tableau de bord passe « En marche » dans
+  les 5 minutes, vérifié en lecture seule. `EXPO_ACCESS_TOKEN` attend le
+  robot (D17) : la variable d'abord, la sécurité renforcée ensuite, sinon
+  chaque envoi répond `UNAUTHORIZED`.
+
+**5b, à l'arrivée du lot 0 :**
+
+- `google-services.json` dans le dépôt et `googleServicesFile` dans
+  `app.json` (D27), puis une build Android neuve ; la clé APNs et le compte de
+  service FCM sont dans EAS, côté Expo.
+- La recette de bout en bout de §7.3, sur la chaîne locale : base locale,
+  back-office local, vrai service d'Expo, APNs en bac à sable et FCM, jusqu'au
+  simulateur et à l'émulateur. Valider un item et recevoir la notification en
+  moins d'une minute ; la taper ; couper « Mes items » et ne plus rien
+  recevoir ; annoncer une édition aux seuls appareils qui l'ont acceptée ;
+  désinstaller et attendre `DeviceNotRegistered`, ou le verser au chantier 29
+  si Expo tarde.
+- Ce que le lot 4 n'a pas vu : le tap et la phrase sur Android, le pouls
+  d'une case après le tap d'un item, la phrase de l'accord après une
+  publication. Et D28 : refuser l'item d'un compte avec profil vide sa case
+  dans le composer.
+- Une petite PR si la recette trouve quelque chose.
+
+**5a fait le 23 septembre 2026**, sans rien écrire en production :
+
+- **La DoD de §10, point par point** : 7 points faits, le tap fait sur iOS, le
+  point 12 à la mise en service, les points 1 à 3 au 5b.
+- **Le chantier 29 reçoit sa part**, dans la roadmap : la réception sur un
+  vrai iPhone et un vrai Android en build de production, l'écran verrouillé,
+  « Ouvrir les réglages » sur iOS, une désinstallation réelle.
+- **Le catalogue** ne dit plus « pas de notification », à ses trois endroits.
+  Relu contre le code, il décrivait aussi deux déclencheurs qui n'existent
+  pas : un refus qui supprime la case, un refus qui dépublie le bento.
+  Corrigé, mesures à l'appui.
+- **D28, un défaut trouvé en le relisant** : `mapRemoteSlots` n'écartait que
+  les items en attente, et la RLS laisse l'auteur lire sa proposition refusée.
+  Il la voyait comme acceptée, sans pastille, et pouvait publier avec. Mesuré
+  sur la base locale dans une transaction annulée, puis en production en
+  lecture seule : 2 cases réelles, dans des bentos non publiés. Le composer
+  vide désormais la case, comme le brouillon depuis D25, et le prochain item
+  choisi remplace la ligne en base (`upsert` sur la case). Le test échoue sans
+  le correctif ; un second fige le tap d'un refus, qui trouve alors la case en
+  base. Deux commentaires qui disaient « la RLS le masque » sont corrigés.
+- **La roadmap** : l'en-tête au 23 septembre, la ligne 17 et sa section, avec
+  les réponses à ses « À trancher » ; la ligne 29 et sa section ; la
+  fondation 3, que ce chantier pose.
+- **La qualité**, sous Node 20 comme la CI : lint, typage, tests et builds
+  verts, 23 tâches ; tests mobile 665, back-office 211, landing 125 et ses 29
+  de bout en bout, qui avaient échoué une première fois dans le chargeur de
+  polices de Google, sans rapport avec le lot ; `check-push.sql` 35 sur 35 et
+  `check-editions.sql` 21 sur 21 sur la base locale.
+- **Reste** : la PR, sa CI et sa fusion, sur accord ; la mise en service au
+  redéploiement du back-office ; puis une petite PR qui l'inscrit, la ligne 17
+  de la roadmap restant 🟡 jusqu'au 5b.
+
 ---
 
 ## 9. Livraison
@@ -1057,6 +1142,26 @@ la roadmap, la DoD.
 12. La chaîne tourne en production sans destinataire : le contrôle de santé
     montre le travail planifié passer toutes les 5 minutes.
 
+**Point par point au 23 septembre 2026, à la fin du lot 5a** : 7 points
+faits, le tap fait sur iOS, le point 12 à la mise en service, les points 1 à 3
+à la recette de bout en bout du lot 5b, qui attend la clé APNs et le compte
+FCM. Ce qui demande un vrai téléphone est versé au chantier 29.
+
+| # | État | Preuve, ou ce qui manque |
+| --- | --- | --- |
+| 1 | Au 5b, puis au 29 | La chaîne est prouvée jusqu'au vrai service d'Expo : une validation en base arrive à Expo, qui répond dans la seconde (lot 3, gestes 3 et 7). La réception au simulateur et à l'émulateur attend le lot 0 ; sur un vrai téléphone, en build de production, le chantier 29 |
+| 2 | Au 5b | Le texte : « un refus donne sa raison quand elle existe » et « un refus sans raison propose d'en choisir un autre » (`content.test.ts`) ; le parcours : « un refus porte sa raison » (`pipeline.test.ts`) ; un refus traverse l'image Docker du back-office (lot 3, geste 7). La réception attend le lot 0 |
+| 3 | Au 5b | Le choix : « ceux qui l'ont accepté, quel que soit leur compte » (`recipients.test.ts`), « à ceux qui l'ont accepté, avec sa durée de vie, une seule fois » et « personne n'a accepté : l'édition est marquée, rien ne part » (`pipeline.test.ts`) ; le passage de 05:00 UTC l'annonce à l'appareil qui l'avait acceptée (lot 3, geste 4). La réception attend le lot 0 |
+| 4 | Fait sur iOS, Android au 5b | Au simulateur, par `xcrun simctl push` : le composer s'ouvre une seule fois, depuis un autre onglet, en arrière-plan, modale ouverte ou à froid ; un refus ouvre la recherche de sa case, une édition fait pulser son « + titre » (lot 4, gestes 6 à 8). Sur Android, le tap attend un vrai jeton, donc le lot 0 ; l'écran verrouillé, le chantier 29 |
+| 5 | Fait | Les deux interrupteurs sont écrits en base et relus à la réouverture (lot 4, geste 1) ; un appareil qui a coupé « Mes items » n'est plus destinataire (`recipients.test.ts`, et une mutation attrapée au lot 3). Constater que plus rien n'arrive : au 5b |
+| 6 | Fait | Au simulateur et à l'émulateur, refuser ne bloque rien et plus rien ne se redemande (lot 2, gestes 7 et 10) ; le profil renvoie alors aux réglages du téléphone (lot 4, geste 3) |
+| 7 | Fait | Avec le vrai service d'Expo, un ticket `DeviceNotRegistered` révoque l'appareil dans la seconde (lot 3, gestes 3 et 4) ; un accusé se relit entre 15 minutes et 24 heures et révoque de même (`pipeline.test.ts`, `tickets.test.ts`). Une désinstallation réelle : au 5b, ou au 29 si Expo tarde |
+| 8 | Fait | 35 contrôles sur 35, repassés à la fin du 5a |
+| 9 | Fait | La carte du tableau de bord : battement, dernier envoi réussi, dernière erreur, « En marche » ou « En panne » (lot 3, gestes 5 et 6 ; `health.test.ts`). En production : à la mise en service |
+| 10 | Fait | L'éditorial est éteint par défaut (lot 1, D6) ; l'accord se demande après une publication ou à la première édition rejointe, et seul « Oui » l'allume (lot 4, geste 9, D20) ; « Les éditions » se coupe dans le profil (lot 4, geste 1) ; l'accord éditorial ne compte pas pour un item (`recipients.test.ts`) |
+| 11 | Fait | Lots 1 et 2 le 17 septembre, lot 3 le 23 septembre, chacun avec sa preuve de compatibilité avant, et les lectures des versions publiées rejouées après |
+| 12 | À la mise en service | `pg_cron` passe bien toutes les 5 minutes : 31 passages réussis le 23 septembre de 7 h 25 à 9 h 55 (Paris), aucun en échec. Le contrôle de santé ne le note qu'une fois le back-office redéployé et les secrets posés |
+
 ---
 
 ## 11. Décisions
@@ -1088,6 +1193,9 @@ la roadmap, la DoD.
 | **D23** | Une notification reçue app ouverte s'affiche en bannière du système | Choisi le 23 septembre 2026. Comme app fermée, sans rien dessiner, et le tap mène au même endroit |
 | **D24** | Le verdict en titre de la notification, l'item nommé dessous | Choisi le 23 septembre 2026, à la recette du lot 4. Un titre ne montre qu'une ligne, environ 28 caractères sur un iPhone 17 Pro : sur les 146 propositions réelles, 40 % des validations et 79 % des refus auraient perdu leur verdict |
 | **D25** | Le brouillon d'un compte sans profil relit ses propositions en base, dans le lot 4 | Choisi le 23 septembre 2026. Une proposition validée y restait « en attente » et bloquait la publication ; la notification rendait la contradiction visible. Défaut du chantier 9, absent des versions publiées |
+| **D26** | La PR du chantier se fusionne avant le lot 0 ; la recette de bout en bout suit à son arrivée, avec une petite PR si besoin | Choisi le 23 septembre 2026. Les quatre lots faits cessent d'attendre un délai administratif, la chaîne tourne en production sans destinataire (D11), et aucune version publique n'est touchée d'ici la sortie unique. Remplace, pour ce chantier, la recette avant la fusion de §4.5 et §7.3 |
+| **D27** | `google-services.json` entre dans le dépôt | Choisi le 23 septembre 2026. Firebase le présente comme une configuration et non comme un secret, sa clé étant restreinte au paquet ; les builds locales et EAS le lisent au même endroit |
+| **D28** | Le composer vide la case d'un item refusé, pour un compte avec profil comme pour un brouillon | Choisi le 23 septembre 2026, au lot 5a. La RLS laisse l'auteur lire sa proposition quel que soit son statut, et rien ne retire la case au refus : l'auteur voyait l'item refusé comme accepté, sans pastille, et pouvait publier avec, quand tout autre lecteur voyait une case vide. Mesuré sur la base locale, puis en production en lecture seule : 2 cases réelles, dans des bentos non publiés. Défaut antérieur au chantier, la 1.1 l'a aussi, et la notification de refus le rend visible. Côté app, sans migration : il vaut pour la prochaine version |
 
 ---
 
@@ -1099,9 +1207,16 @@ la roadmap, la DoD.
   qui ne viendra pas. À trancher autrement, et ce n'est pas ce chantier.~~
   **Corrigé le 17 septembre 2026** : la migration B n'attendait aucun chiffre,
   elle est appliquée en production depuis ce jour, cf. §4.6.
-- **Le commentaire « pas de notification user en V1 »** se retire de
+- ~~**Le commentaire « pas de notification user en V1 »** se retire de
   `catalogue/actions.ts:103` et de trois endroits de
-  `docs/MON-BENTO-POP-CATALOG.md`, lignes 126, 164 et 322.
+  `docs/MON-BENTO-POP-CATALOG.md`, lignes 126, 164 et 322.~~ **Fait** : le
+  commentaire au lot 3, le catalogue au lot 5a, avec deux lignes voisines qui
+  décrivaient un déclencheur inexistant (D28).
+- **Sur sa propre page publique, dans l'app, l'auteur voit encore un item
+  refusé**, si son bento a été publié avec : `public-bento.ts` et le fil ne
+  lisent pas le statut, et la RLS le lui laisse lire. Tout autre lecteur voit
+  une case vide. Aucun cas en production le 23 septembre 2026, et la prochaine
+  version ne publie plus un tel bento (D28).
 - **Le contrôle de santé** est le premier du back-office. S'il en vient
   d'autres, en faire un écran plutôt qu'une ligne.
 - **La zone de notifications dans l'app**, chantier 24, réutilisera la table

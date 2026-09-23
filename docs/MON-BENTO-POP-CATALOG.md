@@ -121,9 +121,9 @@ validated  ──┬─ merge ──▶ merged (→ merged_into_id)
 ```
 
 - **`pending` est invisible en recherche** pour tout le monde, y compris l'auteur (sauf via la lecture directe par `id` dans son propre bento).
-- **`rejected` post-publication** dépublie tous les bentos qui le contiennent (trigger SQL : à la transition `validated → rejected`, set `published_at = null` sur les bentos concernés). Hypothèse : ça arrive rarement, c'est un cas explicite admin.
+- ~~**`rejected` post-publication** dépublie tous les bentos qui le contiennent (trigger SQL : à la transition `validated → rejected`, set `published_at = null` sur les bentos concernés). Hypothèse : ça arrive rarement, c'est un cas explicite admin.~~ → jamais implémenté, relevé le 23 septembre 2026 : aucun trigger ne dépublie, et le back-office ne refuse que depuis la file des items `pending`. Mesuré le même jour en production : aucune case d'un bento publié ne porte un item refusé.
 - **`merged`** : on **réécrit** physiquement `bento_items.item_id` du loser vers le winner au moment du merge (transaction). `merged_into_id` reste comme trace + redirect d'éventuels caches.
-- **Pas de notification user** sur refus en V1.
+- ~~**Pas de notification user** sur refus en V1.~~ → depuis le chantier 17, l'auteur est prévenu de la validation, de la fusion et du refus de sa proposition, avec la raison d'un refus quand l'admin en donne une, cf. [`UX-17-NOTIFICATIONS-PUSH.md`](./UX-17-NOTIFICATIONS-PUSH.md). Les versions publiées n'enregistrent aucun appareil : les notifications arrivent avec la prochaine sortie store.
 
 ## 4. Flow utilisateur (mobile)
 
@@ -161,8 +161,8 @@ Si aucun résultat ou si l'utilisateur veut quand même soumettre :
 
 ### 4.4 Que voit l'utilisateur si son item est validé / refusé ?
 
-- **Validé** : la prochaine fois qu'il ouvre l'app, le badge disparait, le bouton "Publier" est dispo. Pas de notif (V1).
-- **Refusé** : le `bento_items` correspondant est supprimé par un trigger ou par l'action admin. Le slot redevient vide, l'utilisateur le verra à sa prochaine ouverture.
+- **Validé** : une notification le prévient, « Proposition validée », l'item nommé dessous, et son tap ouvre le composer sur la case (chantier 17). À l'ouverture de l'app, le badge disparaît et le bouton "Publier" est dispo, brouillon sans profil compris depuis qu'il relit ses propositions en base (chantier 17, D25).
+- **Refusé** : une notification le prévient, raison comprise quand l'admin en donne une, et son tap ouvre la recherche sur la case (chantier 17). ~~Le `bento_items` correspondant est supprimé par un trigger ou par l'action admin.~~ Rien ne supprime le `bento_items`, relevé le 23 septembre 2026 : l'item refusé disparaît pour tous les autres lecteurs par la RLS, mais son auteur peut toujours le lire. C'est l'app qui vide la case (chantier 17, D28) ; avant, l'auteur voyait son item refusé comme accepté.
 - **Mergé** : transparent (le `item_id` a été réécrit vers le canonique).
 
 ## 5. Flow admin (apps/admin)
@@ -319,7 +319,7 @@ Ordre proposé, chaque étape mergeable indépendamment :
 
 ## 9. Questions ouvertes / V2
 
-- Notifications utilisateur (push Expo) sur validation/refus.
+- ~~Notifications utilisateur (push Expo) sur validation/refus.~~ → fait au chantier 17, cf. [`UX-17-NOTIFICATIONS-PUSH.md`](./UX-17-NOTIFICATIONS-PUSH.md) : validation, fusion et refus, plus la sortie d'une édition.
 - Auto-rejet des items pending non-référencés dans un bento depuis > 7 jours.
 - Quotas anti-abus automatiques (combien d'items pending par user).
 - ~~Wikidata P18 + P31 sanity check comme deuxième source d'illustration.~~ → fait autrement, cf. §10 (description Wikidata comme contrôle de type).
