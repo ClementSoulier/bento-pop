@@ -516,25 +516,61 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['push_tokens']['Insert']>;
         Relationships: [];
       };
-      /** Un ticket Expo par envoi, lu et écrit par le back-office seulement. */
+      /**
+       * Un ticket Expo par envoi, lu et écrit par le back-office seulement.
+       * Gardé 30 jours après la lecture de son accusé (D18 du chantier 17).
+       */
       push_tickets: {
         Row: {
           id: string;
           ticket_id: string;
           token_id: string;
           kind: 'item_moderated' | 'edition_released';
+          /** L'item proposé dont la modération a été notifiée. */
+          item_id: string | null;
+          /** L'édition annoncée. */
+          edition_id: number | null;
           created_at: string;
           checked_at: string | null;
+          /** `ok`, un code d'erreur d'Expo, ou `expired` sans accusé. */
           receipt_status: string | null;
         };
         Insert: {
           ticket_id: string;
           token_id: string;
           kind: 'item_moderated' | 'edition_released';
+          item_id?: string | null;
+          edition_id?: number | null;
           checked_at?: string | null;
           receipt_status?: string | null;
         };
         Update: Partial<Database['public']['Tables']['push_tickets']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Une seule ligne : le contrôle de santé des notifications, tenu par les
+       * routes d'envoi du back-office et lu par son tableau de bord (D19).
+       */
+      push_health: {
+        Row: {
+          id: boolean;
+          /** Le dernier battement authentifié reçu de `pg_cron`. */
+          last_tick_at: string | null;
+          /** Le dernier envoi accepté par Expo, et ce qu'il portait. */
+          last_sent_at: string | null;
+          last_sent_kind: 'item_moderated' | 'edition_released' | null;
+          last_error_at: string | null;
+          last_error: string | null;
+        };
+        Insert: {
+          id?: boolean;
+          last_tick_at?: string | null;
+          last_sent_at?: string | null;
+          last_sent_kind?: 'item_moderated' | 'edition_released' | null;
+          last_error_at?: string | null;
+          last_error?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['push_health']['Insert']>;
         Relationships: [];
       };
       /**

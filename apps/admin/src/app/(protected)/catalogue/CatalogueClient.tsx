@@ -311,7 +311,7 @@ function PendingRow({
 
   const onReject = () => {
     const reason = window.prompt(
-      `Refuser « ${item.title} » ?\n\nMotif (optionnel, pour traçabilité interne) :`,
+      `Refuser « ${item.title} » ?\n\nMotif (optionnel) : l'auteur le recevra dans sa notification.`,
       '',
     );
     if (reason === null) return;

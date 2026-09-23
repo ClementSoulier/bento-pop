@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { PageShell } from '@/components/AppShell/PageShell';
+import { PushHealthCard } from '@/components/PushHealthCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { createServerClient } from '@/lib/supabase/server';
 import { formatDateBlock, formatNumber } from '@/lib/format';
@@ -56,6 +58,13 @@ export default async function DashboardPage() {
         <StatCard label="Sondages actifs" value={(pollsRes.data ?? []).filter((p) => (p as unknown as { is_current: boolean }).is_current).length} hint={`${formatNumber(totalVotes)} votes cumulés`} />
         <StatCard label="Liens" value={linksEnabled} hint={`${linksTotal - linksEnabled} désactivés`} />
         <StatCard label="Newsletter" value={subscribersRes.count ?? 0} hint="abonnés cumulés" />
+      </div>
+
+      {/* L'app mobile : la santé des notifications push (chantier 17, D19). */}
+      <div className="mt-6">
+        <Suspense fallback={null}>
+          <PushHealthCard />
+        </Suspense>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-5">

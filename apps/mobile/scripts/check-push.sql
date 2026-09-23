@@ -1,4 +1,4 @@
--- Contrôles « notifications push », chantier 17, lots 1 et 2.
+-- Contrôles « notifications push », chantier 17, lots 1 à 3.
 --
 -- À rejouer sur le Supabase LOCAL après avoir appliqué les migrations du
 -- dépôt. Tout se passe dans une transaction annulée à la fin : le script ne
@@ -35,7 +35,14 @@
 --      profil ne naît qu'à la première publication depuis le chantier 9, et
 --      les deux le réclamaient (D13) ;
 --  11. supprimer un profil efface toujours ses traces : ses propositions
---      perdent leur auteur, ses appareils disparaissent.
+--      perdent leur auteur, ses appareils disparaissent ;
+--  12. `pg_cron` programme le battement toutes les 5 minutes et la purge
+--      chaque nuit, et rien d'autre (D10) ;
+--  13. la purge efface les tickets relus depuis plus de 30 jours et garde les
+--      autres (D18), et l'historique de `pg_cron` de plus de 7 jours ;
+--  14. `push_health` n'a qu'une ligne, qu'aucun client ne lit, et aucun
+--      client n'exécute la purge ;
+--  15. un ticket porte son item ou son édition, et survit à leur suppression.
 
 begin;
 
@@ -66,6 +73,10 @@ declare
   v_url      text;
   v_auth     text;
   v_posted   boolean;
+  v_token_id uuid;
+  v_item     uuid;
+  v_edition  smallint;
+  v_job      bigint;
 begin
   -- ── Données du contrôle ─────────────────────────────────────────────
   -- Deux comptes avec profil, et deux items saisis au back-office : l'un en
@@ -566,6 +577,158 @@ begin
     raise warning 'KO  11  après suppression du profil : auteur %, % appareils',
       (select submitted_by from public.items where id = v_prop_c),
       (select count(*) from public.push_tokens where user_id = v_c);
+    v_ko := v_ko + 1;
+  end if;
+
+  -- ── 12. Les deux travaux planifiés ──────────────────────────────────
+  select count(*) into v_n
+  from cron.job
+  where active
+    and ((jobname = 'push-tick' and schedule = '*/5 * * * *'
+          and command = 'select public.push_tick()')
+      or (jobname = 'push-purge' and schedule = '30 3 * * *'
+          and command = 'select public.push_purge()'));
+  if v_n = 2 and (select count(*) from cron.job) = 2 then
+    raise notice 'ok  12 pg_cron programme le battement toutes les 5 minutes et la purge chaque nuit, rien d''autre';
+    v_ok := v_ok + 1;
+  else
+    raise warning 'KO  12 travaux planifiés : % conformes sur %', v_n, (select count(*) from cron.job);
+    v_ko := v_ko + 1;
+  end if;
+
+  -- ── 13. La purge ────────────────────────────────────────────────────
+  -- Quatre tickets d'âges différents sur un appareil du compte A, et deux
+  -- passages du battement dans l'historique de `pg_cron`.
+  select id into v_token_id from public.push_tokens where token = v_tok_a1;
+
+  insert into public.push_tickets (ticket_id, token_id, kind, created_at, checked_at, receipt_status)
+  values
+    ('controle-relu-il-y-a-31-jours', v_token_id, 'item_moderated',
+     now() - interval '32 days', now() - interval '31 days', 'ok'),
+    ('controle-relu-il-y-a-29-jours', v_token_id, 'item_moderated',
+     now() - interval '30 days', now() - interval '29 days', 'DeviceNotRegistered'),
+    ('controle-jamais-relu-recent', v_token_id, 'edition_released',
+     now() - interval '10 minutes', null, null),
+    ('controle-jamais-relu-32-jours', v_token_id, 'edition_released',
+     now() - interval '32 days', null, null);
+
+  -- Numéros de passage négatifs et explicites : `postgres` n'a pas le droit
+  -- d'avancer la séquence de `pg_cron`, dont seul son travailleur se sert.
+  -- La purge, elle, ne fait qu'effacer.
+  select jobid into v_job from cron.job where jobname = 'push-tick';
+  insert into cron.job_run_details
+    (jobid, runid, job_pid, database, username, command, status, return_message, start_time, end_time)
+  values
+    (v_job, -1, 0, 'postgres', 'postgres', 'select public.push_tick()', 'succeeded', 'controle-8-jours',
+     now() - interval '8 days', now() - interval '8 days'),
+    (v_job, -2, 0, 'postgres', 'postgres', 'select public.push_tick()', 'succeeded', 'controle-1-jour',
+     now() - interval '1 day', now() - interval '1 day');
+
+  perform public.push_purge();
+
+  if (select array_agg(ticket_id order by ticket_id) from public.push_tickets
+      where ticket_id like 'controle-%')
+       = array['controle-jamais-relu-recent', 'controle-relu-il-y-a-29-jours']
+     and (select array_agg(return_message order by return_message) from cron.job_run_details
+          where return_message like 'controle-%')
+       = array['controle-1-jour'] then
+    raise notice 'ok  13 la purge efface les tickets relus depuis plus de 30 jours et l''historique de plus de 7 jours, rien d''autre';
+    v_ok := v_ok + 1;
+  else
+    raise warning 'KO  13 après la purge : tickets %, historique %',
+      (select array_agg(ticket_id order by ticket_id) from public.push_tickets where ticket_id like 'controle-%'),
+      (select array_agg(return_message order by return_message) from cron.job_run_details where return_message like 'controle-%');
+    v_ko := v_ko + 1;
+  end if;
+
+  -- ── 14. La ligne de santé, et ce qu'aucun client ne touche ──────────
+  begin
+    insert into public.push_health (id) values (false);
+    raise warning 'KO  14a une seconde ligne de santé est acceptée';
+    v_ko := v_ko + 1;
+  exception when check_violation then
+    if (select count(*) from public.push_health) = 1 then
+      raise notice 'ok  14a push_health n''a qu''une ligne';
+      v_ok := v_ok + 1;
+    else
+      raise warning 'KO  14a push_health compte % lignes', (select count(*) from public.push_health);
+      v_ko := v_ko + 1;
+    end if;
+  when others then
+    raise warning 'KO  14a erreur inattendue : % (%)', sqlerrm, sqlstate;
+    v_ko := v_ko + 1;
+  end;
+
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a, 'role', 'authenticated')::text,
+    true
+  );
+  set local role authenticated;
+  begin
+    select count(*) into v_n from public.push_health;
+    raise warning 'KO  14b un client lit la ligne de santé';
+    v_ko := v_ko + 1;
+  exception when insufficient_privilege then
+    raise notice 'ok  14b un client ne lit pas la ligne de santé';
+    v_ok := v_ok + 1;
+  when others then
+    raise warning 'KO  14b erreur inattendue : % (%)', sqlerrm, sqlstate;
+    v_ko := v_ko + 1;
+  end;
+  begin
+    perform public.push_purge();
+    raise warning 'KO  14c un client peut lancer la purge';
+    v_ko := v_ko + 1;
+  exception when insufficient_privilege then
+    raise notice 'ok  14c un client ne peut pas lancer la purge';
+    v_ok := v_ok + 1;
+  when others then
+    raise warning 'KO  14c erreur inattendue : % (%)', sqlerrm, sqlstate;
+    v_ko := v_ko + 1;
+  end;
+  reset role;
+  perform set_config('request.jwt.claims', null, true);
+
+  set local role anon;
+  begin
+    select count(*) into v_n from public.push_health;
+    raise warning 'KO  14d l''anonyme lit la ligne de santé';
+    v_ko := v_ko + 1;
+  exception when insufficient_privilege then
+    raise notice 'ok  14d l''anonyme ne lit pas la ligne de santé';
+    v_ok := v_ok + 1;
+  when others then
+    raise warning 'KO  14d erreur inattendue : % (%)', sqlerrm, sqlstate;
+    v_ko := v_ko + 1;
+  end;
+  reset role;
+
+  -- ── 15. Un ticket porte son item ou son édition ─────────────────────
+  insert into public.items (category_id, type_id, external_source, title, status)
+  values (v_film, v_type, 'admin', 'Item supprimé après envoi', 'validated')
+  returning id into v_item;
+  insert into public.editions (slug, title, released_at)
+  values ('edition-de-controle-push', 'Édition de contrôle', now() - interval '1 hour')
+  returning id into v_edition;
+
+  insert into public.push_tickets (ticket_id, token_id, kind, item_id)
+  values ('controle-porte-un-item', v_token_id, 'item_moderated', v_item);
+  insert into public.push_tickets (ticket_id, token_id, kind, edition_id)
+  values ('controle-porte-une-edition', v_token_id, 'edition_released', v_edition);
+
+  delete from public.items where id = v_item;
+  delete from public.editions where id = v_edition;
+
+  if (select count(*) from public.push_tickets
+      where ticket_id in ('controle-porte-un-item', 'controle-porte-une-edition')
+        and item_id is null and edition_id is null) = 2 then
+    raise notice 'ok  15 un ticket porte son item ou son édition, et survit à leur suppression';
+    v_ok := v_ok + 1;
+  else
+    raise warning 'KO  15 tickets après suppression : %',
+      (select array_agg(ticket_id) from public.push_tickets
+       where ticket_id in ('controle-porte-un-item', 'controle-porte-une-edition'));
     v_ko := v_ko + 1;
   end if;
 
