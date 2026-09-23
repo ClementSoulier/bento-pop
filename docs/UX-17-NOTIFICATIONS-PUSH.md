@@ -45,6 +45,31 @@
 > - **Le canal sortant est bien en place en production**, mesuré en lecture
 >   seule : `pg_net`, les deux déclencheurs de la landing, leurs secrets, et des
 >   appels réussis. La roadmap le disait à tort absent.
+>
+> **Mis à jour le 23 septembre 2026**, au début du lot 3, après quatre
+> arbitrages de Clément, D16 à D19 de §11, et trois constats faits en le
+> préparant :
+>
+> - **Une édition s'annonce dans les 24 heures qui suivent sa sortie**, et sa
+>   notification expire au même terme (D16).
+> - **L'envoi exige un jeton d'accès Expo**, celui d'un utilisateur robot au
+>   rôle le plus bas qui puisse envoyer, créé avec le lot 0. Jamais un jeton
+>   personnel, qui agit sur tout le compte, publication de mises à jour de
+>   l'app comprise (D17).
+> - **Un ticket se garde 30 jours** après la lecture ou l'expiration de son
+>   accusé, et dit quel item ou quelle édition il portait (D18).
+> - **Le contrôle de santé est une carte du tableau de bord** (D19).
+> - **Le SDK d'Expo exige Node 22 depuis sa version 7.0.0**, et le back-office
+>   tourne sous Node 20, dans son image comme en CI. Le lot 3 prend la 6.1.0,
+>   dont l'API est la même. Monter Node est une tâche à part.
+> - **Le middleware du back-office renvoie vers `/login` tout appel sans
+>   session**, celui de `pg_net` compris : les routes d'envoi en sont exclues
+>   et vérifient elles-mêmes leur jeton porteur.
+> - **`pg_net` abandonne un appel au bout de 3 secondes** : les routes
+>   répondent 202 dès le jeton vérifié, et envoient après la réponse.
+> - **La recette du lot 3 a trouvé que chaque envoi aurait échoué en
+>   production** : l'image Docker n'embarquait pas un fichier que le SDK relit
+>   à chaque requête. Invisible en développement, corrigé, cf. §8.
 
 ---
 
@@ -494,7 +519,7 @@ dit la date du dernier envoi réussi, visible sur le tableau de bord.
 | Variable | Où | Portée | Pourquoi |
 | --- | --- | --- | --- |
 | `PUSH_WEBHOOK_TOKEN` | back-office | **runtime** | Le jeton que le déclencheur présente. Lu par la route à chaque appel, donc runtime suffit et une rotation ne demande pas de rebuild |
-| `EXPO_ACCESS_TOKEN` | back-office | **runtime** | Facultatif chez Expo, mais il ferme l'envoi à qui aurait volé un jeton d'appareil. Lu au moment de l'envoi |
+| `EXPO_ACCESS_TOKEN` | back-office | **runtime** | Le jeton d'un utilisateur robot Expo, au rôle le plus bas qui puisse envoyer (D17). Il ferme l'envoi à qui aurait obtenu un jeton d'appareil. Lu au moment de l'envoi. À poser **avant** d'activer la sécurité renforcée d'Expo, sinon chaque envoi répond `UNAUTHORIZED` |
 
 Les deux sont **runtime**, aucune n'est `NEXT_PUBLIC_`. C'est important :
 une `NEXT_PUBLIC_` posée au runtime est ignorée en silence, et une variable
@@ -533,8 +558,12 @@ Mac reçoivent les notifications, cf. §4.5.
 
 ### 6.5 Garde-fous
 
-- Le déclencheur n'envoie **que** si l'item a un `submitted_by`, et jamais à
-  l'administrateur qui vient de valider.
+- Le déclencheur n'envoie **que** si l'item a un `submitted_by`. ~~Et jamais à
+  l'administrateur qui vient de valider.~~ **Corrigé le 23 septembre 2026** :
+  ce cas ne peut pas se produire. Le compte d'un administrateur vit dans le
+  projet Supabase de la landing (`validated_by`, `rejected_by`), celui d'un
+  auteur dans le projet mobile. Un membre de l'équipe qui propose depuis l'app
+  est prévenu comme tout auteur, et c'est ce qu'il attend.
 - L'envoi filtre sur `revoked_at is null` et `last_seen_at > now() - 60 days`.
 - Le type éditorial filtre en plus sur `editorial = true`.
 - Un accusé `DeviceNotRegistered` pose `revoked_at`, il ne supprime pas la
@@ -549,6 +578,20 @@ Mac reçoivent les notifications, cf. §4.5.
 - Un jeton déjà connu qu'un autre compte enregistre change de propriétaire, et
   ses réglages reviennent aux valeurs par défaut : l'accord éditorial ne passe
   pas d'un compte à l'autre.
+- **Ajoutés le 23 septembre 2026, au lot 3.** La route relit l'item et
+  n'envoie que si son statut est encore celui de l'événement : une validation
+  aussitôt suivie d'un refus ne produit qu'une notification, la bonne.
+- Une édition est réservée (`announced_at`) **avant** l'envoi, et rendue si
+  Expo est injoignable : le battement suivant réessaie, dans la fenêtre. Si
+  plusieurs éditions sont dues au même battement, seule la plus récente
+  s'annonce ; les autres sont marquées sans envoi.
+- La notification d'une édition expire 24 heures après la sortie (D16) : un
+  téléphone éteint jusqu'au samedi ne la reçoit pas en retard.
+- Les routes répondent 202 dès le jeton vérifié, et travaillent après la
+  réponse : `pg_net` abandonne au bout de 3 secondes, et un envoi lent ne doit
+  pas se lire comme un échec.
+- `data` ne porte que le type de la notification et des identifiants, jamais
+  d'adresse : l'app du lot 4 ouvre un écran qu'elle connaît, rien d'autre.
 
 ---
 
@@ -563,6 +606,11 @@ Mac reçoivent les notifications, cf. §4.5.
   absente, des guillemets dans le titre.
 - La lecture d'un accusé de réception : `ok`, `DeviceNotRegistered`,
   `MessageTooBig`, une erreur inconnue.
+- **Ajoutés au lot 3** : le jeton porteur (absent, faux, de longueur
+  différente, bon) ; la fenêtre d'annonce (programmée, sortie depuis 5
+  minutes, depuis 25 heures, déjà annoncée, deux éditions dues au même
+  battement) ; l'état du battement (jamais, récent, en retard) ; les deux
+  parcours complets, sur une base et un Expo simulés.
 
 ### 7.2 Tests de base, sur Supabase local
 
@@ -580,6 +628,18 @@ annulée, témoin compris.
    (`net.http_request_queue`), avec le bon type et le bon item.
 8. Proposer un item avec un compte authentifié, comme le font la 1.1 et la
    0.1.0, passe toujours.
+
+**Ajoutés au lot 3**, numérotés comme dans `check-push.sql`, qui compte aussi
+les contrôles 9 à 11 des lots 1 et 2 :
+
+12. `pg_cron` programme `push-tick` toutes les 5 minutes et `push-purge` chaque
+    nuit, et chacun appelle la bonne fonction.
+13. `push_purge()` efface les tickets relus depuis plus de 30 jours et garde
+    les autres (D18), et l'historique de `pg_cron` de plus de 7 jours.
+14. `push_health` n'a qu'une ligne, qu'aucun client ne lit ; aucun client
+    n'exécute `push_purge()`.
+15. Un ticket porte son item ou son édition, et supprimer l'item ne supprime
+    pas le ticket.
 
 ### 7.3 Recette
 
@@ -733,6 +793,116 @@ toutes les 5 minutes (D10). Le contrôle de santé. Puis, l'envoi déployé, les
 secrets de coffre et les variables Coolify : la chaîne tourne en production
 sans destinataire (D11).
 
+**Planifié le 23 septembre 2026**, après D16 à D19 :
+
+- **La migration `push_schedule`** : `pg_cron` dans `pg_catalog`, comme le
+  documente Supabase ; `push-tick` toutes les 5 minutes ; `push-purge` chaque
+  nuit, qui efface les tickets relus depuis plus de 30 jours (D18) et
+  l'historique de `pg_cron` de plus de 7 jours, que rien d'autre ne vide ;
+  `push_tickets` gagne l'item ou l'édition qu'il porte ; `push_health`, une
+  seule ligne, sans aucun droit client : dernier battement, dernier envoi
+  réussi, dernière erreur. Contrôles 12 à 15 de `check-push.sql`.
+- **La logique, testée sans réseau**, dans `apps/admin/src/lib/push/` : le
+  jeton porteur, les destinataires, les textes, la fenêtre d'annonce, la
+  lecture des tickets et des accusés, l'état du battement, et les deux
+  parcours complets sur une base et un Expo simulés.
+- **`POST /api/push`** : relit l'item, n'envoie que si son statut est encore
+  celui de l'événement, aux appareils de l'auteur. Canal Android `items`.
+- **`POST /api/push/tick`** : note le battement ; annonce l'édition sortie
+  dans la fenêtre, canal `editions` ; relit les accusés entre 15 minutes et
+  24 heures et marque les autres expirés ; `DeviceNotRegistered` révoque
+  l'appareil.
+- **`expo-server-sdk` 6.1.0**, jeton d'accès passé s'il est posé (D17).
+- **La carte du tableau de bord** (D19).
+- **Les preuves** : tests unitaires ; `check-push.sql` ; la chaîne de bout en
+  bout sur la base locale, jusqu'à l'API d'Expo ; l'image Docker du
+  back-office construite en local, son redéploiement se faisant à la main.
+- **En production** : la migration à la validation du lot, sur feu vert,
+  inerte sans secrets ; la mise en service à la fusion de la PR du chantier
+  et au redéploiement du back-office.
+
+**Fait le 23 septembre 2026, en local**, sur une base rejouée depuis les
+migrations :
+
+- `20260923100000_push_schedule.sql` et les contrôles 12 à 15 :
+  `check-push.sql` tient 35 contrôles, `check-editions.sql` ses 21,
+  `check-privileges.ts` et `check-types.ts` sont conformes. Six défauts
+  introduits exprès sont tous attrapés, chacun par son contrôle : purge à 3
+  jours, seconde ligne de santé, santé lisible par un client, ticket effacé
+  avec son item, battement toutes les 10 minutes, second battement.
+- Au back-office, `src/lib/push/` : 83 tests, dont les deux parcours complets
+  sur une base et un Expo simulés. Dix défauts introduits exprès dans le code
+  sont tous attrapés : événement périmé qui envoie, édition non rendue, envoi
+  sans réservation, deux révocations oubliées, appareil révoqué ou coupé qui
+  reçoit, fenêtre à 48 heures, porteur vide accepté, accusé relu trop tôt.
+  210 tests en tout, typage et lint verts. L'app mobile (636 tests) et la
+  landing se typent avec les nouveaux types.
+- **La chaîne de bout en bout**, sur la base locale et un back-office de
+  recette monté dans une copie à part, sans aucun `.env` de production. Pas
+  de vrai jeton de simulateur : celui du lot 2 n'a pas été conservé, et sans
+  le lot 0 il ne recevrait rien. Des jetons inconnus d'Expo font répondre le
+  vrai service :
+
+| # | Geste | Constaté |
+| --- | --- | --- |
+| 1 | Appels sans jeton, avec un faux, corps inattendu, JSON cassé, `GET` | 401, 401, 400, 400, 405 ; les autres pages restent derrière la connexion |
+| 2 | `push_tick()` à la main | `pg_net` reçoit 202, battement noté |
+| 3 | Valider une proposition dont l'auteur a un appareil | Expo répond `DeviceNotRegistered` : appareil révoqué dans la seconde, aucun ticket, aucune fausse alerte |
+| 4 | Le passage programmé de 05:00 UTC | `pg_cron` réussi, 202, battement noté, **édition annoncée** à l'appareil qui l'avait acceptée, révoqué de même ; accusés relus auprès d'Expo sans erreur |
+| 5 | La carte, battement vieux de 20 minutes et erreur simulée | « En panne », battement et erreur en rouge, consigne affichée |
+| 6 | La carte, battement récent et erreur d'une heure | « En marche », seule l'erreur en rouge |
+| 7 | L'image Docker du back-office, construite comme sur Coolify et lancée contre la base locale | Node 20.20.2 ; un battement et un refus la traversent, envoi et relecture acceptés par Expo |
+
+**Deux défauts trouvés par cette recette, et corrigés**, qu'aucun test ne
+pouvait voir :
+
+- **Dans l'image de production, chaque envoi aurait échoué.** Le SDK d'Expo
+  6.1.0 relit son `package.json` à chaque requête, par un `createRequire` que
+  webpack ne suit pas : empaqueté, il le cherche à un chemin absent de l'image
+  autonome (`Cannot find module '../package.json'`). En développement, tout
+  marchait. Corrigé par `serverExternalPackages: ['expo-server-sdk']` dans
+  `next.config.ts`, puis vérifié dans l'image reconstruite. La version 7.0.0
+  du SDK corrige la même chose, mais exige Node 22.
+- **Un battement lent perdait son travail.** La route notait le battement
+  avant de répondre ; recompilée en développement, elle a mis 3 secondes,
+  `pg_net` a abandonné, et l'annonce prévue après la réponse n'a jamais
+  tourné. La route répond désormais sans rien attendre, et note le battement
+  ensuite.
+
+Au passage :
+
+- `.dockerignore` écarte les dossiers natifs de l'app mobile, 8 Go ignorés
+  par git mais envoyés à Docker depuis un worktree, qui rendaient toute
+  construction locale impossible. Coolify part d'un clone : rien ne change
+  pour lui.
+- L'écran de refus du catalogue ne dit plus « pour traçabilité interne » : le
+  motif part chez l'auteur.
+- Trois défauts de la carte vus à la capture et corrigés : « 1 actifs », un
+  libellé sur deux lignes qui décalait sa colonne, une indication tronquée.
+
+**Appliqué en production le 23 septembre 2026**, par le connecteur Supabase,
+depuis le fichier commité (`7e4df51`). Vérifié en lecture seule juste après :
+
+- `pg_cron` 1.6.4 dans `pg_catalog`, `push-tick` toutes les 5 minutes et
+  `push-purge` à 3 h 30 UTC, au nom de `postgres`, actifs ; `push_health` a sa
+  ligne, sous RLS, sans aucun droit client, et aucun client n'exécute la
+  purge ; les tickets ont leurs deux colonnes et leurs trois index ;
+- rien n'a bougé : 277 items validés, 146 avec un auteur, 27 bentos publiés,
+  61 profils, 105 comptes, aucun appareil, aucun secret `push_*` ;
+- les lectures de la 1.1, rejouées en `GET` à la clé anonyme, rendent
+  exactement la même chose qu'avant : même empreinte pour le fil mis en avant
+  et pour la recherche, 277 items visibles, page publique en 200. Seule
+  différence, attendue : `push_health` répond `42501` au lieu de n'exister pas ;
+- le premier passage, à 05:25 UTC, a réussi sans rien poster : aucun appel en
+  file, aucune réponse de `pg_net`, battement jamais noté. La chaîne est
+  inerte jusqu'à la mise en service.
+
+**Reste pour le lot 3** : la mise en service, à la fusion de la PR du chantier
+et au redéploiement du back-office. Variables Coolify **runtime**
+`PUSH_WEBHOOK_TOKEN`, puis `EXPO_ACCESS_TOKEN` quand le robot existera (D17),
+et les deux secrets de coffre, que je pose ; la carte du tableau de bord doit
+alors passer « En marche » dans les 5 minutes.
+
 ### Lot 4 · Les réglages, et le tap
 
 La section Notifications du profil, deux interrupteurs, le premier composant
@@ -807,6 +977,10 @@ la roadmap, la DoD.
 | **D13** | La proposition d'un item et l'appareil se rattachent au compte (`auth.users`), plus au profil | Choisi le 17 septembre, l'après-midi. Depuis le chantier 9, le profil ne naît qu'à la première publication : un nouvel utilisateur ne pouvait pas proposer d'item. Supprimer un profil efface toujours ses traces |
 | **D14** | Une phrase de l'app précède la boîte d'autorisation du système | Choisi le 17 septembre, l'après-midi. iOS ne montre sa boîte qu'une fois : un refus par réflexe serait définitif |
 | **D15** | Le correctif du chantier 9 part dans le lot 2 | Choisi le 17 septembre, l'après-midi. Le lot 2 en dépend directement |
+| **D16** | Une édition s'annonce dans les 24 heures qui suivent sa sortie, et sa notification expire au même terme | Choisi le 23 septembre 2026. Une panne ou un redéploiement raté du jeudi soir se rattrape jusqu'au vendredi 18 h ; au-delà, une annonce se lirait comme un rappel |
+| **D17** | L'envoi exige un jeton d'accès Expo : celui d'un utilisateur robot au rôle le plus bas qui puisse envoyer, créé avec le lot 0 | Choisi le 23 septembre 2026. Il ferme l'envoi à qui obtiendrait un jeton d'appareil, pas à qui compromettrait le back-office. Un jeton personnel agirait sur tout le compte, publication de mises à jour de l'app comprise : exclu. Si seul un rôle qui publie des mises à jour peut envoyer, on renonce au jeton |
+| **D18** | Un ticket se garde 30 jours après la lecture ou l'expiration de son accusé, et porte son item ou son édition | Choisi le 23 septembre 2026. De quoi répondre à « je n'ai rien reçu » un mois durant, la validation d'un item prenant 6,9 jours en médiane. Quelques dizaines d'octets par envoi |
+| **D19** | Le contrôle de santé est une carte du tableau de bord | Choisi le 23 septembre 2026. Vue à chaque connexion, elle compense le redéploiement à la main de D2 |
 
 ---
 

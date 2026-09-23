@@ -1345,3 +1345,81 @@ laisse alors un dossier `ios` sans `MonBentoPop.xcworkspace`, et `xcodebuild`
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 cd apps/mobile/ios && pod install
 ```
+
+### `pg_net` abandonne à 3 secondes, et une route lente perd son travail
+
+Rencontré le 23 septembre 2026, au lot 3 du chantier 17, en recettant le
+battement de `pg_cron` contre un back-office en mode développement. La route
+venait d'être recompilée, elle a mis 3 secondes à répondre, et `pg_net` l'a
+abandonnée :
+
+```sql
+select status_code, timed_out, error_msg from net._http_response order by created desc limit 1;
+-- sans statut · true · Timeout of 3000 ms reached
+```
+
+Le battement avait été noté, mais le travail prévu après la réponse, par
+`after()`, n'a jamais tourné. Deux conséquences :
+
+- **une route appelée par `pg_net` répond sans rien attendre**, et fait tout
+  après la réponse, battement compris ;
+- **en développement, préchauffer la route avant le passage de `pg_cron`**,
+  par un appel au faux jeton qui la compile sans rien faire :
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:3101/api/push/tick \
+  -H 'Authorization: Bearer faux' -H 'Content-Type: application/json' -d '{"type":"tick"}'
+```
+
+`pg_net` atteint le back-office local par `http://host.docker.internal:<port>`,
+même quand `next dev` n'écoute que sur `127.0.0.1`. Ces secrets de coffre ne se
+posent que dans la base **locale**, et `supabase db reset --local` les efface :
+`check-push.sql` refuse de tourner tant qu'ils existent.
+
+### Le back-office de recette dans une copie : lier `node_modules` et `packages`
+
+La copie de `apps/admin` qui sert à la recette (sans `.env` de production, avec
+une session simulée) doit lier `node_modules` **et** `packages` depuis le
+worktree : la mise en page racine charge sa police par un chemin relatif,
+`../../../../packages/brand/assets/fonts/`, et sans lui toutes les routes
+répondent 500, API comprises.
+
+### Une image Docker se teste en la lançant, pas seulement en la construisant
+
+Le 23 septembre 2026, l'image du back-office se construisait sans erreur, et
+**chaque envoi de notification y aurait échoué** : le SDK d'Expo 6.1.0 relit son
+`package.json` à chaque requête par un `createRequire` que webpack ne suit pas,
+et la sortie autonome de Next ne l'embarquait pas. En développement, tout
+marchait. Seul l'appel réel, dans le conteneur lancé contre la base locale, l'a
+montré :
+
+```
+RequestFailed : Cannot find module '../package.json'
+```
+
+Corrigé par `serverExternalPackages: ['expo-server-sdk']` dans
+`apps/admin/next.config.ts`. Pour construire et lancer l'image comme Coolify :
+
+```bash
+docker build -f apps/admin/Dockerfile -t bento-admin:recette \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=http://localhost:54331 \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=cle-factice \
+  --build-arg NEXT_PUBLIC_ADMIN_URL=http://localhost:3300 .
+docker run -d --name bento-admin-recette -p 127.0.0.1:3300:3300 \
+  -e MOBILE_SUPABASE_URL=http://host.docker.internal:54331 \
+  -e MOBILE_SUPABASE_SERVICE_ROLE_KEY=<clé de service LOCALE> \
+  -e PUSH_WEBHOOK_TOKEN=<jeton local> bento-admin:recette
+```
+
+Depuis le même jour, `.dockerignore` écarte `apps/mobile/ios` et
+`apps/mobile/android` : 8 Go ignorés par git mais envoyés à Docker depuis un
+worktree, qui rendaient la construction locale impossible. Coolify part d'un
+clone et ne les a jamais vus.
+
+### `postgres` n'écrit pas dans l'historique de `pg_cron` sans numéro de passage
+
+Pour éprouver une purge de `cron.job_run_details` dans un contrôle,
+`insert … values (…)` échoue sur `permission denied for sequence runid_seq` :
+seul le travailleur de `pg_cron` avance cette séquence. Donner un `runid`
+explicite, négatif pour ne jamais croiser un vrai passage. La purge elle-même
+ne fait qu'effacer, et n'en a pas besoin.
