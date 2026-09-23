@@ -1423,3 +1423,82 @@ Pour éprouver une purge de `cron.job_run_details` dans un contrôle,
 seul le travailleur de `pg_cron` avance cette séquence. Donner un `runid`
 explicite, négatif pour ne jamais croiser un vrai passage. La purge elle-même
 ne fait qu'effacer, et n'en a pas besoin.
+
+### Simuler une notification distante au simulateur iOS, sans clé APNs
+
+`xcrun simctl push` livre au simulateur une notification distante, que
+l'app reçoit comme d'Expo. Rencontré le 23 septembre 2026 au lot 4 du chantier
+17 : les données doivent être sous la clé `body`, où `expo-notifications` les
+lit pour une notification distante (`NotificationRecords.swift`).
+
+```bash
+cat > notif.json <<'JSON'
+{
+  "aps": { "alert": { "title": "Proposition validée", "body": "« Titre » est au catalogue : ta case est en ligne." }, "sound": "default" },
+  "body": { "type": "item_moderated", "status": "validated", "itemId": "<uuid>" }
+}
+JSON
+xcrun simctl push <UDID> com.bentopop.mobile notif.json
+```
+
+Trois pièges :
+
+- **la bannière disparaît en quelques secondes** : la toucher aussitôt, sans
+  capture entre l'envoi et le tap. Sinon le tap tombe sur ce qui est dessous,
+  une icône de l'écran d'accueil par exemple ;
+- **toucher la notification sur l'écran verrouillé n'ouvre pas l'app** dans le
+  simulateur : repasser par l'écran d'accueil et la bannière ;
+- sur Android, sans compte de service FCM, aucune notification distante ne se
+  simule : le tap s'y recette avec le lot 0.
+
+### L'émulateur Android reprend son instantané, app comprise
+
+`emulator -avd Pixel_8` recharge l'instantané `default_boot`, et avec lui le
+processus de l'app tel qu'il était ce jour-là : son ancien JavaScript, déjà
+chargé, sans rien demander à Metro. Rencontré le 23 septembre 2026 : l'app
+affichait l'état du 17 septembre, et aucune ligne « Android Bundled » n'était
+apparue dans Metro. Avant toute recette :
+
+```bash
+adb shell am force-stop com.bentopop.mobile
+adb shell am start -n com.bentopop.mobile/.MainActivity
+# puis vérifier « Android Bundled » dans le journal de Metro
+```
+
+Même vigilance que pour la cible : un compte créé à ce moment-là doit
+apparaître dans la base locale, et jamais en production.
+
+### L'onglet que le panneau navigateur ouvre sur Metro est l'app, en version web
+
+Lancer Metro par `preview_start` ouvre un onglet sur `localhost:8081`, qui
+charge la **version web** de l'app. Elle s'ouvre, se connecte en anonyme et
+crée un compte dans la base visée par Metro. Le 23 septembre 2026, c'était la
+base locale : un compte de trop, et une énigme de plus. Fermer l'onglet aussitôt.
+
+### Remettre une autorisation Android à « jamais demandée »
+
+Android ne dit pas si une autorisation n'a jamais été demandée ou si elle a été
+refusée pour de bon : `expo-notifications` le déduit, en partie d'un repère
+qu'il garde dans les données de l'app. `pm revoke` suivi de
+`pm clear-permission-flags … user-set user-fixed` ne suffit donc pas : l'app
+continue de répondre « refusée ». Seul un effacement des données de l'app
+rend l'état neuf, session et brouillon compris :
+
+```bash
+adb shell pm clear com.bentopop.mobile
+```
+
+### Mesurer une animation de moins d'une demi-seconde
+
+Une capture fixe ne prouve pas un pouls de 230 ms. Filmer le simulateur, puis
+mesurer l'élément image par image, avec un témoin voisin qui ne doit pas
+bouger :
+
+```bash
+xcrun simctl io <UDID> recordVideo --codec=h264 --force tap.mov &   # arrêter par SIGINT
+ffmpeg -ss 3.3 -t 1.6 -i tap.mov -vf "fps=60,crop=700:170:380:505" p%03d.png
+```
+
+puis compter les pixels sombres de chaque image (Python et Pillow). Le 23
+septembre 2026 : la pastille de l'édition passait de 616 à 640 px et revenait,
+quand la pastille voisine restait à 340 px sur les 77 images.

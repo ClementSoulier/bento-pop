@@ -70,6 +70,16 @@
 > - **La recette du lot 3 a trouvé que chaque envoi aurait échoué en
 >   production** : l'image Docker n'embarquait pas un fichier que le SDK relit
 >   à chaque requête. Invisible en développement, corrigé, cf. §8.
+> - **Au début du lot 4, quatre arbitrages de plus, D20 à D23** : l'accord
+>   éditorial se demande après une publication ou à la première édition
+>   rejointe ; le tap d'une édition propose de la rejoindre sans la créer ; le
+>   tap d'un refus ouvre la recherche sur la case ; une notification reçue app
+>   ouverte s'affiche en bannière.
+> - **À la recette du lot 4, deux arbitrages de plus, D24 et D25** : le verdict
+>   passe en titre de la notification, le nom de l'item dessous, parce qu'un
+>   titre se coupe vers 28 caractères ; et le brouillon d'un compte sans profil
+>   relit ses propositions en base, une proposition validée n'y restant plus
+>   « en attente », ce qui empêchait de publier.
 
 ---
 
@@ -375,8 +385,8 @@ parc réel sont antérieurs et ne remontent rien.
 
 | Type | Déclencheur | Texte | Tap ouvre | Régime |
 | --- | --- | --- | --- | --- |
-| `item_moderated` | `items.status` passe à `validated`, `merged` ou `rejected` (D12) | « *Titre* est validé, ta case est en ligne. », avec le titre de l'item conservé pour une fusion, ou « *Titre* n'a pas été retenu. » avec la raison si elle existe | le composer, sur la case concernée | transactionnel |
-| `edition_released` | le travail planifié trouve une édition sortie et pas encore annoncée (D10) | « *Titre de l'édition* est sortie. » | le composer, sur l'édition | éditorial |
+| `item_moderated` | `items.status` passe à `validated`, `merged` ou `rejected` (D12) | ~~« *Titre* est validé, ta case est en ligne. », avec le titre de l'item conservé pour une fusion, ou « *Titre* n'a pas été retenu. » avec la raison si elle existe~~ **Depuis D24** : « Proposition validée », puis « « *Titre* » est au catalogue : ta case est en ligne. », avec le titre de l'item conservé pour une fusion ; ou « Proposition non retenue », puis « « *Titre* » : *raison* », ou sans raison « « *Titre* » n'a pas été retenu. Tu peux choisir un autre item pour cette case. » | le composer, sur le bento et la case concernés ; pour un refus, la recherche de cette case (D22) | transactionnel |
+| `edition_released` | le travail planifié trouve une édition sortie et pas encore annoncée (D10) | ~~« *Titre de l'édition* est sortie. »~~ **Depuis D24** : « Nouvelle édition », puis « « *Titre* » est sortie. Compose ton bento de la semaine. » | le composer, l'édition proposée sans être créée, ou son bento si elle est déjà rejointe (D21) | éditorial |
 
 **Le texte nomme l'item, pas l'action.** « Interstellar est validé » dit
 quelque chose ; « Un de vos items a été modéré » ne dit rien et se lit comme
@@ -433,9 +443,22 @@ C'est une alerte native, comme les confirmations du profil : accessible sans
 rien écrire. React Native la présente dans sa propre fenêtre, sans attendre
 la fermeture de la modale de recherche.
 
-L'accord éditorial se demande ailleurs et autrement : à la première ouverture
-d'une édition, avec une phrase qui dit ce qu'on enverra et à quelle fréquence.
-Deux demandes distinctes, parce que deux régimes.
+L'accord éditorial se demande ailleurs et autrement : ~~à la première
+ouverture d'une édition~~, avec une phrase qui dit ce qu'on enverra et à quelle
+fréquence. Deux demandes distinctes, parce que deux régimes.
+
+**Arbitré le 23 septembre 2026 (D20)** : la phrase vient au premier des deux
+moments, **juste après avoir publié un bento, ou en rejoignant une première
+édition**. La première ouverture d'une édition seule ne toucherait que ceux qui
+reviennent déjà : 25 des 27 bentos publiés n'ont eu aucune activité depuis plus
+de sept jours (§1.3). « On te prévient quand une édition sort ? Une
+notification par semaine, le jeudi à 18 h. », avec « Oui » et « Non merci ».
+« Non merci » est retenu sur le téléphone : la phrase ne revient plus, seul
+l'interrupteur du profil rallume. « Oui » demande l'autorisation du système
+si elle manque, puis allume « Les éditions » sur cet appareil.
+
+**Une notification reçue pendant qu'on se sert de l'app s'affiche en bannière
+du système** (D23), comme app fermée, et son tap mène au même endroit.
 
 ### 5.4 La surface de réglage, qui n'existe pas encore
 
@@ -908,6 +931,84 @@ alors passer « En marche » dans les 5 minutes.
 La section Notifications du profil, deux interrupteurs, le premier composant
 `Switch` de l'app. Le tap qui ouvre le bon écran.
 
+**Planifié le 23 septembre 2026**, après D20 à D23. Trois constats d'abord,
+lus dans le code : aucun gestionnaire de notification n'est branché, donc un
+tap ouvre l'app sur son dernier écran et une notification reçue app ouverte ne
+s'affiche pas ; le composer ne prend aucun paramètre, ni bento ni case ; et
+l'accord éditorial de §5.3 n'était prévu dans aucun lot.
+
+- **La décision, testée en Node** dans `src/lib/push.ts` : l'écran qu'ouvre
+  une notification, à partir de `data` seulement, qui refuse un type ou un
+  identifiant inconnus ; l'état de la section du profil (autorisation
+  accordée, jamais demandée, refusée) ; faut-il proposer l'accord éditorial.
+- **Le profil** : la section « Notifications », entre « À propos » et
+  « Compte ». « Mes items » et « Les éditions », réglés sur ce téléphone
+  (D8), écrits dans la ligne de l'appareil que la RLS du lot 1 laisse régler.
+  Le premier interrupteur de l'app : rôle `switch`, état annoncé, 44 points,
+  grandes polices. Autorisation refusée : une phrase et « Ouvrir les
+  réglages » ; jamais demandée : « Activer les notifications ».
+- **Le tap** : à l'app ouverte comme au démarrage par la notification. Le
+  composer apprend à sélectionner un bento et une case ; pour un refus, la
+  recherche de la case s'ouvre par-dessus (D22) ; pour une édition, le
+  « + titre » est mis en avant, ou le bento de l'édition s'ouvre s'il existe
+  (D21).
+- **L'accord éditorial** (D20), après une publication et à la première
+  édition rejointe.
+- **La bannière** au premier plan (D23).
+- **Ni migration ni build native** : les droits du lot 1 suffisent, et
+  `Switch`, `Linking.openSettings` et `expo-notifications` sont déjà dans la
+  build du lot 2.
+- **Recette** au simulateur iOS, où `xcrun simctl push` simule une
+  notification distante sans clé APNs : le tap se recette avant le lot 0. À
+  l'émulateur Android, la même logique par une notification locale. La vraie
+  réception reste au lot 5.
+
+**Fait et recetté le 23 septembre 2026**, au simulateur iPhone 17 Pro (iOS
+26.4) et à l'émulateur Pixel 8, sur la base locale, cible vérifiée dans la
+build installée et dans la session avant chaque lancement ; la production n'a
+rien reçu, 105 comptes avant comme après.
+
+- `src/lib/push.ts` : la cible d'un tap (`pushTargetFromData`, qui refuse tout
+  type, statut ou identifiant inattendu), le bento et la case à ouvrir
+  (`planItemTarget`), l'état de la section (`notificationSection`) et l'accord
+  éditorial (`shouldOfferEditorialAsk`) : 21 tests de plus. `bento-slots.ts`
+  gagne la relecture du brouillon (`refreshDraftSlots`, D25) : 6 tests.
+- `push-runtime.ts` : la bannière (D23), le tap au démarrage comme app
+  ouverte, les réglages de l'appareil, l'accord éditorial retenu sur le
+  téléphone. `push-navigation.ts` suit la cible depuis le composer.
+- `SettingSwitch`, le premier interrupteur de l'app, en primitive ; la section
+  `NotificationSettings` du profil.
+- Au back-office, les textes de D24 et leurs tests, dont un garde-fou : chaque
+  verdict tient dans les 28 caractères mesurés.
+
+| # | Geste | Constaté |
+| --- | --- | --- |
+| 1 | Profil, autorisation accordée | « Mes items » allumé, « Les éditions » éteint, « Réglé sur ce téléphone » ; chaque bascule écrite en base, relue à la réouverture |
+| 2 | Profil, jamais demandée, puis « Activer » | La boîte du système directement, sans la phrase : le geste est déjà explicite. « Autoriser » : les deux interrupteurs, l'appareil repris par le nouveau compte, une seule ligne |
+| 3 | Profil, refusée | « Coupées dans les réglages du téléphone » et « Ouvrir les réglages ». Android ouvre la fiche de l'app ; le simulateur iOS 26.4, la racine des Réglages : à revoir sur un vrai iPhone, au chantier 29 |
+| 4 | Profil, Android accordé sans `google-services.json` | « Ce téléphone ne peut pas recevoir de notifications pour l'instant », aucun appareil en base |
+| 5 | Notification app ouverte | Bannière du système (D23) |
+| 6 | Tap depuis un autre onglet, app en arrière-plan, modale ouverte, démarrage à froid | Le composer, une seule fois ; la modale ouverte se ferme d'abord ; une relance ne rejoue pas le tap |
+| 7 | Tap d'un refus | La recherche de la case (D22), y compris quand la relecture du brouillon l'a déjà vidée |
+| 8 | Tap d'une édition sortie | La pastille « + titre » pulse : 616, 640 puis 616 px sur la vidéo à 60 images par seconde, la pastille voisine restant à 340 px (D21) |
+| 9 | Rejoindre une première édition | « On te prévient quand une édition sort ? » ; « Oui » allume les éditions en base ; à l'édition suivante, rien (D20) |
+| 10 | Brouillon sans profil, trois propositions modérées | Validée : pastille partie, titre corrigé repris ; refusée : case vidée ; fusionnée : l'item conservé (D25) |
+| 11 | Bannière au nouveau format | « Proposition validée » en entier, le nom sur deux lignes dessous (D24) |
+
+**Deux défauts trouvés à la recette, et corrigés.** Le composer et la racine
+naviguaient chacun de leur côté : le composer ouvrait la recherche, puis la
+racine empilait un second composer dans sa feuille. Et le tap se branchait
+aussi sur la version web que sert Metro, où l'appel lève : il en est exclu.
+
+**Deux constats, arbitrés en QCM** : les titres coupés (D24), et le brouillon
+qui ne relisait jamais ses propositions (D25), défaut du chantier 9 absent de
+la 1.1 et de la 0.1.0.
+
+**Pas vérifié** : le pouls d'une case après le tap d'un item, même mécanisme
+que la pastille mesurée ; la phrase de l'accord après une publication, même
+fonction que celle vérifiée en rejoignant une édition ; le tap et la phrase sur
+Android, qui attendent le lot 0.
+
 ### Lot 5 · Recette et documents
 
 La recette de §7.3, au simulateur iOS et à l'émulateur Android. Les pièges
@@ -981,6 +1082,12 @@ la roadmap, la DoD.
 | **D17** | L'envoi exige un jeton d'accès Expo : celui d'un utilisateur robot au rôle le plus bas qui puisse envoyer, créé avec le lot 0 | Choisi le 23 septembre 2026. Il ferme l'envoi à qui obtiendrait un jeton d'appareil, pas à qui compromettrait le back-office. Un jeton personnel agirait sur tout le compte, publication de mises à jour de l'app comprise : exclu. Si seul un rôle qui publie des mises à jour peut envoyer, on renonce au jeton |
 | **D18** | Un ticket se garde 30 jours après la lecture ou l'expiration de son accusé, et porte son item ou son édition | Choisi le 23 septembre 2026. De quoi répondre à « je n'ai rien reçu » un mois durant, la validation d'un item prenant 6,9 jours en médiane. Quelques dizaines d'octets par envoi |
 | **D19** | Le contrôle de santé est une carte du tableau de bord | Choisi le 23 septembre 2026. Vue à chaque connexion, elle compense le redéploiement à la main de D2 |
+| **D20** | L'accord éditorial se demande juste après une publication, ou en rejoignant une première édition ; « Non merci » est retenu sur le téléphone | Choisi le 23 septembre 2026. La première édition seule ne toucherait que ceux qui reviennent déjà, alors que 25 des 27 bentos publiés dorment depuis plus de sept jours |
+| **D21** | Le tap d'une édition ouvre le composer, l'édition proposée sans être créée, ou son bento s'il existe | Choisi le 23 septembre 2026. Rejoindre reste un geste de la personne, et une édition ne se rejoint pas sans profil |
+| **D22** | Le tap d'un refus ouvre la recherche sur la case ; celui d'une validation ou d'une fusion, le composer, case en évidence | Choisi le 23 septembre 2026. Le texte du refus invite à choisir un autre item : le tap le rend possible tout de suite |
+| **D23** | Une notification reçue app ouverte s'affiche en bannière du système | Choisi le 23 septembre 2026. Comme app fermée, sans rien dessiner, et le tap mène au même endroit |
+| **D24** | Le verdict en titre de la notification, l'item nommé dessous | Choisi le 23 septembre 2026, à la recette du lot 4. Un titre ne montre qu'une ligne, environ 28 caractères sur un iPhone 17 Pro : sur les 146 propositions réelles, 40 % des validations et 79 % des refus auraient perdu leur verdict |
+| **D25** | Le brouillon d'un compte sans profil relit ses propositions en base, dans le lot 4 | Choisi le 23 septembre 2026. Une proposition validée y restait « en attente » et bloquait la publication ; la notification rendait la contradiction visible. Défaut du chantier 9, absent des versions publiées |
 
 ---
 
