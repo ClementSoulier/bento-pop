@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
   buildFeed,
+  descriptionHtml,
   escapeXml,
   formatDuration,
   publishableEpisodes,
@@ -45,7 +46,9 @@ function episode(o: Partial<FeedEpisode> = {}): FeedEpisode {
     feed_number: 2,
     explicit: false,
     episode_type: 'full',
-    thumbnail_url: null,
+    audio_title: '',
+    audio_description: '',
+    audio_image_url: '',
     ...o,
   };
 }
@@ -130,7 +133,8 @@ test('un flux sans épisode reste un XML valide', () => {
 test('une description contenant « ]]> » ne casse pas la section CDATA', () => {
   const xml = buildFeed(
     SETTINGS,
-    [episode({ description: 'un piège ]]> au milieu' })],
+    // En HTML : un texte brut est échappé avant, et « > » n'y arrive jamais tel quel.
+    [episode({ audio_description: '<p>un piège ]]> au milieu</p>' })],
     'https://bento-pop.com/feed.xml',
     MAINTENANT,
   );
@@ -149,4 +153,128 @@ test('les balises facultatives disparaissent quand la donnée manque', () => {
   assert.ok(!xml.includes('<itunes:duration>'));
   assert.ok(!xml.includes('<itunes:season>'));
   assert.ok(!xml.includes('<itunes:episode>'));
+  assert.ok(!xml.includes('<podcast:season>'));
+  assert.ok(!xml.includes('<podcast:episode>'));
+});
+
+/** Le contenu du premier `<item>`, pour ne pas confondre avec les balises de la chaîne. */
+function premierItem(xml: string): string {
+  return xml.slice(xml.indexOf('<item>'), xml.indexOf('</item>'));
+}
+
+test('le titre audio passe avant celui de la fiche, en title comme en itunes:title', () => {
+  const xml = buildFeed(
+    SETTINGS,
+    [
+      episode({
+        title: 'Les réseaux sont-ils devenus aigris ?',
+        audio_title: 'Débats #1 - Les réseaux',
+      }),
+    ],
+    'https://bento-pop.com/feed.xml',
+    MAINTENANT,
+  );
+  assert.ok(xml.includes('<title>Débats #1 - Les réseaux</title>'));
+  assert.ok(xml.includes('<itunes:title>Débats #1 - Les réseaux</itunes:title>'));
+  assert.ok(!xml.includes('aigris'));
+});
+
+test('sans titre ni description audio, le flux reprend ceux de la fiche', () => {
+  const item = premierItem(
+    buildFeed(
+      SETTINGS,
+      [episode({ audio_title: '  ' })],
+      'https://bento-pop.com/feed.xml',
+      MAINTENANT,
+    ),
+  );
+  assert.ok(item.includes('<title>Un épisode</title>'));
+  assert.ok(item.includes('<description><![CDATA[<p>Une description</p>]]></description>'));
+});
+
+test('une description HTML reprise de RSS.com passe telle quelle', () => {
+  const html =
+    '<p><strong>Plongez</strong> au cœur des séries</p><ul><li>Game of Thrones</li></ul>';
+  assert.equal(descriptionHtml(html), html);
+  const item = premierItem(
+    buildFeed(
+      SETTINGS,
+      [episode({ audio_description: html })],
+      'https://bento-pop.com/feed.xml',
+      MAINTENANT,
+    ),
+  );
+  assert.ok(item.includes(`<description><![CDATA[${html}]]></description>`));
+});
+
+test('une description en texte devient des paragraphes, avec liens et échappement', () => {
+  const texte =
+    'Enregistré à la Japan Expo.\n\nAu programme :\n• Naruto & One Piece\n• <spoilers>\r\n\r\nSite : https://bento-pop.com.';
+  assert.equal(
+    descriptionHtml(texte),
+    '<p>Enregistré à la Japan Expo.</p>' +
+      '<p>Au programme :<br>• Naruto &amp; One Piece<br>• &lt;spoilers&gt;</p>' +
+      '<p>Site : <a href="https://bento-pop.com">https://bento-pop.com</a>.</p>',
+  );
+  assert.equal(descriptionHtml('   '), '');
+});
+
+test('l’image de l’épisode vient du champ audio, jamais de la miniature du site', () => {
+  const sans = premierItem(
+    buildFeed(SETTINGS, [episode()], 'https://bento-pop.com/feed.xml', MAINTENANT),
+  );
+  assert.ok(!sans.includes('<itunes:image'));
+  const avec = premierItem(
+    buildFeed(
+      SETTINGS,
+      [episode({ audio_image_url: 'https://bento-pop.com/carre.png' })],
+      'https://bento-pop.com/feed.xml',
+      MAINTENANT,
+    ),
+  );
+  assert.ok(avec.includes('<itunes:image href="https://bento-pop.com/carre.png" />'));
+});
+
+test('la numérotation du flux sort aussi en balises Podcasting 2.0', () => {
+  const item = premierItem(
+    buildFeed(SETTINGS, [episode()], 'https://bento-pop.com/feed.xml', MAINTENANT),
+  );
+  assert.ok(item.includes('<podcast:season>2</podcast:season>'));
+  assert.ok(item.includes('<podcast:episode>2</podcast:episode>'));
+});
+
+test('un caractère de contrôle dans une description ne casse pas le flux', () => {
+  const item = premierItem(
+    buildFeed(
+      SETTINGS,
+      [episode({ audio_description: '<p>avant\u000Baprès</p>' })],
+      'https://bento-pop.com/feed.xml',
+      MAINTENANT,
+    ),
+  );
+  assert.ok(item.includes('<p>avantaprès</p>'));
+});
+
+test('plusieurs sous-catégories, séparées par des virgules dans le réglage', () => {
+  const xml = buildFeed(
+    { ...SETTINGS, subcategory: 'Hobbies, Video Games' },
+    [],
+    'https://bento-pop.com/feed.xml',
+    MAINTENANT,
+  );
+  assert.ok(
+    xml.includes(
+      '<itunes:category text="Leisure">\n' +
+        '      <itunes:category text="Hobbies" />\n' +
+        '      <itunes:category text="Video Games" />\n' +
+        '    </itunes:category>',
+    ),
+  );
+  const seule = buildFeed(
+    { ...SETTINGS, subcategory: '' },
+    [],
+    'https://bento-pop.com/feed.xml',
+    MAINTENANT,
+  );
+  assert.ok(seule.includes('<itunes:category text="Leisure" />'));
 });

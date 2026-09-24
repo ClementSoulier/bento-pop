@@ -14,7 +14,8 @@ import type { FeedEpisode, FeedSettings } from './feed';
 
 const EPISODE_SELECT =
   'slug, title, description, audio_url, audio_bytes, audio_mime, audio_published_at, ' +
-  'duration_seconds, feed_guid, feed_season, feed_number, explicit, episode_type, thumbnail_url';
+  'duration_seconds, feed_guid, feed_season, feed_number, explicit, episode_type, ' +
+  'audio_title, audio_description, audio_image_url';
 
 type DbEpisodeRow = Omit<FeedEpisode, 'kind'>;
 

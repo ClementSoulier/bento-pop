@@ -13,7 +13,12 @@ import { GuestsField } from '@/components/episodes/GuestsField';
 import { HostsField, type TeamMemberOption } from '@/components/episodes/HostsField';
 import { MentionsField } from '@/components/episodes/MentionsField';
 import { SlugField } from '@/components/episodes/SlugField';
-import { isoToDatetimeLocal, secondsToTimecode, timecodeToSeconds } from '@/lib/episodes/format';
+import {
+  datetimeLocalToIso,
+  isoToDatetimeLocal,
+  secondsToTimecode,
+  timecodeToSeconds,
+} from '@/lib/episodes/format';
 import {
   showEpisodeSchema,
   type EpisodeChapter,
@@ -53,6 +58,9 @@ export type ShowEpisodeRow = {
   feed_number: number | null;
   explicit: boolean;
   episode_type: 'full' | 'trailer' | 'bonus';
+  audio_title: string;
+  audio_description: string;
+  audio_image_url: string;
 };
 
 type EmissionsClientProps = {
@@ -260,6 +268,9 @@ function ShowEpisodeEditor({
       feed_number: episode?.feed_number ?? null,
       explicit: episode?.explicit ?? false,
       episode_type: episode?.episode_type ?? 'full',
+      audio_title: episode?.audio_title ?? '',
+      audio_description: episode?.audio_description ?? '',
+      audio_image_url: episode?.audio_image_url ?? '',
     },
   });
 
@@ -289,7 +300,14 @@ function ShowEpisodeEditor({
   const onSubmit = (values: EditFormValues) => {
     setServerError(null);
     startTransition(async () => {
-      const result = await saveShowEpisode(values);
+      // Les dates sont saisies à l'heure de Paris : on les convertit ici, dans le navigateur.
+      // Le serveur tourne en UTC et lirait « 18:00 » comme 18:00 UTC, soit 20:00 à Paris :
+      // chaque enregistrement décalait la date de 1 ou 2 heures.
+      const result = await saveShowEpisode({
+        ...values,
+        published_at: datetimeLocalToIso(values.published_at ?? '') ?? '',
+        audio_published_at: datetimeLocalToIso(values.audio_published_at ?? '') ?? '',
+      });
       if (!result.ok) {
         setServerError(result.error);
         return;
@@ -395,6 +413,9 @@ function ShowEpisodeEditor({
             audioPublishedAt={watch('audio_published_at') ?? ''}
             episodeType={watch('episode_type') ?? 'full'}
             explicit={watch('explicit') ?? false}
+            audioTitle={watch('audio_title') ?? ''}
+            audioDescription={watch('audio_description') ?? ''}
+            audioImageUrl={watch('audio_image_url') ?? ''}
             durationSeconds={watch('duration_seconds') ?? null}
             onChange={(patch) => {
               for (const [cle, valeur] of Object.entries(patch)) {
@@ -405,6 +426,8 @@ function ShowEpisodeEditor({
               audio_url: errors.audio_url?.message,
               audio_bytes: errors.audio_bytes?.message,
               audio_published_at: errors.audio_published_at?.message,
+              audio_title: errors.audio_title?.message,
+              audio_description: errors.audio_description?.message,
             }}
           />
           <DurationField

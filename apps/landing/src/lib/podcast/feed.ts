@@ -50,8 +50,19 @@ export type FeedEpisode = {
   feed_number: number | null;
   explicit: boolean;
   episode_type: 'full' | 'trailer' | 'bonus';
-  thumbnail_url: string | null;
+  /** Titre propre aux plateformes audio. Vide : on prend `title`. */
+  audio_title: string;
+  /** Description propre aux plateformes audio, HTML simple ou texte. Vide : `description`. */
+  audio_description: string;
+  /** Image carrée de l'épisode. Vide : les applis montrent la pochette du podcast. */
+  audio_image_url: string;
 };
+
+/** Caractères que XML 1.0 interdit partout, même en entité et même dans une section CDATA. */
+// La règle qui signale les caractères de contrôle dans une regex ne connaît pas ce cas :
+// ce sont bien eux qu'on vise.
+// eslint-disable-next-line no-control-regex
+const INTERDITS_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
 
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -68,20 +79,52 @@ const ESCAPES: Record<string, string> = {
  * sous forme d'entité, et un seul suffit à rendre tout le flux illisible par les applis.
  */
 export function escapeXml(value: string): string {
-  return (
-    value
-      // Ces caractères sont bien ceux qu'on veut viser : XML 1.0 les interdit, même
-      // sous forme d'entité. La règle qui les signale ne connaît pas ce cas.
-      // eslint-disable-next-line no-control-regex
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
-      .replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c)
-  );
+  return value.replace(INTERDITS_XML, '').replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
 }
 
-/** Les descriptions contiennent des puces et des retours à la ligne : on les protège. */
+/** Les descriptions contiennent du HTML et des retours à la ligne : on les protège. */
 function cdata(value: string): string {
   // `]]>` fermerait la section au milieu du texte : on la coupe en deux.
-  return `<![CDATA[${value.replace(/\]\]>/g, ']]]]><![CDATA[>')}]]>`;
+  return `<![CDATA[${value.replace(INTERDITS_XML, '').replace(/\]\]>/g, ']]]]><![CDATA[>')}]]>`;
+}
+
+/** Échappement du texte destiné à du HTML : `&apos;` n'y est pas reconnu partout. */
+function echapperHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Rend cliquables les adresses d'un texte déjà échappé, sans avaler la ponctuation qui suit. */
+function lierAdresses(value: string): string {
+  return value.replace(/https?:\/\/[^\s<"]+/g, (trouve) => {
+    const adresse = trouve.replace(/[.,;:!?)»]+$/, '');
+    return `<a href="${adresse}">${adresse}</a>${trouve.slice(adresse.length)}`;
+  });
+}
+
+/**
+ * Met une description en HTML simple, ce que les applis d'écoute savent afficher : en
+ * texte brut, Apple Podcasts colle tous les paragraphes les uns aux autres.
+ *
+ * Une description qui commence par une balise est déjà du HTML, c'est le cas de celles
+ * reprises de RSS.com : elle passe telle quelle, pour rester identique à l'octet près.
+ * Un texte saisi dans l'admin devient des paragraphes (séparés par une ligne vide), ses
+ * retours à la ligne des `<br>` et ses adresses des liens.
+ */
+export function descriptionHtml(texte: string): string {
+  const brut = texte.replace(/\r\n?/g, '\n').trim();
+  if (!brut) return '';
+  if (/^<[a-z]/i.test(brut)) return texte;
+  return brut
+    .split(/\n\s*\n/)
+    .map(
+      (bloc) =>
+        `<p>${bloc
+          .trim()
+          .split('\n')
+          .map((ligne) => lierAdresses(echapperHtml(ligne.trim())))
+          .join('<br>')}</p>`,
+    )
+    .join('');
 }
 
 /** Date au format RFC 2822, seul format que toutes les applis acceptent. */
@@ -125,10 +168,16 @@ export function publishableEpisodes(
 function itemXml(episode: FeedEpisode, settings: FeedSettings): string {
   const pagePath = episode.kind === 'emission' ? 'emissions' : 'podcasts';
   const pageUrl = `${settings.link.replace(/\/$/, '')}/${pagePath}/${episode.slug}`;
+  // Les textes audio priment : ce sont ceux que les auditeurs connaissent déjà.
+  const titre = episode.audio_title.trim() ? episode.audio_title : episode.title;
+  const description = episode.audio_description.trim()
+    ? episode.audio_description
+    : episode.description;
   const lines = [
     '    <item>',
-    `      <title>${escapeXml(episode.title)}</title>`,
-    `      <description>${cdata(episode.description)}</description>`,
+    `      <title>${escapeXml(titre)}</title>`,
+    `      <itunes:title>${escapeXml(titre)}</itunes:title>`,
+    `      <description>${cdata(descriptionHtml(description))}</description>`,
     `      <link>${escapeXml(pageUrl)}</link>`,
     // isPermaLink="false" : le guid est un identifiant, pas une adresse à visiter.
     `      <guid isPermaLink="false">${escapeXml(episode.feed_guid)}</guid>`,
@@ -142,15 +191,40 @@ function itemXml(episode: FeedEpisode, settings: FeedSettings): string {
       `      <itunes:duration>${formatDuration(episode.duration_seconds)}</itunes:duration>`,
     );
   }
-  if (episode.feed_season)
+  // La numérotation en double, iTunes et Podcasting 2.0, comme le faisait RSS.com.
+  if (episode.feed_season) {
     lines.push(`      <itunes:season>${episode.feed_season}</itunes:season>`);
-  if (episode.feed_number)
+    lines.push(`      <podcast:season>${episode.feed_season}</podcast:season>`);
+  }
+  if (episode.feed_number) {
     lines.push(`      <itunes:episode>${episode.feed_number}</itunes:episode>`);
-  if (episode.thumbnail_url) {
-    lines.push(`      <itunes:image href="${escapeXml(episode.thumbnail_url)}" />`);
+    lines.push(`      <podcast:episode>${episode.feed_number}</podcast:episode>`);
+  }
+  // Pas de repli sur la miniature du site : elle est en 16:9, et les applis veulent un carré.
+  if (episode.audio_image_url) {
+    lines.push(`      <itunes:image href="${escapeXml(episode.audio_image_url)}" />`);
   }
   lines.push('    </item>');
   return lines.join('\n');
+}
+
+/**
+ * La catégorie Apple et ses sous-catégories. Il peut y en avoir plusieurs, séparées par des
+ * virgules dans le réglage : RSS.com déclarait « Leisure » avec « Hobbies » et « Video Games »,
+ * et en perdre une retirerait le podcast de ce rayon d'Apple Podcasts. Aucun nom de
+ * catégorie Apple ne contient de virgule.
+ */
+function categorieXml(settings: FeedSettings): string {
+  const sous = settings.subcategory
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!sous.length) return `    <itunes:category text="${escapeXml(settings.category)}" />`;
+  return [
+    `    <itunes:category text="${escapeXml(settings.category)}">`,
+    ...sous.map((s) => `      <itunes:category text="${escapeXml(s)}" />`),
+    '    </itunes:category>',
+  ].join('\n');
 }
 
 /**
@@ -189,9 +263,7 @@ export function buildFeed(
     `      <itunes:name>${escapeXml(settings.owner_name)}</itunes:name>`,
     `      <itunes:email>${escapeXml(settings.owner_email)}</itunes:email>`,
     '    </itunes:owner>',
-    settings.subcategory
-      ? `    <itunes:category text="${escapeXml(settings.category)}">\n      <itunes:category text="${escapeXml(settings.subcategory)}" />\n    </itunes:category>`
-      : `    <itunes:category text="${escapeXml(settings.category)}" />`,
+    categorieXml(settings),
     // Podcasting 2.0 : identifiant stable du podcast, et verrou contre un import sauvage.
     `    <podcast:guid>${escapeXml(settings.podcast_guid)}</podcast:guid>`,
     `    <podcast:locked owner="${escapeXml(settings.owner_email)}">${settings.locked ? 'yes' : 'no'}</podcast:locked>`,
