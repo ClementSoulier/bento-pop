@@ -14,7 +14,12 @@ import { GuestsField } from '@/components/episodes/GuestsField';
 import { HostsField, type TeamMemberOption } from '@/components/episodes/HostsField';
 import { MentionsField } from '@/components/episodes/MentionsField';
 import { SlugField } from '@/components/episodes/SlugField';
-import { isoToDatetimeLocal, secondsToTimecode, timecodeToSeconds } from '@/lib/episodes/format';
+import {
+  datetimeLocalToIso,
+  isoToDatetimeLocal,
+  secondsToTimecode,
+  timecodeToSeconds,
+} from '@/lib/episodes/format';
 import {
   podcastEpisodeSchema,
   type EpisodeChapter,
@@ -294,7 +299,14 @@ function PodcastEpisodeEditor({
   const onSubmit = (values: EditFormValues) => {
     setServerError(null);
     startTransition(async () => {
-      const result = await savePodcastEpisode(values);
+      // Les dates sont saisies à l'heure de Paris : on les convertit ici, dans le navigateur.
+      // Le serveur tourne en UTC et lirait « 18:00 » comme 18:00 UTC, soit 20:00 à Paris :
+      // chaque enregistrement décalait la date de 1 ou 2 heures.
+      const result = await savePodcastEpisode({
+        ...values,
+        published_at: datetimeLocalToIso(values.published_at ?? '') ?? '',
+        audio_published_at: datetimeLocalToIso(values.audio_published_at ?? '') ?? '',
+      });
       if (!result.ok) {
         setServerError(result.error);
         return;

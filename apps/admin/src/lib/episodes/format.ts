@@ -39,19 +39,27 @@ export function timecodeToSeconds(input: string): number | null {
 /**
  * Convertit un timestamp ISO (ou null) en valeur pour input[type=datetime-local]
  * (format YYYY-MM-DDTHH:mm, sans fuseau).
+ *
+ * Les secondes sont gardées quand il y en a (YYYY-MM-DDTHH:mm:ss) : des épisodes repris de
+ * RSS.com sont sortis à 11:25:55, et les arrondir à la minute changerait leur date dans le
+ * flux au premier enregistrement.
  */
 export function isoToDatetimeLocal(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const secondes = d.getSeconds() ? `:${pad(d.getSeconds())}` : '';
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}${secondes}`;
 }
 
 /**
  * Convertit la valeur d'un input datetime-local en ISO (ou null si vide).
- * L'input est interprété en heure locale du navigateur côté client ; côté serveur
- * on reçoit la chaîne telle quelle et on la passe à `new Date()`.
+ *
+ * À appeler dans le navigateur : une valeur sans fuseau est lue à l'heure locale de la
+ * machine qui convertit, et le serveur de l'admin tourne en UTC. Les formulaires
+ * convertissent donc avant d'envoyer ; côté serveur, la fonction reçoit une date ISO
+ * et la rend inchangée.
  */
 export function datetimeLocalToIso(input: string): string | null {
   const trimmed = input.trim();

@@ -70,6 +70,7 @@ export function AudioField({
         <input
           className="admin-input"
           type="datetime-local"
+          step={1}
           value={audioPublishedAt}
           onChange={(e) => onChange({ audio_published_at: e.target.value })}
         />
