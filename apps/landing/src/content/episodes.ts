@@ -60,13 +60,17 @@ export type PodcastEpisode = Omit<ShowEpisode, 'youtubeId'> & {
   audioPlatform: AudioPlatform;
   /** Id de l'émission — seul Apple Podcasts en a besoin. */
   audioShowId: string;
+  /** Notre propre fichier, celui du flux RSS : vide tant qu'il n'est pas déposé. */
+  audioUrl: string;
+  /** Image carrée des applis d'écoute, reprise par le lecteur. */
+  audioImageUrl: string;
 };
 
 const SHOW_SELECT =
   'id, slug, title, description, youtube_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_show_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
 
 const PODCAST_SELECT =
-  'id, slug, title, description, spotify_episode_id, audio_platform, audio_show_id, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_podcast_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
+  'id, slug, title, description, spotify_episode_id, audio_platform, audio_show_id, audio_url, audio_image_url, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_podcast_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
 
 type DbTeamMember = {
   id: string;
@@ -110,6 +114,8 @@ type DbPodcastRow = Omit<DbShowRow, 'youtube_id' | 'landing_show_episode_hosts'>
   spotify_episode_id: string;
   audio_platform: string | null;
   audio_show_id: string | null;
+  audio_url: string | null;
+  audio_image_url: string | null;
 } & DbHostJoin<'landing_podcast_episode_hosts'>;
 
 function mapHosts(
@@ -169,6 +175,8 @@ function mapPodcastRow(r: DbPodcastRow): PodcastEpisode {
     audioEpisodeId: r.spotify_episode_id,
     audioPlatform: isAudioPlatform(r.audio_platform) ? r.audio_platform : 'spotify',
     audioShowId: r.audio_show_id ?? '',
+    audioUrl: r.audio_url ?? '',
+    audioImageUrl: r.audio_image_url ?? '',
     thumbnailUrl: r.thumbnail_url,
     durationSeconds: r.duration_seconds,
     publishedAt: r.published_at,
@@ -217,23 +225,21 @@ export const getShowEpisodes = cache(async (): Promise<ShowEpisode[]> => {
   return (data as unknown as DbShowRow[]).map(mapShowRow);
 });
 
-export const getShowEpisodeBySlug = cache(
-  async (slug: string): Promise<ShowEpisode | null> => {
-    const supabase = createAnonServerClient();
-    if (!supabase) return null;
+export const getShowEpisodeBySlug = cache(async (slug: string): Promise<ShowEpisode | null> => {
+  const supabase = createAnonServerClient();
+  if (!supabase) return null;
 
-    const { data, error } = await supabase
-      .from('landing_show_episodes')
-      .select(SHOW_SELECT)
-      .eq('status', 'published')
-      .or(publicVisibilityFilter())
-      .eq('slug', slug)
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from('landing_show_episodes')
+    .select(SHOW_SELECT)
+    .eq('status', 'published')
+    .or(publicVisibilityFilter())
+    .eq('slug', slug)
+    .maybeSingle();
 
-    if (error || !data) return null;
-    return mapShowRow(data as unknown as DbShowRow);
-  },
-);
+  if (error || !data) return null;
+  return mapShowRow(data as unknown as DbShowRow);
+});
 
 // ============================================================
 // Loaders : podcasts (Spotify / Deezer / Apple Podcasts)
