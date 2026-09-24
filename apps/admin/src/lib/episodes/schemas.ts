@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { SLUG_PATTERN } from '@/lib/slugify';
 
+import { problemeAudio } from './audio-rules';
+
 // ============================================================
 // Sous-objets : invités, mentions, chapitres
 // ============================================================
@@ -33,6 +35,31 @@ export const chapterSchema = z.object({
 });
 
 // ============================================================
+// Flux RSS : le fichier audio et son identité
+// ============================================================
+
+/* Ces champs sont ceux que le flux RSS publie. Ils valent pour les deux rubriques :
+   les émissions sortent aussi en podcast, le mardi qui suit leur diffusion YouTube.
+
+   Rien n'est obligatoire ici : un épisode se saisit d'abord, se complète ensuite.
+   C'est la cohérence de l'ensemble qui est contrôlée, dans `audioComplet` plus bas. */
+const audioShape = {
+  audio_url: z.string().trim().max(1000).optional().default(''),
+  audio_bytes: z.coerce.number().int().min(0).optional().default(0),
+  audio_mime: z.string().trim().max(60).optional().default('audio/mpeg'),
+  /* Datetime-local, comme published_at. Vide = l'épisode n'entre pas dans le flux. */
+  audio_published_at: z.string().optional().default(''),
+  /* Identifiant de l'épisode dans le flux. Généré à la création s'il manque : les
+     applis d'écoute s'en servent pour reconnaître un épisode déjà téléchargé, donc
+     il ne doit jamais changer ensuite. */
+  feed_guid: z.string().trim().max(200).optional().default(''),
+  feed_season: z.coerce.number().int().min(1).nullable().optional(),
+  feed_number: z.coerce.number().int().min(1).nullable().optional(),
+  explicit: z.boolean().default(false),
+  episode_type: z.enum(['full', 'trailer', 'bonus']).default('full'),
+};
+
+// ============================================================
 // Champs communs aux deux types d'épisodes
 // ============================================================
 
@@ -63,26 +90,55 @@ const commonShape = {
   /* IDs de landing_team (animateurs présents). L'ordre du tableau
      pilote display_order dans la table de jointure. */
   host_ids: z.array(z.string().uuid()).max(10).default([]),
+  ...audioShape,
 };
 
-export const showEpisodeSchema = z.object({
-  ...commonShape,
-  youtube_id: z.string().trim().min(1, 'YouTube ID requis').max(40),
-});
+export const episodeTypeEnum = z.enum(['full', 'trailer', 'bonus']);
+
+export const showEpisodeSchema = z
+  .object({
+    ...commonShape,
+    youtube_id: z.string().trim().min(1, 'YouTube ID requis').max(40),
+  })
+  /* Voir audio-rules.ts : un épisode daté dans le flux doit être écoutable. */
+  .superRefine((v, ctx) => {
+    const probleme = problemeAudio(v);
+    if (probleme) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: probleme.message,
+        path: [probleme.champ],
+      });
+    }
+  });
 
 export const audioPlatformEnum = z.enum(['spotify', 'deezer', 'apple']);
 
 export const podcastEpisodeSchema = z
   .object({
     ...commonShape,
-    spotify_episode_id: z.string().trim().min(1, "ID d'épisode requis").max(64),
+    /* Vide tant que l'épisode n'est pas diffusé : on ne le connaît qu'après coup. */
+    spotify_episode_id: z.string().trim().max(64).optional().default(''),
     audio_platform: audioPlatformEnum.default('spotify'),
     audio_show_id: z.string().trim().max(64).optional().default(''),
   })
   // L'embed Apple Podcasts a besoin de l'id de l'émission en plus de l'épisode.
-  .refine((v) => v.audio_platform !== 'apple' || v.audio_show_id.length > 0, {
-    message: "ID de l'émission requis pour Apple Podcasts",
-    path: ['audio_show_id'],
+  .refine(
+    (v) => v.audio_platform !== 'apple' || !v.spotify_episode_id || v.audio_show_id.length > 0,
+    {
+      message: "ID de l'émission requis pour Apple Podcasts",
+      path: ['audio_show_id'],
+    },
+  )
+  .superRefine((v, ctx) => {
+    const probleme = problemeAudio(v);
+    if (probleme) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: probleme.message,
+        path: [probleme.champ],
+      });
+    }
   });
 
 export type ShowEpisodePayload = z.infer<typeof showEpisodeSchema>;
