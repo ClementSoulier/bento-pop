@@ -9,12 +9,16 @@ import { JsonLd } from '@/components/JsonLd';
 import { MentionsList } from '@/components/MentionsList';
 import { SmartImage } from '@/components/SmartImage';
 import { PodcastEpisodeEmbed } from '@/components/PodcastEpisodeEmbed';
-import { resolveAudioPlatform } from '@/lib/podcast-platform';
+import { PodcastPlayer } from '@/components/PodcastPlayer';
 import {
-  formatDurationShort,
-  formatPublishedDate,
-  formatTimecode,
-} from '@/lib/episodes';
+  AUDIO_PLATFORM_BRAND,
+  isAudioPlatform,
+  resolveAudioPlatform,
+  type AudioPlatform,
+} from '@/lib/podcast-platform';
+import { isRealEpisodeId } from '@/lib/podcast-player';
+import { formatDurationShort, formatPublishedDate, formatTimecode } from '@/lib/episodes';
+import { getDebriefs } from '@/content/debriefs';
 import { getPodcastEpisodeBySlug, getPodcastEpisodes } from '@/content/episodes';
 
 export const revalidate = 3600;
@@ -33,7 +37,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = ep.seoTitle ?? ep.title;
   const description =
     ep.seoDescription ??
-    (ep.description ? ep.description.slice(0, 160) : `Épisode ${ep.season}·${ep.episodeNumber ?? ''} du podcast Bento Pop.`);
+    (ep.description
+      ? ep.description.slice(0, 160)
+      : `Épisode ${ep.season}·${ep.episodeNumber ?? ''} du podcast Bento Pop.`);
   return {
     title,
     description,
@@ -61,6 +67,12 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
     showId: ep.audioShowId,
   });
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
+  // « A_REMPLACER » tant que la plateforme n'a pas repris l'épisode : ni lecteur ni lien dessus.
+  const episodeIdConnu = isRealEpisodeId(ep.audioPlatform, ep.audioEpisodeId);
+  const listenLinks = await getListenLinks(
+    ep.audioPlatform,
+    episodeIdConnu ? platform.pageUrl : null,
+  );
 
   const episodeSchema = {
     '@context': 'https://schema.org',
@@ -76,10 +88,12 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
     datePublished,
     inLanguage: 'fr-FR',
     duration: ep.durationSeconds ? `PT${ep.durationSeconds}S` : undefined,
-    associatedMedia: {
-      '@type': 'MediaObject',
-      contentUrl: platform.pageUrl,
-    },
+    // Notre fichier quand il existe : c'est lui que Google sait lire comme un épisode.
+    associatedMedia: ep.audioUrl
+      ? { '@type': 'AudioObject', contentUrl: ep.audioUrl, encodingFormat: 'audio/mpeg' }
+      : episodeIdConnu
+        ? { '@type': 'MediaObject', contentUrl: platform.pageUrl }
+        : undefined,
     actor: ep.hosts.map((h) => ({ '@type': 'Person', name: h.name })),
     image: ep.thumbnailUrl ?? undefined,
   } as const;
@@ -100,7 +114,11 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
     <>
       <JsonLd data={[episodeSchema, breadcrumbSchema]} />
       <Nav />
-      <main id="main" tabIndex={-1} className="min-h-screen bg-bento-yellow px-5 pt-12 pb-20 md:px-7 md:pt-16">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="min-h-screen bg-bento-yellow px-5 pt-12 pb-20 md:px-7 md:pt-16"
+      >
         <div className="mx-auto max-w-[1180px]">
           <Breadcrumbs
             items={[
@@ -127,7 +145,17 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
             </div>
           </header>
 
-          <PodcastEpisodeEmbed platform={platform} title={ep.title} />
+          {ep.audioUrl ? (
+            <PodcastPlayer
+              src={ep.audioUrl}
+              title={ep.title}
+              durationSeconds={ep.durationSeconds}
+              chapters={ep.chapters}
+              artworkUrl={ep.audioImageUrl || ep.thumbnailUrl}
+            />
+          ) : episodeIdConnu ? (
+            <PodcastEpisodeEmbed platform={platform} title={ep.title} />
+          ) : null}
 
           <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[2fr_1fr]">
             <div className="space-y-10">
@@ -142,14 +170,34 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
               {ep.chapters.length > 0 ? (
                 <Card title="Chapitres">
                   <ul className="divide-y divide-bento-ink/10">
-                    {ep.chapters.map((c, i) => (
-                      <li key={i} className="flex items-center gap-4 py-2.5 text-[15px]">
-                        <span className="rounded-md border-[2px] border-bento-ink bg-bento-yellow px-2 py-0.5 font-mono text-[12px] font-bold text-bento-ink">
-                          {formatTimecode(c.start_seconds)}
-                        </span>
-                        <span className="flex-1">{c.label}</span>
-                      </li>
-                    ))}
+                    {ep.chapters.map((c, i) => {
+                      const contenu = (
+                        <>
+                          <span className="rounded-md border-[2px] border-bento-ink bg-bento-yellow px-2 py-0.5 font-mono text-[12px] font-bold text-bento-ink group-hover:bg-bento-orange">
+                            {formatTimecode(c.start_seconds)}
+                          </span>
+                          <span className="flex-1 group-hover:underline">{c.label}</span>
+                        </>
+                      );
+                      return (
+                        <li key={i}>
+                          {/* Avec notre lecteur, un chapitre est un lien vers son instant (voir PodcastPlayer). */}
+                          {ep.audioUrl ? (
+                            <a
+                              href={`#t=${c.start_seconds}`}
+                              data-seek={c.start_seconds}
+                              className="group flex items-center gap-4 rounded-md py-2.5 text-[15px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-bento-ink"
+                            >
+                              {contenu}
+                            </a>
+                          ) : (
+                            <div className="flex items-center gap-4 py-2.5 text-[15px]">
+                              {contenu}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </Card>
               ) : null}
@@ -162,17 +210,25 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
             </div>
 
             <aside className="space-y-6">
-              <Card title="Écouter">
-                <a
-                  href={platform.pageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ backgroundColor: platform.brandColor }}
-                  className="inline-flex items-center gap-2 rounded-full border-[3px] border-bento-ink px-4 pt-2 pb-1.5 font-bold uppercase tracking-[0.08em] text-[13px] text-bento-ink shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg"
-                >
-                  Ouvrir sur {platform.label}
-                </a>
-              </Card>
+              {listenLinks.length > 0 ? (
+                <Card title={ep.audioUrl ? 'Écouter aussi sur' : 'Écouter sur'}>
+                  <ul className="flex flex-wrap gap-2.5">
+                    {listenLinks.map((l) => (
+                      <li key={l.kind}>
+                        <a
+                          href={l.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ backgroundColor: l.brandColor }}
+                          className="inline-flex items-center gap-2 rounded-full border-[3px] border-bento-ink px-4 pt-2 pb-1.5 font-bold uppercase tracking-[0.08em] text-[13px] text-bento-ink shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg"
+                        >
+                          {l.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              ) : null}
 
               {ep.hosts.length > 0 ? (
                 <Card title="Animateurs">
@@ -238,6 +294,29 @@ export default async function PodcastEpisodeDetailPage({ params }: PageProps) {
 // Sub-blocks
 // ============================================================
 
+/**
+ * Les plateformes où écouter le podcast, telles qu'on les gère dans l'admin (liens
+ * « podcast »). Sur la plateforme de la fiche, le lien mène à l'épisode lui-même quand on
+ * connaît son identifiant ; sinon, à la page du podcast.
+ */
+async function getListenLinks(
+  platformOfEpisode: AudioPlatform,
+  episodePageUrl: string | null,
+): Promise<Array<{ kind: AudioPlatform; href: string; label: string; brandColor: string }>> {
+  const { platforms } = await getDebriefs();
+  const links = platforms.flatMap((p) => {
+    if (!isAudioPlatform(p.iconKey) || !p.href || p.href === '#') return [];
+    const href = p.iconKey === platformOfEpisode && episodePageUrl ? episodePageUrl : p.href;
+    return [{ kind: p.iconKey, href, ...AUDIO_PLATFORM_BRAND[p.iconKey] }];
+  });
+  if (links.length === 0 && episodePageUrl) {
+    return [
+      { kind: platformOfEpisode, href: episodePageUrl, ...AUDIO_PLATFORM_BRAND[platformOfEpisode] },
+    ];
+  }
+  return links;
+}
+
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border-[4px] border-bento-ink bg-bento-cream p-5 shadow-stamp">
@@ -247,13 +326,12 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-function Breadcrumbs({
-  items,
-}: {
-  items: Array<{ href?: string; label: string }>;
-}) {
+function Breadcrumbs({ items }: { items: Array<{ href?: string; label: string }> }) {
   return (
-    <nav aria-label="Fil d'Ariane" className="font-mono text-[11px] uppercase tracking-[0.18em] text-bento-ink/65">
+    <nav
+      aria-label="Fil d'Ariane"
+      className="font-mono text-[11px] uppercase tracking-[0.18em] text-bento-ink/65"
+    >
       {items.map((item, i) => {
         const isLast = i === items.length - 1;
         return (
