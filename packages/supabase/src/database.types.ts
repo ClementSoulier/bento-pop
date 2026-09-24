@@ -185,6 +185,12 @@ type EpisodeCommonFields = {
   feed_number: number | null;
   explicit: boolean;
   episode_type: EpisodeType;
+  /** Titre sur les plateformes audio. Vide : le flux prend `title`. */
+  audio_title: string;
+  /** Description sur les plateformes audio, HTML simple ou texte. Vide : `description`. */
+  audio_description: string;
+  /** Image carrée de l'épisode dans les applis. Vide : la pochette du podcast. */
+  audio_image_url: string;
   created_at: string;
   updated_at: string;
 };
@@ -348,6 +354,9 @@ export type Database = {
           | 'feed_number'
           | 'explicit'
           | 'episode_type'
+          | 'audio_title'
+          | 'audio_description'
+          | 'audio_image_url'
         > &
           Partial<
             Pick<
@@ -377,6 +386,9 @@ export type Database = {
               | 'feed_number'
               | 'explicit'
               | 'episode_type'
+              | 'audio_title'
+              | 'audio_description'
+              | 'audio_image_url'
             >
           >;
         Update: Partial<LandingShowEpisodeFields>;
@@ -417,6 +429,9 @@ export type Database = {
           | 'feed_number'
           | 'explicit'
           | 'episode_type'
+          | 'audio_title'
+          | 'audio_description'
+          | 'audio_image_url'
         > &
           Partial<
             Pick<
@@ -446,6 +461,9 @@ export type Database = {
               | 'feed_number'
               | 'explicit'
               | 'episode_type'
+              | 'audio_title'
+              | 'audio_description'
+              | 'audio_image_url'
             >
           >;
         Update: Partial<LandingPodcastEpisodeFields>;

@@ -57,6 +57,16 @@ const audioShape = {
   feed_number: z.coerce.number().int().min(1).nullable().optional(),
   explicit: z.boolean().default(false),
   episode_type: z.enum(['full', 'trailer', 'bonus']).default('full'),
+  /* Textes et image propres aux plateformes audio (charte : un titre et une description
+     à part). Vides, le flux reprend le titre et la description de la fiche ; sans image,
+     les applis montrent la pochette du podcast. */
+  audio_title: z.string().trim().max(200).optional().default(''),
+  audio_description: z
+    .string()
+    .max(4000, 'Apple Podcasts n’affiche pas plus de 4000 caractères')
+    .optional()
+    .default(''),
+  audio_image_url: z.string().trim().max(1000).optional().default(''),
 };
 
 // ============================================================

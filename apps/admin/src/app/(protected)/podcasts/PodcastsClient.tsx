@@ -61,6 +61,9 @@ export type PodcastEpisodeRow = {
   feed_number: number | null;
   explicit: boolean;
   episode_type: 'full' | 'trailer' | 'bonus';
+  audio_title: string;
+  audio_description: string;
+  audio_image_url: string;
 };
 
 type PodcastsClientProps = {
@@ -270,6 +273,9 @@ function PodcastEpisodeEditor({
       feed_number: episode?.feed_number ?? null,
       explicit: episode?.explicit ?? false,
       episode_type: episode?.episode_type ?? 'full',
+      audio_title: episode?.audio_title ?? '',
+      audio_description: episode?.audio_description ?? '',
+      audio_image_url: episode?.audio_image_url ?? '',
     },
   });
 
@@ -439,6 +445,9 @@ function PodcastEpisodeEditor({
             audioPublishedAt={watch('audio_published_at') ?? ''}
             episodeType={watch('episode_type') ?? 'full'}
             explicit={watch('explicit') ?? false}
+            audioTitle={watch('audio_title') ?? ''}
+            audioDescription={watch('audio_description') ?? ''}
+            audioImageUrl={watch('audio_image_url') ?? ''}
             durationSeconds={watch('duration_seconds') ?? null}
             onChange={(patch) => {
               for (const [cle, valeur] of Object.entries(patch)) {
@@ -449,6 +458,8 @@ function PodcastEpisodeEditor({
               audio_url: errors.audio_url?.message,
               audio_bytes: errors.audio_bytes?.message,
               audio_published_at: errors.audio_published_at?.message,
+              audio_title: errors.audio_title?.message,
+              audio_description: errors.audio_description?.message,
             }}
           />
           <DurationField

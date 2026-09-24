@@ -2,6 +2,7 @@
 
 import { AudioUploader } from '@/components/AudioUploader';
 import { Field } from '@/components/Modal';
+import { PhotoUploader } from '@/components/PhotoUploader';
 
 type AudioFieldProps = {
   audioUrl: string;
@@ -9,6 +10,9 @@ type AudioFieldProps = {
   audioPublishedAt: string;
   episodeType: 'full' | 'trailer' | 'bonus';
   explicit: boolean;
+  audioTitle: string;
+  audioDescription: string;
+  audioImageUrl: string;
   /** Renseigne la durée si elle manque encore : l'envoi du fichier la connaît. */
   durationSeconds: number | null;
   onChange: (patch: {
@@ -19,8 +23,16 @@ type AudioFieldProps = {
     duration_seconds?: number;
     episode_type?: 'full' | 'trailer' | 'bonus';
     explicit?: boolean;
+    audio_title?: string;
+    audio_description?: string;
+    audio_image_url?: string;
   }) => void;
-  errors?: Partial<Record<'audio_url' | 'audio_bytes' | 'audio_published_at', string>>;
+  errors?: Partial<
+    Record<
+      'audio_url' | 'audio_bytes' | 'audio_published_at' | 'audio_title' | 'audio_description',
+      string
+    >
+  >;
 };
 
 /**
@@ -30,6 +42,9 @@ type AudioFieldProps = {
  * date est vide, l'épisode reste invisible des plateformes, quel que soit son statut sur
  * le site : un épisode peut donc être publié sur bento-pop.com bien avant de sortir en
  * podcast, ce qui est justement le cas des émissions.
+ *
+ * Le titre, la description et l'image propres aux applis d'écoute sont facultatifs : vides,
+ * le flux reprend ceux de la fiche, et la pochette du podcast tient lieu d'image.
  */
 export function AudioField({
   audioUrl,
@@ -37,6 +52,9 @@ export function AudioField({
   audioPublishedAt,
   episodeType,
   explicit,
+  audioTitle,
+  audioDescription,
+  audioImageUrl,
   durationSeconds,
   onChange,
   errors = {},
@@ -97,6 +115,64 @@ export function AudioField({
           />
           Signaler l’épisode comme explicite
         </label>
+      </Field>
+      <Field
+        full
+        label="Titre sur les plateformes audio"
+        hint="Spotify, Apple Podcasts, Deezer. Vide → le titre de la fiche."
+        error={errors.audio_title}
+      >
+        <input
+          className="admin-input"
+          value={audioTitle}
+          onChange={(e) => onChange({ audio_title: e.target.value })}
+        />
+      </Field>
+      <Field
+        full
+        label="Description sur les plateformes audio"
+        hint="Texte ou HTML simple, 4000 caractères au plus. Vide → la description de la fiche."
+        error={errors.audio_description}
+      >
+        <textarea
+          className="admin-textarea"
+          rows={4}
+          value={audioDescription}
+          onChange={(e) => onChange({ audio_description: e.target.value })}
+        />
+      </Field>
+      <Field
+        full
+        label="Image des applis d’écoute"
+        hint="Carrée, 1400 px de côté au moins. Vide → la pochette du podcast."
+      >
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <PhotoUploader
+              currentUrl={audioImageUrl || null}
+              bucket="episode-media"
+              pathPrefix="podcast-audio/"
+              targetSize={1600}
+              modalLabel="Image des applis d’écoute · cropping carré"
+              onUploaded={(url) => onChange({ audio_image_url: url })}
+            />
+            {audioImageUrl ? (
+              <button
+                type="button"
+                className="admin-btn admin-btn-sm admin-btn-ghost"
+                onClick={() => onChange({ audio_image_url: '' })}
+              >
+                Retirer
+              </button>
+            ) : null}
+          </div>
+          <input
+            className="admin-input"
+            placeholder="… ou colle une URL d'image"
+            value={audioImageUrl}
+            onChange={(e) => onChange({ audio_image_url: e.target.value })}
+          />
+        </div>
       </Field>
     </>
   );

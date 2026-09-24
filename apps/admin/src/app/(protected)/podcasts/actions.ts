@@ -60,6 +60,9 @@ export async function savePodcastEpisode(input: PodcastEpisodePayload): Promise<
     feed_number: data.feed_number ?? null,
     explicit: data.explicit,
     episode_type: data.episode_type,
+    audio_title: data.audio_title ?? '',
+    audio_description: data.audio_description ?? '',
+    audio_image_url: data.audio_image_url ?? '',
   };
 
   let episodeId = data.id;
