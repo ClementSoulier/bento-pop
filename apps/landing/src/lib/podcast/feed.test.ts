@@ -254,3 +254,27 @@ test('un caractère de contrôle dans une description ne casse pas le flux', () 
   );
   assert.ok(item.includes('<p>avantaprès</p>'));
 });
+
+test('plusieurs sous-catégories, séparées par des virgules dans le réglage', () => {
+  const xml = buildFeed(
+    { ...SETTINGS, subcategory: 'Hobbies, Video Games' },
+    [],
+    'https://bento-pop.com/feed.xml',
+    MAINTENANT,
+  );
+  assert.ok(
+    xml.includes(
+      '<itunes:category text="Leisure">\n' +
+        '      <itunes:category text="Hobbies" />\n' +
+        '      <itunes:category text="Video Games" />\n' +
+        '    </itunes:category>',
+    ),
+  );
+  const seule = buildFeed(
+    { ...SETTINGS, subcategory: '' },
+    [],
+    'https://bento-pop.com/feed.xml',
+    MAINTENANT,
+  );
+  assert.ok(seule.includes('<itunes:category text="Leisure" />'));
+});

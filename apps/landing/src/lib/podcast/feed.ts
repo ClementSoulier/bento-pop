@@ -209,6 +209,25 @@ function itemXml(episode: FeedEpisode, settings: FeedSettings): string {
 }
 
 /**
+ * La catégorie Apple et ses sous-catégories. Il peut y en avoir plusieurs, séparées par des
+ * virgules dans le réglage : RSS.com déclarait « Leisure » avec « Hobbies » et « Video Games »,
+ * et en perdre une retirerait le podcast de ce rayon d'Apple Podcasts. Aucun nom de
+ * catégorie Apple ne contient de virgule.
+ */
+function categorieXml(settings: FeedSettings): string {
+  const sous = settings.subcategory
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!sous.length) return `    <itunes:category text="${escapeXml(settings.category)}" />`;
+  return [
+    `    <itunes:category text="${escapeXml(settings.category)}">`,
+    ...sous.map((s) => `      <itunes:category text="${escapeXml(s)}" />`),
+    '    </itunes:category>',
+  ].join('\n');
+}
+
+/**
  * @param feedUrl adresse publique du flux, qu'il doit déclarer lui-même (`atom:link`) :
  *   c'est ainsi que les annuaires savent qu'ils lisent bien la bonne source.
  */
@@ -244,9 +263,7 @@ export function buildFeed(
     `      <itunes:name>${escapeXml(settings.owner_name)}</itunes:name>`,
     `      <itunes:email>${escapeXml(settings.owner_email)}</itunes:email>`,
     '    </itunes:owner>',
-    settings.subcategory
-      ? `    <itunes:category text="${escapeXml(settings.category)}">\n      <itunes:category text="${escapeXml(settings.subcategory)}" />\n    </itunes:category>`
-      : `    <itunes:category text="${escapeXml(settings.category)}" />`,
+    categorieXml(settings),
     // Podcasting 2.0 : identifiant stable du podcast, et verrou contre un import sauvage.
     `    <podcast:guid>${escapeXml(settings.podcast_guid)}</podcast:guid>`,
     `    <podcast:locked owner="${escapeXml(settings.owner_email)}">${settings.locked ? 'yes' : 'no'}</podcast:locked>`,
