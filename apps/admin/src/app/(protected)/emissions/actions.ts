@@ -16,7 +16,9 @@ function revalidateAdmin() {
 
 /** Purge le cache SSG/ISR de la landing pour les pages impactées. */
 async function revalidateLandingShow(slug: string) {
-  await revalidateLanding([`/emissions/${slug}`, '/sitemap.xml']);
+  // Le flux du podcast est purgé aussi : il est servi avec un cache court, mais une
+  // correction doit se voir tout de suite chez les plateformes qui viennent de le lire.
+  await revalidateLanding([`/emissions/${slug}`, '/sitemap.xml', '/feed.xml']);
 }
 
 export async function saveShowEpisode(input: ShowEpisodePayload): Promise<ActionResult> {

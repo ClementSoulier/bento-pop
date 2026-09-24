@@ -15,7 +15,9 @@ function revalidateAdmin() {
 }
 
 async function revalidateLandingPodcast(slug: string) {
-  await revalidateLanding([`/podcasts/${slug}`, '/sitemap.xml']);
+  // Le flux du podcast est purgé aussi : il est servi avec un cache court, mais une
+  // correction doit se voir tout de suite chez les plateformes qui viennent de le lire.
+  await revalidateLanding([`/podcasts/${slug}`, '/sitemap.xml', '/feed.xml']);
 }
 
 export async function savePodcastEpisode(input: PodcastEpisodePayload): Promise<ActionResult> {

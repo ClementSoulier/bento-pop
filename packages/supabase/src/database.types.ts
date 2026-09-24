@@ -132,6 +132,8 @@ type LandingHeroTiktokFields = {
 
 export type EpisodeStatus = 'draft' | 'published';
 
+type EpisodeType = 'full' | 'trailer' | 'bonus';
+
 export type EpisodeGuest = {
   name: string;
   role?: string;
@@ -169,6 +171,20 @@ type EpisodeCommonFields = {
   guests: EpisodeGuest[];
   mentions: EpisodeMention[];
   chapters: EpisodeChapter[];
+  /** Adresse publique du fichier audio servi dans le flux RSS. */
+  audio_url: string;
+  /** Taille exacte en octets : la balise `<enclosure>` l'exige. */
+  audio_bytes: number;
+  audio_mime: string;
+  /** Sortie audio (mardi), distincte de `published_at` qui est la sortie YouTube. */
+  audio_published_at: string | null;
+  /** Identifiant de l'épisode dans le flux. Immuable une fois publié. */
+  feed_guid: string | null;
+  /** Numérotation propre au flux, continue toutes rubriques confondues. */
+  feed_season: number | null;
+  feed_number: number | null;
+  explicit: boolean;
+  episode_type: EpisodeType;
   created_at: string;
   updated_at: string;
 };
@@ -183,6 +199,30 @@ type LandingPodcastEpisodeFields = EpisodeCommonFields & {
   audio_platform: 'spotify' | 'deezer' | 'apple';
   /** Requis uniquement pour Apple Podcasts. */
   audio_show_id: string;
+};
+
+type LandingPodcastSettingsFields = {
+  /** Toujours `true` : la table ne contient qu'une ligne. */
+  id: boolean;
+  title: string;
+  description: string;
+  author: string;
+  owner_name: string;
+  /** Visible dans le flux : elle prouve la propriété du podcast. */
+  owner_email: string;
+  language: string;
+  category: string;
+  subcategory: string;
+  image_url: string;
+  /** Identifiant du podcast, repris de RSS.com lors de la migration. */
+  podcast_guid: string;
+  copyright: string;
+  explicit: boolean;
+  podcast_type: 'episodic' | 'serial';
+  link: string;
+  locked: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 type LandingShowEpisodeHostFields = {
@@ -299,6 +339,15 @@ export type Database = {
           | 'guests'
           | 'mentions'
           | 'chapters'
+          | 'audio_url'
+          | 'audio_bytes'
+          | 'audio_mime'
+          | 'audio_published_at'
+          | 'feed_guid'
+          | 'feed_season'
+          | 'feed_number'
+          | 'explicit'
+          | 'episode_type'
         > &
           Partial<
             Pick<
@@ -319,9 +368,24 @@ export type Database = {
               | 'guests'
               | 'mentions'
               | 'chapters'
+              | 'audio_url'
+              | 'audio_bytes'
+              | 'audio_mime'
+              | 'audio_published_at'
+              | 'feed_guid'
+              | 'feed_season'
+              | 'feed_number'
+              | 'explicit'
+              | 'episode_type'
             >
           >;
         Update: Partial<LandingShowEpisodeFields>;
+        Relationships: [];
+      };
+      landing_podcast_settings: {
+        Row: LandingPodcastSettingsFields;
+        Insert: Partial<LandingPodcastSettingsFields>;
+        Update: Partial<LandingPodcastSettingsFields>;
         Relationships: [];
       };
       landing_podcast_episodes: {
@@ -344,6 +408,15 @@ export type Database = {
           | 'guests'
           | 'mentions'
           | 'chapters'
+          | 'audio_url'
+          | 'audio_bytes'
+          | 'audio_mime'
+          | 'audio_published_at'
+          | 'feed_guid'
+          | 'feed_season'
+          | 'feed_number'
+          | 'explicit'
+          | 'episode_type'
         > &
           Partial<
             Pick<
@@ -364,6 +437,15 @@ export type Database = {
               | 'guests'
               | 'mentions'
               | 'chapters'
+              | 'audio_url'
+              | 'audio_bytes'
+              | 'audio_mime'
+              | 'audio_published_at'
+              | 'feed_guid'
+              | 'feed_season'
+              | 'feed_number'
+              | 'explicit'
+              | 'episode_type'
             >
           >;
         Update: Partial<LandingPodcastEpisodeFields>;
