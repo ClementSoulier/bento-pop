@@ -48,6 +48,18 @@ export async function savePodcastEpisode(input: PodcastEpisodePayload): Promise<
     guests: data.guests,
     mentions: data.mentions,
     chapters: data.chapters,
+    audio_url: data.audio_url ?? '',
+    audio_bytes: data.audio_bytes ?? 0,
+    audio_mime: data.audio_mime || 'audio/mpeg',
+    audio_published_at: datetimeLocalToIso(data.audio_published_at ?? ''),
+    /* Un épisode a besoin d'un identifiant de flux stable dès sa création : c'est ce que
+       les applis d'écoute retiennent. On n'en génère un que s'il en manque, et on ne le
+       remplace jamais. */
+    feed_guid: data.feed_guid || crypto.randomUUID(),
+    feed_season: data.feed_season ?? null,
+    feed_number: data.feed_number ?? null,
+    explicit: data.explicit,
+    episode_type: data.episode_type,
   };
 
   let episodeId = data.id;

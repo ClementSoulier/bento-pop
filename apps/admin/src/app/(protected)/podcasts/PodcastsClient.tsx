@@ -8,6 +8,7 @@ import { Field, FormGrid, Modal } from '@/components/Modal';
 import { PhotoUploader } from '@/components/PhotoUploader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PencilIcon, PlusIcon, TrashIcon } from '@/components/icons';
+import { AudioField } from '@/components/episodes/AudioField';
 import { ChaptersField } from '@/components/episodes/ChaptersField';
 import { GuestsField } from '@/components/episodes/GuestsField';
 import { HostsField, type TeamMemberOption } from '@/components/episodes/HostsField';
@@ -46,6 +47,15 @@ export type PodcastEpisodeRow = {
   mentions: EpisodeMention[];
   chapters: EpisodeChapter[];
   host_ids: string[];
+  audio_url: string;
+  audio_bytes: number;
+  audio_mime: string;
+  audio_published_at: string | null;
+  feed_guid: string | null;
+  feed_season: number | null;
+  feed_number: number | null;
+  explicit: boolean;
+  episode_type: 'full' | 'trailer' | 'bonus';
 };
 
 type PodcastsClientProps = {
@@ -246,6 +256,15 @@ function PodcastEpisodeEditor({
       mentions: episode?.mentions ?? [],
       chapters: episode?.chapters ?? [],
       host_ids: episode?.host_ids ?? [],
+      audio_url: episode?.audio_url ?? '',
+      audio_bytes: episode?.audio_bytes ?? 0,
+      audio_mime: episode?.audio_mime ?? 'audio/mpeg',
+      audio_published_at: isoToDatetimeLocal(episode?.audio_published_at),
+      feed_guid: episode?.feed_guid ?? '',
+      feed_season: episode?.feed_season ?? null,
+      feed_number: episode?.feed_number ?? null,
+      explicit: episode?.explicit ?? false,
+      episode_type: episode?.episode_type ?? 'full',
     },
   });
 
@@ -371,10 +390,7 @@ function PodcastEpisodeEditor({
               hint="Le nombre après « id » dans l'URL Apple Podcasts"
               error={errors.audio_show_id?.message}
             >
-              <input
-                className="admin-input font-mono text-[12px]"
-                {...register('audio_show_id')}
-              />
+              <input className="admin-input font-mono text-[12px]" {...register('audio_show_id')} />
             </Field>
           ) : null}
           <Field label="Statut" error={errors.status?.message}>
@@ -405,6 +421,24 @@ function PodcastEpisodeEditor({
           <Field label="Date de publication" error={errors.published_at?.message}>
             <input className="admin-input" type="datetime-local" {...register('published_at')} />
           </Field>
+          <AudioField
+            audioUrl={watch('audio_url') ?? ''}
+            audioBytes={watch('audio_bytes') ?? 0}
+            audioPublishedAt={watch('audio_published_at') ?? ''}
+            episodeType={watch('episode_type') ?? 'full'}
+            explicit={watch('explicit') ?? false}
+            durationSeconds={watch('duration_seconds') ?? null}
+            onChange={(patch) => {
+              for (const [cle, valeur] of Object.entries(patch)) {
+                setValue(cle as keyof EditFormValues, valeur as never, { shouldValidate: true });
+              }
+            }}
+            errors={{
+              audio_url: errors.audio_url?.message,
+              audio_bytes: errors.audio_bytes?.message,
+              audio_published_at: errors.audio_published_at?.message,
+            }}
+          />
           <DurationField
             initial={episode?.duration_seconds ?? null}
             onChange={(s) => setValue('duration_seconds', s, { shouldValidate: true })}
