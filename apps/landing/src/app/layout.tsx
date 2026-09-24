@@ -97,7 +97,12 @@ export const metadata: Metadata = {
   authors: [{ name: 'Bento Pop' }, { name: 'Dark Hifus' }],
   creator: 'Bento Pop',
   publisher: 'Liventure SAS',
-  alternates: { canonical: '/' },
+  alternates: {
+    canonical: '/',
+    // Déclare le flux du podcast sur toutes les pages : c'est ainsi que les applis
+    // d'écoute et les annuaires le trouvent à partir de l'adresse du site.
+    types: { 'application/rss+xml': [{ url: '/feed.xml', title: 'Bento Pop! — le podcast' }] },
+  },
   robots: {
     index: true,
     follow: true,
