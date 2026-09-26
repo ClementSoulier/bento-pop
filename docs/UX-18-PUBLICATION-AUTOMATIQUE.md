@@ -17,6 +17,11 @@
 > sur la base locale, l'édition comprise. DoD en §10 : 10 points sur 11, la
 > réception réelle de « Bento publié » attendant le lot 0 du chantier 17.
 >
+> **Fusionné le 26 septembre 2026 (PR #86)**, le back-office redéployé le
+> même jour, vérifié en lecture seule (§9). « Bento publié » ne partira
+> qu'à la validation d'un bento marqué, donc pas avant la sortie de la
+> nouvelle app (D5).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 18, [le chantier
 > 5](./UX-05-BROUILLON-PUBLIE.md), dont il doit tenir la promesse, et [le
 > chantier 17](./UX-17-NOTIFICATIONS-PUSH.md), dont il reprend la chaîne
@@ -444,6 +449,15 @@ l'utilisateur à la validation), la PR unique du chantier, sur accord.
   avec la 1.1 et la 0.1.0 et prouvée avant.
 - Le back-office se redéploie à la main après la fusion.
 - L'app attend la sortie store unique.
+
+**Livré le 26 septembre 2026** : PR #86 fusionnée à 16 h 30 (Paris), après CI
+verte ; back-office redéployé sur Coolify dans la foulée, sans variable
+nouvelle. Vérifié en lecture seule : à 16 h 34, `/login` répond 200 et sert
+une nouvelle build ; le battement de 16 h 35 est reçu en 202 et noté par
+`push_health`, sans erreur ; la base n'a pas bougé, 51 bentos dont 28
+publiés, ni marque ni trace. L'identifiant de build prouve un redéploiement,
+pas le code : le texte « Bento publié » ne se voit qu'à la validation d'un
+bento marqué, qu'aucune version publiée ne pose.
 
 ---
 
