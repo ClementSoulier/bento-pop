@@ -225,7 +225,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ✅ **livré au lot 5 du 16 (PR #70)**, parcours vérifié de bout en bout au simulateur · brouillon local, zéro ligne serveur avant publication, CGU horodatées à l'acceptation · gain non prévu : on compose désormais **sans session**, ce qui répond au rejet App Store 2bf822e0 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ✅ **6 lots livrés (PR #74, CI verte, fusionnée le 17/09)** · recette sur simulateur iOS et émulateur Android : seize étapes et contrôle d'horloge, 17 défauts corrigés · arbitrages D11 à D13 : titre en 30 caractères, titre de l'édition dans le ruban de partage, **question de l'édition sur la case remplie**, garantie par un test sur 2 736 questions · bento principal inchangé au bit sur le web et au pixel dans l'app · **bloc SQL appliqué en production le 17/09** : migration B, `publish_first_bento` et les trois migrations des éditions · DoD 12 sur 14 : restent l'appareil réel (29) et le catalogue des quatre types dormants (15) · landing et back-office redéployés sur Coolify le 17/09, pages publiques vérifiées en production : boîte du bento principal identique à l'octet près à celle d'avant le redéploiement · **ne composer aucune édition en production** avant la sortie store unique et le plancher de version (D8) · [spec](./UX-13-BENTO-HEBDOMADAIRE.md) |
 | 17 | Notifications push | Rétention | L | build native | 🟡 **spécifié et arbitré le 17/09**, 28 décisions au 23/09 · **lots 1 à 4 faits et recettés du 17 au 23/09**, en local, au simulateur iPhone 17 Pro et à l'émulateur Pixel 8 : la base (appareils, tickets, déclencheur de modération), l'app qui enregistre son appareil, l'envoi par le back-office et son battement `pg_cron` toutes les 5 minutes (D10), les réglages du profil et le tap · **trois migrations appliquées en production** les 17 et 23/09, chacune prouvée compatible avec la 1.1 et la 0.1.0 avant, lectures des versions publiées inchangées après ; le battement y passe sans rien poster jusqu'à la mise en service (D11) · la recette a trouvé ce qu'aucun test ne voyait : **chaque envoi aurait échoué dans l'image Docker** du back-office, faute d'un fichier du SDK ; des titres coupés vers 28 caractères (D24) ; **deux défauts antérieurs au chantier**, le brouillon qui ne relisait pas ses propositions (D25) et l'item refusé affiché comme accepté à son auteur (D28) · **lot 5a fait le 23/09**, **PR #80 fusionnée le 23/09** après CI verte · **en service le 26/09** : back-office redéployé, secrets posés, battement reçu en 202 et noté toutes les 5 minutes, sans destinataire ; `EXPO_ACCESS_TOKEN` attend le robot d'Expo (D17) · DoD 8 sur 12, le tap fait sur iOS, les points 1 à 3 à la recette de bout en bout · **reste** : le lot 5b, la recette de bout en bout, à l'arrivée de la clé APNs et du compte FCM (délai administratif) ; l'appareil réel est versé au 29 · le besoin mesuré : **6,9 jours** de validation en médiane, sans que personne soit prévenu · envoi par déclencheur SQL et `pg_cron` vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
-| 18 | Publication automatique à la validation | Activation | M | 5 | ⬜ roadmap produit |
+| 18 | Publication automatique à la validation | Activation | M | 5 | 🟡 **spécifié et arbitré le 26/09**, cinq décisions · mesuré : sur 24 bentos portant une proposition de leur auteur, **15 ne sont jamais sortis**, dont 12 complets, validés le 25 août pour onze d'entre eux ; les 8 autres, 5 jours après la validation en médiane · **tout bento complet sort à la validation de son dernier item**, sans geste, dans la nouvelle app seulement, qui le dit avant et notifie « Bento publié » après · quatre lots : la base, le back-office, l'app, la recette · [spec](./UX-18-PUBLICATION-AUTOMATIQUE.md) |
 | 8 | Signaux de retour : compteur de vues, relance | Rétention | M | 17 | ⬜ recadré le 15/09, le reste réparti dans les 17, 18 et 22 |
 | 19 | Émissions et podcasts dans « La table » | Contenu | M | 2 | ⬜ roadmap produit |
 | 20 | Recherche « match » par bento | Découverte | M | 6, 16 | ⬜ roadmap produit · avec son réglage de confidentialité |
@@ -808,13 +808,15 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 
 ## 18. Publication automatique à la validation
 
+> **Spécifié et arbitré le 26 septembre 2026**, cf. [la spécification](./UX-18-PUBLICATION-AUTOMATIQUE.md). Le constat ci-dessous est celui du 15 septembre ; celui de la spécification le mesure.
+
 **Demandé.** Publier automatiquement un bento dès que ses éléments sont validés.
 
 **Constat.**
 
 - **Le blocage n'existe que dans l'app** : bouton « En attente de validation », désactivé, dès qu'une case porte un item en attente (`compose.tsx:51`, `compose-cta.ts:86`). Aucune règle en base : `can_publish_bento` est annoncé depuis le 28 mai (`20260528120000_catalog_status_and_moderation.sql:205`) et n'existe pas.
 - **L'état n'est relu qu'à l'ouverture du composer** (`compose.tsx:65-69`) : il faut revenir dans l'app, au bon onglet, pour découvrir qu'on peut publier.
-- **Un item refusé passerait inaperçu**, d'après le code : son auteur continue de le voir, la case ne compte plus comme en attente, et le bento peut sortir avec une case que les visiteurs voient vide. `rejected_reason` existe, l'app ne le lit nulle part. À confirmer en recette.
+- **Un item refusé passerait inaperçu**, d'après le code : son auteur continue de le voir, la case ne compte plus comme en attente, et le bento peut sortir avec une case que les visiteurs voient vide. `rejected_reason` existe, l'app ne le lit nulle part. À confirmer en recette. **Confirmé et corrigé au chantier 17** (D28) : le composer vide la case, et la notification de refus porte la raison.
 - Le chantier 5 a retenu l'option A, et sa promesse : l'utilisateur sait à tout instant si ce qu'il voit est public. Publier à sa place doit la tenir.
 
 **Proposition.**
@@ -823,11 +825,11 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 - À la validation du dernier item en attente, la base publie le bento et produit l'événement que 17 et 24 transmettront. Une fusion d'items (`admin_merge_items`) vaut validation.
 - Un refus annule l'intention et prévient l'auteur, motif compris.
 
-**À trancher quand on y arrive.**
+**Tranché le 26 septembre 2026.**
 
-- Automatique pour tous, ou seulement sur demande ? La demande explicite est la seule qui tienne la promesse du chantier 5.
-- Et si l'utilisateur modifie son bento pendant l'attente ?
-- « Ton bento est prêt » (17) ou « ton bento est publié » : l'un remplace l'autre selon le choix précédent.
+- Automatique pour tous, ou seulement sur demande ? La demande explicite est la seule qui tienne la promesse du chantier 5. **Pour tout bento complet, sans geste**, dans la nouvelle app seulement : la promesse tient par l'information, l'app le disant avant et le notifiant après (D1, D5).
+- Et si l'utilisateur modifie son bento pendant l'attente ? **L'automatisme tient tant qu'un item attend** ; il tombe quand plus rien n'attend, quand une case se vide, et au refus (D2).
+- « Ton bento est prêt » (17) ou « ton bento est publié » : l'un remplace l'autre selon le choix précédent. **« Bento publié »**, à la place de « Proposition validée » quand la validation publie le bento (D4).
 
 **Fait quand** : quelqu'un qui a proposé un item appuie une fois sur « Publier », et son bento sort à la validation sans qu'il rouvre l'app, en le sachant.
 
