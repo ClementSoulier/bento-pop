@@ -302,6 +302,23 @@ la clé anonyme (`.context/c18/verif-prod-lecture.mjs`) : fil mis en avant
 `ac13ef959f09`, 3 bentos ; recherche `ff4b23ff365d` ; 277 items et 28
 bentos visibles ; page publique en 200.
 
+**Appliqué en production le 26 septembre 2026** à 11 h 42 (Paris), par le
+connecteur Supabase, depuis le fichier commité (`98922a9`) ; le connecteur
+l'inscrit sous `20260926094235`. Vérifié en lecture seule juste après :
+
+- les deux colonnes en place, **aucune marque et aucune trace** : la
+  publication à la validation attend la nouvelle app (D5) ;
+- `items_moderation_publish` avant `items_notify_moderation`,
+  `bento_items_unmark_on_edit` et `bentos_unmark_on_publish` en place ;
+- seules `mark_publish_on_validation` et `publish_first_bento` sont
+  appelables par un client, connecté ; aucune par l'anonyme ; le client
+  n'écrit toujours que `published_at` ;
+- rien n'a bougé : 51 bentos dont 28 publiés, 277 items validés et 4 en
+  attente, 62 profils, 106 comptes, file de `pg_net` vide ;
+- **les lectures de la 1.1 rendent exactement la même chose qu'avant**, à
+  l'octet près : mêmes empreintes pour le fil et la recherche, mêmes
+  comptes, page publique en 200.
+
 ### Lot 2 · Le back-office
 
 « Bento publié » et le tap vers la page publique, testés.
