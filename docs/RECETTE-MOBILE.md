@@ -1384,6 +1384,14 @@ worktree : la mise en page racine charge sa police par un chemin relatif,
 `../../../../packages/brand/assets/fonts/`, et sans lui toutes les routes
 répondent 500, API comprises.
 
+Rencontré le 26 septembre 2026, au chantier 18 : les pages protégées créent
+aussi le client Supabase auto-hébergé, celui des comptes du back-office
+(`src/lib/supabase/server.ts`), qui lève sans `NEXT_PUBLIC_SUPABASE_URL` ni
+sa clé : le tableau de bord répondait 500. Faire viser **la base locale** à
+ces deux variables, jamais `supabase.bento-pop.com`, et bouchonner alors
+`src/middleware.ts` : avec elles, il renvoie vers `/login` toute requête sans
+utilisateur. La garde de lancement vérifie les deux cibles.
+
 ### Une image Docker se teste en la lançant, pas seulement en la construisant
 
 Le 23 septembre 2026, l'image du back-office se construisait sans erreur, et
@@ -1502,3 +1510,60 @@ ffmpeg -ss 3.3 -t 1.6 -i tap.mov -vf "fps=60,crop=700:170:380:505" p%03d.png
 puis compter les pixels sombres de chaque image (Python et Pillow). Le 23
 septembre 2026 : la pastille de l'édition passait de 616 à 640 px et revenait,
 quand la pastille voisine restait à 340 px sur les 77 images.
+
+### Mettre le `.env` de production de côté, hors du suivi de git
+
+Rencontré le 26 septembre 2026, au chantier 18 : renommé en
+`apps/mobile/.env.hors-recette` pour la recette, le fichier **n'était plus
+ignoré par git** : `apps/mobile/.gitignore` n'exclut que `.env` et une liste
+fermée de variantes (`.env.local`, `.env.production`…). Un `git add -A`
+l'aurait commité, clés comprises. Le ranger dans `.context/`, exclu du suivi
+par `.git/info/exclude`, le temps de la recette, et le noter dans le document
+de reprise : c'est ce qui permet de le remettre en place si la session
+s'interrompt.
+
+### Au simulateur, un tap instantané ne déclenche pas un `Pressable`
+
+Rencontré le 26 septembre 2026 : les onglets répondaient, mais ni les cases de
+la grille ni les cartes de la recherche. Un tap d'une durée de 0,15 seconde
+les déclenche. Et une capture prise juste après un geste montre souvent
+l'état d'avant la transition : en prendre une seconde avant de conclure que le
+geste n'a rien fait.
+
+### Clavier levé, le premier tap ne fait que le baisser
+
+Sur iOS comme sur Android, dans la recherche d'une case : le premier tap sur
+une carte baisse le clavier, le second choisit la carte. Enchaîner les deux,
+sans quoi une suite de gestes se décale d'un cran : chaque geste tombe sur
+l'écran d'avant.
+
+### Le clavier du simulateur est en AZERTY
+
+L'outil de simulateur envoie la position des touches d'un clavier QWERTY, et
+le simulateur les lit en AZERTY : « Nantes » s'écrit « Nqntes ». Rencontré
+le 26 septembre 2026. La disposition déplace aussi `q`, `z`, `w` et `m` :
+choisir des mots sans ces lettres ni `a` (« Rennes », « Porto », « Berlin »),
+ou vérifier le champ avant de valider. Sur Android, `adb shell input text` a
+tapé « androidbento » tel quel.
+
+### Une session survit à la remise à zéro de la base locale
+
+Rencontré le 26 septembre 2026, au chantier 18 : après `supabase db reset
+--local`, l'app garde la session de son ancien compte anonyme, dont le jeton
+est encore accepté, alors que la base ne connaît plus le compte. Aucun compte
+neuf ne se crée, et l'enregistrement de l'appareil échoue sur une clé
+étrangère, visible dans Metro (`23503`, `push_tokens_user_id_fkey`) : le
+compte n'existe plus. Repartir d'un compte neuf, c'est effacer les
+données de l'app : `adb shell pm clear com.bentopop.mobile` sur Android ; sur
+iOS, réinstaller la build de développement depuis une copie d'elle-même, sans
+rien reconstruire :
+
+```bash
+APP=$(xcrun simctl get_app_container "$SIM" com.bentopop.mobile app)
+cp -R "$APP" "$SC/MonBentoPop.app"      # $SC : le scratchpad de la session
+xcrun simctl uninstall "$SIM" com.bentopop.mobile
+xcrun simctl install "$SIM" "$SC/MonBentoPop.app"
+```
+
+C'est la même build, donc la même cible : la relire quand même dans
+`EXConstants.bundle/app.config` (`extra.SUPABASE_URL`) avant de recetter.

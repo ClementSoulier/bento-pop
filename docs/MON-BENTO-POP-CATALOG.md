@@ -151,17 +151,18 @@ Si aucun résultat ou si l'utilisateur veut quand même soumettre :
    - popup `On a trouvé "Inception (2010)" qui ressemble. C'est ce que tu cherchais ?`,
    - boutons : `Oui, prendre celui-là` (utilise l'item existant) / `Non, ajouter quand même`.
 3. À la création : `insert into items (category_id, external_source='user', title=q, submitted_by, submitted_at, status='pending')` + insertion immédiate dans `bento_items` du user.
-4. Le composer affiche le slot avec un badge `En attente de validation` et désactive le bouton `Publier`.
+4. Le composer affiche le slot avec un badge `En attente de validation` et désactive le bouton `Publier`. Depuis le chantier 18, un bento complet dont un item attend peut sortir tout seul à la validation (§4.3).
 
 ### 4.3 Composition / publication
 
 - Le bento est publiable si et seulement si **tous** les `bento_items` pointent vers des items `status='validated'`.
-- Côté UI : le bouton "Publier" est disabled tant qu'il y a un slot pending, avec tooltip explicite.
-- Côté SQL : la mutation `set published_at = now()` est gardée par une fonction `can_publish_bento(bento_id) returns boolean`.
+- Côté UI : le bouton "Publier" est disabled tant qu'il y a un slot pending, avec tooltip explicite. Depuis le chantier 18, un bento complet dont un item attend a trois états : « En attente de validation » tant que la base ne l'a pas marqué, « Publication à la validation » une fois marqué, et, pour un compte sans profil, « Publier dès la validation », qui mène au pseudo.
+- ~~Côté SQL : la mutation `set published_at = now()` est gardée par une fonction `can_publish_bento(bento_id) returns boolean`.~~ Jamais écrite, relevé le 26 septembre 2026 : la garde vit dans l'app, et la 0.1.0, qui ne connaît pas l'attente, publierait en erreur. Suivi du chantier 18.
+- **La publication à la validation** (chantier 18, en production depuis le 26 septembre 2026) : un bento complet dont un item attend porte une marque, `publish_on_validation_at`, que pose la nouvelle app (`mark_publish_on_validation`). À la validation ou à la fusion de son dernier item en attente, la base le publie elle-même, `published_at` et `auto_published_at` à la date de la validation, si plus rien n'y attend ni n'y est refusé. La marque tombe quand l'auteur remplace l'item en attente ou vide une case, et au refus. Un bento d'édition suit la même règle sur ses propres cases. La 1.1 et la 0.1.0 ne marquent rien : leurs bentos gardent le comportement d'avant.
 
 ### 4.4 Que voit l'utilisateur si son item est validé / refusé ?
 
-- **Validé** : une notification le prévient, « Proposition validée », l'item nommé dessous, et son tap ouvre le composer sur la case (chantier 17). À l'ouverture de l'app, le badge disparaît et le bouton "Publier" est dispo, brouillon sans profil compris depuis qu'il relit ses propositions en base (chantier 17, D25).
+- **Validé** : une notification le prévient, « Proposition validée », l'item nommé dessous, et son tap ouvre le composer sur la case (chantier 17). À l'ouverture de l'app, le badge disparaît et le bouton "Publier" est dispo, brouillon sans profil compris depuis qu'il relit ses propositions en base (chantier 17, D25). **Quand la validation publie son bento** (§4.3), la notification dit « Bento publié », et son tap ouvre la page publique du bento ; l'app dit alors « En ligne » et « Voir mon bento public » (chantier 18).
 - **Refusé** : une notification le prévient, raison comprise quand l'admin en donne une, et son tap ouvre la recherche sur la case (chantier 17). ~~Le `bento_items` correspondant est supprimé par un trigger ou par l'action admin.~~ Rien ne supprime le `bento_items`, relevé le 23 septembre 2026 : l'item refusé disparaît pour tous les autres lecteurs par la RLS, mais son auteur peut toujours le lire. C'est l'app qui vide la case (chantier 17, D28) ; avant, l'auteur voyait son item refusé comme accepté.
 - **Mergé** : transparent (le `item_id` a été réécrit vers le canonique).
 

@@ -11,6 +11,12 @@
 > tient tant qu'un item attend. Un compte sans profil y arrive par le pseudo
 > et les CGU.
 >
+> **Fait et recetté le 26 septembre 2026**, lots 1 à 4 : la migration
+> appliquée en production le jour même, prouvée compatible avant ; le
+> back-office et l'app recettés au simulateur iOS et à l'émulateur Android,
+> sur la base locale, l'édition comprise. DoD en §10 : 10 points sur 11, la
+> réception réelle de « Bento publié » attendant le lot 0 du chantier 17.
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 18, [le chantier
 > 5](./UX-05-BROUILLON-PUBLIE.md), dont il doit tenir la promesse, et [le
 > chantier 17](./UX-17-NOTIFICATIONS-PUSH.md), dont il reprend la chaîne
@@ -138,6 +144,11 @@ que son auteur rouvre l'app, et il le sait.
 Plusieurs items en attente : la phrase nomme le premier, puis « et 1 autre ».
 Les libellés exacts se mesurent sur l'écran le plus étroit, comme ceux du
 chantier 13.
+
+**Au lot 3**, la phrase est devenue une ligne d'état, sur le gabarit d'« En
+ligne » du chantier 5 : « Bientôt en ligne », puis « à la validation de
+« Titre » ». Plusieurs items en attente se comptent, « à la validation de
+tes 2 items » : une liste coupée ne disait plus rien.
 
 ### 5.2 Ce qui fait tomber l'automatisme (D2)
 
@@ -381,16 +392,48 @@ l'onglet ou au premier plan ; une validation reçue app ouverte, sur le
 composer, attend donc le geste suivant. La notification, elle, arrive tout de
 suite (D23 du 17).
 
-**Pas vérifié** : le tap de « Bento publié » sur Android, qui attend le
-compte FCM du lot 0 du 17 ; une édition marquée dans l'app, faute d'édition
-en local, la base l'éprouvant par les contrôles 8a et 8b ; le message
-« Ton bento sortira dès la validation » après le pseudo, disparu avant la
-capture.
+**Pas vérifié au lot 3** : le tap de « Bento publié » sur Android, qui attend
+le compte FCM du lot 0 du 17 ; une édition marquée dans l'app, faute
+d'édition en local, **recettée au lot 4** ; le message « Ton bento sortira
+dès la validation » après le pseudo, disparu avant la capture.
 
 ### Lot 4 · Recette et documents
 
 La DoD point par point, la roadmap, le catalogue (§4.4, ce que voit
 l'utilisateur à la validation), la PR unique du chantier, sur accord.
+
+**Fait le 26 septembre 2026.**
+
+- **La recette de l'édition**, que le lot 3 n'avait pas vue, décidée avec
+  Clément avant la PR : au simulateur iPhone 17 Pro, sur la base locale, une
+  édition de deux cases, film et série, semée en base. Le compte a reçu en
+  base son profil et un bento principal publié, le parcours du pseudo étant
+  recetté au lot 3. Captures `c18-09` et `c18-10`.
+
+| # | Geste | Constaté |
+| --- | --- | --- |
+| 11 | Rejoindre « Édition de recette », « Dune » au film, « Succession » proposé à la série | L'app pose la marque d'elle-même sur le bento d'édition, complet sur ses deux cases : « Bientôt en ligne · à la validation de « Succession » », « Publication à la validation » |
+| 12 | Valider « Succession » comme le back-office | Le bento d'édition sort à l'heure exacte de la validation, trace posée, marque levée ; l'app, relue : « En ligne », « Voir mon bento public » |
+
+- **Pour repartir d'un compte neuf**, la build de développement a été
+  réinstallée depuis une copie d'elle-même : l'app gardait la session d'un
+  compte que la remise à zéro de la base avait effacé. Piège ajouté à
+  `RECETTE-MOBILE.md`, avec quatre autres, vus à la recette du lot 3, et un
+  complément au back-office de recette.
+- **La DoD point par point** (§10) : 10 points sur 11, le point 3 attendant
+  la réception réelle du lot 5b du chantier 17. La part d'un vrai téléphone
+  est versée au chantier 29.
+- **Le catalogue** : §4.2, §4.3, où `can_publish_bento` est barré, jamais
+  écrit, et où la publication à la validation est décrite, et §4.4.
+  **La roadmap** : la ligne, l'en-tête, §18 et son « fait quand », revu par
+  D1, et la part du 29.
+- **Qualité**, sous Node 20 comme la CI, sans cache : 22 tâches vertes, lint,
+  typage, tests et builds ; tests de l'app 684, du back-office 226, de la
+  landing 154 ; e2e de la landing 29 sur 29. Sur la base locale :
+  `check-publication.sql` 32 sur 32, `check-push.sql` 35, `check-editions.sql`
+  21.
+- **Constaté en passant, hors du chantier** : le grand titre du composer
+  écrit « EDITION DE RECETTE », sans l'accent que porte la pastille (§12).
 
 ---
 
@@ -422,6 +465,25 @@ l'utilisateur à la validation), la PR unique du chantier, sur accord.
 10. `check-publication.sql` passe sur Supabase local.
 11. La migration est appliquée en production.
 
+**Point par point au 26 septembre 2026, au lot 4** : 10 points faits sur 11.
+Le point 3 est fait au simulateur iOS ; la réception de « Bento publié », et
+son tap sur Android, attendent la clé APNs et le compte FCM du chantier 17 ;
+un vrai téléphone, le chantier 29.
+
+| # | État | Preuve, ou ce qui manque |
+| --- | --- | --- |
+| 1 | Fait | La base publie le bento marqué à la validation de son dernier item en attente, et pas à celle de l'avant-dernier (contrôles 2a à 2c) ; au simulateur comme à l'émulateur, le bento sort à l'heure exacte de la validation, sans aucun geste dans l'app (lot 3, gestes 3 et 10) |
+| 2 | Fait | « Bientôt en ligne », ce qu'on attend, et « Publication à la validation » (lot 3, gestes 2, 6 et 10 ; lot 4, geste 11) ; `validationHint` et les états de `compose-cta.ts`, testés |
+| 3 | Fait sur iOS, réception au 5b du 17 | Le back-office ne dit « Bento publié » que d'un bento à l'auteur et en ligne (`content.test.ts`, `pipeline.test.ts`) ; il le bâtit à la validation comme à la fusion (lot 3, gestes 3 et 9), et son tap ouvre la page publique au simulateur, par `xcrun simctl push` (geste 5). La réception, et le tap sur Android, attendent le lot 0 du 17 ; un vrai téléphone, le chantier 29 |
+| 4 | Fait | Contrôle 3a ; la fusion de « Berlin » dans « Lisbonne » publie le bento, et « Bento publié » part pour elle (lot 3, geste 9) |
+| 5 | Fait | En base : l'auteur remplace l'item en attente ou vide une case (5a, 5b), un refus (4), une fusion qui vide une case (3b), et une réécriture du back-office qui, elle, laisse la marque (5d) ; dans l'app, `markNoLongerHolds`, testé, et les gestes 7 et 8 du lot 3, l'item remplacé puis l'item refusé |
+| 6 | Fait | Le parcours de « Publier » (chantier 9) : les CGU acceptées à l'accueil, sans lesquelles `publish_first_bento` refuse, puis le pseudo ; le bento naît marqué et sort à la validation (contrôles 10a et 10b ; lot 3, gestes 1 à 3 et 10). Le message qui le dit après le pseudo n'a pas été capturé |
+| 7 | Fait au lot 4 | En base, contrôles 8a et 8b ; dans l'app, le bento d'une édition de deux cases se marque de lui-même, dit « Bientôt en ligne », puis sort à la validation et dit « En ligne » (lot 4, gestes 11 et 12) |
+| 8 | Fait | La base revérifie tout avant de publier, et chaque garde a son défaut introduit exprès, attrapé (lot 1) : incomplet (1d, 3b, 8b), en attente (2a), refusé (1g, 10d) ; un bento non marqué ne sort jamais (6, 9b) |
+| 9 | Fait | Les lectures de la 1.1 rendent la même chose avant et après la migration, à l'octet près ; ni marque ni trace en production, les versions publiées ne marquant rien (lot 1) |
+| 10 | Fait | 32 contrôles sur 32, repassés à la fin du lot 4 |
+| 11 | Fait | Le 26 septembre 2026 à 11 h 42 (Paris), inscrite sous `20260926094235`, vérifiée en lecture seule juste après (lot 1) |
+
 ---
 
 ## 11. Décisions
@@ -443,3 +505,16 @@ l'utilisateur à la validation), la PR unique du chantier, sur accord.
 - **`can_publish_bento`**, le garde-fou en base : à reconsidérer une fois la
   0.1.0 sortie des téléphones, ce que la télémétrie ne sait pas mesurer
   (chantier 17, §12).
+- **La réception de « Bento publié »**, et son tap sur Android : au lot 5b du
+  chantier 17, à l'arrivée de la clé APNs et du compte FCM ; sur un vrai
+  téléphone, en build de production, au chantier 29.
+- **Le composer ne se relit qu'au retour sur l'onglet ou au premier plan**
+  (lot 3) : une validation reçue app ouverte, sur le composer, attend le
+  geste suivant pour dire « En ligne ». La notification, elle, arrive tout de
+  suite. À reprendre si la recette sur appareil le montre gênant.
+- **Hors du chantier, l'accent du titre d'une édition** : dans le composer,
+  « Édition de recette » s'écrit « EDITION DE RECETTE », quand la pastille dit
+  « ÉDITION » (lot 4, capture `c18-09`). Le titre, en Extenda et en
+  capitales, tient sur une hauteur de ligne fixe (`TITLE_LINE_H`), cause
+  probable, à mesurer : le budget vertical du composer est compté au point.
+  Aucune édition ne se compose en production avant la sortie.
