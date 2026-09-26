@@ -267,6 +267,41 @@ La migration de §6.1 et `check-publication.sql`, en local. La compatibilité
 avec la 1.1 et la 0.1.0 prouvée, puis la migration appliquée en production
 sur feu vert, vérifiée en lecture seule.
 
+**Fait le 26 septembre 2026, en local**, sur une base rejouée depuis les
+migrations : `20260926100000_publish_on_validation.sql` et
+`check-publication.sql`, **32 contrôles tenus**.
+
+- **Treize défauts introduits exprès, tous attrapés**, chacun par son
+  contrôle : publier avec un item encore en attente (2a), publier un bento
+  non marqué (6, 9b), lever la marque à toute réécriture (3a, 5d), oublier la
+  fusion (3a, 3b), garder la marque au refus (4), marquer le bento d'un
+  autre (1a), marquer un bento incomplet (1d, 8a), toujours ajouter la clé à
+  l'événement (9b, 9c), compter les six cases pour une édition (8a, 8b),
+  publier la première fois malgré l'attente (10a), accepter un item refusé à
+  la première publication (10d), garder la marque après une publication à
+  la main (7), et faire partir la notification avant la publication (9a).
+- **Un piège évité au design** : la fusion réécrit la case vers l'item
+  conservé avant de changer le statut du perdant. Un déclencheur sur
+  `bento_items` qui lèverait la marque dès que « plus rien n'attend »
+  l'aurait levée pendant la fusion, et le bento ne serait jamais sorti. La
+  règle de D2 ne vaut donc que pour les modifications de l'auteur, et c'est
+  le contrôle 5d qui le garde.
+- **Rien n'a bougé à côté** : `check-push.sql` 35 contrôles, dont le corps
+  exact de l'événement de modération, `check-editions.sql` 21,
+  `check-bentos-multi.sql` 16 (sur un bento de départ, qu'il exige),
+  `check-privileges.ts` et `check-types.ts` conformes, parcours des
+  versions publiées compris.
+- `publish_first_bento` lit l'état des items avant de créer le bento, qui
+  naît publié ou marqué d'une seule insertion : la landing n'est prévenue
+  qu'une fois, comme avant.
+- Les types de `packages/supabase-mobile` portent les deux colonnes et la
+  marque ; typage vert dans les huit espaces.
+
+**L'empreinte des lectures de la 1.1, relevée avant d'appliquer**, en `GET` à
+la clé anonyme (`.context/c18/verif-prod-lecture.mjs`) : fil mis en avant
+`ac13ef959f09`, 3 bentos ; recherche `ff4b23ff365d` ; 277 items et 28
+bentos visibles ; page publique en 200.
+
 ### Lot 2 · Le back-office
 
 « Bento publié » et le tap vers la page publique, testés.

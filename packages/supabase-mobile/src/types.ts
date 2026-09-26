@@ -318,6 +318,22 @@ export type Database = {
           is_featured: boolean;
           featured_order: number | null;
           published_at: string | null;
+          /**
+           * La marque « publié dès la validation » : posée par
+           * `mark_publish_on_validation()` sur un bento complet dont un item
+           * attend, levée par la base quand elle le publie ou quand plus rien
+           * n'attend. Chantier 18.
+           *
+           * Absente d'`Insert` et d'`Update`, comme la suivante : aucun client
+           * ne l'écrit, les droits colonne n'accordant que `published_at`.
+           */
+          publish_on_validation_at: string | null;
+          /**
+           * La date à laquelle la base a publié ce bento à la validation de
+           * son dernier item, gardée ensuite : elle compte les publications
+           * automatiques. Chantier 18.
+           */
+          auto_published_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -704,7 +720,21 @@ export type Database = {
           /** `[{ category_id, item_id }, …]`, les six cases du brouillon. */
           p_items: { category_id: number; item_id: string }[];
         };
+        /**
+         * L'identifiant du bento. Publié si tout est validé, marqué pour la
+         * validation si un item attend (chantier 18, D3) : lire
+         * `published_at` pour savoir lequel.
+         */
         Returns: string;
+      };
+      mark_publish_on_validation: {
+        /**
+         * Chantier 18 : marque un bento complet, non publié, dont un item
+         * attend, pour que la base le publie à la validation de son dernier
+         * item. Rend vrai si le bento est marqué au retour. Idempotente.
+         */
+        Args: { p_bento: string };
+        Returns: boolean;
       };
       search_bentos: {
         Args: { q: string; lim?: number };
