@@ -340,6 +340,53 @@ back-office, se recette au lot 3.
 La marque, le bouton, la phrase, le compte sans profil, le tap. Tests, puis
 recette de §7.2.
 
+**Fait et recetté le 26 septembre 2026.**
+
+- `compose-cta.ts` : deux états de plus, « Publication à la validation »
+  (inactif, marque confirmée) et « Publier dès la validation » (actif, sans
+  profil) ; sans marque confirmée, « En attente de validation » reste.
+- `publish-on-validation.ts`, testé : quand poser la marque
+  (`shouldMarkForValidation`), quand l'oublier comme la base
+  (`markNoLongerHolds`), la phrase de la ligne (`validationHint`).
+- Le composer pose la marque dès que la base sait le bento complet avec un
+  item en attente, l'oublie dès qu'elle ne tient plus, relit le bento marqué
+  au retour au premier plan, et dit « Bientôt en ligne », sur le même gabarit
+  qu'« En ligne ». Sans profil, l'écran du pseudo ramène au composer quand le
+  bento naît marqué.
+- `pushTargetFromData` garde `publishedBentoId` ; `publishedBentoPage` en
+  tire la page publique parmi les bentos du compte, relus au besoin.
+- 19 tests de plus, 684 dans l'app ; typage et lint verts.
+
+**La recette**, au simulateur iPhone 17 Pro et à l'émulateur Pixel 8, sur la
+base locale et un back-office de recette, la chaîne complète jusqu'au vrai
+service d'Expo, sans aucun `.env` de production ; cible vérifiée dans les
+deux builds installées (`http://127.0.0.1:54331`). Captures dans
+`.context/screenshots/c18-*`.
+
+| # | Geste | Constaté |
+| --- | --- | --- |
+| 1 | Sans profil, cinq cases validées et « Lyon » proposé | « Publier dès la validation », actif, iOS comme Android |
+| 2 | Le toucher, puis le pseudo | Profil et bento créés, marqués, non publiés ; retour au composer : « Bientôt en ligne · à la validation de « Lyon » », « Publication à la validation » |
+| 3 | Valider « Lyon » comme le back-office | Bento publié à l'heure exacte de la validation, trace notée, marque levée ; `pg_net` reçoit 202 ; le back-office bâtit « Bento publié » avec le bento, qu'Expo refuse faute de clé APNs, comme prévu avant le lot 0 du 17 |
+| 4 | « La table » | Le bento en tête, « à l'instant » |
+| 5 | « Bento publié » simulé par `xcrun simctl push`, touché | La page publique du bento s'ouvre |
+| 6 | Avec profil : le bento dépublié, « Rennes » proposé | L'app pose la marque d'elle-même : « Bientôt en ligne », « Publication à la validation » (D1) |
+| 7 | « Rennes » remplacé par « Kyoto », validé | Marque levée, « Publier mon bento » (D2) |
+| 8 | « Porto » proposé, puis refusé au back-office | Marque levée, case vidée (D28), « Compléter (1 restant) » ; l'événement de refus sans bento |
+| 9 | « Berlin » proposé, puis fusionné dans « Lisbonne » | Bento publié, case « Lisbonne », « En ligne » ; « Bento publié » bâti pour la fusion |
+| 10 | Android, sans profil jusqu'à la validation | Même parcours que 1 à 3 : « Bientôt en ligne » entier, accent compris, puis « En ligne » et « Voir mon bento public » |
+
+**Constaté en passant** : le composer ne relit le bento qu'au retour sur
+l'onglet ou au premier plan ; une validation reçue app ouverte, sur le
+composer, attend donc le geste suivant. La notification, elle, arrive tout de
+suite (D23 du 17).
+
+**Pas vérifié** : le tap de « Bento publié » sur Android, qui attend le
+compte FCM du lot 0 du 17 ; une édition marquée dans l'app, faute d'édition
+en local, la base l'éprouvant par les contrôles 8a et 8b ; le message
+« Ton bento sortira dès la validation » après le pseudo, disparu avant la
+capture.
+
 ### Lot 4 · Recette et documents
 
 La DoD point par point, la roadmap, le catalogue (§4.4, ce que voit

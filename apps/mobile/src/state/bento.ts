@@ -136,6 +136,12 @@ type BentoState = {
    */
   setPublishedAt: (publishedAt: string | null) => void;
   /**
+   * La marque « publié dès la validation » d'un bento du compte, telle que la
+   * base vient de la confirmer. Chantier 18. Sur la liste et sur le bento
+   * courant, que le composer lit.
+   */
+  setPublishOnValidation: (bentoId: string, at: string | null) => void;
+  /**
    * Pose le jeu de cases, et **vide les cases remplies quand il change**.
    *
    * Les deux vont ensemble : `slots` est indexé par clé de case, donc garder
@@ -222,6 +228,11 @@ export const useBento = create<BentoState>((set, get) => ({
   pulseCase: (caseKey) =>
     set((s) => ({ lastFilled: { caseKey, seq: (s.lastFilled?.seq ?? 0) + 1 } })),
   setPublishedAt: (publishedAt) => set({ publishedAt }),
+  setPublishOnValidation: (bentoId, at) =>
+    set((s) => ({
+      own: s.own.map((b) => (b.id === bentoId ? { ...b, publishOnValidationAt: at } : b)),
+      current: s.current?.id === bentoId ? { ...s.current, publishOnValidationAt: at } : s.current,
+    })),
   beginWrite: () => set((s) => ({ pendingWrites: s.pendingWrites + 1 })),
   // `Math.max` plutôt qu'une simple décrémentation : un `endWrite` en trop,
   // par exemple sur un chemin d'erreur remanié, rendrait le compteur négatif

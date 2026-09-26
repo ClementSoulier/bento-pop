@@ -212,6 +212,18 @@ export async function loadBentoById(bentoId: string) {
 }
 
 /**
+ * Pose la marque « publié dès la validation » sur un bento complet dont un
+ * item attend : la base le publiera à la validation de son dernier item.
+ * Chantier 18, D1. La base revérifie tout, propriétaire compris, et rend
+ * vrai si le bento est marqué au retour ; l'appeler deux fois ne coûte rien.
+ */
+export async function markPublishOnValidation(bentoId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('mark_publish_on_validation', { p_bento: bentoId });
+  if (error) throw new Error(`Mark failed: ${error.message}`);
+  return data === true;
+}
+
+/**
  * Crée un bento secondaire à l'adresse donnée.
  *
  * Passe par `create_bento()`, seule voie d'écriture du slug côté client : les

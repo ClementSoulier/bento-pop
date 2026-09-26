@@ -11,7 +11,7 @@ import { hydrateFromDraft } from '@/state/draft-hydrate';
 import { refreshDraftStatuses } from '@/state/draft-refresh';
 import { withTimeout } from '@/lib/with-timeout';
 import { caseSetFor } from '@/lib/editions';
-import { type OwnBentoRow, toOwnBento } from '@/lib/own-bento';
+import { OWN_BENTO_COLUMNS, type OwnBentoRow, toOwnBento } from '@/lib/own-bento';
 
 type Profile = Database['public']['Tables']['users']['Row'];
 
@@ -208,15 +208,9 @@ async function readBentos(userId: string): Promise<RemoteBento[] | null> {
   try {
     const { data, error } = await supabase
       .from('bentos')
-      .select(
-        `id,
-       slug,
-       is_primary,
-       edition_id,
-       published_at,
-       editions ( title ),
-       bento_items ( ${REMOTE_SLOT_COLUMNS} )`,
-      )
+      // Les colonnes du bento sont celles de `toOwnBento`, et non une copie :
+      // la marque du chantier 18 y serait sinon oubliée.
+      .select(`${OWN_BENTO_COLUMNS}, bento_items ( ${REMOTE_SLOT_COLUMNS} )`)
       .eq('user_id', userId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true });
