@@ -16,7 +16,7 @@ import {
   CONTENT_MAX_FONT_MULTIPLIER,
   CONTROL_MAX_FONT_MULTIPLIER,
 } from '@/components/bento/font-scaling';
-import { INK_MUTED, INK_PLACEHOLDER, PageTitle, StampButton, YellowBg } from '@/components/primitives';
+import { INK_MUTED, INK_PLACEHOLDER, PageTitle, StampButton, YellowBg, useToast } from '@/components/primitives';
 import { SHADOWS } from '@/components/primitives/shadow';
 import {
   PSEUDO_MAX,
@@ -60,6 +60,7 @@ export default function PseudoOnboarding() {
   const draftSlots = useDraft((s) => s.slots);
   const termsAcceptedAt = useDraft((s) => s.termsAcceptedAt);
   const clearDraft = useDraft((s) => s.clear);
+  const showToast = useToast((s) => s.show);
 
   // Debounce le check (350ms) pour ne pas spammer Supabase à chaque keystroke.
   useEffect(() => {
@@ -81,12 +82,22 @@ export default function PseudoOnboarding() {
   const onValidate = async () => {
     if (check.status !== 'available' || !userId) return;
     setSubmitting(true);
+    // Chantier 18, D3 : un item attend encore, la base crée le bento marqué et
+    // le publiera à la validation. Il n'est pas en ligne : pas de page
+    // publique à ouvrir, on revient au composer, qui dit « Bientôt en ligne ».
+    const aLaValidation = Object.values(draftSlots).some((slot) => slot?.pending);
     try {
       await publishFirstBento(pseudo, termsAcceptedAt, draftSlots);
       // Le brouillon a trouvé sa place en base : le garder ferait ressurgir
       // d'anciennes cases au prochain démarrage.
       clearDraft();
       await refreshProfile();
+      if (aLaValidation) {
+        if (router.canGoBack()) router.back();
+        else router.replace('/(tabs)/compose');
+        showToast('Ton bento sortira dès la validation', { variant: 'success', durationMs: 3500 });
+        return;
+      }
       router.replace(`/u/${pseudo}` as const);
       // Chantier 17, D20 : juste après la première publication, l'accord pour
       // les éditions. Une seule fois par téléphone, et jamais bloquant.

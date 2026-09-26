@@ -31,6 +31,12 @@ export type OwnBento = {
    */
   editionTitle: string | null;
   publishedAt: string | null;
+  /**
+   * La marque « publié dès la validation », telle que la base la porte : la
+   * base publiera ce bento à la validation de son dernier item en attente.
+   * Chantier 18.
+   */
+  publishOnValidationAt: string | null;
 };
 
 /**
@@ -45,11 +51,13 @@ export type OwnBentoRow = {
   is_primary: boolean;
   edition_id: number | null;
   published_at: string | null;
+  publish_on_validation_at?: string | null;
   editions?: { title: string } | null;
 };
 
 /** Les colonnes que `toOwnBento` lit, dans la syntaxe de `select()`. */
-export const OWN_BENTO_COLUMNS = 'id, slug, is_primary, edition_id, published_at, editions ( title )';
+export const OWN_BENTO_COLUMNS =
+  'id, slug, is_primary, edition_id, published_at, publish_on_validation_at, editions ( title )';
 
 export function toOwnBento(row: OwnBentoRow): OwnBento {
   return {
@@ -59,6 +67,7 @@ export function toOwnBento(row: OwnBentoRow): OwnBento {
     editionId: row.edition_id,
     editionTitle: row.editions?.title ?? null,
     publishedAt: row.published_at,
+    publishOnValidationAt: row.publish_on_validation_at ?? null,
   };
 }
 

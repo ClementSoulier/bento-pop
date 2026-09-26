@@ -24,6 +24,16 @@ export type ComposeCta =
   | { kind: 'open-slot'; label: string; disabled: false; caseKey: string }
   /** Complet, mais une case attend la modération. */
   | { kind: 'blocked'; label: string; disabled: true }
+  /**
+   * Complet, une case attend, et la base publiera le bento à sa validation :
+   * la marque est posée. Chantier 18, D1.
+   */
+  | { kind: 'awaiting-validation'; label: string; disabled: true }
+  /**
+   * Complet, une case attend, pas encore de profil : le pseudo et les CGU
+   * d'abord, puis la base publiera à la validation. Chantier 18, D3.
+   */
+  | { kind: 'publish-on-validation'; label: string; disabled: false }
   /** Complet et publiable. */
   | { kind: 'publish'; label: string; disabled: false }
   /** Déjà en ligne : le bouton mène à la page publique, il ne republie pas. */
@@ -57,6 +67,18 @@ export type ComposeCtaInput = {
   publishing: boolean;
   /** Le bento est déjà en ligne. */
   published: boolean;
+  /**
+   * Le compte a un profil, donc un bento en base. Sans profil, on compose un
+   * brouillon sur le téléphone (chantier 9) : rien ne peut le publier à sa
+   * place avant le pseudo. Vrai par défaut, le cas historique.
+   */
+  hasProfile?: boolean;
+  /**
+   * La base a confirmé la marque « publié dès la validation » sur ce bento.
+   * Tant qu'elle ne l'a pas fait, hors ligne par exemple, le bouton ne
+   * promet rien. Chantier 18.
+   */
+  awaitingValidation?: boolean;
 };
 
 /**
@@ -80,6 +102,8 @@ export function composeCta({
   hasPending,
   publishing,
   published,
+  hasProfile = true,
+  awaitingValidation = false,
 }: ComposeCtaInput): ComposeCta {
   if (publishing) {
     return { kind: 'busy', label: 'Publication…', disabled: true };
@@ -119,7 +143,15 @@ export function composeCta({
     return { kind: 'view-public', label: 'Voir mon bento public', disabled: false };
   }
 
+  // Chantier 18 : un item attend. Sans profil, le pseudo d'abord (D3) ; avec,
+  // la base publiera à la validation, dès que la marque est posée (D1).
   if (hasPending) {
+    if (!hasProfile) {
+      return { kind: 'publish-on-validation', label: 'Publier dès la validation', disabled: false };
+    }
+    if (awaitingValidation) {
+      return { kind: 'awaiting-validation', label: 'Publication à la validation', disabled: true };
+    }
     return { kind: 'blocked', label: 'En attente de validation', disabled: true };
   }
 

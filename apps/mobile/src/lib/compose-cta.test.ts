@@ -8,7 +8,13 @@ const ALL = [...CATEGORY_ORDER];
 const CASES = MAIN_CASES;
 const cta = (
   filled: readonly string[],
-  over: { hasPending?: boolean; publishing?: boolean; published?: boolean } = {},
+  over: {
+    hasPending?: boolean;
+    publishing?: boolean;
+    published?: boolean;
+    hasProfile?: boolean;
+    awaitingValidation?: boolean;
+  } = {},
 ) =>
   composeCta({ cases: CASES, filled, hasPending: false, publishing: false, published: false, ...over });
 
@@ -58,6 +64,38 @@ test('bento complet avec une case en modération : inactif et dit pourquoi', () 
   assert.equal(r.disabled, true);
 });
 
+test('chantier 18 : bento marqué, un item attend : « Publication à la validation », inactif', () => {
+  const r = cta(ALL, { hasPending: true, awaitingValidation: true });
+  assert.equal(r.kind, 'awaiting-validation');
+  assert.equal(r.label, 'Publication à la validation');
+  assert.equal(r.disabled, true);
+});
+
+test('chantier 18 : la marque pas encore confirmée garde « En attente de validation »', () => {
+  // Hors ligne, la marque ne se pose pas : le bouton ne promet rien que la
+  // base ne sache (promesse du chantier 5).
+  const r = cta(ALL, { hasPending: true, awaitingValidation: false });
+  assert.equal(r.kind, 'blocked');
+  assert.equal(r.label, 'En attente de validation');
+});
+
+test('chantier 18 : sans profil, un item attend : « Publier dès la validation », actif (D3)', () => {
+  const r = cta(ALL, { hasPending: true, hasProfile: false });
+  assert.equal(r.kind, 'publish-on-validation');
+  assert.equal(r.label, 'Publier dès la validation');
+  assert.equal(r.disabled, false);
+});
+
+test('chantier 18 : sans profil et rien en attente, on publie comme avant', () => {
+  assert.equal(cta(ALL, { hasProfile: false }).kind, 'publish');
+});
+
+test('chantier 18 : une marque sur un bento où plus rien n’attend ne retient pas (D2)', () => {
+  // La base la lève ; tant que l'app ne l'a pas relue, on publie à la main.
+  assert.equal(cta(ALL, { awaitingValidation: true }).kind, 'publish');
+  assert.equal(cta(ALL.slice(0, 5), { hasPending: true, awaitingValidation: true }).kind, 'open-slot');
+});
+
 test('une case en modération sur un bento partiel ne bloque pas la saisie', () => {
   // Le blocage porte sur la publication, pas sur le fait de continuer.
   const r = cta(ALL.slice(0, 3), { hasPending: true });
@@ -94,12 +132,27 @@ test('aucun état ne rend un bouton actif sans action', () => {
   for (const filled of cases) {
     for (const hasPending of [false, true]) {
       for (const published of [false, true]) {
-        const r = composeCta({ cases: CASES, filled, hasPending, publishing: false, published });
-        if (!r.disabled) {
-          assert.ok(
-            r.kind === 'open-slot' || r.kind === 'publish' || r.kind === 'view-public',
-            `état actif sans action : ${JSON.stringify(r)}`,
-          );
+        for (const hasProfile of [false, true]) {
+          for (const awaitingValidation of [false, true]) {
+            const r = composeCta({
+              cases: CASES,
+              filled,
+              hasPending,
+              publishing: false,
+              published,
+              hasProfile,
+              awaitingValidation,
+            });
+            if (!r.disabled) {
+              assert.ok(
+                r.kind === 'open-slot' ||
+                  r.kind === 'publish' ||
+                  r.kind === 'publish-on-validation' ||
+                  r.kind === 'view-public',
+                `état actif sans action : ${JSON.stringify(r)}`,
+              );
+            }
+          }
         }
       }
     }

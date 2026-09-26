@@ -1,9 +1,16 @@
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/client';
-import { switchBento } from '@/lib/bento-actions';
+import { listOwnBentos, switchBento } from '@/lib/bento-actions';
 import { useBento } from '@/state/bento';
 import { usePushTarget } from '@/state/push-target';
-import { type ItemPlacement, type PushTarget, type ShownSlot, planItemTarget } from './push';
+import { useSession } from '@/state/session';
+import {
+  type ItemPlacement,
+  type PushTarget,
+  type ShownSlot,
+  planItemTarget,
+  publishedBentoPage,
+} from './push';
 
 /**
  * Suivre le tap d'une notification, depuis le composer une fois prêt.
@@ -23,6 +30,25 @@ export async function followPushTarget(target: PushTarget): Promise<void> {
     }
     if (joined.id !== bento.current?.id) await switchBento(joined.id);
     return;
+  }
+
+  // Chantier 18, D4 : la validation a publié le bento, le tap ouvre sa page
+  // publique. La liste du téléphone peut dater d'avant la publication : on la
+  // relit une fois avant de renoncer. Sans page, le tap retombe sur celui
+  // d'une validation, le composer.
+  if (target.publishedBentoId) {
+    const session = useSession.getState();
+    const pseudo = session.profile?.pseudo;
+    let page = publishedBentoPage(target.publishedBentoId, { own: bento.own, pseudo });
+    if (!page && session.user?.id) {
+      const own = await listOwnBentos(session.user.id);
+      useBento.getState().setOwn(own);
+      page = publishedBentoPage(target.publishedBentoId, { own, pseudo });
+    }
+    if (page) {
+      router.push(page);
+      return;
+    }
   }
 
   const shown: ShownSlot[] = Object.entries(bento.slots).flatMap(([caseKey, slot]) =>

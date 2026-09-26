@@ -24,9 +24,42 @@ describe('ce que dit la notification d’un item modéré', () => {
       itemModeratedText({ status: 'validated', title: 'x' }).title,
       itemModeratedText({ status: 'merged', title: 'x', keptTitle: 'y' }).title,
       itemModeratedText({ status: 'rejected', title: 'x', reason: 'z' }).title,
+      itemModeratedText({ status: 'validated', title: 'x', published: true }).title,
       editionReleasedText('x').title,
     ];
     for (const titre of titres) assert.ok(Array.from(titre).length <= 28, titre);
+  });
+
+  it('une validation qui publie le bento : « Bento publié », l’item nommé dessous (chantier 18, D4)', () => {
+    assert.deepEqual(itemModeratedText({ status: 'validated', title: 'Interstellar', published: true }), {
+      title: 'Bento publié',
+      body: '« Interstellar » est validé : ton bento est en ligne.',
+    });
+  });
+
+  it('une fusion qui publie le bento nomme l’item conservé', () => {
+    const text = itemModeratedText({
+      status: 'merged',
+      title: 'interstelar',
+      keptTitle: 'Interstellar',
+      published: true,
+    });
+    assert.equal(text.title, 'Bento publié');
+    assert.equal(text.body, '« Interstellar » est validé : ton bento est en ligne.');
+  });
+
+  it('un bento publié sans titre d’item : la phrase seule', () => {
+    assert.equal(
+      itemModeratedText({ status: 'validated', title: '  ', published: true }).body,
+      'Ton bento est en ligne.',
+    );
+  });
+
+  it('un refus ne dit jamais « publié »', () => {
+    assert.equal(
+      itemModeratedText({ status: 'rejected', title: 'Film X', published: true }).title,
+      'Proposition non retenue',
+    );
   });
 
   it('une fusion nomme l’item conservé, qui remplit la case (D12)', () => {

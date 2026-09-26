@@ -5,6 +5,7 @@ import {
   coalescePushRefresh,
   notificationSection,
   planItemTarget,
+  publishedBentoPage,
   pushAskTitle,
   pushTargetFromData,
   refreshPushRegistration,
@@ -261,6 +262,7 @@ describe('pushTargetFromData', () => {
       status: 'validated',
       itemId: ITEM,
       keptItemId: null,
+      publishedBentoId: null,
     });
   });
 
@@ -312,12 +314,53 @@ describe('pushTargetFromData', () => {
   });
 });
 
+describe('le bento publié par la validation (chantier 18)', () => {
+  const BENTO = '0f1e2d3c-4b5a-4968-8778-a1b2c3d4e5f6';
+
+  it('la cible garde le bento publié', () => {
+    const target = pushTargetFromData({
+      type: 'item_moderated',
+      status: 'validated',
+      itemId: ITEM,
+      publishedBentoId: BENTO,
+    });
+    assert.equal(target?.kind === 'item' && target.publishedBentoId, BENTO);
+  });
+
+  it('un bento mal formé est ignoré, pas la notification', () => {
+    const target = pushTargetFromData({
+      type: 'item_moderated',
+      status: 'validated',
+      itemId: ITEM,
+      publishedBentoId: 'pas-un-uuid',
+    });
+    assert.equal(target?.kind, 'item');
+    assert.equal(target?.kind === 'item' && target.publishedBentoId, null);
+  });
+
+  it('le tap ouvre la page publique du bento : le principal à l’adresse du compte', () => {
+    const own = [
+      { id: BENTO, slug: 'mon-bento', isPrimary: true },
+      { id: 'autre', slug: 'duel', isPrimary: false },
+    ];
+    assert.equal(publishedBentoPage(BENTO, { own, pseudo: 'marie' }), '/u/marie');
+    assert.equal(publishedBentoPage('autre', { own, pseudo: 'marie' }), '/u/marie/duel');
+  });
+
+  it('un bento inconnu du téléphone, ou sans pseudo : nulle part', () => {
+    const own = [{ id: BENTO, slug: 'mon-bento', isPrimary: true }];
+    assert.equal(publishedBentoPage('inconnu', { own, pseudo: 'marie' }), null);
+    assert.equal(publishedBentoPage(BENTO, { own, pseudo: null }), null);
+  });
+});
+
 describe('planItemTarget', () => {
   const valide = (over: Partial<Extract<PushTarget, { kind: 'item' }>> = {}) => ({
     kind: 'item' as const,
     status: 'validated' as const,
     itemId: ITEM,
     keptItemId: null,
+    publishedBentoId: null,
     ...over,
   });
   const rien = { shown: [], placements: [], currentBentoId: 'courant', primaryBentoId: 'principal' };

@@ -23,7 +23,13 @@ import { failureFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useSession } from '@/state/session';
 import { usePushTarget } from '@/state/push-target';
-import { editableBentoId, listOwnBentos, publishBento, switchBento } from '@/lib/bento-actions';
+import {
+  editableBentoId,
+  listOwnBentos,
+  markPublishOnValidation,
+  publishBento,
+  switchBento,
+} from '@/lib/bento-actions';
 import { followPushTarget } from '@/lib/push-navigation';
 import { offerEditorialConsent } from '@/lib/push-runtime';
 import { bentoRoute } from '@/lib/bento-address';
@@ -51,6 +57,11 @@ import {
   scaledType,
 } from '@/components/bento/font-scaling';
 import { composeCta } from '@/lib/compose-cta';
+import {
+  markNoLongerHolds,
+  shouldMarkForValidation,
+  validationHint,
+} from '@/lib/publish-on-validation';
 import { useOfflineInset } from '@/lib/use-offline-inset';
 import { composerCases } from '@/components/bento/cases';
 
@@ -83,6 +94,7 @@ export default function ComposeTab() {
   const lastFilled = useBento((s) => s.lastFilled);
   const publishedAt = useBento((s) => s.publishedAt);
   const setPublishedAt = useBento((s) => s.setPublishedAt);
+  const pendingWrites = useBento((s) => s.pendingWrites);
   const profile = useSession((s) => s.profile);
   const pseudo = profile?.pseudo;
   const userId = useSession((s) => s.user?.id);
@@ -145,6 +157,15 @@ export default function ComposeTab() {
   useFocusEffect(
     useCallback(() => {
       void refreshProfile();
+      // Chantier 18 : un bento marqué peut sortir pendant que l'app dort, à
+      // la validation de son dernier item. Au retour au premier plan, on le
+      // relit, pour que le bouton dise « Voir mon bento public ».
+      const abonnement = AppState.addEventListener('change', (etat) => {
+        if (etat === 'active' && useBento.getState().current?.publishOnValidationAt) {
+          void refreshProfile();
+        }
+      });
+      return () => abonnement.remove();
     }, [refreshProfile]),
   );
 
@@ -172,7 +193,48 @@ export default function ComposeTab() {
     hasPending,
     publishing,
     published: publishedAt !== null,
+    hasProfile: profile != null,
+    awaitingValidation: current?.publishOnValidationAt != null,
   });
+
+  // Chantier 18 : la base ne publie à la validation qu'un bento que l'app a
+  // marqué (D5). La marque se pose dès que ce que la base sait le permet, et
+  // la base revérifie tout ; elle s'oublie ici dès qu'elle ne tient plus, la
+  // base l'ayant levée de son côté (D2).
+  const bentoCourant = current?.id;
+  const marque = current?.publishOnValidationAt != null;
+  const complet = filled === cases.length;
+  const aMarquer =
+    bentoCourant != null &&
+    shouldMarkForValidation({
+      hasProfile: profile != null,
+      hydrated,
+      pendingWrites,
+      published: publishedAt !== null,
+      marked: marque,
+      complete: complet,
+      hasPending,
+    });
+  const aOublier = markNoLongerHolds({
+    marked: marque,
+    published: publishedAt !== null,
+    complete: complet,
+    hasPending,
+  });
+  useEffect(() => {
+    if (!bentoCourant) return;
+    if (aOublier) {
+      useBento.getState().setPublishOnValidation(bentoCourant, null);
+      return;
+    }
+    if (!aMarquer) return;
+    void markPublishOnValidation(bentoCourant)
+      .then((ok) => {
+        if (ok) useBento.getState().setPublishOnValidation(bentoCourant, new Date().toISOString());
+      })
+      .catch((e) => console.warn('[compose] marque de publication', e));
+  }, [bentoCourant, aMarquer, aOublier]);
+  const enAttente = Object.values(slots).flatMap((slot) => (slot?.pending ? [slot.title] : []));
 
   // L'adresse publique du bento qu'on édite, et non celle du compte. Les deux
   // se confondaient tant qu'un compte n'avait qu'un bento : à la recette du
@@ -184,7 +246,9 @@ export default function ComposeTab() {
       router.push({ pathname: '/search-modal', params: { category: cta.caseKey } });
       return;
     }
-    if (cta.kind === 'publish') void onPublish();
+    // Sans profil, « Publier dès la validation » passe par le pseudo, comme
+    // « Publier » : c'est `onPublish` qui y mène (chantier 18, D3).
+    if (cta.kind === 'publish' || cta.kind === 'publish-on-validation') void onPublish();
     if (cta.kind === 'view-public' && adressePublique) router.push(adressePublique);
   };
 
@@ -409,6 +473,49 @@ export default function ComposeTab() {
                     numberOfLines={1}
                   >
                     tes modifications sont visibles tout de suite
+                  </Text>
+                </View>
+              ) : cta.kind === 'awaiting-validation' ? (
+                // Chantier 18 : le pendant d'« En ligne ». Le bento sortira
+                // tout seul à la validation, et on le dit (promesse du 5).
+                <View
+                  accessible
+                  accessibilityLabel={`Bientôt en ligne : ton bento sortira ${validationHint(enAttente)}`}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}
+                >
+                  <View
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: 4,
+                      borderWidth: 1.5,
+                      borderColor: '#0a0a0a',
+                    }}
+                  />
+                  <Text
+                    allowFontScaling={false}
+                    style={{
+                      fontFamily: 'Bungee',
+                      ...onlineType,
+                      letterSpacing: 1,
+                      includeFontPadding: false,
+                    }}
+                    numberOfLines={1}
+                  >
+                    Bientôt en ligne
+                  </Text>
+                  <Text
+                    allowFontScaling={false}
+                    style={{
+                      fontFamily: 'Fredoka',
+                      ...onlineHintType,
+                      opacity: 0.7,
+                      flexShrink: 1,
+                      includeFontPadding: false,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {validationHint(enAttente)}
                   </Text>
                 </View>
               ) : (

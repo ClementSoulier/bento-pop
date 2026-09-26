@@ -1,3 +1,5 @@
+import { bentoRoute } from './bento-address';
+
 /**
  * Notifications push, la logique sans module natif. Chantier 17, lot 2.
  *
@@ -180,6 +182,11 @@ export type PushTarget =
       itemId: string;
       /** Pour une fusion, l'item conservé : c'est lui qui remplit la case. */
       keptItemId: string | null;
+      /**
+       * Le bento que cette validation a publié, s'il y en a un : le tap
+       * ouvre alors sa page publique. Chantier 18, D4.
+       */
+      publishedBentoId: string | null;
     }
   | { kind: 'edition'; editionId: number };
 
@@ -210,6 +217,7 @@ export function pushTargetFromData(data: unknown): PushTarget | null {
       status,
       itemId: d.itemId,
       keptItemId: isUuid(d.keptItemId) ? d.keptItemId : null,
+      publishedBentoId: status !== 'rejected' && isUuid(d.publishedBentoId) ? d.publishedBentoId : null,
     };
   }
 
@@ -219,6 +227,24 @@ export function pushTargetFromData(data: unknown): PushTarget | null {
   }
 
   return null;
+}
+
+/**
+ * La page publique du bento qu'une validation vient de publier, ou `null` si
+ * le téléphone ne connaît pas ce bento ou pas encore de pseudo. Chantier 18,
+ * D4 : les données de la notification ne portent que l'identifiant, jamais
+ * l'adresse (§6.5 du 17), et l'app la retrouve parmi ses propres bentos.
+ */
+export function publishedBentoPage(
+  bentoId: string,
+  where: {
+    own: readonly { id: string; slug: string; isPrimary: boolean }[];
+    pseudo: string | null | undefined;
+  },
+): `/u/${string}` | null {
+  const bento = where.own.find((b) => b.id === bentoId);
+  if (!bento || !where.pseudo) return null;
+  return bentoRoute(where.pseudo, bento.slug, bento.isPrimary);
 }
 
 /** Une case d'un bento du compte, en base, où l'item est posé. */

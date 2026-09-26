@@ -21,6 +21,8 @@ const eventSchema = z.object({
   type: z.literal('item_moderated'),
   item_id: z.string().uuid(),
   status: z.enum(['validated', 'merged', 'rejected']),
+  /** Le bento que la validation vient de publier, s'il y en a un. Chantier 18. */
+  published_bento_id: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -49,11 +51,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Mobile Supabase not configured' }, { status: 503 });
   }
 
-  const event = { itemId: parsed.data.item_id, status: parsed.data.status };
+  const event = {
+    itemId: parsed.data.item_id,
+    status: parsed.data.status,
+    publishedBentoId: parsed.data.published_bento_id ?? null,
+  };
   after(async () => {
     try {
       const outcome = await notifyItemModerated(event, runtime);
-      console.info('[push] item_moderated', event.itemId, event.status, JSON.stringify(outcome));
+      console.info(
+        '[push] item_moderated',
+        event.itemId,
+        event.status,
+        event.publishedBentoId ?? '-',
+        JSON.stringify(outcome),
+      );
     } catch (error) {
       console.error('[push] item_moderated', event.itemId, 'échec', error);
       await runtime.store

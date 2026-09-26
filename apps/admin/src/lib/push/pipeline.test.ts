@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import type { AnnounceableEdition } from './announce';
 import type { PushMessage } from './content';
 import {
+  type BentoForPush,
   type ItemForPush,
   type NewTicket,
   type PushDeps,
@@ -29,12 +30,14 @@ type Ticket = NewTicket & { createdAt: string; checkedAt: string | null; status:
 
 function fausseBase(seed: {
   items?: ItemForPush[];
+  bentos?: BentoForPush[];
   tokens?: PushTokenRow[];
   editions?: AnnounceableEdition[];
   tickets?: Ticket[];
 }) {
   const state = {
     items: seed.items ?? [],
+    bentos: seed.bentos ?? [],
     tokens: seed.tokens ?? [],
     editions: seed.editions ?? [],
     tickets: seed.tickets ?? [],
@@ -43,6 +46,7 @@ function fausseBase(seed: {
   };
   const store: PushStore = {
     item: async (id) => state.items.find((i) => i.id === id) ?? null,
+    bento: async (id) => state.bentos.find((b) => b.id === id) ?? null,
     tokensOfUser: async (userId) => state.tokens.filter((t) => t.user_id === userId),
     editorialTokens: async () => state.tokens,
     saveTickets: async (rows) => {
@@ -202,6 +206,50 @@ describe('un item validé prévient son auteur', () => {
       itemId: 'item-1',
       keptItemId: 'item-canon',
     });
+  });
+
+  it('la validation qui publie le bento : « Bento publié », et le tap porte le bento (chantier 18)', async () => {
+    const { store } = fausseBase({
+      items: [item()],
+      bentos: [{ id: 'bento-1', userId: 'auteur', publishedAt: maintenant.toISOString() }],
+      tokens: [appareil('iphone')],
+    });
+    const { calls, sender } = fauxExpo();
+    await notifyItemModerated(
+      { itemId: 'item-1', status: 'validated', publishedBentoId: 'bento-1' },
+      deps(store, sender),
+    );
+    const message = calls.sent[0]?.[0];
+    assert.equal(message?.title, 'Bento publié');
+    assert.equal(message?.body, '« Interstellar » est validé : ton bento est en ligne.');
+    assert.deepEqual(message?.data, {
+      type: 'item_moderated',
+      status: 'validated',
+      itemId: 'item-1',
+      publishedBentoId: 'bento-1',
+    });
+  });
+
+  it('un bento d’un autre compte, plus en ligne ou inconnu : « Proposition validée », sans bento', async () => {
+    for (const bento of [
+      { id: 'bento-1', userId: 'quelqu-un', publishedAt: maintenant.toISOString() },
+      { id: 'bento-1', userId: 'auteur', publishedAt: null },
+      null,
+    ]) {
+      const { store } = fausseBase({
+        items: [item()],
+        bentos: bento ? [bento] : [],
+        tokens: [appareil('iphone')],
+      });
+      const { calls, sender } = fauxExpo();
+      await notifyItemModerated(
+        { itemId: 'item-1', status: 'validated', publishedBentoId: 'bento-1' },
+        deps(store, sender),
+      );
+      const message = calls.sent[0]?.[0];
+      assert.equal(message?.title, 'Proposition validée', JSON.stringify(bento));
+      assert.equal(message?.data.publishedBentoId, undefined, JSON.stringify(bento));
+    }
   });
 
   it('un refus porte sa raison', async () => {

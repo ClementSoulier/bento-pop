@@ -55,12 +55,17 @@ function quoted(title: string | null | undefined): string | null {
 /**
  * Un item proposé vient d'être modéré. Pour une fusion, l'auteur voit le
  * titre de l'item conservé : c'est lui qui remplit désormais sa case (D12).
+ *
+ * `published` : la validation, ou la fusion, vient de publier le bento de
+ * l'auteur (chantier 18, D4). Le verdict devient « Bento publié », pour une
+ * seule alerte au lieu de deux ; un refus ne publie jamais.
  */
 export function itemModeratedText(input: {
   status: ModerationStatus;
   title: string;
   keptTitle?: string | null;
   reason?: string | null;
+  published?: boolean;
 }): PushText {
   if (input.status === 'rejected') {
     const name = quoted(input.title);
@@ -76,6 +81,12 @@ export function itemModeratedText(input: {
   const shown =
     input.status === 'merged' && input.keptTitle?.trim() ? input.keptTitle : input.title;
   const name = quoted(shown);
+  if (input.published) {
+    return {
+      title: 'Bento publié',
+      body: name ? `${name} est validé : ton bento est en ligne.` : 'Ton bento est en ligne.',
+    };
+  }
   return {
     title: 'Proposition validée',
     body: name ? `${name} est au catalogue : ta case est en ligne.` : 'Ta case est en ligne.',
