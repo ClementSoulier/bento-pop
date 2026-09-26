@@ -208,10 +208,12 @@ vert.
 
 ### 6.2 Le back-office
 
-`/api/push` lit le bento publié dans l'événement : titre « Bento publié »,
-données du tap vers la page publique (pseudo et `slug`). Tests sur le modèle
-de `content.test.ts` et `pipeline.test.ts`, dont la ligne de titre de 28
-caractères.
+`/api/push` lit le bento publié dans l'événement et le relit : il doit être
+à l'auteur, et en ligne ; sinon, « Proposition validée ». Titre « Bento
+publié », l'item nommé dessous. Les données du tap portent l'identifiant du
+bento, jamais son adresse (§6.5 du 17) : l'app relie elle-même son bento à
+sa page publique. Tests sur le modèle de `content.test.ts` et
+`pipeline.test.ts`, dont la ligne de titre de 28 caractères.
 
 ### 6.3 L'app
 
@@ -322,6 +324,16 @@ l'inscrit sous `20260926094235`. Vérifié en lecture seule juste après :
 ### Lot 2 · Le back-office
 
 « Bento publié » et le tap vers la page publique, testés.
+
+**Fait le 26 septembre 2026** : `/api/push` accepte `published_bento_id` ;
+`pipeline.ts` relit le bento (`store.bento`) et ne dit « Bento publié » que
+s'il est à l'auteur et en ligne ; le tap porte `publishedBentoId`, et le
+journal du back-office note le bento publié. 6 tests de plus, 226 au
+back-office ; quatre défauts introduits exprès, tous attrapés : annoncer le
+bento d'un autre compte, annoncer un bento qui n'est plus en ligne, oublier
+le bento dans le tap, dire « publié » à un refus. Lint, typage et build
+verts. La chaîne de bout en bout, de la base à l'app en passant par le
+back-office, se recette au lot 3.
 
 ### Lot 3 · L'app
 

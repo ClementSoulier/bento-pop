@@ -40,6 +40,13 @@ export type ItemForPush = {
   keptTitle: string | null;
 };
 
+/** Le bento que la validation dit avoir publié, relu avant de l'annoncer. */
+export type BentoForPush = {
+  id: string;
+  userId: string;
+  publishedAt: string | null;
+};
+
 export type NewTicket = {
   ticketId: string;
   tokenId: string;
@@ -50,6 +57,7 @@ export type NewTicket = {
 
 export type PushStore = {
   item(id: string): Promise<ItemForPush | null>;
+  bento(id: string): Promise<BentoForPush | null>;
   /** Les appareils du compte, non révoqués et vus depuis `seenSince`. */
   tokensOfUser(userId: string, seenSince: Date): Promise<PushTokenRow[]>;
   /** Les appareils qui ont accepté les éditions, mêmes filtres. */
@@ -134,7 +142,12 @@ export type ItemOutcome =
   | { state: 'sent'; recipients: number; accepted: number; revoked: number; errors: string[] };
 
 export async function notifyItemModerated(
-  event: { itemId: string; status: ModerationStatus },
+  event: {
+    itemId: string;
+    status: ModerationStatus;
+    /** Le bento que la base vient de publier à cette validation. Chantier 18. */
+    publishedBentoId?: string | null;
+  },
   deps: PushDeps,
 ): Promise<ItemOutcome> {
   const now = deps.now();
@@ -154,16 +167,28 @@ export async function notifyItemModerated(
   );
   if (recipients.length === 0) return { state: 'skipped', reason: 'no-recipient' };
 
+  // L'événement dit quel bento la validation a publié (chantier 18, D4) ;
+  // on le relit avant de l'annoncer : il doit être à l'auteur, et en ligne.
+  let publishedBentoId: string | null = null;
+  if (event.publishedBentoId && event.status !== 'rejected') {
+    const bento = await deps.store.bento(event.publishedBentoId);
+    if (bento && bento.userId === item.submittedBy && bento.publishedAt !== null) {
+      publishedBentoId = bento.id;
+    }
+  }
+
   const text = itemModeratedText({
     status: event.status,
     title: item.title,
     keptTitle: item.keptTitle,
     reason: item.rejectedReason,
+    published: publishedBentoId !== null,
   });
   const data = {
     status: event.status,
     itemId: item.id,
     ...(item.keptItemId ? { keptItemId: item.keptItemId } : {}),
+    ...(publishedBentoId ? { publishedBentoId } : {}),
   };
   const messages = recipients.map((r) => buildMessage(r.token, 'item_moderated', text, data));
 

@@ -62,6 +62,16 @@ export function createSupabasePushStore(db: MobileClient): PushStore {
       };
     },
 
+    async bento(id) {
+      const { data, error } = await db
+        .from('bentos')
+        .select('id, user_id, published_at')
+        .eq('id', id)
+        .maybeSingle();
+      fail('lecture du bento publié', error);
+      return data ? { id: data.id, userId: data.user_id, publishedAt: data.published_at } : null;
+    },
+
     async tokensOfUser(userId, seenSince) {
       const { data, error } = await db
         .from('push_tokens')
