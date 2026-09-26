@@ -89,6 +89,9 @@
 >   l'auteur lire sa proposition quel que soit son statut, et rien ne vide sa
 >   case au refus, contrairement à ce que disait le catalogue. Le composer la
 >   vide désormais.
+> - **Fusionné le 23 septembre 2026 (PR #80), en service le 26** : le
+>   back-office redéployé reçoit le battement toutes les 5 minutes, en 202, et
+>   le note. Sans destinataire jusqu'à la sortie store (D11). Reste le lot 5b.
 
 ---
 
@@ -568,6 +571,13 @@ Ils se posent **dès que l'envoi est déployé** (D11). Sans eux, le déclencheu
 et `push_tick()` ne font rien : la table, le déclencheur et le travail planifié
 peuvent donc précéder l'envoi en production sans aucun effet.
 
+**Ce que répond le back-office**, à lire dans `net._http_response` : 202 quand
+tout est en place ; 503 « Push disabled » quand `PUSH_WEBHOOK_TOKEN` manque
+dans le conteneur, variable absente, posée sur une autre app ou pas encore
+redéployée ; 401 quand les deux jetons diffèrent. Vu à la mise en service du
+26 septembre 2026 : deux 503, la variable ayant d'abord été posée sur l'app de
+la landing.
+
 ### 6.4 Les préalables qui prennent du délai
 
 - **Une clé APNs** (`.p8`) depuis le compte développeur Apple, avec son
@@ -936,7 +946,8 @@ depuis le fichier commité (`7e4df51`). Vérifié en lecture seule juste après 
 et au redéploiement du back-office. Variables Coolify **runtime**
 `PUSH_WEBHOOK_TOKEN`, puis `EXPO_ACCESS_TOKEN` quand le robot existera (D17),
 et les deux secrets de coffre, que je pose ; la carte du tableau de bord doit
-alors passer « En marche » dans les 5 minutes.
+alors passer « En marche » dans les 5 minutes. **Fait le 26 septembre 2026**,
+cf. lot 5, sauf `EXPO_ACCESS_TOKEN`.
 
 ### Lot 4 · Les réglages, et le tap
 
@@ -1096,9 +1107,28 @@ la roadmap, la DoD.
   de bout en bout, qui avaient échoué une première fois dans le chargeur de
   polices de Google, sans rapport avec le lot ; `check-push.sql` 35 sur 35 et
   `check-editions.sql` 21 sur 21 sur la base locale.
-- **Reste** : la PR, sa CI et sa fusion, sur accord ; la mise en service au
+- ~~**Reste** : la PR, sa CI et sa fusion, sur accord ; la mise en service au
   redéploiement du back-office ; puis une petite PR qui l'inscrit, la ligne 17
-  de la roadmap restant 🟡 jusqu'au 5b.
+  de la roadmap restant 🟡 jusqu'au 5b.~~ Fait, ci-dessous.
+
+**Fusionné le 23 septembre 2026, mis en service le 26 :**
+
+- **La PR #80** fusionnée le 23 après CI verte, commit `b7fd981`.
+- **Le back-office** redéployé sur Coolify, `PUSH_WEBHOOK_TOKEN` en variable
+  runtime, d'une valeur tirée au hasard dans un fichier local, jamais
+  affichée.
+- **Les secrets de coffre** : `push_webhook_url` posé par le connecteur ;
+  `push_webhook_token` posé par Clément dans l'éditeur SQL de Supabase, le
+  mode automatique ayant refusé que l'agent lise le jeton. Vérifié sans lire
+  sa valeur : 64 caractères hexadécimaux.
+- **Les premiers battements**, lus dans `net._http_response` : 503 « Push
+  disabled » à 10 h 50 et 10 h 55 (Paris), la variable ayant d'abord été
+  posée sur l'app de la landing ; puis 202 à 11 h 00 et à 11 h 05, et
+  `push_health` qui note chacun, sans erreur. Aucune édition ni aucun
+  appareil en production : rien à envoyer.
+- **La carte du tableau de bord** dit « En marche », vue par Clément.
+- **Reste** : `EXPO_ACCESS_TOKEN`, qui attend l'utilisateur robot d'Expo
+  (D17) ; puis le lot 5b.
 
 ---
 
@@ -1117,7 +1147,8 @@ la roadmap, la DoD.
   première validation d'item suivant le déploiement.~~ **Les deux secrets de
   coffre et les deux variables Coolify se posent dès que l'envoi est
   déployé** : PR fusionnée et back-office redéployé (D11). Le travail planifié
-  tourne déjà, inerte jusque-là.
+  tourne déjà, inerte jusque-là. **Posés le 26 septembre 2026**, sauf
+  `EXPO_ACCESS_TOKEN`, qui attend le robot d'Expo (D17).
 
 ---
 
@@ -1142,10 +1173,10 @@ la roadmap, la DoD.
 12. La chaîne tourne en production sans destinataire : le contrôle de santé
     montre le travail planifié passer toutes les 5 minutes.
 
-**Point par point au 23 septembre 2026, à la fin du lot 5a** : 7 points
-faits, le tap fait sur iOS, le point 12 à la mise en service, les points 1 à 3
-à la recette de bout en bout du lot 5b, qui attend la clé APNs et le compte
-FCM. Ce qui demande un vrai téléphone est versé au chantier 29.
+**Point par point au 26 septembre 2026, à la mise en service** : 8 points
+faits, le tap fait sur iOS, les points 1 à 3 à la recette de bout en bout du
+lot 5b, qui attend la clé APNs et le compte FCM. Ce qui demande un vrai
+téléphone est versé au chantier 29.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |
@@ -1157,10 +1188,10 @@ FCM. Ce qui demande un vrai téléphone est versé au chantier 29.
 | 6 | Fait | Au simulateur et à l'émulateur, refuser ne bloque rien et plus rien ne se redemande (lot 2, gestes 7 et 10) ; le profil renvoie alors aux réglages du téléphone (lot 4, geste 3) |
 | 7 | Fait | Avec le vrai service d'Expo, un ticket `DeviceNotRegistered` révoque l'appareil dans la seconde (lot 3, gestes 3 et 4) ; un accusé se relit entre 15 minutes et 24 heures et révoque de même (`pipeline.test.ts`, `tickets.test.ts`). Une désinstallation réelle : au 5b, ou au 29 si Expo tarde |
 | 8 | Fait | 35 contrôles sur 35, repassés à la fin du 5a |
-| 9 | Fait | La carte du tableau de bord : battement, dernier envoi réussi, dernière erreur, « En marche » ou « En panne » (lot 3, gestes 5 et 6 ; `health.test.ts`). En production : à la mise en service |
+| 9 | Fait | La carte du tableau de bord : battement, dernier envoi réussi, dernière erreur, « En marche » ou « En panne » (lot 3, gestes 5 et 6 ; `health.test.ts`). En production, elle dit « En marche » depuis la mise en service du 26 septembre |
 | 10 | Fait | L'éditorial est éteint par défaut (lot 1, D6) ; l'accord se demande après une publication ou à la première édition rejointe, et seul « Oui » l'allume (lot 4, geste 9, D20) ; « Les éditions » se coupe dans le profil (lot 4, geste 1) ; l'accord éditorial ne compte pas pour un item (`recipients.test.ts`) |
 | 11 | Fait | Lots 1 et 2 le 17 septembre, lot 3 le 23 septembre, chacun avec sa preuve de compatibilité avant, et les lectures des versions publiées rejouées après |
-| 12 | À la mise en service | `pg_cron` passe bien toutes les 5 minutes : 31 passages réussis le 23 septembre de 7 h 25 à 9 h 55 (Paris), aucun en échec. Le contrôle de santé ne le note qu'une fois le back-office redéployé et les secrets posés |
+| 12 | Fait le 26 septembre | `push_health` note le battement de 11 h 00 puis celui de 11 h 05 (Paris), chacun reçu en 202, sans erreur. `pg_cron` passe toutes les 5 minutes depuis le 23 septembre : 903 passages réussis au 26 à 10 h 35, aucun en échec ni manqué |
 
 ---
 
