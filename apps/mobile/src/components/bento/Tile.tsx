@@ -31,6 +31,7 @@ import {
 } from './tile-text';
 import { tileTitleFit, tileTitleScale } from './tile-title';
 import { SHADOWS } from '@/components/primitives/shadow';
+import { extendaAccentRoom } from '@/lib/display-title';
 import { cleanTitle } from '@/lib/text';
 
 export type { TileSize };
@@ -188,6 +189,10 @@ export function Tile({
       conf.letterSpacing,
       Platform.OS === 'android' ? PixelRatio.get() : undefined,
     );
+  // La place des accents de la première ligne du titre, que sa ligne de 1 em
+  // rognait : « À BOUT DE SOUFFLE » perdait 2,0 pt de son accent sur 3,5 à la
+  // recette du 26 septembre 2026. Cf. `display-title.ts`.
+  const titleAccentRoom = extendaAccentRoom(title, conf.title * titleScale, pixelRatio);
 
   // Inner : border + radius + overflow:hidden, SANS padding. Le bg est noir
   // (même couleur que la bordure) pour blender avec celle-ci en cas de
@@ -373,6 +378,10 @@ export function Tile({
             lineHeight: conf.title * TILE_LINE.title * titleScale,
             letterSpacing: conf.letterSpacing,
             textTransform: 'uppercase',
+            // Rendue en marge négative : le bloc, ancré en bas de la case, garde
+            // sa hauteur, et le titre sa place.
+            paddingTop: titleAccentRoom,
+            marginTop: -titleAccentRoom,
             textShadowColor:
               hasImage || palette.ink === '#ffffff' ? 'rgba(0,0,0,0.4)' : 'transparent',
             textShadowOffset: { width: 0, height: 1 },

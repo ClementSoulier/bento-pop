@@ -1,4 +1,13 @@
-import { Linking, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Linking,
+  PixelRatio,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
@@ -9,10 +18,14 @@ import {
   scaledType,
 } from '@/components/bento/font-scaling';
 import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, YellowBg } from '@/components/primitives';
+import { extendaAccentRoom } from '@/lib/display-title';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 const TERMS_URL = 'https://bento-pop.com/mentions-legales';
 const SITE_URL = 'https://bento-pop.com';
+
+const TITLE = 'Crédits';
+const TITLE_FONT_SIZE = 36;
 
 /**
  * Page Crédits / Légal accessible depuis la tab Profil.
@@ -37,6 +50,15 @@ export default function CreditsPage() {
     .nativeBuildVersion;
 
   const { fontScale } = useWindowDimensions();
+  // La place de l'accent de « CRÉDITS », rogné de 2,9 pt sur 5,2 à la recette
+  // du 26 septembre 2026 : sans hauteur de ligne posée, iOS commence la ligne
+  // d'Extenda à son ascendante, sous les accents. Un quart d'em couvre aussi le
+  // titre agrandi par la police système. Cf. `display-title.ts`.
+  const titleAccentRoom = extendaAccentRoom(
+    TITLE,
+    TITLE_FONT_SIZE,
+    Platform.OS === 'android' ? PixelRatio.get() : undefined,
+  );
 
   const openUrl = (url: string) => {
     Linking.openURL(url).catch(() => {
@@ -85,12 +107,14 @@ export default function CreditsPage() {
             maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER}
             style={{
               fontFamily: 'Extenda',
-              fontSize: 36,
+              fontSize: TITLE_FONT_SIZE,
               letterSpacing: 1,
               textTransform: 'uppercase',
+              paddingTop: titleAccentRoom,
+              marginTop: -titleAccentRoom,
             }}
           >
-            Crédits
+            {TITLE}
           </Text>
           <Text
             maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}

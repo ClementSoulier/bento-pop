@@ -35,6 +35,7 @@ import { offerEditorialConsent } from '@/lib/push-runtime';
 import { bentoRoute } from '@/lib/bento-address';
 import { type Edition, createEditionBento, loadReleasedEditions } from '@/lib/editions';
 import { type OwnBento, bentoName } from '@/lib/own-bento';
+import { extendaAccentRoom } from '@/lib/display-title';
 import {
   CTA_GAP_MIN,
   PSEUDO_LINE_H,
@@ -46,6 +47,7 @@ import {
   SELECTOR_SIDE,
   TITLE_LINE_H,
   composeBentoScale,
+  composePseudoLift,
   composeTitleScale,
   selectorRevealOffset,
 } from '@/components/bento/compose-layout';
@@ -349,6 +351,16 @@ export default function ComposeTab() {
       titleType.fontSize,
       Platform.OS === 'android' ? PixelRatio.get() : undefined,
     );
+  // Un titre d'édition porte des accents, que la ligne de 26 pt rognait en
+  // entier : « EDITION DE RECETTE » à la recette du 26 septembre 2026. Le titre
+  // réserve leur place au-dessus de lui, et le pseudo, posé juste au-dessus,
+  // s'écarte d'autant pour ne pas les toucher. Cf. `composePseudoLift`.
+  const accentRoom = extendaAccentRoom(
+    nomDuBento,
+    titleFontSize,
+    Platform.OS === 'android' ? PixelRatio.get() : undefined,
+  );
+  const pseudoLift = composePseudoLift(accentRoom, fontScale);
   const statusType = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 11, STATUS_LINE_H);
   const onlineType = scaledType(
     fontScale,
@@ -401,6 +413,7 @@ export default function ComposeTab() {
                 color: INK_MUTED,
                 textTransform: 'uppercase',
                 includeFontPadding: false,
+                transform: [{ translateY: -pseudoLift }],
               }}
             >
               {/* Sans pseudo, la ligne garde sa hauteur mais ne dit rien.
@@ -421,6 +434,10 @@ export default function ComposeTab() {
                 letterSpacing: COMPOSE_TITLE_LETTER_SPACING,
                 color: '#0a0a0a',
                 textTransform: 'uppercase',
+                // Rendue en marge négative : la mise en page ne bouge pas, seul
+                // le dessin gagne la place des accents. Cf. `display-title.ts`.
+                paddingTop: accentRoom,
+                marginTop: -accentRoom,
               }}
             >
               {/* Le nom du bento courant. « Mon bento » reste le titre du

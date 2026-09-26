@@ -7,7 +7,7 @@ import {
   scaledType,
 } from '@/components/bento/font-scaling';
 import { PALETTES, paletteKeyForItem } from '@/components/bento/palettes';
-import { displayTitleScale } from '@/lib/display-title';
+import { displayTitleScale, extendaAccentRoom } from '@/lib/display-title';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { itemImageUrl } from '@/lib/item-image';
 import { cleanTitle } from '@/lib/text';
@@ -138,7 +138,18 @@ export function ItemTile({
           textBreakStrategy="simple"
           style={[
             styles.title,
-            { fontSize: capped.fontSize * shrink, lineHeight: capped.lineHeight * shrink },
+            {
+              fontSize: capped.fontSize * shrink,
+              lineHeight: capped.lineHeight * shrink,
+              // La place des accents, que la ligne de 1 em rognait : « ÉTÉ 85 »
+              // gardait 0,67 pt de son accent sur 1,6. Ancré en bas, le titre
+              // grandit vers le haut sans bouger. Cf. `display-title.ts`.
+              paddingTop: extendaAccentRoom(
+                title,
+                capped.fontSize * shrink,
+                Platform.OS === 'android' ? pixelRatio : undefined,
+              ),
+            },
           ]}
         >
           {title}

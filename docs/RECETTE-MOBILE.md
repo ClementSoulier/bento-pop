@@ -988,6 +988,26 @@ hauteur de ligne, et non l'inverse. Vu au chantier 11 sur le pseudo du composer,
 réduit à quelques pixels. Ne le poser que là où le texte peut vraiment déborder,
 jamais avec une hauteur de ligne posée.
 
+### Un accent qui manque en haut d'un titre Extenda : rogné, pas absent
+
+Rencontré le 26 septembre 2026 : le composer affichait « EDITION DE RECETTE »
+pour « Édition de recette ». Extenda a bien ses capitales accentuées, mais les
+dessine au-dessus de son ascendante, et iOS commence la ligne à l'ascendante :
+l'accent tombe hors de la boîte du texte, qui le rogne. Pour trancher entre
+rogné et absent, comparer deux mesures :
+
+- la hauteur de l'accent dans la police, en unités sur 2 048, par `fontTools`
+  (installé pour le Python 3.14 du Mac) : « É » monte à 1 699, soit 23,2 pt à
+  28 pt ;
+- la ligne de base à l'écran, dernière rangée d'encre du « E », et le haut du
+  cadre du texte dans `idb ui describe-all`.
+
+La règle, ses mesures et sa garde sont dans `lib/display-title.ts` et
+`font-scaling.test.ts`. Deux pièges vus en la posant : l'accent enfin visible
+peut toucher le texte du dessus, le pseudo du composer, qui s'écarte donc
+(`composePseudoLift`) ; et sur Android, une réserve en dp qui ne tombe pas sur un
+pixel entier remonte le titre d'un pixel : `extendaAccentRoom` prend la densité.
+
 ### La barre d'onglets en navigation à trois boutons
 
 Sa hauteur se calcule sur la marge basse du système, 34 pt en gestes sur iOS,
@@ -1273,6 +1293,25 @@ identique, 12 398 octets, pendant que celle de l'édition passait de 12 230 à
 13 740 octets. Même méthode pour l'aperçu de lien, comparé au pixel : 0 pixel
 différent pour le bento principal, et des différences limitées aux étiquettes
 pour l'édition.
+
+### Mesurer la landing dans le vrai WebKit d'iPhone : le Safari du simulateur
+
+Le Safari du simulateur iOS est le moteur des iPhone, et il atteint le
+`127.0.0.1` du Mac. Au 26 septembre 2026, la page publique d'un bento de la base
+locale s'y mesurait au pixel, sans banc à compiler : landing en développement,
+page publique branchée sur la base locale par `NEXT_PUBLIC_MOBILE_SUPABASE_URL`
+et `MOBILE_SUPABASE_ANON_KEY` tirées de `supabase status -o env`, aucun `.env`
+dans `apps/landing`, puis
+
+```bash
+npx next dev --hostname 127.0.0.1 --port 3102      # depuis apps/landing
+xcrun simctl openurl <UDID> "http://127.0.0.1:3102/u/<pseudo>"
+xcrun simctl io <UDID> screenshot --type=png /chemin/absolu/landing.png
+```
+
+La capture est en densité 3, comme celles de l'app. Chromium se contrôle à côté
+par le panneau navigateur, en mesurant par `getBoundingClientRect` et
+`measureText`.
 
 ### Un fichier `.env` de la landing pointe sur la production
 

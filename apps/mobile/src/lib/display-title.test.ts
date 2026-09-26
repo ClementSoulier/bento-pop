@@ -66,4 +66,31 @@ describe('extendaAccentRoom', () => {
   it('reconnaît un accent écrit en caractère décomposé', () => {
     assert.equal(extendaAccentRoom('Re\u0300gles', 30), Math.ceil(30 * EXTENDA_ACCENT_ROOM_EM));
   });
+
+  /**
+   * Émulateur Pixel 8, 26 septembre 2026 : 7 dp de réserve tombent sur
+   * 18,375 pixels, et le titre remontait d'un pixel. Arrondie au pixel
+   * supérieur, elle ne déplace plus rien.
+   */
+  it('s’arrondit au pixel supérieur quand on lui donne la densité d’Android', () => {
+    const titres = [
+      ['Édition de recette', 28],
+      ['Été 85', 24.1],
+      ['Élite', 11],
+    ] as const;
+    for (const pixelRatio of [2, 2.625, 3, 3.5]) {
+      for (const [titre, taille] of titres) {
+        const reserve = extendaAccentRoom(titre, taille, pixelRatio);
+        const pixels = reserve * pixelRatio;
+        assert.ok(Math.abs(pixels - Math.round(pixels)) < 1e-9, `${titre} : ${pixels} px`);
+        assert.ok(reserve >= taille * EXTENDA_ACCENT_ROOM_EM, `${titre} : ${reserve}`);
+        assert.ok(
+          reserve < taille * EXTENDA_ACCENT_ROOM_EM + 1 / pixelRatio,
+          `${titre} : ${reserve}`,
+        );
+      }
+    }
+    assert.equal(extendaAccentRoom('Édition de recette', 28, 2.625), 19 / 2.625);
+    assert.equal(extendaAccentRoom('Mon bento', 28, 2.625), 0);
+  });
 });
