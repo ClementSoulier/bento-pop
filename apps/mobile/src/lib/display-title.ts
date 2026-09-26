@@ -16,6 +16,15 @@
  *   `paddingTop`, et la rend en `marginTop` négative : la mise en page ne bouge
  *   pas, seul le dessin gagne la place de ses accents.
  *
+ * La réserve vaut pour **tout titre en Extenda et en capitales**, et pas
+ * seulement pour ceux dont l'interligne est serré : iOS commence la ligne
+ * d'Extenda à son ascendante, 0,743 em, même à hauteur de ligne égale à la
+ * taille ou sans hauteur posée, et les accents montent à 0,83 em, 0,85 pour un
+ * tréma. Relevé à la recette du 26 septembre 2026 : le titre du composer,
+ * devenu celui d'une édition au chantier 16, affichait « EDITION DE RECETTE »,
+ * et les titres de case, de la recherche et « CRÉDITS » perdaient le haut de
+ * leurs accents. `font-scaling.test.ts` le vérifie sur tous les textes de l'app.
+ *
  * Aucun import de `react-native` : testé sous `node:test`.
  */
 
@@ -82,9 +91,21 @@ const ABOVE_MARKS = /[\u0300-\u030a]/;
  * « MON BENTO » ne bouge pas d'un point. La première ligne est comptée jusqu'au
  * premier saut de ligne : si elle passe elle-même à la ligne, la réserve est
  * seulement plus grande que nécessaire, sans effet sur la mise en page.
+ *
+ * `pixelRatio` sur Android seulement : la réserve s'y arrondit au pixel
+ * supérieur. Arrondie au point, 7 dp tombent sur 18,375 pixels, et le retrait et
+ * la marge, arrondis chacun de leur côté, remontaient le titre d'un pixel :
+ * mesuré sur l'émulateur Pixel 8 le 26 septembre 2026. Sur iOS, un point entier
+ * tombe sur un pixel.
  */
-export function extendaAccentRoom(title: string, renderedFontSize: number): number {
+export function extendaAccentRoom(
+  title: string,
+  renderedFontSize: number,
+  pixelRatio?: number,
+): number {
   const firstLine = title.split('\n')[0] ?? '';
   const hasAccent = ABOVE_MARKS.test(firstLine.toUpperCase().normalize('NFD'));
-  return hasAccent ? Math.ceil(renderedFontSize * EXTENDA_ACCENT_ROOM_EM) : 0;
+  if (!hasAccent) return 0;
+  const room = renderedFontSize * EXTENDA_ACCENT_ROOM_EM;
+  return pixelRatio === undefined ? Math.ceil(room) : Math.ceil(room * pixelRatio) / pixelRatio;
 }

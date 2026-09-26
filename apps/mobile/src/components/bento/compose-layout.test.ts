@@ -16,13 +16,16 @@ import {
   composeCtaBlockHeight,
   composeCtaGap,
   composeHeaderHeight,
+  COMPOSE_PSEUDO_ACCENT_LIFT,
   COMPOSE_TITLE_LETTER_SPACING,
   COMPOSE_TITLE_MIN_FONT_SIZE,
+  composePseudoLift,
   composeSelectorHeight,
   composeTitleScale,
   selectorRevealOffset,
   type ComposeMetrics,
 } from './compose-layout';
+import { extendaAccentRoom } from '@/lib/display-title';
 import { extendaTextWidth } from './extenda-metrics';
 import { TITLE_ROUNDING_SLACK } from './tile-title';
 import { CONTROL_MAX_FONT_MULTIPLIER, TITLE_MAX_FONT_MULTIPLIER } from './font-scaling';
@@ -345,5 +348,52 @@ describe('composeTitleScale, le titre du composer sur une ligne', () => {
     assert.ok(taille >= COMPOSE_TITLE_MIN_FONT_SIZE, String(taille));
     const width = extendaTextWidth(nom.toUpperCase(), taille, COMPOSE_TITLE_LETTER_SPACING);
     assert.ok(width <= 362 - TITLE_ROUNDING_SLACK + 1e-9, `${width} pour 362`);
+  });
+});
+
+describe('composePseudoLift, le pseudo au-dessus d’un titre accentué', () => {
+  /*
+   * Relevés du 26 septembre 2026 sur iPhone 17 Pro, titre à 28 points : la boîte
+   * du titre monte à 19,0 pt au-dessus de sa ligne de base, et la queue du « @ »
+   * du pseudo descend jusqu'à 2,0 pt au-dessus de cette boîte. Les accents
+   * viennent de la police : aigu, grave et circonflexe à 1 699 unités sur 2 048,
+   * tréma à 1 737, le plus haut du français.
+   */
+  const TITLE_BOX_ABOVE_BASELINE = 19.0;
+  const AT_TAIL_ABOVE_TITLE_BOX = 2.0;
+  const accentTop = (units: number) => (units / 2048) * 28;
+  const air = (units: number) =>
+    COMPOSE_PSEUDO_ACCENT_LIFT -
+    (accentTop(units) - TITLE_BOX_ABOVE_BASELINE - AT_TAIL_ABOVE_TITLE_BOX);
+
+  it('ne déplace pas le pseudo d’un titre sans accent', () => {
+    for (const nom of ['Mon bento', 'le-duel-du-samedi', 'La semaine du film qui pique']) {
+      assert.equal(composePseudoLift(extendaAccentRoom(nom, 28), 1), 0, nom);
+    }
+  });
+
+  it('écarte le pseudo d’un titre d’édition accentué', () => {
+    // Recette du 26 septembre 2026 : l'accent de « ÉDITION » recouvrait le « @ ».
+    assert.equal(
+      composePseudoLift(extendaAccentRoom('Édition de recette', 28), 1),
+      COMPOSE_PSEUDO_ACCENT_LIFT,
+    );
+  });
+
+  it('laisse au moins un point d’air sous le « @ », tréma compris', () => {
+    // 1,77 pt calculés pour « É », 1,67 mesurés au pixel.
+    assert.ok(air(1699) > 1.5, String(air(1699)));
+    assert.ok(air(1737) >= 1, String(air(1737)));
+  });
+
+  it('suit la taille du pseudo, plafonnée', () => {
+    const accent = extendaAccentRoom('Édition de recette', 28);
+    for (const fontScale of FONT_SCALES) {
+      assert.equal(
+        composePseudoLift(accent, fontScale),
+        COMPOSE_PSEUDO_ACCENT_LIFT * Math.min(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
+        String(fontScale),
+      );
+    }
   });
 });

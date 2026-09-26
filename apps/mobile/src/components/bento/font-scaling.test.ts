@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import * as ts from 'typescript';
+import { extendaAccentRoom } from '@/lib/display-title';
 import { NATURAL_LINE_EM, fontScaleFor, naturalLineHeight, scaledType } from './font-scaling';
 
 /**
@@ -383,7 +384,12 @@ const CAPS = new Set([
   'TILE_MAX_FONT_MULTIPLIER',
 ]);
 
-type AppText = Tag & { path: string; tag: string };
+type AppText = Tag & {
+  path: string;
+  tag: string;
+  /** Ce que le texte affiche, commentaires compris ; vide pour une balise auto-fermante. */
+  children: readonly ts.JsxChild[];
+};
 
 /**
  * Tous les textes de l'app : `<Text>`, `<TextInput>` et `<Animated.Text>` de
@@ -427,6 +433,7 @@ function appTexts(): AppText[] {
               line: file.getLineAndCharacterOfPosition(opening.getStart()).line + 1,
               attributes: attributesOf(opening),
               styleSource: expression ? resolvedSource(expression, opening) : '',
+              children: ts.isJsxElement(node) ? node.children : [],
             });
           }
           inside = tag !== 'TextInput';
@@ -473,6 +480,139 @@ describe('toute l’app', () => {
       );
     });
     assert.equal(copied.length, 0, `plafond recopié : ${where(copied)}`);
+  });
+});
+
+/**
+ * Les déclarations de premier niveau d'un fichier, et les entrées de ses
+ * `StyleSheet.create` sous leur nom d'usage, `styles.title` : ce que
+ * `resolvedSource`, qui s'arrête au composant, ne voit pas.
+ */
+function moduleDeclarations(path: string): Map<string, ts.Expression> {
+  const declarations = new Map<string, ts.Expression>();
+  for (const statement of parse(path).statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      const init = declaration.initializer;
+      if (!ts.isIdentifier(declaration.name) || !init) continue;
+      const name = declaration.name.text;
+      declarations.set(name, init);
+      const [sheet] =
+        ts.isCallExpression(init) && init.expression.getText() === 'StyleSheet.create'
+          ? init.arguments
+          : [];
+      if (!sheet || !ts.isObjectLiteralExpression(sheet)) continue;
+      for (const entry of sheet.properties) {
+        if (ts.isPropertyAssignment(entry)) {
+          declarations.set(`${name}.${entry.name.getText()}`, entry.initializer);
+        }
+      }
+    }
+  }
+  return declarations;
+}
+
+/** Le style d'un texte, constantes du fichier et feuilles de style comprises. */
+function fullStyleSource(t: AppText, declarations: Map<string, ts.Expression>): string {
+  const parts = [t.styleSource];
+  const resolved = new Set<string>();
+  for (let i = 0; i < parts.length; i++) {
+    for (const [, head, property] of (parts[i] ?? '').matchAll(
+      /\b([A-Za-z_$][\w$]*)(?:\.([A-Za-z_$][\w$]*))?/g,
+    )) {
+      // `styles.title` renvoie à son entrée seule, jamais à toute la feuille.
+      const name = property ? `${head}.${property}` : (head ?? '');
+      const declared = declarations.get(name);
+      if (!declared || resolved.has(name)) continue;
+      resolved.add(name);
+      parts.push(declared.getText());
+    }
+  }
+  return parts.join('\n');
+}
+
+/**
+ * Le texte d'un titre fixe, écrit dans le code, ou `undefined` s'il vient des
+ * données. Les blancs du JSX se replient comme React les replie.
+ */
+function fixedText(
+  children: readonly ts.JsxChild[],
+  declarations: Map<string, ts.Expression>,
+): string | undefined {
+  let text = '';
+  for (const child of children) {
+    if (ts.isJsxText(child)) {
+      text += child.text
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join(' ');
+    } else if (ts.isJsxElement(child)) {
+      const inner = fixedText(child.children, declarations);
+      if (inner === undefined) return undefined;
+      text += inner;
+    } else if (ts.isJsxExpression(child)) {
+      if (!child.expression) continue;
+      const expression = ts.isIdentifier(child.expression)
+        ? (declarations.get(child.expression.text) ?? child.expression)
+        : child.expression;
+      if (!ts.isStringLiteralLike(expression)) return undefined;
+      text += expression.text;
+    } else {
+      return undefined;
+    }
+  }
+  return text;
+}
+
+/** Ce que l'app n'écrit jamais avec un accent, ou n'écrit pas pour être lu. */
+const WITHOUT_ACCENTS = [
+  // Un pseudo, en ASCII seulement : cf. `lib/pseudo-match.ts`.
+  /pseudo/i,
+  // Une initiale en filigrane, un décor : laissée telle quelle le 26 septembre 2026.
+  /\b(?:getInitial|initialOf)\(/,
+];
+
+/**
+ * Extenda dessine les accents de ses capitales au-dessus de son ascendante, et
+ * iOS commence la ligne à l'ascendante, même sans hauteur de ligne posée : un
+ * titre en capitales perd l'accent de sa première ligne s'il ne réserve pas sa
+ * place, cf. `display-title.ts`.
+ *
+ * Le titre du composer l'a perdu en devenant le titre d'une édition, au
+ * chantier 16, sans que rien ne le signale avant la recette du 26 septembre
+ * 2026 : « EDITION DE RECETTE ». Les titres de case, de la recherche et
+ * « CRÉDITS » en perdaient une partie depuis toujours. Tout titre en Extenda et
+ * en capitales réserve donc cette place, sauf un titre fixe sans accent en
+ * première ligne, et ce que l'app n'écrit jamais avec un accent.
+ */
+describe('les accents d’Extenda', () => {
+  const titles = appTexts().flatMap((t) => {
+    const declarations = moduleDeclarations(t.path);
+    const style = fullStyleSource(t, declarations);
+    if (!/fontFamily:\s*'Extenda'/.test(style) || !/textTransform:\s*'uppercase'/.test(style)) {
+      return [];
+    }
+    const shown = t.children.map((child) => child.getText()).join('');
+    return [{ ...t, style, shown, fixed: fixedText(t.children, declarations) }];
+  });
+  const exposed = titles.filter((t) =>
+    t.fixed === undefined
+      ? !WITHOUT_ACCENTS.some((pattern) => pattern.test(t.shown))
+      : extendaAccentRoom(t.fixed, 1) > 0,
+  );
+
+  it('trouve les titres en Extenda et en capitales, feuilles de style comprises', () => {
+    assert.ok(titles.length >= 15, `${titles.length} titres`);
+    // Composer, case, tuile de recherche, crédits, accueil, en-têtes de section.
+    assert.ok(exposed.length >= 6, `${exposed.length} titres à accents : ${where(exposed)}`);
+  });
+
+  it('réserve la place des accents de tout titre qui peut en porter', () => {
+    const clipped = exposed.filter(
+      (t) => !/\bpaddingTop\b/.test(t.style) || !/\bextendaAccentRoom\(/.test(t.style),
+    );
+    assert.equal(clipped.length, 0, `accents rognés : ${where(clipped)}`);
   });
 });
 

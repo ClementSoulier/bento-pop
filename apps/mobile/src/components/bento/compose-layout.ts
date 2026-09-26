@@ -168,6 +168,34 @@ export const COMPOSE_TITLE_LETTER_SPACING = -0.3;
 export const COMPOSE_HEADER_SIDE = 20;
 
 /**
+ * Ce dont le pseudo remonte au-dessus d'un titre accentué, à la taille par
+ * défaut.
+ *
+ * Le titre réserve la place de ses accents au-dessus de sa ligne, cf.
+ * `extendaAccentRoom`, mais cette place est celle du pseudo, posé juste
+ * au-dessus. Mesuré le 26 septembre 2026 sur iPhone 17 Pro, « ÉDITION DE
+ * RECETTE » à 28 points : l'accent de « É » monte 4,2 pt au-dessus de la boîte
+ * du titre, la queue du « @ » descend jusqu'à 2,0 pt au-dessus d'elle, et
+ * l'accent recouvrait le « @ » et le bas du « R ». 4 pt de plus laissent sous le
+ * « @ » 1,67 pt d'air sur iPhone 17 Pro et 1,9 dp sur Pixel 8, mesurés, et
+ * environ 1,2 pt pour un tréma, plus haut d'un demi-point.
+ */
+export const COMPOSE_PSEUDO_ACCENT_LIFT = 4;
+
+/**
+ * Décalage du pseudo vers le haut, en points : nul tant que le titre ne réserve
+ * rien pour ses accents, donc « MON BENTO » ne bouge pas d'un point.
+ *
+ * Un décalage de dessin, posé en `transform`, et non de mise en page : ni le
+ * titre ni le budget vertical ne bougent. Il suit la taille du pseudo,
+ * plafonnée, comme la queue du « @ » qu'il écarte.
+ */
+export function composePseudoLift(titleAccentRoom: number, fontScale: number): number {
+  if (titleAccentRoom <= 0) return 0;
+  return COMPOSE_PSEUDO_ACCENT_LIFT * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
+}
+
+/**
  * Facteur de police du titre du composer : ce qu'il faut pour tenir sur une
  * ligne, sans descendre sous `COMPOSE_TITLE_MIN_FONT_SIZE` points. Jamais
  * au-dessus de 1 : un titre ne grossit pas pour remplir sa ligne.
