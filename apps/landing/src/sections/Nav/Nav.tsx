@@ -25,7 +25,7 @@ export async function Nav() {
             style={{ filter: 'drop-shadow(0 2px 0 rgba(0,0,0,0.2))' }}
           />
         </Link>
-        <div className="hidden flex-1 justify-center gap-1 md:flex">
+        <div className="hidden flex-1 justify-center gap-1 xl:flex">
           {links.map((link) => (
             <NavLink key={link.id} href={link.href}>
               {link.label}

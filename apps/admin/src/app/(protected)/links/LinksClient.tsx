@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LinkKind, LinkSurface, CtaSlot } from '@bento-pop/supabase/types';
 import { clsx } from '@/lib/clsx';
-import { updateCta, updateHeroTiktok, updateHeroVideo, updateLink } from './actions';
+import { updateCta, updateHeroTiktok, updateLink } from './actions';
 
 export type LinkRow = {
   id: string;
@@ -21,13 +22,6 @@ export type CtaRow = {
   url: string;
 };
 
-export type HeroVideoRow = {
-  youtubeId: string;
-  title: string;
-  episodeLabel: string;
-  live: boolean;
-};
-
 export type HeroTiktokRow = {
   tiktokUrl: string;
   enabled: boolean;
@@ -36,7 +30,6 @@ export type HeroTiktokRow = {
 type Props = {
   links: LinkRow[];
   ctas: CtaRow[];
-  heroVideo: HeroVideoRow;
   heroTiktok: HeroTiktokRow;
 };
 
@@ -58,15 +51,20 @@ const KIND_TINT: Record<LinkKind, string> = {
   apple: '#9933FF',
 };
 
-export function LinksClient({ links, ctas, heroVideo, heroTiktok }: Props) {
+export function LinksClient({ links, ctas, heroTiktok }: Props) {
   return (
     <div className="grid grid-cols-1 gap-6">
       <section>
         <h2 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-admin-muted">
           Vidéo embarquée (Hero)
         </h2>
-        <div className="admin-card overflow-hidden">
-          <HeroVideoEditor heroVideo={heroVideo} />
+        <div className="admin-card px-4 py-4 text-[13px] leading-[1.5]">
+          Automatique : le bento de la landing montre toujours le dernier épisode publié
+          de la rubrique{' '}
+          <Link href="/emissions" className="font-semibold underline">
+            Émissions
+          </Link>
+          . Pour changer la vidéo, publier ou programmer un épisode.
         </div>
       </section>
 
@@ -210,124 +208,6 @@ function CtaRowEditor({ cta }: { cta: CtaRow }) {
         {pending ? '…' : dirty ? 'Enregistrer' : 'OK'}
       </button>
       {error ? <div className="col-span-4 text-[11px] text-bento-red">{error}</div> : null}
-    </div>
-  );
-}
-
-function HeroVideoEditor({ heroVideo }: { heroVideo: HeroVideoRow }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [youtubeId, setYoutubeId] = useState(heroVideo.youtubeId);
-  const [title, setTitle] = useState(heroVideo.title);
-  const [episodeLabel, setEpisodeLabel] = useState(heroVideo.episodeLabel);
-  const [live, setLive] = useState(heroVideo.live);
-  const [error, setError] = useState<string | null>(null);
-
-  const dirty =
-    youtubeId !== heroVideo.youtubeId ||
-    title !== heroVideo.title ||
-    episodeLabel !== heroVideo.episodeLabel ||
-    live !== heroVideo.live;
-
-  // Aperçu : si l'ID est valide, on parse aussi les URLs collées par l'utilisateur.
-  const previewId = (() => {
-    const v = youtubeId.trim();
-    if (/^[A-Za-z0-9_-]{11}$/.test(v)) return v;
-    const m = v.match(
-      /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([A-Za-z0-9_-]{11})/,
-    );
-    return m?.[1] ?? null;
-  })();
-
-  const onSave = () => {
-    setError(null);
-    startTransition(async () => {
-      const result = await updateHeroVideo({ youtubeId, title, episodeLabel, live });
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      // Le serveur a normalisé l'ID, on resynchronise depuis l'aperçu.
-      if (previewId) setYoutubeId(previewId);
-      router.refresh();
-    });
-  };
-
-  return (
-    <div className="grid grid-cols-[180px_1fr] items-start gap-6 px-4 py-4">
-      {/* Thumbnail YouTube live */}
-      <div className="overflow-hidden rounded-admin-input border border-admin-border bg-admin-bg">
-        {previewId ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={`https://i.ytimg.com/vi/${previewId}/hqdefault.jpg`}
-            alt="Aperçu vidéo"
-            className="aspect-video w-full object-cover"
-          />
-        ) : (
-          <div className="grid aspect-video w-full place-items-center text-[11px] uppercase tracking-[0.15em] text-admin-muted">
-            ID invalide
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <label className="col-span-2 block">
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.1em] text-admin-muted">
-            ID ou URL YouTube
-          </span>
-          <input
-            className="admin-input font-mono"
-            value={youtubeId}
-            onChange={(e) => setYoutubeId(e.target.value)}
-            placeholder="8JVSPC2ozOw  ou  https://youtu.be/8JVSPC2ozOw"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.1em] text-admin-muted">
-            Titre overlay
-          </span>
-          <input
-            className="admin-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Replay · Dernier épisode"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.1em] text-admin-muted">
-            Label épisode
-          </span>
-          <input
-            className="admin-input"
-            value={episodeLabel}
-            onChange={(e) => setEpisodeLabel(e.target.value)}
-            placeholder="EP. 24 · 1h12"
-          />
-        </label>
-        <div className="col-span-2 flex items-center justify-between gap-3 pt-1">
-          <label className="flex items-center gap-2 text-[12px] font-semibold">
-            <input
-              type="checkbox"
-              checked={live}
-              onChange={(e) => setLive(e.target.checked)}
-              className="h-4 w-4 accent-admin-ink"
-            />
-            Afficher le badge « LIVE »
-          </label>
-          <div className="flex items-center gap-3">
-            {error ? <span className="text-[11px] text-bento-red">{error}</span> : null}
-            <button
-              type="button"
-              className={clsx('admin-btn admin-btn-primary', !dirty && 'admin-btn-ghost')}
-              disabled={!dirty || pending}
-              onClick={onSave}
-            >
-              {pending ? 'Enregistrement…' : dirty ? 'Enregistrer' : 'OK'}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -89,7 +89,7 @@ export function MobileNav({ links, cta }: MobileNavProps) {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(true)}
-        className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-bento-ink bg-bento-cream text-bento-ink shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg active:translate-y-0.5 active:shadow-[0_2px_0_var(--bento-ink)]"
+        className="xl:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[3px] border-bento-ink bg-bento-cream text-bento-ink shadow-stamp transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-stamp-lg active:translate-y-0.5 active:shadow-[0_2px_0_var(--bento-ink)]"
       >
         <BurgerIcon />
       </button>
@@ -101,7 +101,7 @@ export function MobileNav({ links, cta }: MobileNavProps) {
         aria-modal="true"
         aria-label="Menu de navigation"
         hidden={!open}
-        className="fixed inset-0 z-[60] md:hidden"
+        className="fixed inset-0 z-[60] xl:hidden"
       >
         {/* Backdrop : clic = fermer. Décoratif visuellement, bouton invisible
             pour l'a11y mais reste utilisable au clavier via le focus trap. */}

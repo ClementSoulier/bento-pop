@@ -18,6 +18,7 @@ export async function getNav(): Promise<NavLink[]> {
   return [
     { id: 'emissions',    label: 'Émissions',      href: '/emissions' },
     { id: 'podcasts',     label: 'Podcasts',       href: '/podcasts' },
+    { id: 'invites',      label: 'Invités',        href: '/#invites' },
     { id: 'agenda',       label: 'Agenda',         href: '/#agenda' },
     { id: 'thermometre',  label: 'Le Thermomètre', href: '/#thermometre' },
     { id: 'univers',      label: 'Les Univers',    href: '/#univers' },
