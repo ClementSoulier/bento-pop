@@ -37,7 +37,6 @@ export type HeroBentoCell =
       href: string;
       title: string;
       episodeLabel: string;
-      live: boolean;
       /** Si présent, on rend un embed YouTube ; sinon, lien cliquable + play btn. */
       youtubeId?: string;
       gridArea: string;

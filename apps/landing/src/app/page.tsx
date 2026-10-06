@@ -1,5 +1,6 @@
 import { Nav } from '@/sections/Nav/Nav';
 import { Hero } from '@/sections/Hero/Hero';
+import { Invites } from '@/sections/Invites/Invites';
 import { Agenda } from '@/sections/Agenda/Agenda';
 import { Thermometre } from '@/sections/Thermometre/Thermometre';
 import { Univers } from '@/sections/Univers/Univers';
@@ -25,6 +26,7 @@ export default function Page() {
       <Nav />
       <main id="main" tabIndex={-1}>
         <Hero />
+        <Invites />
         <Agenda />
         <Thermometre />
         <Univers />

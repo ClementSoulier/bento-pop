@@ -1,7 +1,8 @@
 import { cache } from 'react';
 import type { CTA, CtaIconKey, HeroBentoCell, HeroContent } from '@/lib/content/schemas';
 import { loadCtas } from '@/lib/content/ctas';
-import { loadHeroVideo } from '@/lib/content/hero-video';
+import { getLatestShowEpisode, type LatestShowEpisode } from '@/content/episodes';
+import { formatDurationShort } from '@/lib/episodes';
 import { loadHeroTiktok } from '@/lib/content/hero-tiktok';
 import { loadSettings } from '@/lib/content/settings';
 import popyContent from '@bento-pop/brand/assets/mascot/popy-content.png';
@@ -11,6 +12,8 @@ import plateau01 from '@bento-pop/brand/assets/plateau/plateau-01.jpg';
 import plateau02 from '@bento-pop/brand/assets/plateau/plateau-02.jpg';
 import plateau03 from '@bento-pop/brand/assets/plateau/plateau-03.jpg';
 import plateau04 from '@bento-pop/brand/assets/plateau/plateau-04.jpg';
+
+const CHANNEL_URL = 'https://www.youtube.com/@BentoPop.Officiel';
 
 const ICON_KEYS: ReadonlySet<CtaIconKey> = new Set([
   'youtube',
@@ -44,7 +47,7 @@ function toCta(
 const STATIC_CTAS: { primary: CTA; secondary: CTA } = {
   primary: {
     label: 'Regarder le dernier épisode',
-    href: 'https://www.youtube.com/@BentoPop.Officiel',
+    href: CHANNEL_URL,
     variant: 'primary',
     size: 'lg',
     iconKey: 'play',
@@ -59,6 +62,34 @@ const STATIC_CTAS: { primary: CTA; secondary: CTA } = {
 };
 
 /**
+ * Cellule vidéo : le dernier épisode publié du catalogue, sans réglage
+ * manuel. Sans catalogue (base injoignable, aucun épisode), on retombe sur
+ * un lien vers la chaîne plutôt que sur une vidéo figée.
+ */
+function buildVideoCell(latest: LatestShowEpisode | null): HeroBentoCell {
+  const gridArea = '1 / 1 / 2 / 4';
+  if (!latest) {
+    return {
+      kind: 'video',
+      href: CHANNEL_URL,
+      title: 'Le dernier épisode du Bento',
+      episodeLabel: 'Épisode',
+      gridArea,
+    };
+  }
+  const numero = latest.episodeNumber != null ? ` · Ép. ${latest.episodeNumber}` : '';
+  const duree = formatDurationShort(latest.durationSeconds);
+  return {
+    kind: 'video',
+    href: `/emissions/${latest.slug}`,
+    title: latest.title,
+    episodeLabel: `S${latest.season}${numero}${duree ? ` · ${duree}` : ''}`,
+    youtubeId: latest.youtubeId,
+    gridArea,
+  };
+}
+
+/**
  * Construit la liste des cellules du bento.
  *
  * Layout TikTok activé : la cellule TikTok prend toute la col 1 sur les
@@ -69,20 +100,11 @@ const STATIC_CTAS: { primary: CTA; secondary: CTA } = {
  * Popy en col 1 ligne 2 et Paris Manga en col 1 ligne 3.
  */
 function buildBentoCells(args: {
-  heroVideo: { youtubeId: string; title: string; episodeLabel: string; live: boolean };
+  latest: LatestShowEpisode | null;
   tiktok: { enabled: boolean; videoId: string | null; postUrl: string | null };
 }): HeroBentoCell[] {
-  const { heroVideo, tiktok } = args;
-
-  const videoCell: HeroBentoCell = {
-    kind: 'video',
-    href: `https://www.youtube.com/watch?v=${heroVideo.youtubeId}`,
-    title: heroVideo.title,
-    episodeLabel: heroVideo.episodeLabel,
-    live: heroVideo.live,
-    youtubeId: heroVideo.youtubeId,
-    gridArea: '1 / 1 / 2 / 4',
-  };
+  const { latest, tiktok } = args;
+  const videoCell = buildVideoCell(latest);
 
   if (tiktok.enabled && tiktok.videoId) {
     return [
@@ -111,9 +133,9 @@ function buildBentoCells(args: {
 }
 
 export const getHero = cache(async (): Promise<HeroContent> => {
-  const [ctasMap, heroVideo, heroTiktok, settings] = await Promise.all([
+  const [ctasMap, latest, heroTiktok, settings] = await Promise.all([
     loadCtas(),
-    loadHeroVideo(),
+    getLatestShowEpisode(),
     loadHeroTiktok(),
     loadSettings(),
   ]);
@@ -150,7 +172,7 @@ export const getHero = cache(async (): Promise<HeroContent> => {
         tone: 'cream',
       },
     ],
-    bentoCells: buildBentoCells({ heroVideo, tiktok: heroTiktok }),
+    bentoCells: buildBentoCells({ latest, tiktok: heroTiktok }),
     floatingPopys: [
       {
         id: 'top-right',

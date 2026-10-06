@@ -279,3 +279,46 @@ export const getPodcastEpisodeBySlug = cache(
     return mapPodcastRow(data as unknown as DbPodcastRow);
   },
 );
+
+/**
+ * Dernier épisode YouTube disponible, pour la vidéo du bento de la home.
+ *
+ * « Disponible » = mêmes règles de visibilité que le catalogue, donc un
+ * épisode programmé n'apparaît qu'à son heure. Le plus récent par date de
+ * publication ; à date égale ou absente, l'ordre du catalogue départage.
+ * Sélection légère : ni invités ni animateurs, le bento n'en affiche rien.
+ */
+export type LatestShowEpisode = Pick<
+  ShowEpisode,
+  'slug' | 'title' | 'youtubeId' | 'durationSeconds' | 'season' | 'episodeNumber'
+>;
+
+export const getLatestShowEpisode = cache(async (): Promise<LatestShowEpisode | null> => {
+  const supabase = createAnonServerClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('landing_show_episodes')
+    .select('slug, title, youtube_id, duration_seconds, season, episode_number')
+    .eq('status', 'published')
+    .or(publicVisibilityFilter())
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .order('season', { ascending: false })
+    .order('episode_number', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const row = data as unknown as Pick<
+    DbShowRow,
+    'slug' | 'title' | 'youtube_id' | 'duration_seconds' | 'season' | 'episode_number'
+  >;
+  return {
+    slug: row.slug,
+    title: row.title,
+    youtubeId: row.youtube_id,
+    durationSeconds: row.duration_seconds,
+    season: row.season,
+    episodeNumber: row.episode_number,
+  };
+});

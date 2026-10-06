@@ -1,5 +1,4 @@
 import type { HeroBentoCell as HeroBentoCellType } from '@/lib/content/schemas';
-import { LiveBadge } from '@/components/LiveBadge';
 import { clsx } from '@/lib/clsx';
 
 type HeroBentoCellProps = { cell: HeroBentoCellType };
@@ -30,11 +29,6 @@ export function HeroBentoCell({ cell }: HeroBentoCellProps) {
             loading="lazy"
             className="absolute inset-0 h-full w-full border-0"
           />
-          {cell.live ? (
-            <LiveBadge className="pointer-events-none absolute right-3.5 top-3.5 z-10">
-              Live
-            </LiveBadge>
-          ) : null}
           <span className="pointer-events-none absolute bottom-3.5 left-3.5 z-10 inline-block rounded-full bg-bento-ink px-2.5 pt-1 pb-0.5 text-[11px] font-bold uppercase tracking-[0.15em] text-bento-cream">
             {cell.episodeLabel}
           </span>
@@ -54,9 +48,6 @@ export function HeroBentoCell({ cell }: HeroBentoCellProps) {
         style={{ gridArea: cell.gridArea }}
       >
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(255,255,255,0.3),transparent_60%)]" />
-        {cell.live ? (
-          <LiveBadge className="absolute right-3.5 top-3.5">Live</LiveBadge>
-        ) : null}
         <div
           className="absolute left-3.5 right-3.5 top-3.5 text-bento-cream font-bold text-[14px] leading-[1.2]"
           style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}

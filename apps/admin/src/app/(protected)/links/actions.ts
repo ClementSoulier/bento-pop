@@ -18,42 +18,6 @@ const ctaSchema = z.object({
 });
 
 /**
- * Accepte soit un ID YouTube brut (ex: "8JVSPC2ozOw"), soit n'importe quelle
- * URL YouTube/Shorts/youtu.be → on en extrait l'ID 11 caractères.
- */
-const YT_ID_RX = /^[A-Za-z0-9_-]{11}$/;
-function extractYoutubeId(input: string): string | null {
-  const v = input.trim();
-  if (!v) return null;
-  if (YT_ID_RX.test(v)) return v;
-  // tente d'extraire un v=, /embed/, /shorts/, youtu.be/
-  const match = v.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([A-Za-z0-9_-]{11})/,
-  );
-  return match?.[1] ?? null;
-}
-
-const heroVideoSchema = z.object({
-  youtubeId: z
-    .string()
-    .trim()
-    .min(1, 'ID YouTube requis')
-    .transform((v, ctx) => {
-      const id = extractYoutubeId(v);
-      if (!id) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ID YouTube introuvable' });
-        return z.NEVER;
-      }
-      return id;
-    }),
-  title: z.string().trim().min(1, 'Titre requis').max(120),
-  episodeLabel: z.string().trim().min(1, 'Label épisode requis').max(60),
-  live: z.boolean(),
-});
-
-export type HeroVideoFormPayload = z.input<typeof heroVideoSchema>;
-
-/**
  * URL TikTok valide : https://www.tiktok.com/@user/video/1234567890123456789
  * On accepte aussi /v/{id}. Les URLs courtes (vm.tiktok.com) ne sont pas
  * supportées car non résolubles côté serveur sans HEAD request.
@@ -116,26 +80,6 @@ export async function updateCta(input: z.infer<typeof ctaSchema>): Promise<Actio
     .from('landing_ctas')
     .update({ label: parsed.data.label, url: parsed.data.url } as never)
     .eq('slot', parsed.data.slot);
-  if (error) return { ok: false, error: error.message };
-  revalidate();
-  return { ok: true };
-}
-
-export async function updateHeroVideo(input: HeroVideoFormPayload): Promise<ActionResult> {
-  await requireAdmin();
-  const parsed = heroVideoSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Champs invalides' };
-  const supabase = await createServerClient();
-  const row = {
-    youtube_id: parsed.data.youtubeId,
-    title: parsed.data.title,
-    episode_label: parsed.data.episodeLabel,
-    live: parsed.data.live,
-  };
-  const { error } = await supabase
-    .from('landing_hero_video')
-    .update(row as never)
-    .eq('id', 'singleton');
   if (error) return { ok: false, error: error.message };
   revalidate();
   return { ok: true };

@@ -3,7 +3,8 @@ import { clsx } from '@/lib/clsx';
 
 type SectionHeadProps = {
   eyebrow: string;
-  title: string;
+  /** Texte, ou nœud pour un mot d'accent (ex. section Invités). */
+  title: React.ReactNode;
   description?: string;
   align?: 'center' | 'left';
   tone?: 'default' | 'dark';
