@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { describe, it } from 'node:test';
 import * as ts from 'typescript';
 import { extendaAccentRoom } from '@/lib/display-title';
@@ -348,10 +348,13 @@ describe('cases du bento', () => {
    * une grille vide, qui n'a pas de titre, peut s'en passer.
    */
   it('donne à chaque grille de l’app la largeur de sa boîte', () => {
-    const files = readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
-      (path) =>
-        /^(app|src)\//.test(path) && path.endsWith('.tsx') && !path.includes('node_modules'),
-    );
+    const files = readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' })
+      // Windows rend des chemins en `\` : on les ramène en `/` pour les filtres et les messages.
+      .map((path) => path.split(sep).join('/'))
+      .filter(
+        (path) =>
+          /^(app|src)\//.test(path) && path.endsWith('.tsx') && !path.includes('node_modules'),
+      );
     const grids = files.flatMap((path) =>
       tagsNamed(parse(path), 'BentoGrid').map((tag) => ({ path, tag })),
     );
@@ -397,13 +400,16 @@ type AppText = Tag & {
  * police et n'est pas compté.
  */
 function appTexts(): AppText[] {
-  const files = readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
-    (path) =>
-      /^(app|src)\//.test(path) &&
-      path.endsWith('.tsx') &&
-      !path.includes('node_modules') &&
-      !/\.test\.tsx$/.test(path),
-  );
+  const files = readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' })
+    // Windows rend des chemins en `\` : on les ramène en `/` pour les filtres et les messages.
+    .map((path) => path.split(sep).join('/'))
+    .filter(
+      (path) =>
+        /^(app|src)\//.test(path) &&
+        path.endsWith('.tsx') &&
+        !path.includes('node_modules') &&
+        !/\.test\.tsx$/.test(path),
+    );
   const names = new Set(['Text', 'TextInput', 'Animated.Text']);
   /**
    * Composants qui rendent leurs enfants dans un texte à eux, plafonné : un

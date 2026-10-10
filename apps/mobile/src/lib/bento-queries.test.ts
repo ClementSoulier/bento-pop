@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { describe, it } from 'node:test';
 import * as ts from 'typescript';
 
@@ -50,12 +50,17 @@ const DETTE = new Map<string, string>([]);
 type Appel = { path: string; line: number; text: string };
 
 function sources(): string[] {
-  return readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
-    (path) =>
-      /^(app|src)\//.test(path) &&
-      /\.tsx?$/.test(path) &&
-      !path.includes('node_modules') &&
-      !/\.test\.tsx?$/.test(path),
+  return (
+    readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' })
+      // Windows rend des chemins en `\` : on les ramène en `/` pour les filtres et les messages.
+      .map((path) => path.split(sep).join('/'))
+      .filter(
+        (path) =>
+          /^(app|src)\//.test(path) &&
+          /\.tsx?$/.test(path) &&
+          !path.includes('node_modules') &&
+          !/\.test\.tsx?$/.test(path),
+      )
   );
 }
 
