@@ -64,6 +64,12 @@ type FeedEpisodePostProps = {
  * **Accessibilité.** Un seul élément, comme un bento : le libellé dit le type,
  * le numéro, le titre, la durée et la date, l'indication dit où s'ouvre
  * l'épisode. Les descendants sont masqués pour ne pas être lus deux fois.
+ *
+ * Rôle « bouton », celui d'un bento, et non « lien » : Fabric recycle les vues
+ * natives d'une cellule à l'autre sans remettre leurs rôles à zéro
+ * (`prepareForRecycle`). Avec « lien », 12 cartes sur 40 s'annonçaient
+ * « bouton » au parcours du fil, recette du chantier 19, lot 4 ; un bento
+ * aurait pu s'annoncer « lien » de même. L'indication dit où mène le tap.
  */
 export function FeedEpisodePost({ episode, width, sideInset, now }: FeedEpisodePostProps) {
   const { fontScale } = useWindowDimensions();
@@ -80,7 +86,7 @@ export function FeedEpisodePost({ episode, width, sideInset, now }: FeedEpisodeP
     <Pressable
       onPress={open}
       accessible
-      accessibilityRole="link"
+      accessibilityRole="button"
       accessibilityLabel={episodeAccessibilityLabel(episode, now)}
       accessibilityHint={episodeOpenHint(episode.platform)}
       // Style statique, comme `FeedPost` : cf. son commentaire.
@@ -92,6 +98,7 @@ export function FeedEpisodePost({ episode, width, sideInset, now }: FeedEpisodeP
           meta={relativeDate(episode.publishedAt, now)}
           avatar={BENTO_POP_AVATAR}
           maxWidth={width}
+          titleLines={2}
         />
 
         <View

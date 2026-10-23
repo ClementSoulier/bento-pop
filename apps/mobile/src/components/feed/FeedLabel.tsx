@@ -17,6 +17,12 @@ type FeedLabelProps = {
   avatar: { source: number; accent: string };
   /** Largeur de la boîte, pour empêcher un titre long de la dépasser. */
   maxWidth: number;
+  /**
+   * Lignes du titre, une par défaut : un pseudo trop long se coupe. Deux pour
+   * un épisode, dont le type se perdrait sinon aux grandes tailles de police,
+   * « BENTO POP · ÉMIS… », relevé à la recette du chantier 19.
+   */
+  titleLines?: number;
 };
 
 /**
@@ -37,7 +43,7 @@ type FeedLabelProps = {
  * son ascendante, et le « É » d'« ÉMISSION » serait rogné. Un pseudo n'en a
  * jamais, et la réserve est alors nulle.
  */
-export function FeedLabel({ title, meta, avatar, maxWidth }: FeedLabelProps) {
+export function FeedLabel({ title, meta, avatar, maxWidth, titleLines = 1 }: FeedLabelProps) {
   const { fontScale } = useWindowDimensions();
   const accentRoom = extendaAccentRoom(
     title,
@@ -101,7 +107,7 @@ export function FeedLabel({ title, meta, avatar, maxWidth }: FeedLabelProps) {
               tronque jamais. */}
           <View style={{ flexShrink: 1, minWidth: 0 }}>
             <Text
-              numberOfLines={1}
+              numberOfLines={titleLines}
               maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
               style={{
                 fontFamily: 'Extenda',

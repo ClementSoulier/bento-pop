@@ -29,6 +29,11 @@
 > « La table », recettés au simulateur sur les 40 épisodes réels. Le fil attend
 > ses épisodes au plus une seconde après ses bentos (D14, §8, lot 3).
 >
+> **Lot 4 fait le 23 octobre 2026** : la recette de §7.2 sur l'iPhone 17 Pro,
+> l'iPhone SE et le Pixel 8, deux défauts trouvés et corrigés, la DoD 10 sur 10
+> (§10), et ce qui demande un vrai téléphone versé au chantier 29. **Le
+> chantier est fait, à fusionner** (§9).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 19, [le chantier
 > 2](./UX-02-FIL-LA-TABLE.md) pour le fil et [le chantier
 > 13](./UX-13-BENTO-HEBDOMADAIRE.md) pour `editions.show_id`. Même sortie store
@@ -477,7 +482,8 @@ La route, ses tests, la politique de confidentialité.
 >   4, rayon de 22, ombre stamp, vignette 16:9 sur fond plein, pastille et
 >   durée en chasse fixe, titre en Fredoka sur trois lignes au plus. Le tap
 >   passe par `Linking.openURL`. Un seul élément pour VoiceOver et TalkBack,
->   de rôle lien, avec son libellé et l'indication du tap.
+>   de rôle ~~lien~~ **bouton (lot 4)**, avec son libellé et l'indication du
+>   tap.
 > - **`src/components/feed/FeedLabel.tsx`** : l'étiquette des posts, sortie
 >   de `FeedPostHeader`, qui garde son interface et son rendu. Celle d'un
 >   épisode porte le Popy de la marque sur son jaune, « Bento Pop ·
@@ -543,7 +549,8 @@ La route, ses tests, la politique de confidentialité.
 >   filtres de la page.
 > - **L'accessibilité**, lue dans l'arbre d'iOS : un seul élément, de rôle
 >   lien, « Podcast Bento Pop, saison 2, épisode 1 : … 23 minutes. Publié il
->   y a 1 mois. », avec l'indication « S'ouvre dans Spotify. ».
+>   y a 1 mois. », avec l'indication « S'ouvre dans Spotify. ». **Le rôle
+>   n'était pas fiable, cf. lot 4.**
 > - **D9 et D14, mesurés à la milliseconde** par un journal provisoire,
 >   retiré depuis :
 >   - landing à 0,6 s : bentos à +38 ms, fil en attente, puis tout d'un coup
@@ -570,34 +577,118 @@ La route, ses tests, la politique de confidentialité.
 La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
 29.
 
+> **Fait le 23 octobre 2026**, sur la même branche, sur le banc aux données
+> réelles du lot 3, complété : un podcast passé sur Deezer et un autre sur
+> Apple Podcasts, aux identifiants inventés mais au format réel, et une
+> émission programmée trois minutes plus tard. La landing de ce worktree,
+> l'app sur le Supabase local, à l'iPhone 17 Pro, à l'iPhone SE et à
+> l'émulateur Pixel 8.
+>
+> **§7.2, point par point** :
+>
+> 1. **Les épisodes entre les bentos, jusqu'au bout du fil.** Un parcours
+>    scripté lit le fil de haut en bas par l'arbre d'accessibilité, `idb` sur
+>    iOS, `uiautomator` sur Android : 43 posts, puis 44 avec l'émission
+>    programmée, dans l'ordre exact de la fusion recalculée à part depuis la
+>    réponse de la route et les dates des bentos, sans doublon ni trou, sur
+>    l'iPhone 17 Pro comme sur le Pixel 8. Les épisodes de janvier à avril
+>    arrivent après le dernier bento. Un premier parcours, aux balayages trop
+>    rapides, en avait sauté 7 : c'était l'inertie, pas le fil.
+> 2. **L'émission programmée** : absente de la route et du fil au tirer de
+>    20 h 05 UTC, en tête du fil au tirer de 20 h 08 min 07 s, sept secondes
+>    après sa date.
+> 3. **Le tap** : YouTube, Spotify, Deezer, Apple Podcasts et la page du site
+>    s'ouvrent dans Safari au simulateur, faute des apps. À l'émulateur, qui a
+>    l'app YouTube, l'émission ouvre l'app YouTube.
+> 4. **La landing coupée** : le fil sans épisode et sans message, à l'iPhone
+>    17 Pro (lot 3) et au Pixel 8, la landing rendue injoignable à
+>    l'émulateur.
+> 5. **VoiceOver et TalkBack**, lus dans les arbres : sur iOS, un seul élément
+>    par carte, son libellé et son indication ; sur Android, un seul nœud
+>    `android.widget.Button`, tapable, au libellé complet, sans aucun enfant
+>    dans l'arbre réduit aux nœuds qu'atteint TalkBack. La voix elle-même
+>    passe au chantier 29.
+> 6. **L'iPhone SE** : la carte à 311 pt de large, bordure de 4 pt, vignette
+>    de 303 × 170 pt ; un titre de quatre lignes s'arrête à trois, par des
+>    points de suspension.
+>
+> **Les grandes tailles de police**, la plus grande d'iOS et 2,0 sur
+> Android : la carte tient, son titre grandit jusqu'à trois lignes, la
+> pastille, la durée et la dernière ligne restent plafonnées (chantier 11).
+>
+> **Deux défauts trouvés et corrigés** :
+>
+> 1. **Le rôle des cartes n'était pas fiable sur iOS.** Déclarées « lien »,
+>    12 cartes sur 40 s'annonçaient « bouton » au parcours du fil, et pas les
+>    mêmes d'un appareil à l'autre. Fabric recycle les vues natives d'une
+>    cellule à l'autre sans remettre leurs rôles à zéro (`prepareForRecycle`
+>    de `RCTViewComponentView`) : une vue reprise d'un bento garde le sien, et
+>    un bento aurait pu s'annoncer « lien » de même. Les cartes prennent donc
+>    le rôle des bentos, « bouton » ; l'indication dit toujours où mène le
+>    tap. Au parcours suivant, les 44 posts s'annoncent « bouton ».
+> 2. **L'étiquette perdait le type de l'épisode aux grandes tailles**,
+>    « BENTO POP · ÉMIS… ». Elle passe sur deux lignes pour un épisode,
+>    « BENTO POP · / ÉMISSION », l'accent entier ; un pseudo reste sur une
+>    ligne.
+>
+> **Tests** : rien de plus en unitaire, 759 pour l'app ; les tests qui lisent
+> le code couvrent le rôle et les plafonds de police.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226 pour
+> l'admin, 192 pour la landing, 759 pour l'app ; e2e 38 sur 38 ; build 3 sur
+> 3.
+
 ---
 
 ## 9. Livraison
 
 - **Une PR** pour les quatre lots. La route part en production à la fusion,
   la landing se redéployant d'elle-même, et reste inutilisée jusqu'à la
-  sortie store ; aucune migration.
+  sortie store ; aucune migration. **Au 23 octobre 2026, les quatre lots
+  sont commités sur `feat/ux-19-episodes-la-table`, ni poussés ni proposés :
+  la PR attend le feu vert de Clément.** Après la fusion, relire
+  `https://bento-pop.com/api/episodes` : 40 épisodes au moins, 20 sur
+  YouTube, 17 sur Spotify et 3 sur le site au 23 octobre.
 - **À la sortie store** : les épisodes dans « La table ».
 
 ---
 
 ## 10. Definition of Done
 
-- [ ] Un épisode publié, à date passée, apparaît dans « La table » à sa date,
+- [x] Un épisode publié, à date passée, apparaît dans « La table » à sa date,
       entre les bentos
-- [ ] Un épisode programmé n'apparaît ni dans l'app ni par la route avant sa
+- [x] Un épisode programmé n'apparaît ni dans l'app ni par la route avant sa
       date, et apparaît dans la minute qui la suit
-- [ ] Un épisode sans date n'apparaît pas
-- [ ] La carte reprend celle de la landing et se distingue d'un bento au
+- [x] Un épisode sans date n'apparaît pas
+- [x] La carte reprend celle de la landing et se distingue d'un bento au
       premier coup d'œil
-- [ ] Le tap ouvre YouTube pour une émission, la plateforme du podcast pour un
+- [x] Le tap ouvre YouTube pour une émission, la plateforme du podcast pour un
       podcast, et rien d'autre
-- [ ] Le fil défile jusqu'au bout sans perdre ni doubler un épisode
-- [ ] La landing en panne, le fil s'affiche sans épisode et sans message
-- [ ] VoiceOver et TalkBack lisent une carte en un seul élément
-- [ ] La politique de confidentialité dit que l'app charge les vignettes chez
+- [x] Le fil défile jusqu'au bout sans perdre ni doubler un épisode
+- [x] La landing en panne, le fil s'affiche sans épisode et sans message
+- [x] VoiceOver et TalkBack lisent une carte en un seul élément
+- [x] La politique de confidentialité dit que l'app charge les vignettes chez
       YouTube
-- [ ] Tests, typage, lint et build verts, CI rejouée en local
+- [x] Tests, typage, lint et build verts, CI rejouée en local
+
+**Point par point au 23 octobre 2026, au lot 4** : 10 points sur 10, faits
+en local, au simulateur et à l'émulateur. Le point 8 est lu dans les arbres
+d'accessibilité des deux plateformes : la voix de VoiceOver et de TalkBack
+passe au chantier 29, avec ce qui demande un vrai téléphone. Le point 10 par
+la CI rejouée en local, les Actions du dépôt étant désactivées.
+
+| # | État | Preuve, ou ce qui manque |
+| --- | --- | --- |
+| 1 | Fait | Les parcours du fil, 44 posts dans l'ordre exact de la fusion recalculée à part, sur l'iPhone 17 Pro et le Pixel 8 (lot 4, §7.2.1) ; `interleaveFeed` et ses 8 tests (lot 2) |
+| 2 | Fait | Absente au tirer de 20 h 05 UTC, en tête sept secondes après sa date (lot 4, §7.2.2). La route l'écarte avant sa date, en e2e et en unitaires (lot 1). La minute : D10, une minute de cache sur la route comme dans le cache HTTP d'iOS (lot 3) |
+| 3 | Fait | La route écarte l'épisode sans date, en e2e et en unitaires (lot 1) ; l'app aussi, `parseEpisode` (lot 2) |
+| 4 | Fait | La carte du site, mesurée au pixel sur l'iPhone 17 Pro et le SE : vignette 16:9, pastille, durée, titre sur trois lignes, l'étiquette de la marque. Environ 390 pt avec son étiquette, contre 614 pour un bento (lots 3 et 4) |
+| 5 | Fait | Les cinq destinations au simulateur, l'app YouTube à l'émulateur (lot 4, §7.2.3). « Rien d'autre » : `isAllowedOpenUrl`, ses tests et ses défauts introduits exprès (lot 2) |
+| 6 | Fait | Les mêmes parcours : aucun doublon, aucun trou (lot 4) ; la liste d'une page qui commence la suivante, testée (lot 2) |
+| 7 | Fait | Landing coupée, lente et au-delà du délai : le fil sans épisode et sans message, sur iOS (lot 3) et sur Android (lot 4) |
+| 8 | Fait, la voix au chantier 29 | Un seul élément par carte dans les arbres d'iOS et d'Android, son libellé et son indication ; le rôle, fiable depuis le lot 4 |
+| 9 | Fait | `/confidentialite`, §2.2 : les vignettes chargées chez YouTube, le tap qui quitte l'app (lot 1) |
+| 10 | Fait, CI rejouée en local | Les six étapes de `ci.yml`, sans cache, à chaque lot : lint et typage 8 sur 8, tests 226, 192 et 759, e2e 38 sur 38, build 3 sur 3 |
 
 ---
 
