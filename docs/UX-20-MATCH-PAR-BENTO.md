@@ -427,12 +427,94 @@ Le `noindex` et le sitemap, l'e2e.
 La recette de §7.2, la DoD point par point, la roadmap, la liste du
 chantier 29.
 
+> **Fait le 23 octobre 2026**, sur la même branche, sur le Supabase local, où
+> les bentos de recette se recoupent : l'app servie par le Metro de ce
+> worktree, à l'iPhone 17 Pro, à l'iPhone SE et à l'émulateur Pixel 8.
+>
+> **§7.2, point par point** :
+>
+> 1. **La pastille** : « Mêmes goûts · 2 », 30 pt de haut dans la barre de
+>    44, sur les trois appareils ; à côté d'« Options » sur le bento d'un
+>    autre, seule sur le sien, « 2 bentos ont les mêmes goûts que toi » au
+>    SE. TalkBack y lit un bouton, « 2 bentos ont les mêmes goûts que
+>    celui-ci ». Rien sans match, et rien qui bouge à son arrivée : mesuré au
+>    lot 3.
+> 2. **L'écran** : le même ordre sur les trois, @recette_proprio et ses trois
+>    items avant @recette_visites et ses deux ; « que toi » sur son propre
+>    bento. Le tap ouvre le bento, au simulateur (lot 3) comme à
+>    l'émulateur. L'émulateur coupé du Supabase local, l'écran dit qu'il
+>    n'arrive pas à charger, et « Réessayer » rend les matchs une fois la
+>    connexion revenue.
+> 3. **Le réglage** : de bout en bout au lot 3, à l'iPhone 17 Pro. À
+>    l'émulateur, « Apparaître dans la recherche » sous « Afficher mes
+>    visites », avec sa phrase ; TalkBack lit la carte comme un seul
+>    interrupteur, coché.
+> 4. **VoiceOver et TalkBack**, lus dans les arbres : sur iOS, chaque ligne un
+>    seul bouton, son libellé et son indication (lot 3) ; sur Android, un seul
+>    nœud `android.widget.Button` par ligne, tapable, au libellé complet, sans
+>    enfant dans l'arbre réduit aux nœuds qu'atteint TalkBack. La voix passe
+>    au chantier 29.
+> 5. **Les grandes tailles de police**, la plus grande d'iOS et 2,0 sur
+>    Android : la pastille garde ses 30 pt de haut, le titre de l'écran passe
+>    sur deux lignes, accents entiers. Et trois défauts de l'écran.
+>
+> **Trois défauts trouvés et corrigés**, dans les textes de l'écran, que le
+> lot 3 laissait grandir par `maxFontSizeMultiplier` :
+>
+> 1. **À 2,0 sur Android, des lignes écartées** : 32 dp d'une ligne à l'autre
+>    pour les items en commun, au lieu des 27 du modèle, parce qu'Android ne
+>    plafonne pas la hauteur de ligne (chantier 7, `fontScaleFor`). Les
+>    textes de l'écran appliquent désormais eux-mêmes la taille système,
+>    plafonnée, « Réessayer » compris, comme l'en-tête de la page d'un bento :
+>    27 dp, et la carte passe de 146 à 130 dp.
+> 2. **Sur iOS, une taille changée écran ouvert rognait les textes.** Passés à
+>    la plus grande taille, ils grandissaient dans des boîtes restées à leur
+>    ancienne hauteur, « que @recettese », le nom affiché et les items en
+>    commun coupés par le bas, jusqu'à ce qu'on rouvre l'écran ; dans l'autre
+>    sens, les cartes restaient trop hautes. Le même correctif le règle : les
+>    cartes passent de 99 et 80 pt à 128 et 128, puis reviennent à 99 et 80,
+>    sans rouvrir l'écran. La page d'un bento et « La table », éprouvées de
+>    même, se remettaient déjà en page.
+> 3. **Sur Android, l'ellipse d'un pseudo tronqué perdait la moitié de son
+>    dernier point** : Android la mesure plus étroite qu'Extenda ne la
+>    dessine. Ni l'espacement des lettres à zéro ni 4 dp de marge à droite n'y
+>    changent rien, la marge tronquant même « @RECETTE_VISITES », qui tenait.
+>    Et un pseudo de 20 caractères, le maximum, se tronque dès la taille par
+>    défaut. Le pseudo reste désormais entier sur sa ligne, quitte à
+>    rétrécir, comme dans l'en-tête de la page d'un bento : éprouvé au pire
+>    cas, vingt caractères finis par des W, à la taille par défaut et à la
+>    plus grande d'iOS, et à 2,0 sur Android. Les items en commun, en Fredoka
+>    sur deux lignes, gardent une ellipse entière sur Android, éprouvée avec
+>    des titres trop longs.
+>
+> **Tests** : 3 de plus dans `font-scaling.test.ts`, 779 pour l'app : chaque
+> texte de l'écran applique lui-même la police système, et le pseudo
+> rétrécit plutôt que d'être tronqué. Cinq défauts introduits exprès, tous
+> attrapés : les items en commun rendus à la plateforme comme au lot 3, puis
+> agrandis deux fois ; le sous-titre rendu à la plateforme, puis figé à la
+> taille par défaut ; le pseudo tronqué.
+>
+> **Ailleurs dans l'app, hors du chantier** : sept textes laissent encore leur
+> hauteur de ligne à la plateforme, dans le composer, « Trouver », « La
+> table » et l'étiquette d'un post, `FeedLabel`, que la règle de la page
+> publique, appliquée à toute l'app, désigne. Et cette étiquette tronque un
+> pseudo trop long pour elle : la même ellipse rognée est à attendre sur
+> Android, qu'aucun pseudo de la base locale n'est assez long pour montrer.
+> Une suite, §12.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226 pour
+> l'admin, 193 pour la landing, 779 pour l'app ; e2e 41 sur 41 ; build 3 sur
+> 3.
+
 ---
 
 ## 9. Livraison
 
 - **Une PR** pour les cinq lots, après la confirmation des arbitrages par
-  Clément.
+  Clément. **Au 23 octobre 2026, les cinq lots sont commités sur
+  `feat/ux-20-match-par-bento`, partie de celle du chantier 19, ni poussés
+  ni proposés** : la PR attend ses arbitrages, et la fusion du 19 avant
+  elle.
 - **La migration** s'applique en production à la fusion, comme les
   précédentes, par Clément : compatible avec la 1.1 et la 0.1.0. **De
   préférence juste avant de fusionner** : la landing, redéployée à la
@@ -449,21 +531,42 @@ chantier 29.
 
 ## 10. Definition of Done
 
-- [ ] Depuis la page de n'importe quel bento publié, un tap montre les
+- [x] Depuis la page de n'importe quel bento publié, un tap montre les
       bentos qui lui ressemblent, chacun avec ses items en commun
-- [ ] Un item rare pèse plus qu'un item que beaucoup ont choisi
-- [ ] Jamais deux bentos du même compte, jamais un brouillon
+- [x] Un item rare pèse plus qu'un item que beaucoup ont choisi
+- [x] Jamais deux bentos du même compte, jamais un brouillon
 - [ ] La fonction de match tient dans 200 ms à chaud, au p50
-- [ ] Le réglage éteint retire le compte de « Trouver » et des matchs,
+- [x] Le réglage éteint retire le compte de « Trouver » et des matchs,
       prouvé à la clé anonyme ; seul son propriétaire peut l'écrire
-- [ ] La page d'un compte retiré reste ouverte par son lien
-- [ ] Un bento mis en avant d'un compte retiré est servi en `noindex` et
+- [x] La page d'un compte retiré reste ouverte par son lien
+- [x] Un bento mis en avant d'un compte retiré est servi en `noindex` et
       sort du sitemap
-- [ ] Rien ne bouge dans la page d'un bento à l'arrivée des matchs
-- [ ] VoiceOver et TalkBack lisent une ligne de match en un seul élément
-- [ ] Les versions publiées ne cassent pas : `search_bentos` et
+- [x] Rien ne bouge dans la page d'un bento à l'arrivée des matchs
+- [x] VoiceOver et TalkBack lisent une ligne de match en un seul élément
+- [x] Les versions publiées ne cassent pas : `search_bentos` et
       `shared_items` gardent leur signature
-- [ ] Tests, typage, lint et build verts, CI rejouée en local
+- [x] Tests, typage, lint et build verts, CI rejouée en local
+
+**Point par point au 23 octobre 2026, au lot 5** : 10 points sur 11, faits en
+local, au simulateur et à l'émulateur. Le point 4 attend la migration : le
+corps de la fonction, mesuré une fois en production, tient largement, mais
+le p50 se mesure par l'API, une fois `bento_matches` en place. Le point 9 est
+lu dans les arbres d'accessibilité, la voix passant au chantier 29 ; le
+point 11 par la CI rejouée en local, les Actions du dépôt étant désactivées.
+
+| # | État | Preuve, ou ce qui manque |
+| --- | --- | --- |
+| 1 | Fait | La pastille sur la page d'un bento publié et l'écran de ses matchs, chacun avec ses items en commun, à l'iPhone 17 Pro, au SE et au Pixel 8 (lots 3 et 5) ; `bento_matches` pour tout bento publié, en base (lot 1) |
+| 2 | Fait | Les scores en `1 / n` et l'ordre exact de `check-matches.sql`, du plus rare au plus commun ; les scores sans la rareté, défaut introduit exprès, attrapés (lot 1) |
+| 3 | Fait | `check-matches.sql` écarte le même compte et le brouillon ; les deux défauts introduits exprès, attrapés (lot 1) |
+| 4 | Attend la migration | 12 ms d'exécution et 11 ms de planification, en production, en lecture seule, sur le bento le plus fourni en matchs (lot 1). Le p50 par l'API, à la clé anonyme, après l'application (§9, chantier 29) |
+| 5 | Fait | Le réglage tenu sous le rôle `anon` par les trois fonctions, `check-matches.sql` (lot 1), et par l'API, `check-privileges.ts`, son écriture refusée à un autre compte et à un visiteur (lot 2) ; de bout en bout au simulateur (lot 3) |
+| 6 | Fait | `check-privileges.ts` : retirée de la recherche, une personne garde sa page (lot 2) ; la landing la sert, en `noindex` (lot 4) |
+| 7 | Fait, à revoir en production | En e2e, le `noindex` et le sitemap sans le compte, et le repli si la landing part avant la migration (lot 4) ; sur bento-pop.com au chantier 29 |
+| 8 | Fait | L'en-tête à y = 196 pt et la boîte à y = 266,7 pt, avec et sans pastille, au point près (lot 3) |
+| 9 | Fait, la voix au chantier 29 | Un seul élément par ligne dans les arbres d'iOS et d'Android, son libellé entier (lots 3 et 5) |
+| 10 | Fait | `search_bentos` et `shared_items` recréées à signature inchangée (lot 1) ; `check-privileges.ts` conforme (lot 2) |
+| 11 | Fait, CI rejouée en local | Les six étapes de `ci.yml`, sans cache, à chaque lot, la dernière au lot 5 : lint et typage 8 sur 8, tests 226, 193 et 779, e2e 41 sur 41, build 3 sur 3 |
 
 ---
 
@@ -499,3 +602,8 @@ avant la fusion**.
   leurs.
 - **Les matchs dans « Trouver »**, en suggestion, si les taps sur la pastille
   le justifient.
+- **Les textes d'Android hors de cet écran**, relevés à la recette du lot 5 :
+  les sept qui laissent leur hauteur de ligne à la plateforme, dans le
+  composer, « Trouver », « La table » et `FeedLabel`, et la règle de la page
+  publique étendue à toute l'app ; l'ellipse d'Extenda rognée, à éprouver
+  dans l'étiquette d'un post avec un pseudo de 20 caractères.

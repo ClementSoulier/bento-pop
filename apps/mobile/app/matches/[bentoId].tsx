@@ -46,6 +46,13 @@ const AVATAR = 44;
  * plus : un `ScrollView` suffit, et ses vues ne se recyclent pas d'une ligne à
  * l'autre, ce qui a déjà coûté la fiabilité des rôles dans « La table ».
  *
+ * Les textes appliquent eux-mêmes la taille système, plafonnée, cf.
+ * `fontScaleFor`. Laissée à `maxFontSizeMultiplier`, la recette du lot 5 a
+ * relevé deux défauts : à la taille 2,0 d'Android, des lignes écartées, sa
+ * hauteur de ligne n'étant pas plafonnée ; sur iOS, une taille changée écran
+ * ouvert, des textes grandis dans des boîtes restées à leur ancienne hauteur,
+ * donc rognés, jusqu'à ce qu'on rouvre l'écran.
+ *
  * `pseudo` et `own` viennent de la pastille : ils disent à qui l'on compare,
  * « que toi » sur son propre bento (D12).
  */
@@ -70,6 +77,7 @@ export default function MatchesScreen() {
   const matches = data ? withoutBlocked(data, blocked) : [];
 
   const titleSize = TITLE_SIZE * fontScaleFor(fontScale, TITLE_MAX_FONT_MULTIPLIER);
+  const contentScale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
   // Le « Ê » et le « Û » d'Extenda montent au-dessus de son ascendante : sans
   // cette réserve, iOS les rogne. Cf. `extendaAccentRoom`.
   const accentRoom = extendaAccentRoom(
@@ -131,8 +139,8 @@ export default function MatchesScreen() {
             {TITLE}
           </Text>
           <Text
-            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-            style={{ marginTop: 6, marginBottom: 22, fontSize: 15, color: INK_MUTED }}
+            allowFontScaling={false}
+            style={{ marginTop: 6, marginBottom: 22, fontSize: 15 * contentScale, color: INK_MUTED }}
           >
             {isOwn ? 'que toi' : pseudo ? `que @${pseudo}` : 'que ce bento'}
           </Text>
@@ -143,8 +151,8 @@ export default function MatchesScreen() {
             <ErrorState onRetry={() => void refetch()} />
           ) : matches.length === 0 ? (
             <Text
-              maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-              style={{ fontSize: 15, lineHeight: 21, color: INK_MUTED }}
+              allowFontScaling={false}
+              style={{ ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 15, 21), color: INK_MUTED }}
             >
               Personne n&apos;a encore ces goûts-là. Reviens quand d&apos;autres bentos seront en
               ligne.
@@ -164,6 +172,8 @@ export default function MatchesScreen() {
  * entendent tous les items, et ses descendants masqués.
  */
 function MatchRow({ match }: { match: BentoMatch }) {
+  const { fontScale } = useWindowDimensions();
+  const scale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
   const popy = popyForPseudo(match.pseudo);
   const subtitle = match.editionTitle ? `« ${match.editionTitle} »` : match.displayName;
 
@@ -216,13 +226,17 @@ function MatchRow({ match }: { match: BentoMatch }) {
         </View>
 
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          {/* Le pseudo reste entier sur sa ligne, quitte à rétrécir, comme
+              dans l'en-tête de la page du bento. Tronqué, son ellipse perdait
+              la moitié de son dernier point sur Android, qui la mesure plus
+              étroite qu'Extenda ne la dessine (recette du lot 5). */}
           <Text
             numberOfLines={1}
-            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+            adjustsFontSizeToFit
+            allowFontScaling={false}
             style={{
               fontFamily: 'Extenda',
-              fontSize: 17,
-              lineHeight: 19,
+              ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 17, 19),
               letterSpacing: 0.6,
               textTransform: 'uppercase',
             }}
@@ -232,16 +246,20 @@ function MatchRow({ match }: { match: BentoMatch }) {
           {subtitle ? (
             <Text
               numberOfLines={1}
-              maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-              style={{ fontSize: 12, color: INK_MUTED }}
+              allowFontScaling={false}
+              style={{ fontSize: 12 * scale, color: INK_MUTED }}
             >
               {subtitle}
             </Text>
           ) : null}
           <Text
             numberOfLines={2}
-            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-            style={{ fontFamily: 'Fredoka-Medium', fontSize: 14, lineHeight: 19, color: '#0a0a0a' }}
+            allowFontScaling={false}
+            style={{
+              fontFamily: 'Fredoka-Medium',
+              ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 14, 19),
+              color: '#0a0a0a',
+            }}
           >
             {matchReasonLabel(match)}
           </Text>
@@ -283,10 +301,10 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       >
         <Text
           numberOfLines={1}
-          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+          allowFontScaling={false}
           style={{
             fontFamily: 'Bungee',
-            fontSize: 12,
+            fontSize: 12 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
             letterSpacing: 1,
             color: '#fbbf24',
             textTransform: 'uppercase',
