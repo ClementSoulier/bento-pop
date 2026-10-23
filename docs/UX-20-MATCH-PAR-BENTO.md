@@ -253,6 +253,52 @@ Effort **M**, comme à la roadmap.
 La colonne, `bento_matches`, le réglage appliqué à `search_bentos` et
 `shared_items`, `check-matches.sql`, la latence.
 
+> **Fait le 23 octobre 2026**, sur la branche `feat/ux-20-match-par-bento`,
+> partie de celle du chantier 19, qui touche aussi la roadmap.
+>
+> - **`supabase/migrations/20261023200000_bento_matches.sql`** : la colonne
+>   `users.searchable` et son droit d'écriture par colonne ; `bento_matches` ;
+>   `search_bentos` et `shared_items`, à signature inchangée, qui ne voient
+>   plus que les comptes `searchable` ; le déclencheur du chantier 8, qui
+>   suit aussi ce réglage et rafraîchit alors le sitemap. Appliquée au
+>   Supabase local seulement.
+> - **`scripts/check-matches.sql`** : 17 contrôles en transaction annulée,
+>   sur sept bentos construits pour l'occasion : l'ordre exact des matchs et
+>   leurs scores, les items communs du plus rare au plus commun, un item posé
+>   deux fois qui compte une fois, le même compte et le brouillon écartés, la
+>   limite, le réglage tenu sous la clé anonyme par les trois fonctions, le
+>   compte retiré qui voit ses propres matchs, l'écriture du réglage par son
+>   seul propriétaire et le rafraîchissement de ses pages et du sitemap.
+>
+> **Deux choix que la spécification laissait ouverts** :
+>
+> 1. **Le déclencheur du chantier 8 étendu, plutôt qu'un second** : un
+>    changement de réglage ne fait qu'un appel à la landing, ses deux
+>    adresses et, pour celui-ci, le sitemap.
+> 2. **`popular_items`, les suggestions du composer, ne suit pas le
+>    réglage** : elle compte des choix sans montrer de compte, et ne mène à
+>    personne.
+>
+> **Défauts introduits exprès** : douze, tous attrapés. Le réglage oublié
+> par le match, par la recherche ou par les suggestions ; le même compte en
+> match ; les scores sans la rareté ; un item compté deux fois ; un brouillon
+> au départ ; la limite sans plancher ; le déclencheur sourd au réglage ; le
+> sitemap oublié ; le réglage refusé à son propriétaire ; la rareté comptée
+> en bentos et non en comptes.
+>
+> **Non-régression** : `check-visits.sql`, 43 sur 43, le déclencheur partagé
+> compris ; `check-privileges.ts`, conforme.
+>
+> **La latence**, mesurée en production en lecture seule, la colonne
+> n'existant pas encore : le corps de la fonction exécuté comme une requête,
+> sur le bento qui a le plus de matchs, 9 : 12 ms d'exécution et 11 ms de
+> planification. Le budget de 200 ms laisse la place au réseau ; la mesure
+> par l'API viendra après l'application en production.
+>
+> **Pour le lot 2** : `check-privileges.ts` gagnera la section du réglage,
+> par les fonctions de l'app. La CI ne lit pas le SQL : elle sera rejouée au
+> lot 2.
+
 ### Lot 2 · L'app : les données
 
 `src/lib/matches.ts`, `writeSearchable`, le type `Database`, leurs tests.
