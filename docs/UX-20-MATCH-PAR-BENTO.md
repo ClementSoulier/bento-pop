@@ -303,6 +303,34 @@ La colonne, `bento_matches`, le réglage appliqué à `search_bentos` et
 
 `src/lib/matches.ts`, `writeSearchable`, le type `Database`, leurs tests.
 
+> **Fait le 23 octobre 2026**, sur la même branche. Rien encore à l'écran.
+>
+> - **`src/lib/matches.ts`**, pur : `loadMatches` à client injecté, vingt
+>   matchs au plus, et ses options de requête, la même clé pour la pastille
+>   et l'écran, 5 s de délai, 5 minutes de fraîcheur, aucun réessai ; la
+>   validation de chaque ligne, un match sans item lisible écarté, les titres
+>   nettoyés par `cleanTitle` ; les comptes bloqués écartés ; l'adresse du
+>   bento ; les libellés, « Dune, Arcane et Severance en commun », celui de
+>   VoiceOver et TalkBack, qui dit tous les items, et ceux de la pastille.
+> - **`writeSearchable`**, dans `search.ts` : « Apparaître dans la
+>   recherche » est un réglage de la recherche.
+> - **Le type `Database`** : `users.searchable` et `bento_matches`.
+> - **`check-privileges.ts`** gagne la section du chantier 20, par les
+>   fonctions de l'app contre l'API locale : les matchs lus sans session ;
+>   retirée de la recherche, une personne sort de « Trouver » et garde sa
+>   page ; un autre compte et un visiteur sans session ne l'y remettent pas ;
+>   rallumée, elle revient. Conforme.
+>
+> **Tests** : 17 de plus, 10 unitaires et 7 contre le bouchon PostgREST, 776
+> pour l'app. Sept défauts introduits exprès, tous attrapés : un match sans
+> item gardé, le blocage sensible à la casse, « 1 autres », moins d'items
+> communs que d'items lus, tous les items nommés à l'écran, son propre bento
+> annoncé comme un autre, la limite de vingt oubliée.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226 pour
+> l'admin, 192 pour la landing, 776 pour l'app ; e2e 38 sur 38 ; build 3 sur
+> 3.
+
 ### Lot 3 · L'app : la pastille, l'écran et le réglage
 
 `TopBar`, `app/matches/[bentoId].tsx`, `PrivacySettings`, l'accessibilité.

@@ -22,9 +22,10 @@
 import { execSync } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { loadFeedPage } from '../src/lib/feed';
+import { loadMatches } from '../src/lib/matches';
 import { isPseudoTaken } from '../src/lib/pseudo-availability';
 import { loadPublicBento } from '../src/lib/public-bento';
-import { loadSharedItems, searchBentos } from '../src/lib/search';
+import { loadSharedItems, searchBentos, writeSearchable } from '../src/lib/search';
 import { loadSuggestions } from '../src/lib/suggestions';
 import { describeApp, recordVisit } from '../src/lib/telemetry';
 import { STUB_CLIENT_OPTIONS } from '../src/test/postgrest-stub';
@@ -344,6 +345,38 @@ async function main(): Promise<void> {
       .update({ first_published_at: null })
       .eq('id', bentoId);
     check('un membre n’écrit pas la date de première publication', !!error, error?.message);
+  }
+
+  console.log('\nMêmes goûts et recherche, chantier 20\n');
+
+  check(
+    'un visiteur sans session lit les matchs (matches.ts)',
+    Array.isArray(await loadMatches(anon as unknown as Typed, bentoId)),
+  );
+  {
+    await writeSearchable(alice.client, alice.uid, false);
+    const hidden = await searchBentos(anon as unknown as Typed, alicePseudo);
+    check(
+      'retirée de la recherche, « Trouver » ne la trouve plus (search.ts)',
+      !hidden.some((row) => row.pseudo === alicePseudo),
+    );
+    const page = await loadPublicBento(anon as unknown as Typed, alicePseudo);
+    check('sa page reste ouverte par son lien', page?.bento != null);
+    await bob.rawClient.from('users').update({ searchable: true }).eq('id', alice.uid);
+    const { data: still } = await service
+      .from('users')
+      .select('searchable')
+      .eq('id', alice.uid)
+      .single();
+    check('un autre compte ne l’y remet pas', still?.searchable === false, JSON.stringify(still));
+    const { error } = await anon.from('users').update({ searchable: true }).eq('id', alice.uid);
+    check('un visiteur sans session non plus', !!error, error?.message);
+    await writeSearchable(alice.client, alice.uid, true);
+    const back = await searchBentos(anon as unknown as Typed, alicePseudo);
+    check(
+      'rallumée, « Trouver » la retrouve',
+      back.some((row) => row.pseudo === alicePseudo),
+    );
   }
 
   console.log('\nAttaques, à refuser ou à neutraliser\n');

@@ -108,7 +108,9 @@ export function isSearchable(query: string): boolean {
  * personne des résultats : le match perd sa mention d'item et bascule dans
  * les comptes, ce qui reste vrai et navigable.
  */
-export function mapSearchRow(row: SearchRow): { match: SearchMatch; kind: 'pseudo' | 'item' } | null {
+export function mapSearchRow(
+  row: SearchRow,
+): { match: SearchMatch; kind: 'pseudo' | 'item' } | null {
   if (row.match_kind !== 'pseudo' && row.match_kind !== 'item') return null;
 
   const base = {
@@ -182,7 +184,9 @@ export function matchAccessibilityLabel(match: SearchMatch): string {
   if (!match.item) return `Voir le bento de ${who}`;
   // Une case d'édition n'est pas dans `CATEGORY_META` : on tombe alors sur
   // sa clé, faute de mieux, plutôt que sur « undefined ».
-  const meta = (CATEGORY_META as Record<string, { label: string } | undefined>)[match.item.category];
+  const meta = (CATEGORY_META as Record<string, { label: string } | undefined>)[
+    match.item.category
+  ];
   const label = (meta?.label ?? match.item.category).toLowerCase();
   return `Voir le bento de ${who}, qui a ${cleanTitle(match.item.title)} dans sa case ${label}`;
 }
@@ -247,10 +251,7 @@ export async function searchBentos(
  * résultat de recherche, une puce sans catégorie n'a rien à sauver, et
  * l'écran n'a besoin ni de la compter ni de l'afficher.
  */
-export async function loadSharedItems(
-  client: SearchClient,
-  limit?: number,
-): Promise<SharedItem[]> {
+export async function loadSharedItems(client: SearchClient, limit?: number): Promise<SharedItem[]> {
   const { data, error } = await client.rpc('shared_items', {
     lim: limit ?? SHARED_ITEMS_COUNT,
   });
@@ -262,4 +263,20 @@ export async function loadSharedItems(
     if (!category) return [];
     return [{ id: row.id, title: row.title, category, picks: row.picks }];
   });
+}
+
+/**
+ * « Apparaître dans la recherche », chantier 20 (D5). Éteint, le compte sort
+ * de `search_bentos`, de `shared_items` et des matchs des autres : la règle
+ * est en SQL. Comme `writeShowVisits`, la politique `users_update_own` ne
+ * laisse écrire que sa propre ligne : sur celle d'un autre compte, rien ne
+ * change, et aucune erreur ne le dit.
+ */
+export async function writeSearchable(
+  client: SearchClient,
+  userId: string,
+  on: boolean,
+): Promise<void> {
+  const { error } = await client.from('users').update({ searchable: on }).eq('id', userId);
+  if (error) throw error;
 }
