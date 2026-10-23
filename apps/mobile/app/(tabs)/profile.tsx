@@ -32,6 +32,7 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import { bentoVisitsQueryOptions, withVisits } from '@/lib/visits';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PrivacySettings } from '@/components/PrivacySettings';
+import { forgetReadyReminders } from '@/lib/push-runtime';
 import { supabase } from '@/supabase/client';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
@@ -135,6 +136,8 @@ export default function ProfileTab() {
             setDeleting(true);
             try {
               await deleteOwnAccount(userId);
+              // Chantier 8 : ses rappels de bento prêt partent avec lui.
+              await forgetReadyReminders();
               await resetAndReinit();
               // Le `Redirect` dans app/index.tsx renverra vers l'onboarding
               router.replace('/');

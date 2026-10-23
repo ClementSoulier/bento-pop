@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { router, useFocusEffect, useIsFocused } from 'expo-router';
+import { router, useFocusEffect, useIsFocused, useNavigation } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { BentoGrid } from '@/components/bento';
 import { BentoBoxSkeleton } from '@/components/bento/BentoBoxSkeleton';
@@ -31,7 +31,16 @@ import {
   switchBento,
 } from '@/lib/bento-actions';
 import { followPushTarget } from '@/lib/push-navigation';
-import { offerEditorialConsent } from '@/lib/push-runtime';
+import {
+  acceptReadyReminder,
+  cancelReadyReminder,
+  offerEditorialConsent,
+  offerReadyReminder,
+  readyReminderOffered,
+  reconcileReadyReminders,
+  type ReminderTarget,
+} from '@/lib/push-runtime';
+import { REMINDER_LINK_LABEL, readyReminderKey, reminderWhenLabel } from '@/lib/ready-reminder';
 import { bentoRoute } from '@/lib/bento-address';
 import { type Edition, createEditionBento, loadReleasedEditions } from '@/lib/editions';
 import { type OwnBento, bentoName } from '@/lib/own-bento';
@@ -238,6 +247,106 @@ export default function ComposeTab() {
   }, [bentoCourant, aMarquer, aOublier]);
   const enAttente = Object.values(slots).flatMap((slot) => (slot?.pending ? [slot.title] : []));
 
+  // Chantier 8 : le rappel d'un bento prêt, complet, tout validé, jamais
+  // publié (D1). La décision est dans `lib/ready-reminder.ts`, testée.
+  const readyKey = readyReminderKey({
+    cta: cta.kind,
+    hydrated,
+    hasProfile: profile != null,
+    current: current ? { id: current.id, firstPublishedAt: current.firstPublishedAt } : null,
+  });
+  const reminderTarget: ReminderTarget | null = readyKey
+    ? {
+        key: readyKey,
+        // Le brouillon, sans profil, n'a pas de nom à porter.
+        bento: profile && current ? { isPrimary: current.isPrimary, name: bentoName(current) } : null,
+      }
+    : null;
+  // Lu au moment du départ, que les écouteurs ci-dessous voient après coup.
+  const reminderRef = useRef(reminderTarget);
+  reminderRef.current = reminderTarget;
+
+  // Le lien « Me le rappeler demain » (D10) : seulement pour un bento prêt,
+  // pas encore répondu, et un système qui peut encore demander. Relu à chaque
+  // retour sur l'onglet, l'autorisation ayant pu changer entre-temps.
+  const [reminderOffered, setReminderOffered] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      let vivant = true;
+      void readyReminderOffered(readyKey).then((offert) => {
+        if (vivant) setReminderOffered(offert);
+      });
+      return () => {
+        vivant = false;
+      };
+    }, [readyKey]),
+  );
+
+  // Les rappels qui n'ont plus lieu d'être s'annulent : le bento publié, une
+  // case vidée, un item remplacé par une proposition, le bento supprimé. La
+  // signature résume ce qui compte de la liste, qui change d'identité à chaque
+  // lecture sans que rien n'ait bougé ; l'effet relit la liste elle-même.
+  const hasProfile = profile != null;
+  const editedId = current?.id ?? null;
+  const ownSignature = own
+    .map((b) => `${b.id}:${b.publishedAt ?? ''}:${b.firstPublishedAt ?? ''}`)
+    .join('|');
+  useEffect(() => {
+    if (!hydrated) return;
+    void reconcileReadyReminders({
+      hasProfile,
+      ownKnown: hasProfile,
+      own: useBento.getState().own,
+      editedKey: hasProfile ? editedId : null,
+      readyKey,
+    });
+  }, [hydrated, hasProfile, editedId, readyKey, ownSignature]);
+
+  // Première porte : on quitte le composer pour un autre onglet, bento prêt.
+  // `blur` part aussi quand une modale s'ouvre par-dessus le composer : seul
+  // un onglet affiché qui n'est plus le composer dit qu'on est parti.
+  const navigation = useNavigation();
+  useEffect(
+    () =>
+      navigation.addListener('blur', () => {
+        const state = navigation.getState();
+        const shown = state ? state.routes[state.index ?? 0]?.name : undefined;
+        const target = reminderRef.current;
+        if (shown && shown !== 'compose' && target) {
+          void offerReadyReminder(target, () => setReminderOffered(false));
+        }
+      }),
+    [navigation],
+  );
+
+  // Deuxième porte : on revient de l'écran du pseudo sans avoir publié.
+  const publishFlowStarted = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!publishFlowStarted.current) return;
+      publishFlowStarted.current = false;
+      const target = reminderRef.current;
+      if (target) void offerReadyReminder(target, () => setReminderOffered(false));
+    }, []),
+  );
+
+  // Troisième porte, le lien : il vaut accord, sans question de plus.
+  const onRemindMe = async () => {
+    if (!reminderTarget) return;
+    setReminderOffered(false);
+    const date = await acceptReadyReminder(reminderTarget);
+    showToast(
+      date
+        ? `On te le rappelle ${reminderWhenLabel(new Date(), date)}.`
+        : 'Sans les notifications, le rappel ne peut pas arriver.',
+      { variant: date ? 'success' : 'neutral', durationMs: 3500 },
+    );
+  };
+
+  // Le tap d'un rappel fait pulser le bouton (D11). `null` au départ : rien
+  // ne pulse tant qu'aucun rappel n'a été tapé.
+  const publishSpotlight = usePushTarget((s) => s.publishSpotlight);
+
   // L'adresse publique du bento qu'on édite, et non celle du compte. Les deux
   // se confondaient tant qu'un compte n'avait qu'un bento : à la recette du
   // 16 septembre, publier « Le duel du samedi » ouvrait le bento principal.
@@ -265,6 +374,8 @@ export default function ComposeTab() {
     // écrans avant d'avoir vu une case. L'écran suivant crée profil, bento,
     // cases et publication d'un seul geste. Chantier 9.
     if (!profile) {
+      // Chantier 8 : revenir de cet écran sans avoir publié propose le rappel.
+      publishFlowStarted.current = true;
       router.push('/onboarding/pseudo');
       return;
     }
@@ -278,6 +389,8 @@ export default function ComposeTab() {
       // hydratation, et l'app continuerait d'ignorer qu'elle vient de rendre
       // ce bento public.
       setPublishedAt(new Date().toISOString());
+      // Chantier 8 : publié, le rappel tombe.
+      void cancelReadyReminder(bentoId);
       if (adressePublique) router.push(adressePublique);
       // Feedback de succès — montré APRÈS le push pour que le toast
       // s'affiche sur la page publique (où l'utilisateur peut partager).
@@ -596,9 +709,38 @@ export default function ComposeTab() {
               paddingBottom: 12,
             }}
           >
-            <StampButton wide disabled={cta.disabled || !hydrated} onPress={onPrimary}>
-              {hydrated ? cta.label : 'Chargement…'}
-            </StampButton>
+            <TilePulse trigger={publishSpotlight > 0 ? publishSpotlight : null}>
+              <StampButton wide disabled={cta.disabled || !hydrated} onPress={onPrimary}>
+                {hydrated ? cta.label : 'Chargement…'}
+              </StampButton>
+            </TilePulse>
+            {/* Chantier 8, D10 : pour un départ que rien n'intercepte, l'app
+                passée en arrière-plan. Dans l'écart au-dessus du bouton, que le
+                ressort rend : la boîte ne bouge pas. */}
+            {readyKey && reminderOffered ? (
+              <Pressable
+                onPress={() => void onRemindMe()}
+                accessibilityRole="button"
+                accessibilityLabel={REMINDER_LINK_LABEL}
+                accessibilityHint="Une notification demain à 18 h, si ton bento n'est pas publié."
+                // Le libellé fait 18 pt de haut : la cible tactile en fait 44.
+                hitSlop={{ top: 13, bottom: 13, left: 16, right: 16 }}
+                style={{ alignSelf: 'center', marginTop: 12 }}
+              >
+                <Text
+                  maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+                  style={{
+                    fontFamily: 'Fredoka',
+                    fontSize: 14,
+                    lineHeight: 18,
+                    color: '#0a0a0a',
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  {REMINDER_LINK_LABEL}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </ScrollView>
       </SafeAreaView>

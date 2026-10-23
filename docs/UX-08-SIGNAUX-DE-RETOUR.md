@@ -30,6 +30,13 @@
 > affiche le compteur sur la page et le profil, et porte « Afficher mes
 > visites ». Recetté au simulateur iPhone 17 Pro et SE, et à l'émulateur
 > Pixel 8, contre le Supabase local (§8, lot 3).
+
+> **Lot 4 fait le 23 octobre 2026** : un bento prêt propose son rappel
+> quand on part sans publier, ou par un lien sous le bouton ; le téléphone
+> le programme au premier 18 h à au moins 12 heures, l'annule à la
+> publication, quand le bento cesse d'être prêt et à la suppression du
+> compte, et son tap ramène au composer. Recetté au simulateur iPhone 17 Pro
+> et SE, et à l'émulateur Pixel 8, contre le Supabase local (§8, lot 4).
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 8, [le chantier
 > 1](./UX-01-PAGE-BENTO-PUBLIQUE.md) pour la page web, [le chantier
@@ -418,8 +425,10 @@ alter table public.bentos
 - **Le branchement** sur `expo-notifications` dans `push-runtime.ts` : un
   canal « Rappels », créé avec les deux autres avant toute demande ; la
   programmation, avec un identifiant stable par bento
-  (`ready-bento:<id>`, `ready-bento:draft` pour le brouillon) ; l'annulation
-  et la réconciliation au lancement.
+  (`ready-bento:<id>`, `ready-bento:draft` pour le brouillon) ; l'annulation,
+  et la réconciliation au lancement **et à chaque changement du bento édité
+  ou de la liste du compte (lot 4)** ; **à la suppression du compte, l'oubli
+  des rappels et des réponses (lot 4)**.
 - **La mémoire « une fois par bento »** dans `AsyncStorage`, comme l'accord
   éditorial du 17.
 - **`PushTarget`** gagne `{ kind: 'ready-bento'; bento: string }`, vérifié
@@ -475,9 +484,10 @@ local et la landing en local :
 5. Couper « Afficher mes visites » : le chiffre disparaît chez les autres,
    reste chez soi, et l'interrupteur dit « Masquées : toi seul les vois. ».
 6. Un brouillon prêt, quitté pour un autre onglet : la question, « Oui »,
-   la boîte du système, le rappel programmé à la bonne heure ; avancer
-   l'horloge du simulateur, la notification arrive, le tap ouvre le
-   composer.
+   la boîte du système, le rappel programmé à la bonne heure ; ~~avancer
+   l'horloge du simulateur, la notification arrive~~ **la date lue dans le
+   journal de SpringBoard, l'arrivée simulée par `xcrun simctl push`
+   (lot 4)**, le tap ouvre le composer.
 7. Même chose depuis l'écran du pseudo, puis par le lien.
 8. Publier avant l'heure : le rappel ne vient pas.
 9. Lire la base après chaque geste : aucune empreinte en clair, les clés
@@ -638,6 +648,107 @@ la section Confidentialité.
 
 `ready-reminder.ts`, le canal, les trois portes, la programmation,
 l'annulation, le tap.
+
+> **Fait le 23 octobre 2026**, sur la branche
+> `feat/ux-08-signaux-de-retour-app`, à la suite du lot 3.
+>
+> - **`ready-reminder.ts`**, pur : la règle « prêt » (le composer dit
+>   « Publier mon bento », une fois le bento lu ; le brouillon d'un compte
+>   sans profil, ou un bento en base sans date de première publication),
+>   l'heure du rappel, ses textes, et `remindersToCancel`, la liste de ce
+>   qui n'a plus lieu d'être.
+> - **Les trois portes** dans le composer, une seule question par bento ; le
+>   rappel programmé par `expo-notifications`, identifiant
+>   `ready-bento:<id>` ou `ready-bento:draft`, canal Android « Rappels ».
+> - **Le tap** passe par la cible `ready-bento` : le composer bascule sur ce
+>   bento s'il est au compte, et « Publier mon bento » pulse.
+> - **L'annulation** : à la publication depuis le composer ; par la
+>   réconciliation, au lancement et à chaque changement du bento édité ou de
+>   la liste du compte, ce qui couvre la case vidée, l'item remplacé par une
+>   proposition, le bento supprimé et le brouillon devenu un bento publié ;
+>   à la suppression du compte, enfin, qui efface aussi les réponses
+>   retenues.
+> - **`OwnBento` lit `first_published_at`**, et `setPublishedAt` la pose sur
+>   l'appareil à la publication, comme le déclencheur en base : sans elle,
+>   un bento publié puis retiré dans la même session se croirait jamais
+>   publié.
+>
+> **Cinq écarts à la spécification** :
+>
+> 1. **Le lien vaut accord**, sans question : il programme le rappel, après
+>    la boîte du système si elle manque, et un message le confirme, « On te
+>    le rappelle demain à 18 h. » (« aujourd'hui » la nuit), ou dit « Sans
+>    les notifications, le rappel ne peut pas arriver. » si le système
+>    refuse. Le lien disparaît aussitôt.
+> 2. **La première porte lit l'onglet affiché.** `blur` part aussi quand la
+>    recherche ou l'écran du pseudo s'ouvre par-dessus le composer : seul un
+>    autre onglet dit qu'on est parti. L'écran du pseudo relève de la
+>    deuxième porte, au retour.
+> 3. **La mémoire « une fois par bento »** est une clé
+>    `bp_ready_reminder_answered:<bento>` d'`AsyncStorage`, posée au oui
+>    comme au non. Celle du brouillon s'efface quand le compte prend un
+>    profil, le brouillon devenant un bento en base, et toutes à la
+>    suppression du compte.
+> 4. **Sur Android, le rappel arrive entre 18 h et 19 h.** L'app ne déclare
+>    pas la permission des alarmes exactes et n'en a pas l'usage :
+>    `dumpsys alarm` montre 18 h et une fenêtre d'une heure. Le message
+>    garde « à 18 h », l'heure où la fenêtre s'ouvre.
+> 5. **§7.2, étape 6** : l'horloge du simulateur suit celle du Mac. La date
+>    se lit dans le journal de SpringBoard, « trigger date 2026-10-24
+>    18:00:00 +0200 », et l'arrivée se simule par `xcrun simctl push`, avec
+>    les mêmes données, avant le tap.
+>
+> **À livrer dans l'ordre** : une app construite depuis cette branche
+> demande `first_published_at` dans la liste des bentos du compte, et ne
+> les lirait plus sur une base sans la migration du lot 1. La migration
+> part en production avec la PR #90, des semaines avant la sortie store ;
+> aucun build de cette branche ne pointe la production d'ici là.
+>
+> **Tests** : 24 pour `ready-reminder.test.ts`, sous le fuseau de Paris que
+> pose le fichier, et passants sous UTC comme en CI : la règle sur tous les
+> états du composer, dépublié compris, l'heure la nuit, le soir et aux
+> changements d'heure du 25 octobre 2026 et du 28 mars 2027, une question
+> par bento, la réconciliation ; 2 de plus pour `push.test.ts`, la cible
+> `ready-bento`. 726 tests sur 726 pour l'app, 175 pour la landing, 226
+> pour l'admin ; lint et typage verts.
+>
+> **Recette** au simulateur iPhone 17 Pro et SE, et à l'émulateur Pixel 8,
+> sur le Supabase local :
+>
+> 1. sur l'iPhone 17 Pro, le lien s'affiche sous le bouton, que la boîte ne
+>    pousse pas : le bouton monte d'environ 30 points ;
+> 2. un autre onglet : la question, « Oui », la boîte du système, le rappel
+>    programmé pour le 24 octobre à 18 h ; la question ne revient pas ;
+> 3. une notification simulée avec les données du rappel, tapée, ouvre le
+>    composer, bouton en évidence ;
+> 4. publier annule le rappel : plus aucune notification en attente ;
+> 5. sur l'iPhone SE, un brouillon de six cases remplies par l'interface :
+>    le lien tient au-dessus de la barre d'onglets sans défiler, l'écart
+>    sous la boîte descendant à son minimum de 24 points ;
+> 6. retour de l'écran du pseudo : la question ; « Non merci », ni lien ni
+>    question ensuite ; rejouée avec « Oui », le lien disparaît dès la
+>    réponse et `ready-bento:draft` est programmé ;
+> 7. le brouillon publié par l'écran du pseudo : son rappel tombe ;
+> 8. un bento libre prêt du même compte, son lien : « On te le rappelle
+>    demain à 18 h. » ; puis la suppression du compte : le rappel tombe, et
+>    les réponses retenues avec lui ;
+> 9. sur le Pixel 8, le lien, la boîte d'Android, le message de
+>    confirmation ; l'alarme au 24 octobre à 18 h, et les trois canaux.
+>
+> **Deux défauts trouvés à la relecture, corrigés et recettés** (points 6
+> et 8) : le lien restait affiché après une réponse à la question posée sur
+> le composer, jusqu'au passage suivant ; et la suppression du compte
+> gardait ses rappels, que la réconciliation ne pouvait pas voir, le compte
+> suivant n'ayant pas de profil, comme après un démarrage hors ligne.
+>
+> **Un plantage natif**, une fois, sur l'iPhone SE, pendant la saisie du
+> pseudo : `EXC_BAD_ACCESS` dans le rendu Fabric de React Native 0.86.3, le
+> fil JavaScript dans `Scheduler::uiManagerDidFinishTransaction` pendant
+> que le fil principal lisait des props (`RawPropsParser`). Non reproduit à
+> la relance, même geste. Le lot ne touche à aucun code natif ; le rapport
+> est gardé dans `.context/` du worktree.
+>
+> Captures dans `.context/screenshots/ux08-lot4-*` du worktree.
 
 ### Lot 5 · Recette et documents
 

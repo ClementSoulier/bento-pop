@@ -20,6 +20,16 @@ import {
 export async function followPushTarget(target: PushTarget): Promise<void> {
   const bento = useBento.getState();
 
+  // Chantier 8 : le rappel d'un bento prêt. Le composer sur ce bento, s'il est
+  // au compte et que ce n'est pas déjà lui, et le bouton qui pulse. Le
+  // brouillon d'un compte sans profil est le seul bento du téléphone.
+  if (target.kind === 'ready-bento') {
+    const known = bento.own.some((b) => b.id === target.bento);
+    if (known && target.bento !== bento.current?.id) await switchBento(target.bento);
+    usePushTarget.getState().spotlightPublish();
+    return;
+  }
+
   if (target.kind === 'edition') {
     // Déjà rejointe : son bento s'ouvre. Sinon, le « + titre » est mis en
     // avant, et rejoindre reste un geste de la personne (D21).
