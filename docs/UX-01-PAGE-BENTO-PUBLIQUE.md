@@ -84,6 +84,7 @@ Mettre la service-role du projet mobile sur un site public serait une faute : el
 |---|---|---|
 | `NEXT_PUBLIC_MOBILE_SUPABASE_URL` | build + client | Nécessaire au **build** pour `images.remotePatterns` dans `next.config.ts` et pour l'allowlist de `src/lib/images.ts`, qui est inlinée dans le bundle client |
 | `MOBILE_SUPABASE_ANON_KEY` | serveur uniquement | Pas de préfixe `NEXT_PUBLIC_` : la page est intégralement rendue côté serveur, la clé n'a aucune raison de partir au navigateur, même si elle est publique par nature |
+| `BENTO_VISIT_SECRET` | serveur uniquement, runtime | Chantier 8 : seule la route `/api/bento-opened` la lit, à chaque requête, pour compter une visite. Même valeur que le secret de coffre `bento_visit_secret` du Supabase mobile. Ni `ARG` au Dockerfile ni `turbo.json` : la build ne la lit pas. Absente, rien ne compte et la page s'affiche comme avant |
 
 **À propager dans quatre endroits, sinon ça casse silencieusement :**
 

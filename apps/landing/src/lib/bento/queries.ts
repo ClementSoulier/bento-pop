@@ -44,6 +44,8 @@ const BENTO_SELECT = `
 ` as const;
 
 export type PublicBento = {
+  /** L'identifiant du bento, que compte l'image de visite. Chantier 8. */
+  readonly id: string;
   /** Casse canonique, telle que stockée en base. */
   readonly pseudo: string;
   /** Adresse du bento : `/u/<pseudo>/<slug>`. Chantier 16. */
@@ -256,6 +258,7 @@ export async function lookupPublicBento(
       editionTitle: row.editions?.title ?? null,
     })),
     bento: {
+      id: bento.id,
       pseudo: user.pseudo,
       slug: bento.slug,
       isPrimary: bento.is_primary,
@@ -276,6 +279,28 @@ export async function lookupPublicBento(
         : null,
     },
   };
+}
+
+/**
+ * Le compteur de visites d'un bento, tel qu'un visiteur a le droit de le
+ * voir : `null` si son propriétaire le masque. Chantier 8.
+ *
+ * Lu à part de `lookupPublicBento`, que les images de partage appellent
+ * aussi et qui n'en ont pas l'usage. Une lecture en échec rend `null`, et la
+ * page s'affiche sans compteur : c'est aussi ce qui se passe tant que la
+ * migration du chantier n'est pas appliquée.
+ */
+export async function readBentoVisits(
+  bentoId: string,
+  client: MobileClient | null = createMobileAnonClient(),
+): Promise<number | null> {
+  if (!client) return null;
+  const { data, error } = await client.rpc('bento_visit_count', { p_bento: bentoId });
+  if (error) {
+    console.warn('[bento/queries] visit count failed:', error.message);
+    return null;
+  }
+  return typeof data === 'number' ? data : null;
 }
 
 /**

@@ -21,6 +21,11 @@
 > (§8, lot 1). Rien n'est appliqué en production : la migration part avec la
 > PR des lots 1 et 2 (D8).
 >
+> **Lot 2 fait le 23 octobre 2026** : la landing compte une visite par une
+> image d'un pixel, sans JavaScript, affiche le compteur à côté de la date,
+> et la politique de confidentialité le décrit. Recetté en local contre le
+> Supabase local (§8, lot 2).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 8, [le chantier
 > 1](./UX-01-PAGE-BENTO-PUBLIQUE.md) pour la page web, [le chantier
 > 9](./UX-16-PLUSIEURS-BENTOS.md) pour le brouillon local, [le chantier
@@ -219,8 +224,11 @@ l'écran le plus étroit à la plus grande police, comme ceux du chantier 13 :
 si la ligne du profil déborde, le compteur passe sur sa propre ligne.
 
 Sur le web, la page statique porte le chiffre de son dernier rendu, vieux
-de 5 minutes au plus ; la réponse à l'enregistrement de la visite le
-remplace par le chiffre du moment, visite comprise.
+de 5 minutes au plus. ~~La réponse à l'enregistrement de la visite le
+remplace par le chiffre du moment, visite comprise.~~ **Depuis le lot 2** :
+le chiffre reste celui du rendu, sans la visite en cours. Le remplacer
+demandait du JavaScript propre à la page, ce que la page d'un bento
+n'expédie pas (§8, lot 2).
 
 ### 5.3 Le rappel (D1, D5, D10, D11, D12)
 
@@ -349,17 +357,25 @@ alter table public.bentos
 
 ### 6.2 La landing
 
-- **`POST /api/bento-opened`**, `{ bentoId }`. Lit l'adresse IP
-  (`x-forwarded-for`, première valeur, posée par le proxy de Coolify) et le
-  navigateur, écarte les robots connus et les préchargements
-  (`Sec-Purpose: prefetch`), puis appelle `record_bento_visit_web` avec le
-  secret. Rend `{ visits }`, ou `{ visits: null }` si le compteur est
-  masqué. Le nom évite les motifs des listes de blocage (`track`,
-  `analytics`, `collect`, `beacon`), à vérifier au lot 2.
-- **`<BentoVisits>`**, un composant client dans `BentoPublishedView` :
-  appelle la route une fois à l'affichage, montre le chiffre rendu par la
-  page, puis celui de la réponse.
-- **`lookupPublicBento`** lit `bento_visit_count` avec le bento.
+> **Revu au lot 2** : une image d'un pixel plutôt qu'un appel `POST` depuis
+> un composant client, et la dernière adresse de `X-Forwarded-For` plutôt
+> que la première. Ce qui suit décrit ce qui est construit.
+
+- **`GET /api/bento-opened?b=<id>`**, appelée par `<VisitBeacon>`, une
+  image d'un pixel que rend la page, composant serveur. Lit l'adresse IP
+  (`X-Forwarded-For`, **dernière** valeur, celle que pose le proxy de
+  Coolify ; les premières peuvent venir du visiteur) et le navigateur,
+  écarte les robots connus et les préchargements (`Sec-Purpose: prefetch`),
+  puis appelle `record_bento_visit_web` avec le secret. Rend toujours le
+  même GIF transparent, `Cache-Control: no-store`, et dit dans
+  `X-Bento-Visit` ce qu'est devenue la visite : `recorded`, `invalid`,
+  `bot`, `prefetch`, `no-address`, `disabled` ou `error`. Le nom évite les
+  motifs des listes de blocage (`track`, `analytics`, `collect`, `beacon`,
+  `pixel`).
+- **`readBentoVisits`** lit `bento_visit_count` à part de
+  `lookupPublicBento`, que les images de partage appellent aussi sans en
+  avoir l'usage. En échec, elle rend `null` et la page s'affiche sans
+  compteur, ce qui couvre une landing déployée avant la migration.
 - **Une variable d'environnement** : `BENTO_VISIT_SECRET`, sur l'app
   **landing** dans Coolify, **au runtime** (D9 du 17 : une variable serveur
   posée au build se fige dans l'image). Même valeur que le secret du coffre
@@ -418,7 +434,7 @@ alter table public.bentos
   l'heure d'hiver du 25 octobre ; une seule question par bento ; la
   réconciliation.
 - **La route de la landing** : robot écarté, préchargement écarté, secret
-  transmis, réponse masquée.
+  transmis, ~~réponse masquée~~ la même image dans tous les cas (lot 2).
 - **`check-privileges.ts`** étendu : `anon` ne lit aucune des trois tables,
   n'appelle pas `record_bento_visit_app`, et `record_bento_visit_web` sans
   le secret ne compte rien ; `authenticated` n'écrit pas
@@ -514,6 +530,39 @@ production.
 
 La route, le composant, la lecture du compteur, la politique de
 confidentialité. Recette en local contre le Supabase local.
+
+> **Fait le 23 octobre 2026.** Deux écarts à §6.2, l'un et l'autre dans le
+> sens de la spécification :
+>
+> 1. **Une image d'un pixel, pas un composant client.** La page d'un bento
+>    n'expédie aucun JavaScript qui lui soit propre, règle du chantier 1
+>    que garde `e2e/smoke.test.ts` : `PublicBentoGrid` lui-même est un
+>    composant serveur. Un `<BentoVisits>` aurait tenu dans la marge de
+>    poids (376 853 octets contre 382 299 pour la page de référence) mais
+>    trahi la règle. L'image se charge à l'ouverture d'un lien comme à une
+>    navigation interne, et les robots d'aperçu ne la demandent pas. Le
+>    prix : le chiffre affiché est celui du rendu, vieux de 5 minutes au
+>    plus, sans la visite en cours (§5.2). Le poids de la page est
+>    inchangé, à l'octet près.
+> 2. **La dernière adresse de `X-Forwarded-For`.** La première peut venir
+>    du visiteur si le proxy ajoute la sienne au lieu de la remplacer : un
+>    compteur public se gonflerait en changeant d'en-tête. bento-pop.com
+>    pointe sur le VPS sans CDN devant, relevé le 23 octobre : la dernière
+>    est celle du proxy de Coolify.
+>
+> **Tests** : 16 unitaires (`visits.test.ts`), et 4 de plus en e2e, 33
+> sur 33 : le compteur, zéro compris, rien quand il est masqué, l'image et
+> l'appel qu'elle déclenche, aucun appel pour un robot, un préchargement ou
+> une adresse malformée, et le secret absent du HTML. Le bouchon PostgREST
+> porte désormais des identifiants de la forme d'un UUID.
+>
+> **Recette locale**, la landing en développement contre le Supabase local
+> et un bento de recette : « 0 visite » à la première ouverture, puis
+> « 1 visite » ; rechargée deux fois, 1 en base ; un second visiteur, 2 ;
+> un robot, un prérendu et `curl` écartés ; masqué, la ligne d'identité
+> s'arrête à la date ; à 375 px, le compteur tient sur la ligne, sans
+> débordement. Aucune erreur dans la console ni dans les journaux du
+> serveur.
 
 **Livraison anticipée (D8)** : les lots 1 et 2 forment une première PR.
 Fusionnée, la migration s'applique en production, le secret est posé dans
