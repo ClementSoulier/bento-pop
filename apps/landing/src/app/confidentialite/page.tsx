@@ -105,6 +105,16 @@ export default function ConfidentialitePage() {
             autres, sans arrêter le comptage.
           </li>
           <li>
+            <strong>Épisodes dans « La table »</strong> : l&apos;app affiche
+            les épisodes de l&apos;émission et du podcast Bento Pop, lus sur
+            bento-pop.com. Les vignettes des émissions se chargent depuis les
+            serveurs de YouTube (<code>i.ytimg.com</code>), qui voient alors
+            l&apos;adresse IP de l&apos;appareil, comme pour les lecteurs du
+            site (§7). Toucher un épisode quitte l&apos;app pour YouTube,
+            Spotify, Deezer ou Apple Podcasts, dont les règles
+            s&apos;appliquent alors.
+          </li>
+          <li>
             <strong>Signalements</strong> (table <code>reports</code>) : si
             l&apos;utilisateur signale un bento ou un pseudo, le motif éventuel
             est conservé pour la modération. Le signalement est lié à

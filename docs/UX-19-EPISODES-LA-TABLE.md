@@ -5,13 +5,20 @@
 > publiques de la landing, son flux RSS et la base mobile. Aucune écriture en
 > production.
 >
-> **Arbitrages rendus le 23 octobre 2026**, les cinq premiers de §11, les sept
-> suivants pris par la spécification et ouverts à la contestation. En résumé :
+> **Arbitrages rendus le 23 octobre 2026**, les cinq premiers de §11, les huit
+> suivants pris par la spécification, D13 au lot 1, et ouverts à la
+> contestation. En résumé :
 > tous les épisodes publiés entrent dans « La table », chacun à sa date, parmi
 > les bentos et sans épinglage ; un épisode y prend la forme de la carte
 > d'épisode de la landing ; son tap ouvre la plateforme, YouTube pour
 > l'émission, celle du podcast pour le podcast ; le lien avec l'édition
 > hebdomadaire attend un autre chantier.
+>
+> **Lot 1 fait le 23 octobre 2026** : la route `GET /api/episodes` sur la
+> landing, ses tests et la politique de confidentialité. Prédite sur les
+> pages publiques, sa réponse réelle compte les 40 épisodes : 20 émissions
+> sur YouTube, 17 podcasts sur Spotify, et 3 podcasts que Spotify n'a pas
+> encore repris, ouverts sur leur page du site (D13, §8, lot 1).
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 19, [le chantier
 > 2](./UX-02-FIL-LA-TABLE.md) pour le fil et [le chantier
@@ -181,7 +188,12 @@ YouTube.
   installée.
 - **Un podcast** ouvre sa page sur sa plateforme, Spotify, Deezer ou Apple
   Podcasts : l'adresse que calcule déjà la landing.
-- **L'app n'ouvre que des adresses `https` de ces quatre plateformes** (D8).
+- **Un épisode que sa plateforme n'a pas encore repris** ouvre sa page sur
+  bento-pop.com, qui le lit avec son propre fichier, comme le fait déjà le
+  site (D13, lot 1). Sa fiche porte alors `A_REMPLACER` ou `TODO_…` au lieu
+  d'un identifiant : 3 podcasts sur 20 au 23 octobre 2026.
+- **L'app n'ouvre que des adresses `https` de ces quatre plateformes** (D8),
+  **et la page du site d'un épisode (D13)**.
 - **Le libellé accessible**, d'un seul élément : « Émission Bento Pop, saison
   2, épisode 5 : *titre*. 42 min. Publiée il y a 3 jours. », avec
   l'indication « S'ouvre dans YouTube. ».
@@ -224,10 +236,13 @@ rafraîchir, les redemande.
 }
 ```
 
-- **Les épisodes** de `getShowEpisodes` et `getPodcastEpisodes`, sans date
-  écartés, triés par `publishedAt` décroissant. La vignette : `thumbnail_url`,
-  sinon `youtubeThumbnail(id, 'hq')` pour une émission, sinon nulle.
-  `openUrl` : la vidéo YouTube, ou la `pageUrl` de `resolveAudioPlatform`.
+- **Les épisodes** ~~de `getShowEpisodes` et `getPodcastEpisodes`~~ **d'un
+  chargeur léger, `getApiEpisodeRows`, au même filtre de visibilité (lot
+  1)**, sans date écartés, triés par `publishedAt` décroissant. La vignette :
+  `thumbnail_url` en `https`, sinon `youtubeThumbnail(id, 'hq')` pour une
+  émission, sinon nulle. `openUrl` : la vidéo YouTube, ou la `pageUrl` de
+  `resolveAudioPlatform`, **ou la page de l'épisode sur le site,
+  `platform: "site"`, quand l'identifiant n'est pas réel (D13)**.
 - **La base injoignable** : 503 et `no-store`, comme `feed.xml`.
 - **Rien à revalider côté back-office** : la route n'a qu'une minute de cache.
 
@@ -303,6 +318,75 @@ Effort **M**, comme à la roadmap.
 
 La route, ses tests, la politique de confidentialité.
 
+> **Fait le 23 octobre 2026**, sur la branche `feat/ux-19-episodes-la-table`.
+>
+> - **`src/lib/episodes-api.ts`**, pur : la forme de la réponse, la date
+>   (sans date, illisible ou future : écarté), la vignette en `https`
+>   seulement, l'adresse du tap par plateforme, et l'ordre total, date
+>   décroissante, émission d'abord à date égale, puis l'identifiant.
+> - **`getApiEpisodeRows`**, dans `src/content/episodes.ts`, à côté de
+>   `getLatestShowEpisode` dont il suit le modèle.
+> - **`src/app/api/episodes/route.ts`** : `force-dynamic`, une minute de
+>   cache, 503 et `no-store` quand la base ne répond pas, `X-Robots-Tag:
+>   noindex`.
+> - **La politique de confidentialité**, §2.2 : les vignettes chargées chez
+>   YouTube, et le tap qui quitte l'app pour la plateforme.
+>
+> **Trois écarts à la spécification** :
+>
+> 1. **Un chargeur léger plutôt que `getShowEpisodes` et
+>    `getPodcastEpisodes`.** Ceux du catalogue rendent une liste vide quand
+>    la base ne répond pas : la route n'aurait pas pu dire 503, et l'app
+>    aurait gardé une minute un « aucun épisode » faux. Ils lisent aussi la
+>    description, les invités et les animateurs, que la carte n'affiche pas.
+> 2. **D13, la page du site pour un épisode pas encore repris.** Les pages
+>    publiques le montrent : 3 podcasts sur 20, dont « Du mont Fuji à
+>    Fukushima » du 13 octobre, se lisent sur le site avec le propre fichier
+>    de la landing, leur fiche portant `A_REMPLACER` au lieu de l'identifiant
+>    Spotify. La route les aurait d'abord envoyés vers
+>    `open.spotify.com/episode/A_REMPLACER`. Elle reprend désormais la règle
+>    de la page du podcast, `isRealEpisodeId`, et ouvre leur page du site.
+>    Même règle pour une émission : `A_REMPLACER` fait onze caractères, la
+>    longueur d'un identifiant YouTube, et il est écarté à part.
+> 3. **La politique au §2.2, la section de l'app, et non au §2.3.** Le §2.3
+>    est périmé : il dit que l'app interroge TMDb, MusicBrainz, Nominatim et
+>    Wikidata en temps réel, ce qu'elle ne fait plus depuis le catalogue
+>    interne (`src/lib/items.ts`). Laissé tel quel, et signalé à Clément.
+>
+> **Pour le lot 2** : l'adresse de la page du site suit `NEXT_PUBLIC_SITE_URL`
+> de la landing. En recette locale, c'est `http://127.0.0.1:<port>` : l'app
+> doit accepter, en plus des quatre plateformes, l'adresse de la landing
+> qu'elle a reçue à la compilation (D12), sans exiger `https` pour elle.
+>
+> **Tests** : 15 unitaires (`episodes-api.test.ts`), et 5 de plus en e2e,
+> 38 sur 38. Le Supabase de la landing est désormais branché sur le bouchon,
+> qui ne sert des données qu'à la sélection de la route : le reste de la
+> landing garde son repli, et ses lectures ne comptent pas parmi celles de
+> la base mobile. Sept défauts introduits exprès, tous attrapés : le filtre
+> de visibilité retiré et la panne rendue comme une liste vide (e2e), les
+> épisodes programmés laissés passer, Apple Podcasts sans son émission, un
+> identifiant YouTube qui fabriquerait une autre adresse, une vignette en
+> `http`, et `A_REMPLACER` pris pour un identifiant (unitaires).
+>
+> **Recette locale** : la landing de ce worktree en développement, son
+> Supabase sur le bouchon. `/api/episodes` rend six épisodes dans l'ordre
+> attendu, une plateforme juste pour chacun, la page du site pour le podcast
+> pas encore repris ; `/confidentialite` porte la nouvelle ligne ; aucune
+> erreur dans la console ni dans les journaux du serveur.
+>
+> **Les données réelles**, relevées en lecture seule sur les pages publiques
+> faute de clé locale pour le Supabase auto-hébergé : les 20 émissions ont
+> leur vidéo YouTube, 17 podcasts leur épisode Spotify, et 3 aucun encore. La
+> route en production rendra donc les 40 épisodes, dont 3 ouverts sur le
+> site.
+>
+> **La CI, rejouée en local**, les Actions du dépôt étant désactivées : les
+> six étapes de `ci.yml`, sans cache. Lint et typage 8 sur 8 ; tests 226 pour
+> l'admin, 192 pour la landing, 726 pour l'app ; e2e 38 sur 38 ; build 3 sur
+> 3, `/api/episodes` en route dynamique. Le build de l'admin a d'abord échoué
+> dans le chargeur de polices Google (`next/font`, une réponse de Google
+> illisible), puis il est passé à la relance : rien de ce lot ne le touche.
+
 ### Lot 2 · L'app : les données et la fusion
 
 `src/lib/episodes.ts`, la fusion, leurs tests, `EXPO_PUBLIC_LANDING_URL`.
@@ -358,11 +442,12 @@ La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
 | **D5** | La carte d'épisode de la landing, à la largeur des boîtes du fil | Choisi le 23 octobre 2026. Environ 300 pt contre 614 pour un bento : on la distingue au premier coup d'œil |
 | **D6** | Un épisode sans date n'entre pas dans le fil | Pris par la spécification. Un fil trié par date n'a pas de place pour lui ; aucun aujourd'hui, sur 40 |
 | **D7** | Ni animateurs ni invités sur la carte | Pris par la spécification. Les animateurs sont les mêmes chaque semaine, les invités sont dans le titre ; la carte reste lisible à 300 pt |
-| **D8** | L'app n'ouvre que des adresses `https` des quatre plateformes | Pris par la spécification. Une route compromise ne doit pas pouvoir faire ouvrir n'importe quelle adresse |
+| **D8** | L'app n'ouvre que des adresses `https` des quatre plateformes, et la page du site d'un épisode (D13) | Pris par la spécification. Une route compromise ne doit pas pouvoir faire ouvrir n'importe quelle adresse |
 | **D9** | La landing en panne, le fil s'affiche sans épisode et sans message | Pris par la spécification. Les bentos sont le fil, les épisodes un ajout |
 | **D10** | La route se calcule à chaque lecture, avec une minute de cache, comme `feed.xml` | Pris par la spécification. Un épisode programmé apparaît dans la minute qui suit sa date, sans tâche programmée ni purge du back-office |
 | **D11** | La route ne rend que les champs que la carte affiche | Pris par la spécification. Ni description, ni invités, ni œuvres citées, ni lien audio : ils viendront avec leur usage |
 | **D12** | L'adresse de la landing devient une variable compilée de l'app, `bento-pop.com` par défaut | Pris par la spécification. La recette doit pouvoir pointer une landing locale, comme elle pointe le Supabase local |
+| **D13** | Un épisode que sa plateforme n'a pas encore repris garde sa place dans le fil, et s'ouvre sur sa page du site | Pris au lot 1, sur les données réelles : 3 podcasts sur 20, dont le plus récent, n'ont qu'un marqueur `A_REMPLACER` au lieu de leur identifiant Spotify. Les écarter contredirait D1 ; leur page du site les lit avec son propre fichier |
 
 ---
 
