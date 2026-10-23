@@ -20,6 +20,11 @@
 > sur YouTube, 17 podcasts sur Spotify, et 3 podcasts que Spotify n'a pas
 > encore repris, ouverts sur leur page du site (D13, §8, lot 1).
 >
+> **Lot 2 fait le 23 octobre 2026** : dans l'app, la lecture de la route, la
+> validation de chaque épisode et sa fusion par date avec les bentos, pures et
+> testées, et `EXPO_PUBLIC_LANDING_URL`. Rien encore à l'écran : le lot 3 les
+> branche sur « La table » (§8, lot 2).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 19, [le chantier
 > 2](./UX-02-FIL-LA-TABLE.md) pour le fil et [le chantier
 > 13](./UX-13-BENTO-HEBDOMADAIRE.md) pour `editions.show_id`. Même sortie store
@@ -390,6 +395,69 @@ La route, ses tests, la politique de confidentialité.
 ### Lot 2 · L'app : les données et la fusion
 
 `src/lib/episodes.ts`, la fusion, leurs tests, `EXPO_PUBLIC_LANDING_URL`.
+
+> **Fait le 23 octobre 2026**, sur la même branche. Rien encore à l'écran :
+> `table.tsx` ne lit ni les épisodes ni la fusion avant le lot 3.
+>
+> - **`src/lib/episodes.ts`**, pur : le type `FeedEpisode` ; `loadEpisodes`,
+>   à `fetch` et adresse injectés, et ses options de requête, 5 s de délai, 5
+>   minutes de fraîcheur, aucun réessai ; la validation champ par champ, un
+>   épisode invalide écarté seul, une vignette douteuse remplacée par le fond
+>   plein plutôt que d'écarter l'épisode ; l'adresse du tap (D8) ; la
+>   pastille, la durée, le libellé accessible et l'indication du tap.
+> - **`src/lib/feed-merge.ts`**, pur :
+>   `interleaveFeed(bentos, episodes, complete)` et le type `FeedItem` des
+>   éléments de la liste.
+> - **`EXPO_PUBLIC_LANDING_URL`** (D12) : lue par `src/lib/landing-url.ts`,
+>   passée par `app.config.ts`, documentée dans `.env.example`. Absente ou
+>   illisible, elle retombe sur `https://bento-pop.com`.
+>
+> **Quatre choix que la spécification laissait ouverts** :
+>
+> 1. **Les adresses lues par une expression régulière, et non par `URL`.**
+>    Sous Hermes, `URL` ne tient que par le polyfill qu'importe le client
+>    Supabase : le module ne dépend de rien et se teste tel quel dans node.
+> 2. **La page du site acceptée en `http`**, mais seulement sur l'origine
+>    exacte de la landing compilée, et pour un chemin `/emissions/<slug>` ou
+>    `/podcasts/<slug>` : c'est l'adresse de la recette locale,
+>    `http://127.0.0.1:<port>`. En production, la landing et ses pages sont
+>    en `https`.
+> 3. **Un épisode plus ancien que le dernier bento chargé attend la page
+>    suivante**, au lieu d'être placé au bout puis de remonter quand elle
+>    arrive. La liste d'une page est ainsi le début de la suivante : rien ne
+>    saute sous le doigt en défilant. Un test le vérifie.
+> 4. **Les dates ramenées à la milliseconde avant `Date.parse`**, par
+>    prudence : PostgREST rend jusqu'à six chiffres après la seconde. `relativeDate`
+>    les lit déjà telles quelles sous Hermes, mais l'ordre du fil ne doit
+>    dépendre d'aucun moteur.
+>
+> **Tests** : 31 unitaires, 23 pour les épisodes (validation, adresses
+> refusées, dates, libellés, chargement et délai) et 8 pour la fusion (tête,
+> milieu et fin du fil, page incomplète, dates égales, ordre reçu, aucun
+> épisode ou aucun bento, date de bento illisible, clés uniques). Sept
+> défauts introduits exprès, tous attrapés : l'épisode après le bento à date
+> égale, les épisodes anciens ajoutés avant la fin du fil, les épisodes pris
+> dans l'ordre reçu, tout hôte en `https` accepté, la page du site sur
+> n'importe quelle origine, une plateforme sans rapport avec le type, une
+> vignette en `http` gardée. La plateforme sans rapport a d'abord échappé :
+> l'épisode du test portait aussi l'adresse d'une autre plateforme, qui
+> suffisait à l'écarter. Le test lui donne désormais une adresse valide pour
+> la plateforme annoncée.
+>
+> **Pour le lot 3** :
+>
+> - **Les deux requêtes partent ensemble.** Si les épisodes arrivent après
+>   la première page de bentos, l'épisode le plus récent s'insère au-dessus
+>   d'un fil déjà affiché. À mesurer au simulateur avant de décider s'il faut
+>   attendre les deux.
+> - **Les vignettes des podcasts sont sur `supabase.bento-pop.com`**,
+>   l'instance de l'équipe, en WebP de 78 à 166 ko pour les trois mesurées,
+>   qu'`expo-image` lit. Aucun tiers de plus pour la politique de
+>   confidentialité.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226 pour
+> l'admin, 192 pour la landing, 757 pour l'app, dont les 31 du lot ; e2e 38
+> sur 38 ; build 3 sur 3.
 
 ### Lot 3 · L'app : la carte et le tap
 
