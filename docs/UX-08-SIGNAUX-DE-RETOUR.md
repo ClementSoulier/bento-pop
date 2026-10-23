@@ -14,6 +14,13 @@
 > un rappel quand on le quitte sans publier, ou par un lien sous le bouton :
 > une seule notification, le lendemain à 18 h, programmée par le téléphone.
 >
+> **Lot 1 fait le 23 octobre 2026**, sur le Supabase local : la migration,
+> `check-visits.sql` (43 contrôles, et 18 défauts introduits exprès tous
+> attrapés), `check-privileges.ts` étendu, les types partagés, et la
+> compatibilité relue sur `6426779`, le commit de la 1.1 et de la 0.1.0
+> (§8, lot 1). Rien n'est appliqué en production : la migration part avec la
+> PR des lots 1 et 2 (D8).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 8, [le chantier
 > 1](./UX-01-PAGE-BENTO-PUBLIQUE.md) pour la page web, [le chantier
 > 9](./UX-16-PLUSIEURS-BENTOS.md) pour le brouillon local, [le chantier
@@ -457,6 +464,51 @@ pèsent plus que le compteur privé du recadrage.
 La migration de §6.1, `check-visits.sql`, `check-privileges.ts` étendu, la
 compatibilité prouvée sur un Supabase local remis dans l'état de la
 production.
+
+> **Fait le 23 octobre 2026.** `20261023100000_bento_visits.sql`, appliquée
+> sur une base locale neuve, construite depuis les migrations du dépôt : la
+> production est au même point, sa dernière migration étant
+> `publish_on_validation`, et ses déclencheurs sur `bentos` et `users`
+> portent les mêmes noms (relevé en lecture seule).
+>
+> - **`check-visits.sql` tient 43 contrôles**, et attrape les 18 défauts
+>   introduits un à un : le propriétaire qui compte, un brouillon qui
+>   compte, le dédoublonnage retiré, le masque ignoré, le propriétaire
+>   aveugle, le secret ignoré, le coffre vide qui compte, un droit d'app
+>   accordé aux visiteurs, les nombres lisibles, les sels jamais purgés, la
+>   première date écrasée à la republication, le déclencheur absent à
+>   l'insertion, les brouillons revalidés, la colonne écrivable,
+>   `updated_at` laissé suspendu, le hachage sans sel, la purge non
+>   programmée, la purge qui efface les nombres. Le droit accordé de trop
+>   passait d'abord, la fonction refusant aussi sans session : le
+>   contrôle 7d lit désormais les droits eux-mêmes.
+> - **`check-privileges.ts`** rejoue la publication des versions publiées,
+>   qui pose désormais la date de première publication, et treize contrôles
+>   de visites par l'API ; tout est conforme. `check-publication`, `check-push`,
+>   `check-editions` et `check-types` restent verts.
+> - **Les versions publiées**, relues sur `6426779` : elles lisent `users`
+>   en `select('*')` à deux endroits, `state/session.ts:106` et
+>   `lib/data-export.ts:18`, qui reçoivent `show_visits` sans le lire ;
+>   l'export des données le contient désormais, ce qui est juste. Leurs
+>   lectures de `bentos` sont des listes de colonnes, et leur publication,
+>   `bento-actions.ts:68`, pose la date de première publication.
+>
+> **Trois écarts à la spécification**, tous pris dans le sens de §5 :
+>
+> 1. **Un coffre sans secret répond `55000`**, à part du secret faux
+>    (`42501`) : la landing journalisera un comptage pas encore mis en
+>    service, sans le confondre avec un secret mal posé.
+> 2. **Masquer ses visites revalide les pages web** de ses bentos publiés,
+>    par le gabarit de `revalidate_landing_bento` : sans cela, la page
+>    statique garderait le chiffre jusqu'à 5 minutes, et §5.4 promet que
+>    personne d'autre ne le voit.
+> 3. **Le rattrapage suspend `bentos_touch_updated_at`** : sinon les 28
+>    bentos en ligne prendraient la date de la migration pour dernière
+>    modification.
+>
+> Le contrôle 12 de `check-push.sql`, qui refusait tout travail planifié
+> autre que les deux du chantier 17, admet `visits-purge`, contrôlé par
+> `check-visits.sql`.
 
 ### Lot 2 · La landing
 

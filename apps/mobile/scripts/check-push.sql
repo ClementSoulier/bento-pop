@@ -588,8 +588,10 @@ begin
           and command = 'select public.push_tick()')
       or (jobname = 'push-purge' and schedule = '30 3 * * *'
           and command = 'select public.push_purge()'));
-  if v_n = 2 and (select count(*) from cron.job) = 2 then
-    raise notice 'ok  12 pg_cron programme le battement toutes les 5 minutes et la purge chaque nuit, rien d''autre';
+  -- `visits-purge`, du chantier 8, est contrôlé par `check-visits.sql`.
+  if v_n = 2 and (select count(*) from cron.job
+                  where jobname not in ('push-tick', 'push-purge', 'visits-purge')) = 0 then
+    raise notice 'ok  12 pg_cron programme le battement toutes les 5 minutes et la purge chaque nuit, aucun travail inconnu';
     v_ok := v_ok + 1;
   else
     raise warning 'KO  12 travaux planifiés : % conformes sur %', v_n, (select count(*) from cron.job);

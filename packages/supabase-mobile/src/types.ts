@@ -148,6 +148,12 @@ export type Database = {
           last_seen_at: string | null;
           platform: 'ios' | 'android' | null;
           app_version: string | null;
+          /**
+           * « Afficher mes visites », allumé par défaut. Éteint, seul le
+           * propriétaire lit le compteur de ses bentos ; les visites se
+           * comptent toujours. Chantier 8, D9.
+           */
+          show_visits: boolean;
         };
         Insert: {
           /** Pour un membre, doit valoir `auth.uid()`. Généré pour un éditorial. */
@@ -159,6 +165,11 @@ export type Database = {
           last_seen_at?: string | null;
           platform?: 'ios' | 'android' | null;
           app_version?: string | null;
+          /**
+           * Accordé en mise à jour seulement (`grant update (show_visits)`) : à
+           * l'insertion, un client garde la valeur par défaut.
+           */
+          show_visits?: boolean;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
@@ -334,6 +345,13 @@ export type Database = {
            * automatiques. Chantier 18.
            */
           auto_published_at: string | null;
+          /**
+           * La première date de publication, gardée quand le bento est
+           * dépublié : nulle, le bento n'a jamais été publié. Posée par un
+           * déclencheur, absente d'`Insert` et d'`Update` comme les deux
+           * précédentes. Chantier 8, D16.
+           */
+          first_published_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -735,6 +753,33 @@ export type Database = {
          */
         Args: { p_bento: string };
         Returns: boolean;
+      };
+      /**
+       * Chantier 8 : une page de bento ouverte dans l'app. Compte une visite
+       * par compte, par jour et par bento publié, jamais pour son
+       * propriétaire. Refuse sans session (`42501`).
+       */
+      record_bento_visit_app: {
+        Args: { p_bento: string };
+        /** Le compteur que l'appelant a le droit de voir, ou nul (masqué, non publié, inconnu). */
+        Returns: number | null;
+      };
+      /**
+       * Chantier 8 : une page de bento ouverte dans un navigateur, pour la
+       * seule landing. L'empreinte est l'adresse IP et le navigateur ; le
+       * secret est celui du coffre, `bento_visit_secret`. Refuse un secret
+       * faux (`42501`), une empreinte vide ou de plus de 1024 caractères
+       * (`22023`), et attend sa mise en service tant que le coffre n'a pas le
+       * secret (`55000`).
+       */
+      record_bento_visit_web: {
+        Args: { p_bento: string; p_fingerprint: string; p_secret: string };
+        Returns: number | null;
+      };
+      /** Chantier 8 : le compteur de visites, nul si l'appelant n'a pas le droit de le voir. */
+      bento_visit_count: {
+        Args: { p_bento: string };
+        Returns: number | null;
       };
       search_bentos: {
         Args: { q: string; lim?: number };
