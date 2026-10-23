@@ -227,7 +227,21 @@ export const useBento = create<BentoState>((set, get) => ({
     }),
   pulseCase: (caseKey) =>
     set((s) => ({ lastFilled: { caseKey, seq: (s.lastFilled?.seq ?? 0) + 1 } })),
-  setPublishedAt: (publishedAt) => set({ publishedAt }),
+  // Une publication pose aussi la première date du bento courant, comme le
+  // déclencheur en base : sans elle, le bento dépublié juste après se
+  // croirait jamais publié et se verrait proposer un rappel. Chantier 8.
+  setPublishedAt: (publishedAt) =>
+    set((s) => {
+      const current =
+        publishedAt && s.current && s.current.firstPublishedAt === null
+          ? { ...s.current, firstPublishedAt: publishedAt }
+          : s.current;
+      return {
+        publishedAt,
+        current,
+        own: current === s.current ? s.own : s.own.map((b) => (b.id === current?.id ? current : b)),
+      };
+    }),
   setPublishOnValidation: (bentoId, at) =>
     set((s) => ({
       own: s.own.map((b) => (b.id === bentoId ? { ...b, publishOnValidationAt: at } : b)),

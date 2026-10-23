@@ -12,16 +12,23 @@ type PushTargetState = {
   target: PushTarget | null;
   /** L'édition que le sélecteur met en avant, et un jeton qui rejoue l'animation. */
   spotlight: { editionId: number; seq: number } | null;
+  /**
+   * Un jeton qui fait pulser « Publier mon bento », au tap du rappel d'un
+   * bento prêt. Chantier 8, D11.
+   */
+  publishSpotlight: number;
   set: (target: PushTarget) => void;
   /** Rend la cible et l'oublie : un tap ne se suit qu'une fois. */
   take: () => PushTarget | null;
   spotlightEdition: (editionId: number) => void;
   clearSpotlight: () => void;
+  spotlightPublish: () => void;
 };
 
 export const usePushTarget = create<PushTargetState>((set, get) => ({
   target: null,
   spotlight: null,
+  publishSpotlight: 0,
   set: (target) => set({ target }),
   take: () => {
     const { target } = get();
@@ -31,4 +38,5 @@ export const usePushTarget = create<PushTargetState>((set, get) => ({
   spotlightEdition: (editionId) =>
     set((s) => ({ spotlight: { editionId, seq: (s.spotlight?.seq ?? 0) + 1 } })),
   clearSpotlight: () => set({ spotlight: null }),
+  spotlightPublish: () => set((s) => ({ publishSpotlight: s.publishSpotlight + 1 })),
 }));

@@ -27,6 +27,24 @@ import {
   type PushRegistrationOutcome,
   type PushTarget,
 } from './push';
+import {
+  DRAFT_REMINDER_KEY,
+  REMINDER_ASK_ACCEPT,
+  REMINDER_ASK_DECLINE,
+  REMINDER_ASK_MESSAGE,
+  REMINDER_ASK_TITLE,
+  REMINDER_TITLE,
+  nextReminderDate,
+  reminderBody,
+  reminderIdentifier,
+  reminderKeyFromIdentifier,
+  remindersToCancel,
+  shouldOfferReminder,
+  type ReminderPermission,
+} from './ready-reminder';
+
+/** Le canal Android des rappels, chantier 8. */
+const REMINDER_CHANNEL = 'reminders';
 
 /**
  * Notifications push, le branchement sur `expo-notifications` et Supabase.
@@ -65,6 +83,13 @@ async function ensureAndroidChannels(): Promise<void> {
   await Notifications.setNotificationChannelAsync('editions', {
     name: 'Les éditions',
     description: 'Quand une nouvelle édition sort.',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+  // Chantier 8, D12 : le rappel qu'on a demandé, sur son propre canal, pour
+  // qu'Android le laisse couper seul.
+  await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL, {
+    name: 'Rappels',
+    description: 'Quand tu as demandé qu’on te rappelle un bento prêt à publier.',
     importance: Notifications.AndroidImportance.DEFAULT,
   });
 }
@@ -356,5 +381,160 @@ async function acceptEditorial(): Promise<void> {
     await writeDeviceSetting('editorial', true);
   } catch (err) {
     console.warn('[push] accord éditorial accepté', err);
+  }
+}
+
+// ─── Chantier 8 : le rappel d'un bento prêt ──────────────────────────────
+
+/**
+ * Ce que le rappel doit savoir du bento : sa clé (`draft` ou son
+ * identifiant), et de quoi le nommer s'il n'est pas le principal.
+ */
+export type ReminderTarget = {
+  key: string;
+  bento: { isPrimary: boolean; name: string } | null;
+};
+
+/** Posée à la réponse, oui comme non : une seule question par bento (D5). */
+const REMINDER_ANSWERED_PREFIX = 'bp_ready_reminder_answered:';
+
+async function reminderAnswered(key: string): Promise<boolean> {
+  return (await AsyncStorage.getItem(`${REMINDER_ANSWERED_PREFIX}${key}`).catch(() => null)) !== null;
+}
+
+async function rememberReminderAnswer(key: string): Promise<void> {
+  await AsyncStorage.setItem(`${REMINDER_ANSWERED_PREFIX}${key}`, new Date().toISOString()).catch(() => {});
+}
+
+/**
+ * La question et le lien ont-ils lieu d'être pour ce bento ? Lu à chaque
+ * passage sur le composer : l'autorisation a pu changer dans les réglages du
+ * téléphone. Ne lève jamais : sans réponse, rien ne s'affiche.
+ */
+export async function readyReminderOffered(key: string | null): Promise<boolean> {
+  if (key === null || Platform.OS === 'web') return false;
+  try {
+    const [answered, permission] = await Promise.all([reminderAnswered(key), readPermission()]);
+    return shouldOfferReminder({ readyKey: key, answered, permission: permission as ReminderPermission });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * La question au départ (D5) : « Ton bento est prêt. On te le rappelle
+ * demain s'il n'est pas publié ? ». « Non merci » est retenu pour ce bento ;
+ * « Oui » mène à `acceptReadyReminder`. `onAnswer` part à la réponse, oui
+ * comme non : le composer y retire son lien, que la question posée par-dessus
+ * lui laisserait sinon jusqu'au prochain passage. Ne lève jamais.
+ */
+export async function offerReadyReminder(target: ReminderTarget, onAnswer?: () => void): Promise<void> {
+  if (!(await readyReminderOffered(target.key))) return;
+  Alert.alert(REMINDER_ASK_TITLE, REMINDER_ASK_MESSAGE, [
+    {
+      text: REMINDER_ASK_DECLINE,
+      style: 'cancel',
+      onPress: () => {
+        onAnswer?.();
+        void rememberReminderAnswer(target.key);
+      },
+    },
+    {
+      text: REMINDER_ASK_ACCEPT,
+      isPreferred: true,
+      onPress: () => {
+        onAnswer?.();
+        void acceptReadyReminder(target);
+      },
+    },
+  ]);
+}
+
+/**
+ * « Oui, rappelle-moi », ou le lien « Me le rappeler demain » (D10) : la
+ * réponse est retenue, l'autorisation du système demandée si elle manque,
+ * puis le rappel programmé. Rend sa date, ou `null` si le système refuse ou
+ * que la programmation échoue. Ne lève jamais.
+ */
+export async function acceptReadyReminder(target: ReminderTarget): Promise<Date | null> {
+  await rememberReminderAnswer(target.key);
+  try {
+    const { granted } = await readPermission();
+    if (!granted && !(await requestPermissionAndRegister())) return null;
+    await ensureAndroidChannels();
+    const date = nextReminderDate(new Date());
+    // Un identifiant par bento : reprogrammer remplace, sans doublon.
+    await Notifications.scheduleNotificationAsync({
+      identifier: reminderIdentifier(target.key),
+      content: {
+        title: REMINDER_TITLE,
+        body: reminderBody(target.bento),
+        data: { type: 'ready_bento', bento: target.key },
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date,
+        channelId: REMINDER_CHANNEL,
+      },
+    });
+    return date;
+  } catch (err) {
+    console.warn('[rappel] programmation', err);
+    return null;
+  }
+}
+
+/** Le rappel d'un bento, s'il y en a un. Ne lève jamais. */
+export async function cancelReadyReminder(key: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await Notifications.cancelScheduledNotificationAsync(reminderIdentifier(key)).catch(() => {});
+}
+
+/**
+ * Annule les rappels qui n'ont plus lieu d'être, cf. `remindersToCancel` :
+ * au lancement, et à chaque changement du bento édité. Le brouillon devenu
+ * un bento publié oublie aussi sa réponse : un autre compte, sur ce même
+ * téléphone, aura de nouveau la question. Ne lève jamais.
+ */
+export async function reconcileReadyReminders(
+  input: Omit<Parameters<typeof remindersToCancel>[0], 'scheduledKeys'>,
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const scheduledKeys = scheduled.flatMap((n) => {
+      const key = reminderKeyFromIdentifier(n.identifier);
+      return key ? [key] : [];
+    });
+    for (const key of remindersToCancel({ ...input, scheduledKeys })) {
+      await cancelReadyReminder(key);
+      if (key === DRAFT_REMINDER_KEY && input.hasProfile) {
+        await AsyncStorage.removeItem(`${REMINDER_ANSWERED_PREFIX}${key}`).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.warn('[rappel] réconciliation', err);
+  }
+}
+
+/**
+ * Le compte supprimé emporte ses rappels et ses réponses (§5.3) : ses bentos
+ * n'existent plus. La réconciliation ne le verrait pas, le compte qui lui
+ * succède n'ayant pas de profil, comme un démarrage hors ligne, où elle garde
+ * les rappels des bentos en base. Ne lève jamais.
+ */
+export async function forgetReadyReminders(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of scheduled) {
+      const key = reminderKeyFromIdentifier(n.identifier);
+      if (key) await cancelReadyReminder(key);
+    }
+    const answered = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(REMINDER_ANSWERED_PREFIX));
+    if (answered.length > 0) await AsyncStorage.multiRemove(answered);
+  } catch (err) {
+    console.warn('[rappel] oubli', err);
   }
 }

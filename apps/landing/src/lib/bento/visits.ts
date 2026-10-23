@@ -25,16 +25,11 @@ export function parseBentoId(raw: string | null | undefined): string | null {
   return raw && UUID.test(raw) ? raw.toLowerCase() : null;
 }
 
-const NUMBER = new Intl.NumberFormat('fr-FR');
-
 /**
- * « 0 visite », « 1 visite », « 1 234 visites ». Zéro et un au singulier, et
- * une espace insécable entre le nombre et le mot : ils ne se séparent jamais
- * en fin de ligne.
+ * « 0 visite », « 1 visite », « 1 234 visites », écrit une seule fois pour la
+ * landing et l'app depuis le lot 3.
  */
-export function formatVisits(count: number): string {
-  return `${NUMBER.format(count)}\u00a0${count < 2 ? 'visite' : 'visites'}`;
-}
+export { formatVisits } from '@bento-pop/supabase-mobile/bento';
 
 /**
  * Les robots connus, et les clients qui n'en sont pas moins des scripts.

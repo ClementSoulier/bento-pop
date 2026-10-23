@@ -1606,3 +1606,35 @@ xcrun simctl install "$SIM" "$SC/MonBentoPop.app"
 
 C'est la même build, donc la même cible : la relire quand même dans
 `EXConstants.bundle/app.config` (`extra.SUPABASE_URL`) avant de recetter.
+
+### Recevoir pour de vrai une notification locale : avancer l'horloge de l'émulateur
+
+Rencontré le 23 octobre 2026, au lot 5 du chantier 8 : le rappel d'un bento
+prêt est une notification **locale**, programmée par le téléphone pour le
+lendemain à 18 h. L'horloge du simulateur iOS suit celle du Mac et ne s'avance
+pas. Celle de l'émulateur s'avance, mais pas par `adb` :
+`cmd time_detector suggest_manual_time` est refusé au shell, faute de
+`SUGGEST_MANUAL_TIME_AND_ZONE`. Par les Réglages :
+
+```bash
+adb shell settings put global auto_time 0      # l'heure devient modifiable
+adb shell am start -a android.settings.DATE_SETTINGS
+# Date, puis Heure : dépasser l'heure prévue, fenêtre comprise (une heure sur Android)
+adb shell dumpsys notification --noredact | grep -A3 "pkg=com.bentopop.mobile"
+adb shell settings put global auto_time 1      # l'heure revient, avant de toucher la notification
+```
+
+L'alarme part dès que l'heure la dépasse, et la notification reste dans le
+volet. Rendre l'heure **avant** de la toucher, par précaution : un téléphone en
+avance d'un jour tient son jeton de session pour expiré.
+
+Sur iOS, la date programmée se lit dans le journal de SpringBoard, et
+l'arrivée se simule par `xcrun simctl push`, données sous `body` comme
+ci-dessus. Une annulation s'y lit aussi : « Remove 1 pending notifications by
+identifier », puis « Load 0 pending notification dictionaries ».
+
+```bash
+xcrun simctl spawn <UDID> log show --last 2m --info --debug --style compact \
+  --predicate 'process == "SpringBoard"' \
+  | grep -E "identifier: ready-bento|has a trigger date|pending notification"
+```

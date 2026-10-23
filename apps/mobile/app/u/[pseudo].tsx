@@ -43,9 +43,10 @@ import { shareBentoImage } from '@/lib/share-image';
 import { useIsOffline } from '@/lib/use-is-offline';
 import { useOfflineInset } from '@/lib/use-offline-inset';
 import { userErrorMessage } from '@/lib/user-error-message';
+import { bentoVisitsQueryOptions, withVisits } from '@/lib/visits';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
-import { publicSupabase } from '@/supabase/client';
+import { publicSupabase, supabase } from '@/supabase/client';
 import { composerCases } from '@/components/bento/cases';
 
 /**
@@ -81,6 +82,15 @@ export default function PublicBentoScreen() {
     publicBentoQueryOptions(publicSupabase, pseudo, slug),
   );
   const state = publicPageState({ ownPseudo, data, isError, isFetching, isOffline });
+
+  // Chantier 8 : chaque affichage d'un bento trouvé compte une visite, par le
+  // client avec session, le seul qui laisse la base reconnaître le
+  // propriétaire, pour qui elle ne compte rien. Une requête à part : le
+  // compteur n'attend jamais la page, et la page ne l'attend pas.
+  const { data: visits } = useQuery({
+    ...bentoVisitsQueryOptions(supabase, state.kind === 'found' ? state.bento.id : '', 'visit'),
+    enabled: state.kind === 'found',
+  });
 
   // De retour en ligne après un échec, la page se recharge d'elle-même : sans
   // ça, « Connexion perdue » resterait affiché une fois le bandeau hors ligne
@@ -131,6 +141,7 @@ export default function PublicBentoScreen() {
           <FoundPage
             bento={state.bento}
             others={state.others}
+            visits={visits}
             isOwn={state.isOwn}
             scale={scale}
             sideInset={sideInset}
@@ -509,6 +520,7 @@ function LoadingPage({
 function FoundPage({
   bento,
   others,
+  visits,
   isOwn,
   scale,
   sideInset,
@@ -518,6 +530,11 @@ function FoundPage({
   bento: PublicBento;
   /** Les autres bentos publiés du compte. Vide tant qu'il n'en a qu'un. */
   others: PublicBentoRef[];
+  /**
+   * Le compteur de visites, après la date (chantier 8). `null` quand son
+   * propriétaire le masque, `undefined` tant que la base n'a pas répondu.
+   */
+  visits: number | null | undefined;
   isOwn: boolean;
   scale: number;
   sideInset: number;
@@ -559,7 +576,12 @@ function FoundPage({
   const quoi = bento.editionTitle
     ? `${bento.editionTitle}, publié le`
     : 'bento publié le';
-  const dateLine = `${bento.displayName ? `${bento.displayName} · ` : ''}${quoi} ${formatDate(bento.publishedAt)}`;
+  // Le compteur sur la même ligne que la date, comme sur le web : le modèle de
+  // `public-layout.ts` ne compte qu'une ligne, qui rétrécit au besoin.
+  const dateLine = withVisits(
+    `${bento.displayName ? `${bento.displayName} · ` : ''}${quoi} ${formatDate(bento.publishedAt)}`,
+    visits,
+  );
 
   return (
     <View style={{ flex: 1 }}>

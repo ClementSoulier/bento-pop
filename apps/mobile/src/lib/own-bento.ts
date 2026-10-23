@@ -37,6 +37,12 @@ export type OwnBento = {
    * Chantier 18.
    */
   publishOnValidationAt: string | null;
+  /**
+   * La première date de publication, gardée quand le bento est dépublié :
+   * nulle, il n'a jamais été publié, et peut recevoir un rappel. Chantier 8,
+   * D16. Lue en base depuis la migration `20261023100000_bento_visits`.
+   */
+  firstPublishedAt: string | null;
 };
 
 /**
@@ -52,12 +58,13 @@ export type OwnBentoRow = {
   edition_id: number | null;
   published_at: string | null;
   publish_on_validation_at?: string | null;
+  first_published_at?: string | null;
   editions?: { title: string } | null;
 };
 
 /** Les colonnes que `toOwnBento` lit, dans la syntaxe de `select()`. */
 export const OWN_BENTO_COLUMNS =
-  'id, slug, is_primary, edition_id, published_at, publish_on_validation_at, editions ( title )';
+  'id, slug, is_primary, edition_id, published_at, publish_on_validation_at, first_published_at, editions ( title )';
 
 export function toOwnBento(row: OwnBentoRow): OwnBento {
   return {
@@ -68,6 +75,7 @@ export function toOwnBento(row: OwnBentoRow): OwnBento {
     editionTitle: row.editions?.title ?? null,
     publishedAt: row.published_at,
     publishOnValidationAt: row.publish_on_validation_at ?? null,
+    firstPublishedAt: row.first_published_at ?? null,
   };
 }
 

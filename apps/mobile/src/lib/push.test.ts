@@ -281,6 +281,23 @@ describe('pushTargetFromData', () => {
     assert.equal(target?.kind === 'item' && target.keptItemId, null);
   });
 
+  it('le rappel d’un bento prêt mène à ce bento, ou au brouillon', () => {
+    assert.deepEqual(pushTargetFromData({ type: 'ready_bento', bento: ITEM }), {
+      kind: 'ready-bento',
+      bento: ITEM,
+    });
+    assert.deepEqual(pushTargetFromData({ type: 'ready_bento', bento: 'draft' }), {
+      kind: 'ready-bento',
+      bento: 'draft',
+    });
+  });
+
+  it('un rappel mal formé ne mène nulle part', () => {
+    for (const bento of [undefined, '', 'brouillon', '../profile', 42]) {
+      assert.equal(pushTargetFromData({ type: 'ready_bento', bento }), null, String(bento));
+    }
+  });
+
   it('une édition mène à son identifiant, nombre ou chiffres', () => {
     assert.deepEqual(pushTargetFromData({ type: 'edition_released', editionId: 7, slug: 'x' }), {
       kind: 'edition',

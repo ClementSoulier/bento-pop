@@ -188,7 +188,13 @@ export type PushTarget =
        */
       publishedBentoId: string | null;
     }
-  | { kind: 'edition'; editionId: number };
+  | { kind: 'edition'; editionId: number }
+  /**
+   * Le rappel d'un bento prêt, programmé par le téléphone (chantier 8, D11) :
+   * l'identifiant du bento, ou `draft` pour le brouillon d'un compte sans
+   * profil. Le tap ouvre le composer sur ce bento, le bouton en évidence.
+   */
+  | { kind: 'ready-bento'; bento: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MODERATION_STATUSES = ['validated', 'merged', 'rejected'] as const;
@@ -224,6 +230,10 @@ export function pushTargetFromData(data: unknown): PushTarget | null {
   if (d.type === 'edition_released') {
     const editionId = positiveInt(d.editionId);
     return editionId === null ? null : { kind: 'edition', editionId };
+  }
+
+  if (d.type === 'ready_bento') {
+    return d.bento === 'draft' || isUuid(d.bento) ? { kind: 'ready-bento', bento: d.bento } : null;
   }
 
   return null;
