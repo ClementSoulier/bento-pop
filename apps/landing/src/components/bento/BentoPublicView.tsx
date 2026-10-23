@@ -8,6 +8,7 @@ import {
   BentoReportLink,
 } from '@/components/bento/BentoPageShell';
 import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
+import { VisitBeacon } from '@/components/bento/VisitBeacon';
 import { bentoPath } from '@/lib/bento/metadata';
 import type { OtherBento, PublicBento } from '@/lib/bento/queries';
 import { mainBentoCases, publicCases } from './cases';
@@ -103,10 +104,16 @@ function OtherBentos({ others }: { others: readonly OtherBento[] }) {
 export function BentoPublishedView({
   bento,
   others,
+  visits,
   canonicalUrl,
 }: {
   bento: PublicBento;
   others: readonly OtherBento[];
+  /**
+   * Le compteur de visites, celui du rendu de la page, donc vieux de 5
+   * minutes au plus ; `null` quand son propriétaire le masque. Chantier 8.
+   */
+  visits: number | null;
   canonicalUrl: string;
 }) {
   return (
@@ -161,8 +168,10 @@ export function BentoPublishedView({
               : {})}
             isFeatured={bento.isFeatured}
             isGuest={bento.isGuest}
+            visits={visits}
           />
           <OtherBentos others={others} />
+          <VisitBeacon bentoId={bento.id} />
         </div>
 
         <div className="lg:col-start-1 lg:row-span-2 lg:row-start-1">

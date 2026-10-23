@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { startStub } from './stub';
+import { bentoId, startStub, type VisitCall } from './stub';
 
 /**
  * Tests d'intégration HTTP de la page bento publique.
@@ -24,12 +24,14 @@ const APP_URL = `http://127.0.0.1:${APP_PORT}`;
 const SITE_URL = 'https://bento-pop.test';
 const DIST_DIR = '.next-e2e';
 const ANON_KEY = 'cle-anon-de-test-ne-doit-jamais-fuiter';
+const VISIT_SECRET = 'secret-de-visite-ne-doit-jamais-fuiter';
 
 const ENV = {
   ...process.env,
   NEXT_DIST_DIR: DIST_DIR,
   NEXT_PUBLIC_MOBILE_SUPABASE_URL: STUB_URL,
   MOBILE_SUPABASE_ANON_KEY: ANON_KEY,
+  BENTO_VISIT_SECRET: VISIT_SECRET,
   NEXT_PUBLIC_SITE_URL: SITE_URL,
   NEXT_TELEMETRY_DISABLED: '1',
 };
@@ -262,10 +264,11 @@ describe('image Open Graph', () => {
 });
 
 describe('sécurité et poids', () => {
-  it('ne laisse pas fuiter la clé anon dans le HTML', async () => {
+  it('ne laisse pas fuiter la clé anon ni le secret des visites dans le HTML', async () => {
     for (const route of ['/u/keremasan', '/u/brouillon', '/u/inconnu404']) {
       const html = await (await get(route)).text();
       assert.ok(!html.includes(ANON_KEY), `clé anon présente dans ${route}`);
+      assert.ok(!html.includes(VISIT_SECRET), `secret des visites présent dans ${route}`);
     }
   });
 
@@ -332,6 +335,71 @@ describe('résilience', () => {
     assert.ok(!html.includes('at async'), 'trace d’exécution divulguée');
     assert.ok(!/Internal Server Error/i.test(html));
     await resetStub();
+  });
+});
+
+/**
+ * Chantier 8. Le bouchon rend 47 visites pour `Keremasan`, zéro pour
+ * `buyt.k`, et nul pour `invite`, dont le propriétaire masque ses visites.
+ * L'image de comptage se demande ici comme un navigateur derrière le proxy
+ * de Coolify : avec un navigateur et un `X-Forwarded-For`.
+ */
+describe('compteur de visites', () => {
+  const BROWSER =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1';
+  const pixel = (query: string, headers: Record<string, string> = {}) =>
+    fetch(`${APP_URL}/api/bento-opened${query}`, {
+      headers: { 'user-agent': BROWSER, 'x-forwarded-for': '203.0.113.9', ...headers },
+    });
+  const visitCalls = () => fetch(`${STUB_URL}/__visits`).then((r) => r.json() as Promise<VisitCall[]>);
+
+  it('affiche le compteur à côté de la date, zéro compris', async () => {
+    const html = await (await get('/u/keremasan')).text();
+    assert.ok(html.includes('>47\u00a0visites<'), 'compteur absent');
+    const zero = await (await get('/u/buyt.k')).text();
+    assert.ok(zero.includes('>0\u00a0visite<'), '« 0 visite » doit s’afficher');
+  });
+
+  it('n’affiche rien quand le propriétaire masque ses visites', async () => {
+    const html = await (await get('/u/invite')).text();
+    assert.ok(!/\d\u00a0visites?</.test(html), 'un compteur masqué s’affiche');
+  });
+
+  it('compte la visite par une image, sans JavaScript', async () => {
+    const html = await (await get('/u/keremasan')).text();
+    // Le jour dans l'adresse, que React échappe en `&amp;` : sans lui, Safari
+    // ressert l'image de la veille sans la redemander.
+    assert.match(
+      html,
+      new RegExp(`src="/api/bento-opened\\?b=${bentoId(1)}&amp;d=\\d{4}-\\d{2}-\\d{2}"`),
+      'image de comptage absente, ou sans le jour',
+    );
+
+    await resetStub();
+    const res = await pixel(`?b=${bentoId(1)}&d=2026-10-23`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/gif');
+    assert.match(res.headers.get('cache-control') ?? '', /no-store/);
+    assert.equal(res.headers.get('x-bento-visit'), 'recorded');
+    assert.deepEqual(await visitCalls(), [
+      { p_bento: bentoId(1), p_fingerprint: `203.0.113.9|${BROWSER}`, p_secret: VISIT_SECRET },
+    ]);
+  });
+
+  it('n’interroge pas la base pour un robot, un préchargement ou une adresse malformée', async () => {
+    await resetStub();
+    for (const [query, headers, expected] of [
+      [`?b=${bentoId(1)}`, { 'user-agent': 'facebookexternalhit/1.1' }, 'bot'],
+      [`?b=${bentoId(1)}`, { 'sec-purpose': 'prefetch;prerender' }, 'prefetch'],
+      ['?b=b-1', {}, 'invalid'],
+      ['', {}, 'invalid'],
+    ] as const) {
+      const res = await pixel(query, headers);
+      assert.equal(res.headers.get('x-bento-visit'), expected, `${query} ${JSON.stringify(headers)}`);
+      // La même image dans tous les cas : jamais d'image cassée chez le visiteur.
+      assert.equal(res.headers.get('content-type'), 'image/gif');
+    }
+    assert.equal((await stubStats()).requests, 0);
   });
 });
 

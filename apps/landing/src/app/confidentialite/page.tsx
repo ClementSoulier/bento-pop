@@ -14,7 +14,7 @@ export default function ConfidentialitePage() {
     <LegalPage
       eyebrow="Données personnelles"
       title="Politique de confidentialité"
-      updatedAt="11/05/2026"
+      updatedAt="23/10/2026"
     >
       <section>
         <h2>1. Responsable du traitement</h2>
@@ -53,6 +53,19 @@ export default function ConfidentialitePage() {
             <strong>Logs serveur</strong> : adresse IP, user-agent et URL
             consultée, conservés temporairement par OVH à des fins de sécurité
             et de diagnostic technique.
+          </li>
+          <li>
+            <strong>Compteur de visites des bentos</strong> : quand la page
+            d&apos;un bento publié s&apos;affiche dans un navigateur, le
+            serveur forme une empreinte à partir de l&apos;adresse IP et du
+            user-agent, et la base la hache (SHA-256) avec un sel aléatoire
+            tiré chaque jour. Seule l&apos;empreinte hachée est gardée, le jour
+            même, pour ne compter qu&apos;une visite par jour et par bento ;
+            elle est effacée avec le sel la nuit suivante. Ne reste qu&apos;un
+            nombre de visites par bento et par jour, qu&apos;aucune donnée ne
+            relie à un visiteur. Le nombre de visites d&apos;un bento est
+            affiché publiquement sur sa page. Aucun cookie ni traceur
+            n&apos;est déposé dans le navigateur.
           </li>
         </ul>
 
@@ -151,6 +164,11 @@ export default function ConfidentialitePage() {
             <strong>Logs serveur</strong> : sécurité et diagnostic (intérêt
             légitime).
           </li>
+          <li>
+            <strong>Compteur de visites</strong> : dire à l&apos;auteur
+            d&apos;un bento, et à ses visiteurs, combien de fois il a été
+            ouvert (intérêt légitime).
+          </li>
         </ul>
       </section>
 
@@ -175,6 +193,11 @@ export default function ConfidentialitePage() {
           </li>
           <li>Logs serveur : 30 jours.</li>
           <li>Logs Supabase API : 7 jours.</li>
+          <li>
+            Empreintes hachées des visiteurs d&apos;un bento, et leur sel :
+            effacés la nuit suivant la visite. Nombres de visites : tant que
+            le bento existe.
+          </li>
         </ul>
       </section>
 

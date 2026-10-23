@@ -1,9 +1,11 @@
 import Image from 'next/image';
 import { popyForPseudo } from '@/lib/bento/popy';
+import { formatVisits } from '@/lib/bento/visits';
 
 /**
  * En-tête d'identité : avatar Popy, pseudo, nom affiché, date de
- * publication, et le cas échéant la distinction « à la une ».
+ * publication, compteur de visites, et le cas échéant la distinction « à la
+ * une ».
  *
  * Le pseudo porte le `<h1>` de la page. Un seul par document, et il dit
  * exactement ce que le visiteur est venu voir.
@@ -15,6 +17,7 @@ export function BentoIdentity({
   isFeatured = false,
   isGuest = false,
   subtitle,
+  visits = null,
 }: {
   pseudo: string;
   displayName?: string | null;
@@ -24,6 +27,12 @@ export function BentoIdentity({
   isGuest?: boolean;
   /** Remplace la ligne de date, pour l'état « pas encore terminé ». */
   subtitle?: string;
+  /**
+   * Le compteur de visites, affiché même à zéro (D7 du chantier 8). `null`
+   * ou absent : rien, que le propriétaire le masque ou que le bento ne soit
+   * pas en ligne.
+   */
+  visits?: number | null;
 }) {
   const popy = popyForPseudo(pseudo);
 
@@ -69,6 +78,12 @@ export function BentoIdentity({
               <time dateTime={publishedAt}>{formatPublishedDate(publishedAt)}</time>
             </>
           ) : null)}
+        {visits !== null ? (
+          <>
+            {displayName || subtitle || publishedAt ? ' · ' : null}
+            <span className="whitespace-nowrap">{formatVisits(visits)}</span>
+          </>
+        ) : null}
       </p>
     </div>
   );

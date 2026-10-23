@@ -200,6 +200,18 @@ async function main(): Promise<void> {
       .eq('id', bentoId)
       .is('published_at', null);
     check('publication (publishBento)', !error, error?.message);
+    // Chantier 8 : la publication des versions publiées pose la date de
+    // première publication, sans qu'elles le sachent.
+    const { data } = await service
+      .from('bentos')
+      .select('published_at, first_published_at')
+      .eq('id', bentoId)
+      .single();
+    check(
+      'elle pose la date de première publication',
+      !!data?.first_published_at && data.first_published_at === data.published_at,
+      JSON.stringify(data),
+    );
   }
   {
     const page = await loadFeedPage(anon as unknown as Typed);
@@ -255,6 +267,83 @@ async function main(): Promise<void> {
       reason: null,
     });
     check('signalement (report.ts)', !error, error?.message);
+  }
+
+  console.log('\nVisites, chantier 8\n');
+
+  {
+    const { data, error } = await bob.rawClient.rpc('record_bento_visit_app', { p_bento: bentoId });
+    check(
+      'une page ouverte dans l’app compte une visite',
+      !error && data === 1,
+      error?.message ?? String(data),
+    );
+    const { data: again } = await bob.rawClient.rpc('record_bento_visit_app', { p_bento: bentoId });
+    check('une seule par compte et par jour', again === 1, String(again));
+    const { data: own } = await alice.rawClient.rpc('record_bento_visit_app', { p_bento: bentoId });
+    check('pas pour son propriétaire, qui voit son compteur', own === 1, String(own));
+  }
+  {
+    const { data, error } = await anon.rpc('bento_visit_count', { p_bento: bentoId });
+    check(
+      'un visiteur sans session lit le compteur',
+      !error && data === 1,
+      error?.message ?? String(data),
+    );
+  }
+  {
+    const { error } = await alice.rawClient
+      .from('users')
+      .update({ show_visits: false })
+      .eq('id', alice.uid);
+    check('le propriétaire masque ses visites', !error, error?.message);
+    const { data: hidden } = await anon.rpc('bento_visit_count', { p_bento: bentoId });
+    const { data: mine } = await alice.rawClient.rpc('bento_visit_count', { p_bento: bentoId });
+    check(
+      'masqué, seul le propriétaire le lit',
+      hidden === null && mine === 1,
+      `${hidden} / ${mine}`,
+    );
+    await bob.rawClient.from('users').update({ show_visits: true }).eq('id', alice.uid);
+    const { data: still } = await service
+      .from('users')
+      .select('show_visits')
+      .eq('id', alice.uid)
+      .single();
+    check('un autre compte ne le rallume pas', still?.show_visits === false, JSON.stringify(still));
+    await alice.rawClient.from('users').update({ show_visits: true }).eq('id', alice.uid);
+  }
+  {
+    const { error } = await anon.rpc('record_bento_visit_app', { p_bento: bentoId });
+    check('sans session, pas de visite d’app', !!error, error?.message);
+  }
+  {
+    const { error } = await anon.rpc('record_bento_visit_web', {
+      p_bento: bentoId,
+      p_fingerprint: '203.0.113.1|Navigateur',
+      p_secret: 'secret-devine',
+    });
+    const { data } = await service
+      .from('bento_visit_days')
+      .select('visits')
+      .eq('bento_id', bentoId)
+      .eq('source', 'web');
+    check(
+      'la clé publique seule n’enregistre aucune visite web',
+      !!error && (data ?? []).length === 0,
+      error?.message,
+    );
+  }
+  for (const table of ['bento_visit_days', 'bento_visit_keys', 'visit_salts']) {
+    const { error } = await bob.rawClient.from(table).select('*').limit(1);
+    check(`un compte ne lit pas ${table}`, !!error, error?.message);
+  }
+  {
+    const { error } = await alice.rawClient
+      .from('bentos')
+      .update({ first_published_at: null })
+      .eq('id', bentoId);
+    check('un membre n’écrit pas la date de première publication', !!error, error?.message);
   }
 
   console.log('\nAttaques, à refuser ou à neutraliser\n');

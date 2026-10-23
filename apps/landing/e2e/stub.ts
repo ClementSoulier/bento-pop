@@ -15,6 +15,27 @@ import { createServer, type Server, type ServerResponse } from 'node:http';
 
 const YEAR = '2026-05-15T15:05:24.848+00:00';
 
+/**
+ * Des identifiants de la forme d'un UUID, comme en base : la route des
+ * visites refuse tout autre forme sans interroger la base. Chantier 8.
+ */
+export const bentoId = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+/**
+ * Le compteur de chaque bento, tel que `bento_visit_count` le rend au
+ * visiteur : zéro pour `buyt.k`, nul pour `invite`, dont le propriétaire
+ * masque ses visites. Trois pour les autres.
+ */
+const VISITS: Record<string, number | null> = {
+  [bentoId(1)]: 47,
+  [bentoId(2)]: 0,
+  [bentoId(6)]: null,
+};
+const visitsOf = (id: string | undefined) => (id && id in VISITS ? VISITS[id]! : 3);
+
+/** Un appel de `record_bento_visit_web`, tel que la landing l'envoie. */
+export type VisitCall = { p_bento: string; p_fingerprint: string; p_secret: string };
+
 type StubItem = {
   id: string;
   title: string;
@@ -78,7 +99,7 @@ export const USERS: StubUser[] = [
     pseudo: 'Keremasan',
     display_name: 'Clement',
     bentos: {
-      id: 'b-1',
+      id: bentoId(1),
       slug: 'mon-bento',
       is_primary: true,
       published_at: YEAR,
@@ -90,7 +111,7 @@ export const USERS: StubUser[] = [
     pseudo: 'buyt.k',
     display_name: null,
     bentos: {
-      id: 'b-2',
+      id: bentoId(2),
       slug: 'mon-bento',
       is_primary: true,
       published_at: YEAR,
@@ -104,7 +125,7 @@ export const USERS: StubUser[] = [
     pseudo: 'rejete',
     display_name: null,
     bentos: {
-      id: 'b-3',
+      id: bentoId(3),
       slug: 'mon-bento',
       is_primary: true,
       published_at: YEAR,
@@ -120,7 +141,7 @@ export const USERS: StubUser[] = [
     pseudo: 'invite',
     display_name: 'Créateur Invité',
     kind: 'editorial',
-    bentos: { id: 'b-6', slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: true, bento_items: fullItems },
+    bentos: { id: bentoId(6), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: true, bento_items: fullItems },
   },
   {
     // Réservé au test de redirection canonique : aucun autre test ne doit
@@ -130,7 +151,7 @@ export const USERS: StubUser[] = [
     // le même pseudo à des casses différentes se contamineraient.
     pseudo: 'majuscule',
     display_name: null,
-    bentos: { id: 'b-4', slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+    bentos: { id: bentoId(4), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
   },
   {
     // Deux bentos publiés, rendus en TABLEAU : c'est la forme que prend la
@@ -140,7 +161,7 @@ export const USERS: StubUser[] = [
     display_name: null,
     bentos: [
       {
-        id: 'b-7',
+        id: bentoId(7),
         slug: 'hebdo-38',
         is_primary: false,
         published_at: '2026-02-01T10:00:00.000Z',
@@ -148,7 +169,7 @@ export const USERS: StubUser[] = [
         bento_items: fullItems,
       },
       {
-        id: 'b-8',
+        id: bentoId(8),
         slug: 'mon-bento',
         is_primary: true,
         published_at: YEAR,
@@ -182,6 +203,7 @@ function ilikeMatches(pattern: string, value: string): boolean {
 export function startStub(port: number): Promise<Server> {
   let requests = 0;
   let failing = false;
+  const visitCalls: VisitCall[] = [];
 
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', `http://127.0.0.1:${port}`);
@@ -189,9 +211,13 @@ export function startStub(port: number): Promise<Server> {
     if (url.pathname === '/__stats') {
       return json(res, 200, { requests });
     }
+    if (url.pathname === '/__visits') {
+      return json(res, 200, visitCalls);
+    }
     if (url.pathname === '/__reset') {
       requests = 0;
       failing = false;
+      visitCalls.length = 0;
       return json(res, 200, { ok: true });
     }
     if (url.pathname === '/__fail') {
@@ -225,6 +251,24 @@ export function startStub(port: number): Promise<Server> {
           users: { pseudo: USERS.find((u) => bentosOf(u).includes(b))!.pseudo },
         }));
       return json(res, 200, featured);
+    }
+
+    // Les fonctions du chantier 8, appelées en POST avec leurs arguments en
+    // JSON. Une fonction scalaire répond par sa valeur seule, `null` compris.
+    if (url.pathname.startsWith('/rest/v1/rpc/')) {
+      let raw = '';
+      req.on('data', (chunk) => (raw += chunk));
+      req.on('end', () => {
+        const args = (raw ? JSON.parse(raw) : {}) as Partial<VisitCall>;
+        const fn = url.pathname.slice('/rest/v1/rpc/'.length);
+        if (fn === 'bento_visit_count') return json(res, 200, visitsOf(args.p_bento));
+        if (fn === 'record_bento_visit_web') {
+          visitCalls.push(args as VisitCall);
+          return json(res, 200, visitsOf(args.p_bento));
+        }
+        return json(res, 404, { message: 'fonction non bouchonnée', path: url.pathname });
+      });
+      return;
     }
 
     return json(res, 404, { message: 'route non bouchonnée', path: url.pathname });
