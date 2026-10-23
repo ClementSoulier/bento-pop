@@ -105,7 +105,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: canonicalPath },
     // `noindex` sauf pour les bentos curés par l'équipe, cf. spec §8. Les
     // aperçus Open Graph fonctionnent indépendamment de cette directive.
-    robots: bentoRobots(bento.isFeatured),
+    robots: bentoRobots(bento.isFeatured, bento.searchable),
     openGraph: { type: 'profile', title, description, url: canonicalPath },
     twitter: { card: 'summary_large_image', title, description },
     other,

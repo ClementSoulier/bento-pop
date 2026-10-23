@@ -385,6 +385,43 @@ La colonne, `bento_matches`, le réglage appliqué à `search_bentos` et
 
 Le `noindex` et le sitemap, l'e2e.
 
+> **Fait le 23 octobre 2026**, sur la même branche.
+>
+> - **`bentoRobots(isFeatured, searchable)`** : un bento mis en avant d'un
+>   compte retiré passe en `noindex` ; les deux pages de bento, `/u/<pseudo>`
+>   et `/u/<pseudo>/<slug>`, le lui passent.
+> - **`listFeaturedPseudos`** écarte les comptes retirés : ils sortent du
+>   sitemap, et des pages rendues d'avance par `generateStaticParams`.
+> - **`lookupPublicBento`** lit `users.searchable` dans sa requête.
+>
+> **Un écart à la spécification, le repli d'avant la migration.** La
+> landing se redéploie d'elle-même à la fusion. Partie avant la migration,
+> elle demanderait une colonne que PostgREST ne connaît pas encore (`42703`)
+> et toutes les pages de bento rendraient 404 dans l'intervalle. Sur ce
+> refus, la lecture se refait sans la colonne, et le compte se lit « dans la
+> recherche », la valeur par défaut de la migration ; de même pour la liste
+> des bentos mis en avant. L'ordre des deux gestes ne casse donc plus rien
+> (§9).
+>
+> **Tests** : 1 unitaire de plus, 193 pour la landing ; 3 e2e de plus, 41 sur
+> 41 : le `noindex` d'un bento mis en avant d'un compte retiré, le sitemap
+> sans lui, et la page rendue quand la base refuse la colonne. Quatre défauts
+> introduits exprès, tous attrapés : le repli d'avant la migration oublié, le
+> sitemap qui garde un compte retiré, la page qui oublie de passer le
+> réglage, `bentoRobots` qui l'ignore.
+>
+> **Le banc e2e repart d'un dossier vide** : une page rendue à la demande par
+> une exécution survivait dans `.next-e2e` à la suivante, et faussait le
+> verdict d'un défaut. `smoke.test.ts` efface le dossier avant de
+> construire.
+>
+> **Un diff sans bruit** : cinq des fichiers touchés n'étaient pas au format
+> Prettier ; les changements y sont écrits dans leur style, et le diff ne
+> porte que le lot.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226, 193 et
+> 776 ; e2e 41 sur 41 ; build 3 sur 3.
+
 ### Lot 5 · Recette et documents
 
 La recette de §7.2, la DoD point par point, la roadmap, la liste du
@@ -397,7 +434,15 @@ chantier 29.
 - **Une PR** pour les cinq lots, après la confirmation des arbitrages par
   Clément.
 - **La migration** s'applique en production à la fusion, comme les
-  précédentes, par Clément : compatible avec la 1.1 et la 0.1.0.
+  précédentes, par Clément : compatible avec la 1.1 et la 0.1.0. **De
+  préférence juste avant de fusionner** : la landing, redéployée à la
+  fusion, lit `users.searchable`. Elle sait s'en passer (lot 4), et personne
+  ne peut se retirer de la recherche avant la sortie store ; l'ordre ne
+  casse donc rien, mais la migration d'abord laisse la landing sur son
+  chemin normal.
+- **Après application** : les contrôles en fin de migration, puis
+  `check-search-bentos.mjs`, qui mesure `search_bentos` par l'API, et un
+  appel à `bento_matches` à la clé anonyme pour la latence réelle.
 - **À la sortie store** : la pastille, l'écran et le réglage.
 
 ---

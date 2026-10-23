@@ -77,7 +77,13 @@ export function bentoImageAlt(pseudo: string): string {
  *
  * `follow` est conservé pour que les liens sortants de la page (accueil,
  * pages légales) continuent de transmettre leur signal.
+ *
+ * Un compte retiré de la recherche (chantier 20, D7) passe en `noindex` même
+ * mis en avant : le choix de la personne passe avant celui de l'équipe.
  */
-export function bentoRobots(isFeatured: boolean): { index: boolean; follow: true } {
-  return { index: isFeatured, follow: true };
+export function bentoRobots(
+  isFeatured: boolean,
+  searchable = true,
+): { index: boolean; follow: true } {
+  return { index: isFeatured && searchable, follow: true };
 }

@@ -172,6 +172,11 @@ type StubUser = {
   /** `member` par défaut ; `editorial` pour un bento composé par l'équipe. */
   kind?: string;
   /**
+   * « Apparaître dans la recherche », chantier 20. Absent, comme avant sa
+   * migration : la landing le lit alors allumé.
+   */
+  searchable?: boolean;
+  /**
    * Objet tant que `bentos_user_id_key` existe, TABLEAU dès qu'elle est
    * levée : PostgREST choisit la forme d'après les contraintes, et le change
    * même pour un compte qui n'a qu'un bento. Les deux formes sont donc
@@ -300,6 +305,22 @@ export const USERS: StubUser[] = [
     ],
   },
   {
+    // Mis en avant par l'équipe, mais retiré de la recherche par son
+    // propriétaire : `noindex`, et absent du sitemap (chantier 20, D7).
+    pseudo: 'retire.recherche',
+    display_name: null,
+    searchable: false,
+    bentos: { id: bentoId(9), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: true, bento_items: fullItems },
+  },
+  {
+    // Réservé au test du repli d'avant la migration du chantier 20 : la page
+    // doit se rendre quand la base ne connaît pas encore `searchable`. Jamais
+    // demandé ailleurs, pour que le cache ISR ne serve pas un rendu antérieur.
+    pseudo: 'avant.vingt',
+    display_name: null,
+    bentos: { id: bentoId(10), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+  },
+  {
     // Profil existant sans bento publié : `bentos_read_published` renvoie
     // `null`, comme pour un bento qui n'existe pas encore.
     pseudo: 'brouillon',
@@ -324,6 +345,7 @@ function ilikeMatches(pattern: string, value: string): boolean {
 export function startStub(port: number): Promise<Server> {
   let requests = 0;
   let failing = false;
+  let before20 = false;
   const visitCalls: VisitCall[] = [];
   const episodeQueries: EpisodeQuery[] = [];
 
@@ -342,12 +364,17 @@ export function startStub(port: number): Promise<Server> {
     if (url.pathname === '/__reset') {
       requests = 0;
       failing = false;
+      before20 = false;
       visitCalls.length = 0;
       episodeQueries.length = 0;
       return json(res, 200, { ok: true });
     }
     if (url.pathname === '/__fail') {
       failing = true;
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === '/__avant-20') {
+      before20 = true;
       return json(res, 200, { ok: true });
     }
 
@@ -378,6 +405,11 @@ export function startStub(port: number): Promise<Server> {
       return json(res, 500, { message: 'stub en panne simulée' });
     }
 
+    // Avant la migration du chantier 20, PostgREST refuse la colonne inconnue.
+    if (before20 && (url.searchParams.get('select') ?? '').includes('searchable')) {
+      return json(res, 400, { code: '42703', message: 'column users.searchable does not exist' });
+    }
+
     if (url.pathname === '/rest/v1/users') {
       const filter = url.searchParams.get('pseudo') ?? '';
       const pattern = filter.startsWith('ilike.') ? filter.slice('ilike.'.length) : null;
@@ -395,7 +427,9 @@ export function startStub(port: number): Promise<Server> {
           featured_order: i,
           slug: b.slug,
           is_primary: b.is_primary,
-          users: { pseudo: USERS.find((u) => bentosOf(u).includes(b))!.pseudo },
+          users: (({ pseudo, searchable }) => ({ pseudo, searchable }))(
+            USERS.find((u) => bentosOf(u).includes(b))!,
+          ),
         }));
       return json(res, 200, featured);
     }

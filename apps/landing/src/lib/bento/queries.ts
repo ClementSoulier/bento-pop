@@ -18,11 +18,22 @@ import {
  * HTTP du lot 7.
  */
 
+/**
+ * `users.searchable` arrive avec la migration du chantier 20, que Clément
+ * applique en production. La landing, elle, se redéploie d'elle-même à la
+ * fusion : si elle part la première, PostgREST refuse la colonne inconnue
+ * (`42703`), et toutes les pages de bento rendraient 404 dans l'intervalle.
+ * Sur ce refus, la lecture se refait sans la colonne, et le compte se lit
+ * « dans la recherche », la valeur par défaut de la migration.
+ */
+const UNDEFINED_COLUMN = '42703';
+
 /** Colonnes lues, en une seule requête. */
 const BENTO_SELECT = `
   pseudo,
   display_name,
   kind,
+  searchable,
   bentos (
     id,
     slug,
@@ -43,6 +54,9 @@ const BENTO_SELECT = `
   )
 ` as const;
 
+/** La même, sans `searchable` : le repli d'avant la migration du chantier 20. */
+const BENTO_SELECT_BEFORE_20 = BENTO_SELECT.replace(/^\s*searchable,\n/m, '');
+
 export type PublicBento = {
   /** L'identifiant du bento, que compte l'image de visite. Chantier 8. */
   readonly id: string;
@@ -55,6 +69,11 @@ export type PublicBento = {
   readonly displayName: string | null;
   readonly publishedAt: string;
   readonly isFeatured: boolean;
+  /**
+   * Le compte apparaît dans la recherche, chantier 20. Éteint, même un bento
+   * mis en avant passe en `noindex` et sort du sitemap (D7).
+   */
+  readonly searchable: boolean;
   /**
    * Bento composé par l'équipe pour un créateur rencontré hors de l'app.
    *
@@ -120,6 +139,8 @@ type RawUserRow = {
   readonly pseudo: string;
   readonly display_name: string | null;
   readonly kind: string;
+  /** Absente avant la migration du chantier 20 : cf. `UNDEFINED_COLUMN`. */
+  readonly searchable?: boolean;
   // Relation « to-one » côté PostgREST, mais certaines versions du client
   // la typent en tableau. On accepte les deux et on normalise.
   readonly bentos: RawBentoRow | readonly RawBentoRow[] | null;
@@ -129,7 +150,7 @@ type FeaturedRow = {
   readonly featured_order: number | null;
   readonly slug: string;
   readonly is_primary: boolean;
-  readonly users: { readonly pseudo: string } | null;
+  readonly users: { readonly pseudo: string; readonly searchable?: boolean } | null;
 };
 
 /** Une adresse de bento indexable : `/u/<pseudo>` ou `/u/<pseudo>/<slug>`. */
@@ -211,18 +232,22 @@ export async function lookupPublicBento(
   // Variables d'env absentes : la page 404 et le reste du site continue.
   if (!client) return { kind: 'not-found' };
 
-  const { data, error } = await client
-    .from('users')
-    .select(BENTO_SELECT)
-    // `ilike` sans joker explicite, mais `_` en entrée en est un : `a_c`
-    // matcherait `abc`. On ne peut pas s'en remettre à `maybeSingle()`
-    // (qui échouerait sur 2 lignes) ni à la première ligne venue. On
-    // ramène donc un petit lot et on exige l'égalité exacte ci-dessous.
-    // L'index unique sur `lower(pseudo)` garantit au plus une vraie
-    // correspondance.
-    .ilike('pseudo', requestedPseudo)
-    .limit(5)
-    .overrideTypes<RawUserRow[], { merge: false }>();
+  const read = (select: string) =>
+    client
+      .from('users')
+      .select(select)
+      // `ilike` sans joker explicite, mais `_` en entrée en est un : `a_c`
+      // matcherait `abc`. On ne peut pas s'en remettre à `maybeSingle()`
+      // (qui échouerait sur 2 lignes) ni à la première ligne venue. On
+      // ramène donc un petit lot et on exige l'égalité exacte ci-dessous.
+      // L'index unique sur `lower(pseudo)` garantit au plus une vraie
+      // correspondance.
+      .ilike('pseudo', requestedPseudo)
+      .limit(5)
+      .overrideTypes<RawUserRow[], { merge: false }>();
+
+  let { data, error } = await read(BENTO_SELECT);
+  if (error?.code === UNDEFINED_COLUMN) ({ data, error } = await read(BENTO_SELECT_BEFORE_20));
 
   if (error) {
     // Panne réseau ou Supabase indisponible. On log côté serveur et on
@@ -265,6 +290,7 @@ export async function lookupPublicBento(
       displayName: user.display_name,
       publishedAt: bento.published_at,
       isFeatured: bento.is_featured,
+      searchable: user.searchable !== false,
       // Comparaison à la chaîne : une valeur inconnue, ajoutée en base avant
       // le déploiement de la landing, doit se lire « pas invité » plutôt que
       // faire échouer la page.
@@ -316,13 +342,18 @@ export async function listFeaturedPseudos(
 ): Promise<FeaturedBento[]> {
   if (!client) return [];
 
-  const { data, error } = await client
-    .from('bentos')
-    .select('featured_order, slug, is_primary, users:user_id ( pseudo )')
-    .eq('is_featured', true)
-    .not('published_at', 'is', null)
-    .order('featured_order', { ascending: true, nullsFirst: false })
-    .overrideTypes<FeaturedRow[], { merge: false }>();
+  const read = (users: string) =>
+    client
+      .from('bentos')
+      .select(`featured_order, slug, is_primary, users:user_id ( ${users} )`)
+      .eq('is_featured', true)
+      .not('published_at', 'is', null)
+      .order('featured_order', { ascending: true, nullsFirst: false })
+      .overrideTypes<FeaturedRow[], { merge: false }>();
+
+  // Même repli que `lookupPublicBento`, cf. `UNDEFINED_COLUMN`.
+  let { data, error } = await read('pseudo, searchable');
+  if (error?.code === UNDEFINED_COLUMN) ({ data, error } = await read('pseudo'));
 
   if (error) {
     console.error('[bento/queries] featured list failed:', error.message);
@@ -338,6 +369,9 @@ export async function listFeaturedPseudos(
   for (const row of data ?? []) {
     const pseudo = row.users?.pseudo;
     if (!pseudo) continue;
+    // Retiré de la recherche, il sort aussi du sitemap, mis en avant ou non
+    // (chantier 20, D7).
+    if (row.users?.searchable === false) continue;
     const cle = `${pseudo.toLowerCase()}/${row.is_primary ? '' : row.slug}`;
     if (vues.has(cle)) continue;
     vues.add(cle);
