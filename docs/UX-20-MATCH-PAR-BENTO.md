@@ -335,6 +335,52 @@ La colonne, `bento_matches`, le réglage appliqué à `search_bentos` et
 
 `TopBar`, `app/matches/[bentoId].tsx`, `PrivacySettings`, l'accessibilité.
 
+> **Fait le 23 octobre 2026**, sur la même branche.
+>
+> - **La pastille**, dans `TopBar` de `app/u/[pseudo].tsx` : « Mêmes goûts ·
+>   2 », crème, bordure et ombre stamp, 30 pt de haut dans une barre de 44,
+>   groupée avec « Options » à droite. Une requête à part, par le client sans
+>   session, sans les comptes bloqués ; rien tant qu'elle n'a pas répondu,
+>   rien sans match.
+> - **`app/matches/[bentoId].tsx`** : le titre « Ils ont les mêmes goûts »,
+>   « que toi » ou « que @alice », puis une carte par bento, le Popy, le
+>   pseudo, l'édition ou le nom affiché et ce qu'ils ont en commun ; le tap
+>   ouvre le bento. Les états de chargement, d'erreur et de liste vide. Un
+>   `ScrollView` et non une `FlatList` : vingt lignes au plus, et pas de vues
+>   recyclées dont les rôles se mélangeraient, le défaut trouvé au chantier
+>   19.
+> - **`PrivacySettings`** : « Apparaître dans la recherche » sous « Afficher
+>   mes visites », sa note quand il est éteint. Changé, il invalide les
+>   matchs en cache sur l'appareil, valables 5 minutes sinon.
+>
+> **Recette au simulateur iPhone 17 Pro**, sur le Supabase local, où les
+> bentos de recette se recoupent :
+>
+> - **La pastille** sur le bento de @recettese, « 2 bentos ont les mêmes
+>   goûts que celui-ci », un bouton avec son indication ; sur son propre
+>   bento, « 1 bento a les mêmes goûts que toi » (D12).
+> - **Rien ne bouge** : sans matchs, les deux autres comptes retirés le temps
+>   d'une mesure, l'en-tête de la page est à y = 196 pt et la boîte à
+>   y = 266,7 pt, au point près comme avec la pastille.
+> - **L'écran** : @recette_proprio, trois items en commun, avant
+>   @recette_visites, deux, comme le veulent les scores ; chaque ligne un
+>   seul bouton, « Bento de @recette_proprio : 3 items en commun, Get Lucky,
+>   Kyoto et Squeezie. », indication « Ouvre son bento » ; le titre en tête
+>   de section, ses accents entiers. Le tap ouvre le bento.
+> - **Le réglage** : éteint depuis le profil, la ligne passe à
+>   `searchable = false`, @recette_proprio sort des matchs de @recettese, et
+>   « Trouver » ne le rend plus pour « recette » ; rallumé, il revient.
+>
+> **Tests** : rien de plus en unitaire, 776 pour l'app ; les tests qui lisent
+> le code couvrent les rôles, les libellés et les plafonds de police du
+> nouvel écran.
+>
+> **Pour le lot 5** : l'iPhone SE, le Pixel 8, les grandes tailles de police
+> sur la pastille et l'écran.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226, 192 et
+> 776 ; e2e 38 sur 38 ; build 3 sur 3.
+
 ### Lot 4 · La landing
 
 Le `noindex` et le sitemap, l'e2e.
