@@ -26,6 +26,11 @@
 > et la politique de confidentialité le décrit. Recetté en local contre le
 > Supabase local (§8, lot 2).
 >
+> **Lot 3 fait le 23 octobre 2026** : l'app compte la visite d'une page,
+> affiche le compteur sur la page et le profil, et porte « Afficher mes
+> visites ». Recetté au simulateur iPhone 17 Pro et SE, et à l'émulateur
+> Pixel 8, contre le Supabase local (§8, lot 3).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 8, [le chantier
 > 1](./UX-01-PAGE-BENTO-PUBLIQUE.md) pour la page web, [le chantier
 > 9](./UX-16-PLUSIEURS-BENTOS.md) pour le brouillon local, [le chantier
@@ -283,8 +288,10 @@ Une section **Confidentialité** dans le profil, entre « Notifications » et
   été ouvert.
 
 Allumé par défaut. Éteint, personne d'autre ne voit le chiffre, ni dans
-l'app, ni sur le web, ni par l'API ; le propriétaire le voit toujours, avec
-« visibles par toi seul ». Les visites continuent de se compter. Le réglage
+l'app, ni sur le web, ni par l'API ; le propriétaire le voit toujours, ~~avec
+« visibles par toi seul »~~ **depuis le lot 3**, sans rien de plus sur sa
+ligne d'état, déjà en limite de largeur : c'est l'interrupteur qui le dit,
+« Masquées : toi seul les vois. ». Les visites continuent de se compter. Le réglage
 vaut pour tout le compte. Il rejoindra l'écran de confidentialité quand le
 chantier 20 le créera.
 
@@ -393,10 +400,18 @@ alter table public.bentos
 
 - **La page d'un bento** (`app/u/[pseudo].tsx`, `app/u/[pseudo]/[slug].tsx`)
   appelle `record_bento_visit_app` une fois par affichage d'un bento
-  publié, sauf pour son propriétaire, qui lit `bento_visit_count`. Un échec
-  ne se réessaie pas : une visite perdue vaut mieux qu'une page qui attend.
+  publié, ~~sauf pour son propriétaire, qui lit `bento_visit_count`~~
+  **son propriétaire compris depuis le lot 3** : la base ne compte jamais
+  pour lui et lui rend son total, une seule règle suffit, « la page compte,
+  le profil lit ». Un échec ne se réessaie pas : une visite perdue vaut
+  mieux qu'une page qui attend.
 - **Le profil** ajoute le compteur à la ligne d'état et la section
   Confidentialité.
+- **`src/lib/visits.ts`** (lot 3) : `loadBentoVisits`, ses options React
+  Query (`refetchOnMount: 'always'`, aucun réessai, la valeur en cache
+  affichée en attendant), `withVisits` pour la ligne d'état et
+  `writeShowVisits`. Le libellé, `formatVisits`, vit dans
+  `@bento-pop/supabase-mobile/bento`, partagé avec la landing.
 - **`src/lib/ready-reminder.ts`**, pur et testé sous `node:test` comme
   `push.ts` : un bento est-il prêt, quelle porte s'ouvre, à quelle heure
   tombe le rappel, faut-il l'annuler.
@@ -458,7 +473,7 @@ local et la landing en local :
    aucune de plus.
 4. « 0 visite » sur un bento neuf, dans l'app et sur le web.
 5. Couper « Afficher mes visites » : le chiffre disparaît chez les autres,
-   reste chez soi avec « visibles par toi seul ».
+   reste chez soi, et l'interrupteur dit « Masquées : toi seul les vois. ».
 6. Un brouillon prêt, quitté pour un autre onglet : la question, « Oui »,
    la boîte du système, le rappel programmé à la bonne heure ; avancer
    l'horloge du simulateur, la notification arrive, le tap ouvre le
@@ -576,6 +591,48 @@ affiche dès ce jour, des semaines avant la sortie store.
 
 La visite à l'ouverture d'une page, le compteur sur la page et le profil,
 la section Confidentialité.
+
+> **Fait le 23 octobre 2026**, sur la branche
+> `feat/ux-08-signaux-de-retour-app`, empilée sur celle de la PR #90.
+>
+> - **La page d'un bento** compte sa visite à chaque affichage,
+>   propriétaire compris, la base ne comptant jamais pour lui (§6.3), et
+>   ajoute le compteur à sa ligne de date, comme le web. Le modèle de
+>   `public-layout.ts` ne compte qu'une ligne : elle rétrécit au besoin, et
+>   la hauteur de l'en-tête ne change pas.
+> - **Le profil** lit le compteur du bento courant sans compter de visite :
+>   « En ligne · publié il y a 3 jours · 5 visites ».
+> - **La section Confidentialité**, entre Notifications et Compte, porte
+>   « Afficher mes visites ». Éteint, l'interrupteur dit « Masquées : toi
+>   seul les vois. » (§5.4), et l'écriture se rend si elle échoue, comme les
+>   réglages du chantier 17. Rien sans profil.
+> - **Le libellé** passe dans `@bento-pop/supabase-mobile/bento`, que la
+>   landing réutilise désormais ; la politique de confidentialité décrit le
+>   comptage de l'app.
+>
+> **Tests** : 9 de plus pour l'app, contre le bouchon PostgREST, dont un
+> second affichage qui rappelle la base ; 700 tests sur 700, lint, typage,
+> et 33 tests e2e sur 33 pour la landing.
+>
+> **Recette** au simulateur iPhone 17 Pro, à l'iPhone SE et à l'émulateur
+> Pixel 8, avec un dev client compilé contre le Supabase local (clé de
+> session `sb-127-auth-token` vérifiée dans le stockage de l'app avant toute
+> mesure) :
+>
+> 1. en visiteur, la page affiche « 4 visites », 3 du web et celle qui vient
+>    de compter ; rouverte, la page rappelle la base, deux appels relevés
+>    dans les journaux de la passerelle, et la base garde une visite d'app ;
+> 2. le propriétaire masque ses visites : la ligne s'arrête à la date, sans
+>    séparateur orphelin ;
+> 3. côté propriétaire, le profil et sa propre page affichent 5 visites,
+>    même masquées, et sa visite ne compte pas ;
+> 4. l'interrupteur écrit `show_visits` en base, sur iOS comme sur Android ;
+> 5. sur l'iPhone SE, 343 points de large, la ligne de date avec le compteur
+>    tient en rétrécissant d'environ 5 % ;
+> 6. sur le Pixel 8, page, profil et interrupteur comme sur iOS, « 6
+>    visites » après les trois appareils.
+>
+> Captures dans `.context/screenshots/ux08-lot3-*` du worktree.
 
 ### Lot 4 · L'app : le rappel
 

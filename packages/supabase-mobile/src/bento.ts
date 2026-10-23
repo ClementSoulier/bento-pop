@@ -785,3 +785,15 @@ export type PopyKey = (typeof POPY_KEYS)[number];
 export function popyKeyForPseudo(pseudo: string): PopyKey {
   return POPY_KEYS[stableHash(pseudo.toLowerCase()) % POPY_KEYS.length] ?? 'content';
 }
+
+const VISITS_NUMBER = new Intl.NumberFormat('fr-FR');
+
+/**
+ * « 0 visite », « 1 visite », « 1 234 visites » : le compteur de visites d'un
+ * bento, chantier 8, écrit pareil sur la landing et dans l'app. Zéro et un au
+ * singulier, et une espace insécable entre le nombre et le mot : ils ne se
+ * séparent jamais en fin de ligne.
+ */
+export function formatVisits(count: number): string {
+  return `${VISITS_NUMBER.format(count)}\u00a0${count < 2 ? 'visite' : 'visites'}`;
+}

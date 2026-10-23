@@ -96,6 +96,15 @@ export default function ConfidentialitePage() {
             son bento, ainsi que la date de publication. Visible publiquement.
           </li>
           <li>
+            <strong>Compteur de visites</strong> : quand la page du bento
+            d&apos;un autre compte s&apos;ouvre dans l&apos;app, l&apos;identifiant
+            anonyme est haché (SHA-256) avec le sel du jour, comme sur le site,
+            pour ne compter qu&apos;une visite par jour et par bento ; jamais
+            pour le propriétaire du bento. Le réglage{' '}
+            <em>« Afficher mes visites »</em> du profil masque le compteur aux
+            autres, sans arrêter le comptage.
+          </li>
+          <li>
             <strong>Signalements</strong> (table <code>reports</code>) : si
             l&apos;utilisateur signale un bento ou un pseudo, le motif éventuel
             est conservé pour la modération. Le signalement est lié à

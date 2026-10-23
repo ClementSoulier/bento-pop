@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { bentoRoute } from '@/lib/bento-address';
 import {
   Alert,
@@ -28,7 +29,10 @@ import {
 import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, StampButton, YellowBg, useToast } from '@/components/primitives';
 import { useBlocked } from '@/state/blocked';
 import { userErrorMessage } from '@/lib/user-error-message';
+import { bentoVisitsQueryOptions, withVisits } from '@/lib/visits';
 import { NotificationSettings } from '@/components/NotificationSettings';
+import { PrivacySettings } from '@/components/PrivacySettings';
+import { supabase } from '@/supabase/client';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 const TERMS_URL = 'https://bento-pop.com/mentions-legales';
@@ -54,6 +58,12 @@ export default function ProfileTab() {
   const showToast = useToast((s) => s.show);
   // Triés : l'ordre d'un `Set` est celui des blocages, que personne ne connaît.
   const blocked = useMemo(() => [...blockedPseudos].sort(), [blockedPseudos]);
+  // Chantier 8 : le compteur du bento courant, lu sans compter de visite. Son
+  // propriétaire le voit toujours, même masqué aux autres.
+  const { data: visits } = useQuery({
+    ...bentoVisitsQueryOptions(supabase, current?.id ?? '', 'own'),
+    enabled: Boolean(current?.id && publishedAt),
+  });
 
   const onExport = async () => {
     if (!userId) return;
@@ -208,7 +218,9 @@ export default function ProfileTab() {
                 textTransform: 'uppercase',
               }}
             >
-              {publishedAt ? `En ligne · publié ${relativeDate(publishedAt)}` : 'Pas encore publié'}
+              {publishedAt
+                ? withVisits(`En ligne · publié ${relativeDate(publishedAt)}`, visits)
+                : 'Pas encore publié'}
             </Text>
 
             <View style={{ marginTop: 32, width: '100%', gap: 12 }}>
@@ -296,6 +308,10 @@ export default function ProfileTab() {
           {/* Chantier 17, lot 4 : les deux types de notification, sur ce
               téléphone. Entre « À propos » et « Compte », cf. §5.4. */}
           <NotificationSettings />
+
+          {/* Chantier 8 : « Afficher mes visites », entre « Notifications » et
+              « Compte », cf. §5.4 de sa spécification. */}
+          <PrivacySettings />
 
           {/* Comptes bloqués. Sans cette liste, bloquer était une porte à sens
               unique : le menu qui débloque vit sur la page du compte bloqué,
