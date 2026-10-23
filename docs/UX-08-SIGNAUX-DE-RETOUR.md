@@ -41,9 +41,10 @@
 > **Lot 5 fait le 23 octobre 2026** : la recette de §7.2 parcourue sur les
 > trois appareils avec des comptes neufs, le rappel reçu pour de vrai sur
 > l'émulateur, et un défaut de Safari trouvé et corrigé dans la PR des lots
-> 1 et 2. DoD 11 points sur 13 : restent la comparaison des lectures avant
-> et après la migration, à son application en production, et la CI, qui
-> attend les push (§8, lot 5 ; §10).
+> 1 et 2. DoD 12 points sur 13 : reste la comparaison des lectures avant
+> et après la migration, à son application en production. La CI est
+> rejouée en local, les Actions du dépôt étant désactivées depuis le 23
+> octobre 2026 (§8, lot 5 ; §10).
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 8, [le chantier
 > 1](./UX-01-PAGE-BENTO-PUBLIQUE.md) pour la page web, [le chantier
@@ -792,15 +793,18 @@ chantier 29.
 > `&d=2026-10-23`, que la route ne lit pas (§6.2). Le compteur ne pouvait
 > que sous-compter, jamais gonfler. La branche de l'app est rebasée dessus.
 >
-> - **La DoD point par point** (§10) : 11 points sur 13. Restent la
+> - **La DoD point par point** (§10) : 12 points sur 13. Reste la
 >   comparaison des lectures des versions publiées avant et après la
->   migration, qui se fait à son application en production (§6.4), et la
->   CI, qui attend le push du correctif et la seconde PR.
+>   migration, qui se fait à son application en production (§6.4).
 > - **La roadmap** : la ligne du chantier, l'en-tête de son §8, son « fait
 >   quand » revu par D1 et D5, et la part du chantier 29.
 > - **Qualité**, sous Node 20, sans cache, sur la branche rebasée : 19
 >   tâches vertes, 726 tests pour l'app, 177 pour la landing, 226 pour
 >   l'admin ; l'e2e de la landing à part, 33 sur 33 sur les deux branches.
+> - **La CI, rejouée en local** sur la tête des deux PR, les Actions du
+>   dépôt étant désactivées depuis le 23 octobre 2026 : les six étapes de
+>   `ci.yml`, sans cache, install, lint, typage, tests, e2e et build,
+>   vertes sur `8902ee0` et sur `60b9c25`.
 >
 > **Ce que la recette locale ne montre pas** : la purge de 3 h 40 tournant
 > pour de bon, à relever en lecture seule le lendemain de la mise en
@@ -817,8 +821,8 @@ chantier 29.
 ## 9. Livraison
 
 - **Deux PR** : lots 1 et 2, la #90, avec le correctif du témoin trouvé au
-  lot 5 (`8902ee0`, à pousser) ; puis lots 3 à 5, sur
-  `feat/ux-08-signaux-de-retour-app`, rebasée sur la première.
+  lot 5 (`8902ee0`) ; puis lots 3 à 5, la #91, empilée sur la #90, sa base
+  à basculer sur `main` après la fusion de la #90.
 - **En production après la première** : la migration, prouvée compatible
   avant ; le secret `bento_visit_secret` dans le coffre du Supabase mobile ;
   `BENTO_VISIT_SECRET` sur la landing, au runtime ; la landing redéployée
@@ -855,13 +859,14 @@ chantier 29.
       leurs lectures sont identiques avant et après la migration
 - [x] La politique de confidentialité décrit le compteur avant le premier
       comptage en production
-- [ ] Tests, typage et lint verts sur l'app, la landing et le package, CI
+- [x] Tests, typage et lint verts sur l'app, la landing et le package, CI
       verte
 
-**Point par point au 23 octobre 2026, au lot 5** : 11 points faits sur 13,
+**Point par point au 23 octobre 2026, au lot 5** : 12 points faits sur 13,
 en local, sur trois appareils. Le point 11 attend l'application de la
-migration en production, où se comparent les lectures avant et après ; le
-point 13, le push du correctif de la #90 et la seconde PR.
+migration en production, où se comparent les lectures avant et après. Le
+point 13 se prouve par la CI rejouée en local : les Actions du dépôt sont
+désactivées depuis le 23 octobre 2026.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |
@@ -877,7 +882,7 @@ point 13, le push du correctif de la #90 et la seconde PR.
 | 10 | Fait | Sur Android, la vraie notification tapée fait passer le composer de « Mon bento » au bento du rappel ; sur iOS, l'arrivée simulée fait de même, brouillon compris (lot 5, geste 6) |
 | 11 | En partie | `check-privileges.ts` conforme (lot 1). Les lectures des versions publiées, relues sur `6426779` : celles de `bentos` sont des listes de colonnes, inchangées ; le `select('*')` de `users` reçoit un champ de plus, `show_visits`, que la 1.1 ne lit pas. La comparaison avant et après se fait à l'application en production (§6.4) |
 | 12 | Fait | `/confidentialite`, revue aux lots 2 et 3 : ce qui est haché, pourquoi, combien de temps, dans l'app et sur le web. Elle part dans le même déploiement que l'image de comptage, qui ne compte rien avant que `BENTO_VISIT_SECRET` soit posé |
-| 13 | En local | Lint, typage et tests verts, 19 tâches, et e2e 33 sur 33, sur la branche rebasée. CI verte sur la #90 à `b9ebae8` ; elle attend le push de `8902ee0`, et la seconde PR |
+| 13 | Fait, CI rejouée en local | Les six étapes de `ci.yml`, sans cache, sur la tête de la #90 (`8902ee0`) et de la #91 (`60b9c25`) : install, lint, typage, tests (app 691 puis 726, landing 177, admin 226), e2e 33 sur 33, build. Sur GitHub, la #90 était verte à `b9ebae8`, avant la désactivation des Actions |
 
 ---
 
