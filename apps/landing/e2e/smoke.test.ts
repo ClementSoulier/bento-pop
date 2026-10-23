@@ -367,10 +367,16 @@ describe('compteur de visites', () => {
 
   it('compte la visite par une image, sans JavaScript', async () => {
     const html = await (await get('/u/keremasan')).text();
-    assert.ok(html.includes(`src="/api/bento-opened?b=${bentoId(1)}"`), 'image de comptage absente');
+    // Le jour dans l'adresse, que React échappe en `&amp;` : sans lui, Safari
+    // ressert l'image de la veille sans la redemander.
+    assert.match(
+      html,
+      new RegExp(`src="/api/bento-opened\\?b=${bentoId(1)}&amp;d=\\d{4}-\\d{2}-\\d{2}"`),
+      'image de comptage absente, ou sans le jour',
+    );
 
     await resetStub();
-    const res = await pixel(`?b=${bentoId(1)}`);
+    const res = await pixel(`?b=${bentoId(1)}&d=2026-10-23`);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('content-type'), 'image/gif');
     assert.match(res.headers.get('cache-control') ?? '', /no-store/);

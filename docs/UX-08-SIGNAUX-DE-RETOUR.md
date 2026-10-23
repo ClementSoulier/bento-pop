@@ -361,8 +361,11 @@ alter table public.bentos
 > un composant client, et la dernière adresse de `X-Forwarded-For` plutôt
 > que la première. Ce qui suit décrit ce qui est construit.
 
-- **`GET /api/bento-opened?b=<id>`**, appelée par `<VisitBeacon>`, une
-  image d'un pixel que rend la page, composant serveur. Lit l'adresse IP
+- **`GET /api/bento-opened?b=<id>&d=<jour>`**, appelée par `<VisitBeacon>`,
+  une image d'un pixel que rend la page, composant serveur. Le jour de
+  Paris dans l'adresse n'est qu'une clé de cache, que la route ne lit pas :
+  Safari ressert l'image depuis son cache mémoire, `no-store` ou pas, et ne
+  la redemanderait pas le lendemain (recette du lot 5). Lit l'adresse IP
   (`X-Forwarded-For`, **dernière** valeur, celle que pose le proxy de
   Coolify ; les premières peuvent venir du visiteur) et le navigateur,
   écarte les robots connus et les préchargements (`Sec-Purpose: prefetch`),

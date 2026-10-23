@@ -5,7 +5,9 @@ import { createMobileAnonClient } from '@/lib/supabase/mobile';
 /**
  * Une page de bento ouverte dans un navigateur, chantier 8.
  *
- * Appelée par l'image d'un pixel que rend `VisitBeacon`, `?b=<id du bento>`.
+ * Appelée par l'image d'un pixel que rend `VisitBeacon`, `?b=<id du bento>`
+ * et `&d=<jour>`. Le jour n'est là que pour le cache de Safari, cf.
+ * `beaconDay` : la route ne le lit pas.
  * La visite se compte dans le Supabase mobile par `record_bento_visit_web`,
  * avec le secret `BENTO_VISIT_SECRET` : la clé anonyme, publique dans chaque
  * copie de l'app, ne suffit pas à gonfler un compteur (D15).

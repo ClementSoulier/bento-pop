@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  beaconDay,
   clientAddress,
   formatVisits,
   isBotUserAgent,
@@ -121,6 +122,21 @@ describe('visitFingerprint', () => {
   it('assemble l’adresse et le navigateur, dans la limite de la base', () => {
     assert.equal(visitFingerprint('203.0.113.7', 'UA'), '203.0.113.7|UA');
     assert.equal(visitFingerprint('203.0.113.7', 'x'.repeat(5000)).length, 1024);
+  });
+});
+
+describe('beaconDay', () => {
+  it('rend le jour de Paris, minuit compris', () => {
+    // Heure d'été : Paris a deux heures d'avance sur UTC.
+    assert.equal(beaconDay(new Date('2026-10-23T21:59:00Z')), '2026-10-23');
+    assert.equal(beaconDay(new Date('2026-10-23T22:00:00Z')), '2026-10-24');
+    // Heure d'hiver, et un changement d'année.
+    assert.equal(beaconDay(new Date('2026-12-31T23:30:00Z')), '2027-01-01');
+  });
+
+  it('suit le passage à l’heure d’hiver du 25 octobre 2026', () => {
+    assert.equal(beaconDay(new Date('2026-10-25T22:59:00Z')), '2026-10-25');
+    assert.equal(beaconDay(new Date('2026-10-25T23:00:00Z')), '2026-10-26');
   });
 });
 

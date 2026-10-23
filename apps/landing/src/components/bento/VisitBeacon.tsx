@@ -1,3 +1,5 @@
+import { beaconDay } from '@/lib/bento/visits';
+
 /**
  * Compte la visite d'une page de bento, sans JavaScript. Chantier 8.
  *
@@ -12,9 +14,11 @@ export function VisitBeacon({ bentoId }: { bentoId: string }) {
   return (
     // Un pixel de comptage, pas une image à optimiser : `next/image` le
     // réécrirait vers son optimiseur, qui ne le transmettrait pas à la route.
+    // Le jour dans l'adresse : sans lui, Safari ne la redemande pas le
+    // lendemain, cf. `beaconDay`.
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/api/bento-opened?b=${encodeURIComponent(bentoId)}`}
+      src={`/api/bento-opened?b=${encodeURIComponent(bentoId)}&d=${beaconDay()}`}
       alt=""
       aria-hidden
       width={1}

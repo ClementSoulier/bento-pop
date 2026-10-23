@@ -88,6 +88,26 @@ export function visitFingerprint(address: string, userAgent: string): string {
   return `${address}|${userAgent}`.slice(0, FINGERPRINT_MAX);
 }
 
+const PARIS_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Paris',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/**
+ * Le jour de Paris, `2026-10-23`, que porte l'adresse de l'image de comptage.
+ *
+ * Safari ressert l'image depuis son cache mémoire, `no-store` ou pas, tant
+ * qu'il n'est pas relancé : recette du lot 5, la page rechargée et l'image
+ * jamais redemandée. Une adresse par jour, le pas du dédoublonnage, suffit à
+ * ce qu'il la redemande le lendemain. La route n'en lit rien : le jour qui
+ * compte est celui de la base.
+ */
+export function beaconDay(now: Date = new Date()): string {
+  return PARIS_DAY.format(now);
+}
+
 /**
  * Ce qu'est devenue une visite. Renvoyé dans l'en-tête `X-Bento-Visit` de la
  * réponse, pour le diagnostic et les tests : l'image, elle, est toujours la
