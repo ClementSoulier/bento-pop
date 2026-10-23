@@ -1,5 +1,7 @@
 export { FeedPost } from './FeedPost';
+export { FeedEpisodePost } from './FeedEpisodePost';
 export { FEATURED_RIBBON, GUEST_RIBBON, ribbonFor, type FeedRibbon } from './ribbon';
+export { FeedLabel } from './FeedLabel';
 export { FeedPostHeader } from './FeedPostHeader';
 export { FeedPostSkeleton } from './FeedPostSkeleton';
 export {

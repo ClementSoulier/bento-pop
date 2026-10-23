@@ -6,8 +6,8 @@
 > production.
 >
 > **Arbitrages rendus le 23 octobre 2026**, les cinq premiers de §11, les huit
-> suivants pris par la spécification, D13 au lot 1, et ouverts à la
-> contestation. En résumé :
+> suivants pris par la spécification, D13 au lot 1, D14 au lot 3, et ouverts à
+> la contestation. En résumé :
 > tous les épisodes publiés entrent dans « La table », chacun à sa date, parmi
 > les bentos et sans épinglage ; un épisode y prend la forme de la carte
 > d'épisode de la landing ; son tap ouvre la plateforme, YouTube pour
@@ -24,6 +24,10 @@
 > validation de chaque épisode et sa fusion par date avec les bentos, pures et
 > testées, et `EXPO_PUBLIC_LANDING_URL`. Rien encore à l'écran : le lot 3 les
 > branche sur « La table » (§8, lot 2).
+>
+> **Lot 3 fait le 23 octobre 2026** : la carte, son tap et les épisodes dans
+> « La table », recettés au simulateur sur les 40 épisodes réels. Le fil attend
+> ses épisodes au plus une seconde après ses bentos (D14, §8, lot 3).
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 19, [le chantier
 > 2](./UX-02-FIL-LA-TABLE.md) pour le fil et [le chantier
@@ -182,8 +186,9 @@ YouTube.
 - **La carte d'épisode de la landing**, à la largeur des boîtes du fil :
   vignette 16:9, YouTube pour l'émission, la vignette du podcast sinon un fond
   plein et un pictogramme ; pastille « S2 · E5 » en haut à gauche ; durée en
-  bas à droite ; titre sur trois lignes au plus. Environ 300 pt de haut sur un
-  iPhone 15, contre 614 pour un bento.
+  bas à droite ; titre sur trois lignes au plus ; **puis où mène le tap, à la
+  place de la date que porte l'étiquette (lot 3)**. Environ 300 pt de haut sur
+  un iPhone 15, contre 614 pour un bento.
 - **Ni animateurs ni invités sur la carte** (D7).
 
 ### 5.3 Le tap (D3, D8)
@@ -206,8 +211,9 @@ YouTube.
 ### 5.4 Quand la landing ne répond pas (D9)
 
 Le fil s'affiche sans épisode, sans message : les bentos sont le fil, les
-épisodes un ajout. La prochaine ouverture de l'onglet, ou un tirer pour
-rafraîchir, les redemande.
+épisodes un ajout. ~~La prochaine ouverture de l'onglet~~ **Le prochain
+lancement de l'app**, ou un tirer pour rafraîchir, les redemande **: l'onglet
+reste monté, comme pour les bentos (lot 3)**.
 
 ---
 
@@ -266,9 +272,10 @@ rafraîchir, les redemande.
   n'ayant pas le même format.
 - **`table.tsx`** : une seconde requête, `useQuery(['episodes'])`, valable 5
   minutes et refaite au tirer pour rafraîchir ; la liste rend des éléments
-  `bento` ou `episode`, de clés `bento:<id>` et `episode:<kind>:<id>`.
-- **`src/components/feed/FeedEpisode.tsx`** : la carte, son étiquette et son
-  tap, `Linking.openURL`.
+  `bento` ou `episode`, de clés `bento:<id>` et `episode:<kind>:<id>`. **Le
+  fil attend les épisodes au plus une seconde après ses bentos (D14, lot 3).**
+- **`src/components/feed/~~FeedEpisode.tsx~~ FeedEpisodePost.tsx`** (lot 3) :
+  la carte, son étiquette et son tap, `Linking.openURL`.
 - **`EXPO_PUBLIC_LANDING_URL`** (D12), par défaut `https://bento-pop.com`,
   compilée dans l'app comme l'adresse Supabase.
 
@@ -463,6 +470,101 @@ La route, ses tests, la politique de confidentialité.
 
 `FeedEpisode`, son étiquette, le tap, `table.tsx`, l'accessibilité.
 
+> **Fait le 23 octobre 2026**, sur la même branche.
+>
+> - **`src/components/feed/FeedEpisodePost.tsx`** : l'étiquette, la carte et
+>   le tap. La carte reprend celle du site à la largeur des boîtes : bordure de
+>   4, rayon de 22, ombre stamp, vignette 16:9 sur fond plein, pastille et
+>   durée en chasse fixe, titre en Fredoka sur trois lignes au plus. Le tap
+>   passe par `Linking.openURL`. Un seul élément pour VoiceOver et TalkBack,
+>   de rôle lien, avec son libellé et l'indication du tap.
+> - **`src/components/feed/FeedLabel.tsx`** : l'étiquette des posts, sortie
+>   de `FeedPostHeader`, qui garde son interface et son rendu. Celle d'un
+>   épisode porte le Popy de la marque sur son jaune, « Bento Pop ·
+>   Émission » ou « Bento Pop · Podcast », et la date relative.
+> - **`app/(tabs)/table.tsx`** : la requête des épisodes à côté de celle des
+>   bentos, la fusion, une liste d'éléments `bento` ou `episode`, et le tirer
+>   pour rafraîchir qui redemande les deux.
+>
+> **Cinq écarts à la spécification** :
+>
+> 1. **`FeedEpisodePost.tsx` et non `FeedEpisode.tsx`** : `FeedEpisode` est
+>    déjà le nom du type, et `table.tsx` importe les deux.
+> 2. **La dernière ligne de la carte dit où mène le tap**, « Regarder sur
+>    YouTube ↗ », « Écouter sur Spotify ↗ », à la place de la date de la
+>    carte du site, que porte l'étiquette comme pour un bento. Le tap quitte
+>    l'app : la carte le dit avant.
+> 3. **D14, le fil attend ses épisodes au plus une seconde.** Sans attente,
+>    des épisodes arrivés après les bentos pousseraient d'un écran un fil déjà
+>    affiché, l'épisode le plus récent se plaçant souvent en tête. Au-delà
+>    d'une seconde, le fil s'affiche sans eux, et ils s'insèrent à leur
+>    arrivée.
+> 4. **L'étiquette réserve la place des accents d'Extenda**
+>    (`extendaAccentRoom`), comme les titres du chantier 11 : sans elle, le
+>    « É » d'« ÉMISSION » serait rogné. Nulle pour un pseudo, elle ne change
+>    rien aux bentos.
+> 5. **Le titre à 22 pt d'interligne**, et non aux 1,15 em du site : sous la
+>    hauteur naturelle de Fredoka, 1,21 em, iOS rognerait les accents des
+>    capitales. La pastille, la durée et la dernière ligne prennent Menlo sur
+>    iOS et la chasse fixe du système sur Android, comme `font-mono` sur le
+>    site : la première police à chasse fixe de l'app.
+>
+> **Tests** : 2 unitaires de plus, 33 pour les épisodes et la fusion, 759
+> pour l'app. Sept défauts introduits exprès, tous attrapés : un podcast
+> qu'on « regarderait », une émission du site qu'on « regarderait », les
+> étiquettes inversées et le site sans son nom (unitaires), puis une carte
+> sans rôle, une carte sans libellé et une pastille sans plafond de police
+> (les tests qui lisent le code). L'attente et la fusion dans `table.tsx`
+> n'ont pas de test unitaire : elles sont mesurées à la recette ci-dessous.
+>
+> **Recette au simulateur iPhone 17 Pro**, sur un banc aux données réelles :
+> les 40 épisodes reconstitués depuis les pages publiques enregistrées au
+> lot 1, servis par un bouchon à la route de la landing de ce worktree, l'app
+> sur le Supabase local. Trois dates déplacées parmi les bentos locaux du
+> 23 octobre, pour voir la fusion.
+>
+> - **La route rend les 40 épisodes**, 20 sur YouTube, 17 sur Spotify et 3
+>   sur le site, comme prédit au lot 1.
+> - **Le fil** : l'émission de 19 h 30 en tête, au-dessus du bento de
+>   18 h 37 ; le podcast de 17 h 15 entre les bentos de 17 h 42 et de
+>   16 h 54 ; l'émission de 16 h 30 après eux ; puis les 37 autres, de
+>   janvier à octobre, après le dernier bento. Le bento local
+>   d'« invite5311806 », sans case, n'y est pas : le fil écarte déjà les
+>   bentos vides (`mapFeedRow`).
+> - **Mesuré au pixel** : la carte fait 338 pt de large, comme la boîte d'un
+>   bento ; bordure de 4 pt ; vignette de 330 × 186 pt, du 16:9 ; l'accent du
+>   « É » entier. Un titre trop long s'arrête sur trois lignes, par des points
+>   de suspension.
+> - **Le tap** : la carte Spotify ouvre `open.spotify.com` et l'émission
+>   `youtube.com`, dans Safari faute des apps au simulateur, avec le retour
+>   vers l'app. Le podcast pas encore repris ouvre
+>   `http://127.0.0.1:3212/podcasts/du-mont-fuji-…`, sa page sur la landing
+>   compilée (D13) ; le 404 qu'elle y rend vient du bouchon, qui ignore les
+>   filtres de la page.
+> - **L'accessibilité**, lue dans l'arbre d'iOS : un seul élément, de rôle
+>   lien, « Podcast Bento Pop, saison 2, épisode 1 : … 23 minutes. Publié il
+>   y a 1 mois. », avec l'indication « S'ouvre dans Spotify. ».
+> - **D9 et D14, mesurés à la milliseconde** par un journal provisoire,
+>   retiré depuis :
+>   - landing à 0,6 s : bentos à +38 ms, fil en attente, puis tout d'un coup
+>     à +0,78 s, sans saut ;
+>   - landing à 4 s : bentos à +37 ms, fil affiché sans épisode à +1,1 s,
+>     épisodes insérés à +4,2 s ;
+>   - landing à 7 s : fil sans épisode à +1,1 s, abandon des épisodes à
+>     +5,1 s, sans message ;
+>   - landing coupée : le fil, sans épisode et sans message.
+> - **Le cache HTTP d'iOS garde la réponse de la route une minute**
+>   (`max-age=60`), d'un lancement à l'autre : relancée dans la minute,
+>   l'app a lu ses épisodes en 17 ms.
+>
+> **Pour le lot 4** : l'iPhone SE, l'émulateur Pixel 8, VoiceOver et TalkBack
+> à la voix, les grandes tailles de police, et l'épisode programmé qui
+> apparaît une fois sa date passée (§7.2).
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226 pour
+> l'admin, 192 pour la landing, 759 pour l'app ; e2e 38 sur 38 ; build 3 sur
+> 3.
+
 ### Lot 4 · Recette et documents
 
 La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
@@ -516,6 +618,7 @@ La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
 | **D11** | La route ne rend que les champs que la carte affiche | Pris par la spécification. Ni description, ni invités, ni œuvres citées, ni lien audio : ils viendront avec leur usage |
 | **D12** | L'adresse de la landing devient une variable compilée de l'app, `bento-pop.com` par défaut | Pris par la spécification. La recette doit pouvoir pointer une landing locale, comme elle pointe le Supabase local |
 | **D13** | Un épisode que sa plateforme n'a pas encore repris garde sa place dans le fil, et s'ouvre sur sa page du site | Pris au lot 1, sur les données réelles : 3 podcasts sur 20, dont le plus récent, n'ont qu'un marqueur `A_REMPLACER` au lieu de leur identifiant Spotify. Les écarter contredirait D1 ; leur page du site les lit avec son propre fichier |
+| **D14** | Le fil attend ses épisodes au plus une seconde après ses bentos | Pris au lot 3, sur une mesure : les deux requêtes répondent en des temps voisins, de 125 à 210 ms pour la landing, de 145 à 175 ms pour le Supabase de l'app. Arrivés après, les épisodes pousseraient d'un écran un fil déjà affiché, l'épisode le plus récent se plaçant souvent en tête ; au-delà d'une seconde, le fil s'affiche sans eux (D9) |
 
 ---
 

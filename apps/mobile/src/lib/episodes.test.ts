@@ -3,8 +3,10 @@ import { describe, it } from 'node:test';
 import {
   DEFAULT_LANDING_URL,
   episodeAccessibilityLabel,
+  episodeActionLabel,
   episodeBadgeLabel,
   episodeDurationLabel,
+  episodeLabelTitle,
   episodeOpenHint,
   episodesQueryOptions,
   isAllowedOpenUrl,
@@ -329,5 +331,25 @@ describe('libellés', () => {
     assert.equal(episodeOpenHint('youtube'), 'S’ouvre dans YouTube.');
     assert.equal(episodeOpenHint('apple'), 'S’ouvre dans Apple Podcasts.');
     assert.equal(episodeOpenHint('site'), 'S’ouvre sur bento-pop.com.');
+  });
+
+  it('signe l’étiquette du type, comme le pseudo d’un bento', () => {
+    assert.equal(episodeLabelTitle('show'), 'Bento Pop · Émission');
+    assert.equal(episodeLabelTitle('podcast'), 'Bento Pop · Podcast');
+  });
+
+  it('écrit sur la carte ce que fait le tap, et où', () => {
+    assert.equal(episodeActionLabel(show), 'Regarder sur YouTube');
+    assert.equal(episodeActionLabel(podcast), 'Écouter sur Spotify');
+    assert.equal(
+      episodeActionLabel({ kind: 'podcast', platform: 'apple' }),
+      'Écouter sur Apple Podcasts',
+    );
+    // D13 : un épisode que sa plateforme n'a pas repris s'ouvre sur le site.
+    assert.equal(
+      episodeActionLabel({ kind: 'podcast', platform: 'site' }),
+      'Écouter sur bento-pop.com',
+    );
+    assert.equal(episodeActionLabel({ kind: 'show', platform: 'site' }), 'Voir sur bento-pop.com');
   });
 });

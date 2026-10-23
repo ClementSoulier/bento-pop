@@ -47,6 +47,17 @@ export const EPISODES_TIMEOUT_MS = 5000;
 /** Les épisodes valent 5 minutes, et se redemandent au tirer pour rafraîchir. */
 export const EPISODES_STALE_MS = 5 * 60 * 1000;
 
+/**
+ * Ce que le fil attend les épisodes, une fois ses bentos arrivés, avant de
+ * s'afficher sans eux. Les deux requêtes partent ensemble et répondent en des
+ * temps voisins : mesuré le 23 octobre 2026, 125 à 210 ms pour la landing
+ * (`feed.xml`), 145 à 175 ms pour le Supabase de l'app, une connexion à 1,03 s.
+ * Sans attente, un épisode arrivé après les bentos s'insère au-dessus d'un fil
+ * déjà affiché et le pousse d'un écran. Au-delà, une landing lente ou en panne
+ * ne retient pas le fil davantage (D9).
+ */
+export const EPISODES_GRACE_MS = 1000;
+
 export const DEFAULT_LANDING_URL = 'https://bento-pop.com';
 
 type ParsedUrl = { protocol: 'http' | 'https'; host: string; path: string };
@@ -281,4 +292,28 @@ const OPEN_HINTS: Record<EpisodePlatform, string> = {
 /** L'indication d'accessibilité : où mène le tap. */
 export function episodeOpenHint(platform: EpisodePlatform): string {
   return OPEN_HINTS[platform];
+}
+
+/** Le titre de l'étiquette posée au-dessus de la carte, comme le pseudo d'un bento. */
+export function episodeLabelTitle(kind: FeedEpisode['kind']): string {
+  return kind === 'show' ? 'Bento Pop · Émission' : 'Bento Pop · Podcast';
+}
+
+const PLATFORM_NAMES: Record<EpisodePlatform, string> = {
+  youtube: 'YouTube',
+  spotify: 'Spotify',
+  deezer: 'Deezer',
+  apple: 'Apple Podcasts',
+  site: 'bento-pop.com',
+};
+
+/**
+ * La dernière ligne de la carte, à la place de la date de la carte du site,
+ * que porte l'étiquette : le tap quitte l'app, la carte dit pour où.
+ * « Regarder sur YouTube », « Écouter sur Spotify ».
+ */
+export function episodeActionLabel(episode: Pick<FeedEpisode, 'kind' | 'platform'>): string {
+  const verb =
+    episode.kind === 'podcast' ? 'Écouter' : episode.platform === 'site' ? 'Voir' : 'Regarder';
+  return `${verb} sur ${PLATFORM_NAMES[episode.platform]}`;
 }
