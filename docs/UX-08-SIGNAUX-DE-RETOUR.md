@@ -38,6 +38,13 @@
 > compte, et son tap ramène au composer. Recetté au simulateur iPhone 17 Pro
 > et SE, et à l'émulateur Pixel 8, contre le Supabase local (§8, lot 4).
 >
+> **Lot 5 fait le 23 octobre 2026** : la recette de §7.2 parcourue sur les
+> trois appareils avec des comptes neufs, le rappel reçu pour de vrai sur
+> l'émulateur, et un défaut de Safari trouvé et corrigé dans la PR des lots
+> 1 et 2. DoD 11 points sur 13 : restent la comparaison des lectures avant
+> et après la migration, à son application en production, et la CI, qui
+> attend les push (§8, lot 5 ; §10).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 8, [le chantier
 > 1](./UX-01-PAGE-BENTO-PUBLIQUE.md) pour la page web, [le chantier
 > 9](./UX-16-PLUSIEURS-BENTOS.md) pour le brouillon local, [le chantier
@@ -484,10 +491,11 @@ local et la landing en local :
 5. Couper « Afficher mes visites » : le chiffre disparaît chez les autres,
    reste chez soi, et l'interrupteur dit « Masquées : toi seul les vois. ».
 6. Un brouillon prêt, quitté pour un autre onglet : la question, « Oui »,
-   la boîte du système, le rappel programmé à la bonne heure ; ~~avancer
-   l'horloge du simulateur, la notification arrive~~ **la date lue dans le
-   journal de SpringBoard, l'arrivée simulée par `xcrun simctl push`
-   (lot 4)**, le tap ouvre le composer.
+   la boîte du système, le rappel programmé à la bonne heure ; avancer
+   l'horloge ~~du simulateur~~ **de l'émulateur, par ses Réglages : celle du
+   simulateur suit le Mac, et iOS se contente de la date lue dans le journal
+   de SpringBoard et d'une arrivée simulée par `xcrun simctl push` (lots 4
+   et 5)**, la notification arrive, le tap ouvre le composer.
 7. Même chose depuis l'écran du pseudo, puis par le lien.
 8. Publier avant l'heure : le rappel ne vient pas.
 9. Lire la base après chaque geste : aucune empreinte en clair, les clés
@@ -755,46 +763,121 @@ l'annulation, le tap.
 La recette de §7.2, la DoD point par point, la roadmap, la liste du
 chantier 29.
 
+> **Fait le 23 octobre 2026**, sur la branche
+> `feat/ux-08-signaux-de-retour-app`, rebasée sur le correctif ci-dessous.
+>
+> **La recette de §7.2**, au simulateur iPhone 17 Pro et SE et à l'émulateur
+> Pixel 8, sur le Supabase local et la landing en local, avec deux comptes
+> neufs créés par l'interface jusqu'au pseudo : `recette_android3` sur le
+> Pixel, `recettese` sur le SE. L'iPhone 17 Pro visite, sous
+> `recette_proprio`.
+>
+> | # | Geste | Constaté |
+> | --- | --- | --- |
+> | 1 | Le bento de `recette_android3` depuis La table, puis Trouver, puis un lien `bentopop://`, sur l'iPhone 17 Pro | La table seule ne compte rien. La première ouverture compte une visite d'app, la page dit « 3 visites ». Trouver et le lien appellent `record_bento_visit_app`, réponse 200 au journal de la passerelle, sans rien ajouter |
+> | 2 | Le propriétaire ouvre sa page, sur le Pixel | « 3 visites », l'appel part, rien ne s'ajoute |
+> | 3 | La page web dans Chromium, puis dans Safari du SE, chacune rechargée | Une visite web, puis deux ; rien de plus au rechargement. `facebookexternalhit`, WhatsApp, Twitterbot et Discordbot : `X-Bento-Visit: bot`, rien en base |
+> | 4 | Un bento neuf | « 0 visite » sur le web, juste après la publication, et sur la page de l'app |
+> | 5 | « Afficher mes visites » coupé sur le Pixel | `show_visits` faux en base ; plus de chiffre dans l'app de l'iPhone 17 Pro ni sur le web, `bento_visit_count` nul en `anon` ; le profil du propriétaire garde « 3 visites » ; « Masquées : toi seul les vois. ». Rallumé ensuite |
+> | 6 | Un brouillon prêt sur le SE, quitté pour La table ; un bento prêt sur le Pixel, son lien | iOS : la question, « Oui », `ready-bento:draft` programmé pour le 24 octobre à 18 h, puis l'arrivée simulée et son tap : le composer. Android, **la vraie notification** : l'horloge de l'émulateur avancée au 24 octobre à 19 h 05, le rappel de « rappel-android » arrive sur le canal « Rappels », avec son texte ; l'horloge rendue, son tap fait passer le composer de « Mon bento » à « rappel-android » |
+> | 7 | Retour de l'écran du pseudo, puis le lien, sur le SE | La question au retour ; « Non merci », le lien disparaît aussitôt ; puis le lien, « On te le rappelle demain à 18 h. ». Sur le Pixel, la question au départ, la boîte d'Android, l'alarme au 24 octobre à 18 h |
+> | 8 | Publier avant l'heure, rendre incomplet, dépublier | Publié par l'écran du pseudo, sur le SE comme sur le Pixel : le rappel tombe, plus rien en attente. Une case vidée de « rappel-libre » fait tomber le sien. Le bento dépublié dit « Publier mon bento », sans lien ni question au départ |
+> | 9 | La base, après chaque geste | Trois tables sans texte en clair, des empreintes de 32 octets ; aucune adresse, aucun navigateur ni identifiant de compte retrouvé. La purge du lendemain, simulée dans une transaction annulée : les 9 clés et le sel effacés, les 19 visites gardées ; `visits-purge` programmée à 3 h 40. La clé anonyme seule : « Secret refusé. », `42501` |
+>
+> **Un défaut trouvé, corrigé dans la PR des lots 1 et 2**, sur le choix de
+> Clément (`8902ee0`) : Safari ressert l'image de comptage depuis son cache
+> mémoire, `no-store` ou pas. La page rechargée ou rouverte ne la redemande
+> pas, et un visiteur Safari revenu un autre jour, sans avoir relancé
+> Safari, n'était pas recompté. L'adresse porte désormais le jour de Paris,
+> `&d=2026-10-23`, que la route ne lit pas (§6.2). Le compteur ne pouvait
+> que sous-compter, jamais gonfler. La branche de l'app est rebasée dessus.
+>
+> - **La DoD point par point** (§10) : 11 points sur 13. Restent la
+>   comparaison des lectures des versions publiées avant et après la
+>   migration, qui se fait à son application en production (§6.4), et la
+>   CI, qui attend le push du correctif et la seconde PR.
+> - **La roadmap** : la ligne du chantier, l'en-tête de son §8, son « fait
+>   quand » revu par D1 et D5, et la part du chantier 29.
+> - **Qualité**, sous Node 20, sans cache, sur la branche rebasée : 19
+>   tâches vertes, 726 tests pour l'app, 177 pour la landing, 226 pour
+>   l'admin ; l'e2e de la landing à part, 33 sur 33 sur les deux branches.
+>
+> **Ce que la recette locale ne montre pas** : la purge de 3 h 40 tournant
+> pour de bon, à relever en lecture seule le lendemain de la mise en
+> service ; le comptage web en production, au déploiement (§9) ; et ce qui
+> demande un vrai téléphone, versé au chantier 29. L'émulateur a redémarré
+> son système une fois, la machine chargée de trois appareils, de Metro, de
+> la landing et de Docker : rien de l'app n'en est la cause, et le compte
+> est resté. Le plantage natif du lot 4 ne s'est pas reproduit.
+>
+> Captures dans `.context/screenshots/ux08-lot5-*` du worktree.
+
 ---
 
 ## 9. Livraison
 
-- **Deux PR** : lots 1 et 2, puis lots 3 à 5.
+- **Deux PR** : lots 1 et 2, la #90, avec le correctif du témoin trouvé au
+  lot 5 (`8902ee0`, à pousser) ; puis lots 3 à 5, sur
+  `feat/ux-08-signaux-de-retour-app`, rebasée sur la première.
 - **En production après la première** : la migration, prouvée compatible
   avant ; le secret `bento_visit_secret` dans le coffre du Supabase mobile ;
   `BENTO_VISIT_SECRET` sur la landing, au runtime ; la landing redéployée
   sur Coolify ; une visite contrôlée de bout en bout sur
-  bento-pop.com.
+  bento-pop.com. **Le lendemain**, en lecture seule : la purge de 3 h 40 a
+  tourné, et `bento_visit_keys` ne garde que le jour (lot 5).
+- **Dans cet ordre** : aucun build de l'app pointé sur la production avant
+  la migration, l'app des lots 3 à 5 lisant `first_published_at` (lot 4).
 - **À la sortie store** : le compteur et le rappel dans l'app.
 
 ---
 
 ## 10. Definition of Done
 
-- [ ] Une page web de bento publié compte une visite, une seule par
+- [x] Une page web de bento publié compte une visite, une seule par
       personne et par jour ; un robot d'aperçu n'en compte aucune
-- [ ] Une page ouverte dans l'app compte une visite, une par compte et par
+- [x] Une page ouverte dans l'app compte une visite, une par compte et par
       jour ; le propriétaire n'en compte jamais
-- [ ] Le défilement de La table ne compte rien
-- [ ] Le compteur se lit sur la page du bento, dans l'app et sur le web, et
+- [x] Le défilement de La table ne compte rien
+- [x] Le compteur se lit sur la page du bento, dans l'app et sur le web, et
       sur le profil, « 0 visite » compris
-- [ ] « Afficher mes visites » coupé : personne d'autre ne voit le chiffre,
+- [x] « Afficher mes visites » coupé : personne d'autre ne voit le chiffre,
       ni dans l'app, ni sur le web, ni par l'API ; le propriétaire le voit
-- [ ] Aucune empreinte n'est stockée en clair ; les clés et le sel d'un jour
+- [x] Aucune empreinte n'est stockée en clair ; les clés et le sel d'un jour
       disparaissent le lendemain
-- [ ] La clé anonyme seule n'enregistre aucune visite web
-- [ ] Un bento prêt, quitté sans publier, propose le rappel une fois ; le
+- [x] La clé anonyme seule n'enregistre aucune visite web
+- [x] Un bento prêt, quitté sans publier, propose le rappel une fois ; le
       lien y mène aussi ; « Oui » programme une notification au premier
       18 h à au moins 12 heures
-- [ ] Publier, ou rendre le bento incomplet, annule le rappel ; un bento
+- [x] Publier, ou rendre le bento incomplet, annule le rappel ; un bento
       dépublié n'en propose jamais
-- [ ] Le tap du rappel ouvre le composer sur ce bento
+- [x] Le tap du rappel ouvre le composer sur ce bento
 - [ ] Les versions publiées passent `check-privileges.ts` sans échec, et
       leurs lectures sont identiques avant et après la migration
-- [ ] La politique de confidentialité décrit le compteur avant le premier
+- [x] La politique de confidentialité décrit le compteur avant le premier
       comptage en production
 - [ ] Tests, typage et lint verts sur l'app, la landing et le package, CI
       verte
+
+**Point par point au 23 octobre 2026, au lot 5** : 11 points faits sur 13,
+en local, sur trois appareils. Le point 11 attend l'application de la
+migration en production, où se comparent les lectures avant et après ; le
+point 13, le push du correctif de la #90 et la seconde PR.
+
+| # | État | Preuve, ou ce qui manque |
+| --- | --- | --- |
+| 1 | Fait | Deux navigateurs, deux visites ; chacun rechargé, rien de plus ; quatre robots d'aperçu écartés par la route, rien en base (lot 5, gestes 3 et 9). Depuis le correctif `8902ee0`, l'adresse de l'image change chaque jour : Safari ne peut plus resservir celle de la veille. Les e2e de la landing, 33 sur 33 |
+| 2 | Fait | Une visite d'app à la première ouverture, puis rien par Trouver ni par un lien le même jour ; le propriétaire sur sa page, rien (lot 5, gestes 1 et 2 ; `check-visits.sql`, lot 1) |
+| 3 | Fait | Le bento en tête de La table, le compteur inchangé (lot 5, geste 1) ; D14 : La table n'appelle rien |
+| 4 | Fait | La page de l'app et la page web, « 3 visites », « 2 visites » ; le profil, « En ligne · publié il y a 8 min · 3 visites » ; « 0 visite » sur un bento neuf, dans l'app et sur le web (lots 3 et 5) |
+| 5 | Fait | Le chiffre disparaît dans l'app d'un visiteur, sur le web, et `bento_visit_count` rend nul en `anon` ; le profil du propriétaire le garde (lot 5, geste 5). La page web se revalide au changement (lot 1, écart 2) |
+| 6 | Fait | Des empreintes de 32 octets, aucun texte en clair dans les trois tables ; la purge simulée efface clés et sel, garde les nombres ; `visits-purge` programmée (lot 5, geste 9). La purge réelle se relève le lendemain de la mise en service (§9) |
+| 7 | Fait | « Secret refusé. », `42501`, par l'API avec la clé anonyme, sans secret ou avec un faux (lot 5, geste 9) ; `check-privileges.ts` et `check-visits.sql`, contrôle 7d (lot 1) |
+| 8 | Fait | Les trois portes, une question par bento, sur iOS et Android ; la date au 24 octobre à 18 h dans le journal de SpringBoard et dans `dumpsys alarm`, de 18 h à 19 h sur Android (lots 4 et 5) ; `nextReminderDate`, testée, nuit, soir et changements d'heure |
+| 9 | Fait | Publier par le composer comme par l'écran du pseudo, vider une case : le rappel tombe ; un bento dépublié ne propose rien (lot 5, geste 8). La suppression du compte aussi (lot 4) |
+| 10 | Fait | Sur Android, la vraie notification tapée fait passer le composer de « Mon bento » au bento du rappel ; sur iOS, l'arrivée simulée fait de même, brouillon compris (lot 5, geste 6) |
+| 11 | En partie | `check-privileges.ts` conforme (lot 1). Les lectures des versions publiées, relues sur `6426779` : celles de `bentos` sont des listes de colonnes, inchangées ; le `select('*')` de `users` reçoit un champ de plus, `show_visits`, que la 1.1 ne lit pas. La comparaison avant et après se fait à l'application en production (§6.4) |
+| 12 | Fait | `/confidentialite`, revue aux lots 2 et 3 : ce qui est haché, pourquoi, combien de temps, dans l'app et sur le web. Elle part dans le même déploiement que l'image de comptage, qui ne compte rien avant que `BENTO_VISIT_SECRET` soit posé |
+| 13 | En local | Lint, typage et tests verts, 19 tâches, et e2e 33 sur 33, sur la branche rebasée. CI verte sur la #90 à `b9ebae8` ; elle attend le push de `8902ee0`, et la seconde PR |
 
 ---
 
