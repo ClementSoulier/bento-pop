@@ -705,6 +705,31 @@ xcrun simctl install <UDID> "$APP" && xcrun simctl launch <UDID> com.bentopop.mo
 Vérifier ensuite dans le journal du proxy que le second appareil passe bien par
 lui, et pas directement en production.
 
+### Brancher une build déjà compilée sur une pile Supabase à part
+
+Une build de développement compilée pour le Supabase local, `127.0.0.1:54331`,
+sert aussi une recette sur une seconde pile, sans recompiler, tant que le lot
+ne touche à aucun module natif. Les piles locales partagent la clé anonyme de
+démonstration : le comparer avant, sans l'afficher.
+
+- **Android** : `adb -s emulator-5580 reverse tcp:54331 tcp:<port de la pile>`.
+  L'app croit parler au port compilé.
+- **iOS**, où le simulateur partage le réseau de l'hôte : copier le `.app`
+  installé, remplacer le port dans `EXConstants.bundle/app.config` par un
+  port de même longueur, resigner, installer dans son propre jeu d'appareils.
+
+```bash
+perl -pi -e 's#127\.0\.0\.1:54331#127.0.0.1:54361#g' MonBentoPop.app/EXConstants.bundle/app.config
+codesign -d --entitlements - --xml MonBentoPop.app > droits.plist
+codesign --force --sign - --entitlements droits.plist --timestamp=none MonBentoPop.app
+```
+
+Fait le 24 octobre 2026, à côté d'une session qui tenait 8082 et sa propre
+pile : la copie des données de la pile partagée, `pg_dump --data-only
+--inserts --on-conflict-do-nothing` en lecture, rechargée sous
+`session_replication_role = replica`, donne un vrai fil sans rien écrire
+chez l'autre.
+
 ### `INSTALL_FAILED_VERSION_DOWNGRADE` sur Android
 
 Une build plus récente occupe déjà l'émulateur. `adb uninstall
@@ -930,6 +955,38 @@ Le rendu Fabric de React Native 0.86 le lit sans l'appliquer :
 Sur Android, il ne rétrécit en outre que si le texte dépasse son nombre de
 lignes ou sa hauteur : un mot coupé en pleine lettre, qui tient dans ses
 lignes, ne déclenche rien.
+
+### Sur Android, l'ellipse d'un texte en Extenda tronqué est rognée
+
+Le `TextView` de React Native 0.86 reçoit la taille et l'espacement du texte,
+mais pas sa police (`ReactTextViewManager` n'a pas de propriété
+`fontFamily`) : Android mesure l'ellipse avec la police par défaut de la vue
+et la dessine en Extenda, dont « … » est plus large. Ce qui dépasse sort de
+la vue, qui le rogne. Selon la place que laisse la coupure, il manque la
+moitié du dernier point, un filet, ou le point entier : « LA COM.. », « POUR
+VOIR .. ». Fredoka n'a pas le défaut ; iOS non plus.
+
+**Il dépend du texte** : à la recette du 24 octobre 2026, l'ellipse de deux
+pseudos de « Trouver » restait entière, celle de l'étiquette d'un post et de
+deux cases était rognée. Une recette qui n'en regarde qu'un conclut à tort.
+
+Ni l'espacement des lettres à zéro, ni une marge, ni un retrait à droite n'y
+font rien. Les deux remèdes de l'app, vérifiés pour toute l'app par
+`font-scaling.test.ts` : rétrécir pour tenir, `adjustsFontSizeToFit`, ou
+couper soi-même sur une ellipse mesurée, `fittedTitle` de `tile-title.ts`,
+pour les titres qu'une mise en page coupe à dessein.
+
+### Sur iOS, un texte réduit par la plateforme garde sa réduction après un changement de taille
+
+« Rien pour … », sur trois lignes, `adjustsFontSizeToFit` et
+`maxFontSizeMultiplier` : passé de la plus grande taille à la taille par
+défaut écran ouvert, il gardait la boîte et la réduction d'avant, le texte
+trop petit, sa dernière ligne presque vide, la phrase suivante repoussée.
+Rendu à neuf, il remplissait ses trois lignes. Remède : la police appliquée
+par l'écran, `allowFontScaling={false}` et `fontScaleFor`, qui fait refaire
+la mise en page à chaque changement de taille. Le mesurer par l'arbre
+d'accessibilité, `idb ui describe-all`, avant, pendant et après l'aller et
+retour : les cadres doivent revenir au point près.
 
 ### Comparer les captures au pixel, avant et après
 

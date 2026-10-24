@@ -119,10 +119,10 @@ const fixed = (t: Tag) => t.attributes.get('allowFontScaling') === 'false';
  * Un texte qui pose sa hauteur de ligne ne peut pas laisser React Native
  * l'agrandir : sur Android, elle n'y est pas plafonnée, et suit la courbe non
  * linéaire d'Android 14. Il passe `allowFontScaling={false}`, cf.
- * `fontScaleFor`.
+ * `fontScaleFor`. `scaledType` en pose une, sans que le mot paraisse.
  */
-function lineHeightsLeftToPlatform(texts: Tag[]): Tag[] {
-  return texts.filter((t) => /\blineHeight\b/.test(t.styleSource) && !fixed(t));
+function lineHeightsLeftToPlatform<T extends Tag>(texts: T[]): T[] {
+  return texts.filter((t) => /\blineHeight\b|\bscaledType\(/.test(t.styleSource) && !fixed(t));
 }
 
 /** Les plafonds passés à `fontScaleFor` dans la source d'un style. */
@@ -521,7 +521,57 @@ describe('toute l’app', () => {
     });
     assert.equal(copied.length, 0, `plafond recopié : ${where(copied)}`);
   });
+
+  /**
+   * La règle de la page publique et des cases, étendue à toute l'app après la
+   * recette du lot 5 du chantier 20. Sept textes y laissaient leur hauteur de
+   * ligne à la plateforme, dans le composer, « Trouver », « La table » et
+   * l'étiquette d'un post, et un huitième, la question d'une case d'édition
+   * dans la modale de recherche, dont la hauteur vivait dans une feuille de
+   * style, que la règle ne lisait pas. À la taille 2,0 d'Android, leurs lignes
+   * s'écartaient.
+   */
+  it('ne laisse jamais la plateforme agrandir une hauteur de ligne, feuilles de style comprises', () => {
+    const wrong = lineHeightsLeftToPlatform(
+      texts.map((t) => ({ ...t, styleSource: fullStyleSource(t, moduleDeclarations(t.path)) })),
+    );
+    assert.equal(wrong.length, 0, `hauteur de ligne laissée à la plateforme : ${where(wrong)}`);
+  });
+
+  /**
+   * Android mesure l'ellipse d'un texte tronqué avec la police par défaut de la
+   * vue, et la dessine en Extenda, plus large : elle perdait la moitié de son
+   * dernier point dans l'étiquette d'un post, et tout ce point dans « Rien
+   * pour … » (recette des textes d'Android, 24 octobre 2026). Un texte en
+   * Extenda qui compte ses lignes rétrécit donc pour y tenir, ou affiche un
+   * titre coupé par l'app, sur une ellipse qu'elle mesure, `fittedTitle`.
+   */
+  it('ne laisse jamais la plateforme tronquer un texte en Extenda', () => {
+    const extenda = texts.filter(
+      (t) =>
+        /fontFamily:\s*'Extenda'/.test(fullStyleSource(t, moduleDeclarations(t.path))) &&
+        t.attributes.has('numberOfLines'),
+    );
+    // Pseudos, titres de case, de vignette, du composer, de l'étiquette d'un
+    // post et de l'écran vide de « Trouver ».
+    assert.ok(extenda.length >= 12, `${extenda.length} textes : ${where(extenda)}`);
+    const truncated = extenda.filter(
+      (t) => t.attributes.get('adjustsFontSizeToFit') !== true && !/\bfittedTitle\(/.test(shown(t)),
+    );
+    assert.equal(truncated.length, 0, `tronqué par la plateforme : ${where(truncated)}`);
+  });
 });
+
+/** Ce que le texte affiche, constantes du composant résolues : `{shownTitle}` renvoie à son calcul. */
+function shown(t: AppText): string {
+  return t.children
+    .map((child) =>
+      ts.isJsxExpression(child) && child.expression
+        ? resolvedSource(child.expression, child)
+        : child.getText(),
+    )
+    .join('\n');
+}
 
 /**
  * Les déclarations de premier niveau d'un fichier, et les entrées de ses

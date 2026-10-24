@@ -537,10 +537,12 @@ export default function SearchModal() {
           cases sont des films. Le tampon reste au-dessus, parce que « Celui
           qui t'a fait rire » ne dit pas, lui, qu'on cherche un film. */}
       {!estBentoPrincipal && meta.label ? (
+        // La police système appliquée par l'écran : Android ne plafonne pas la
+        // hauteur de ligne, cf. `fontScaleFor`.
         <Text
           accessibilityRole="header"
-          maxFontSizeMultiplier={TITLE_MAX_FONT_MULTIPLIER}
-          style={styles.question}
+          allowFontScaling={false}
+          style={[styles.question, scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 16, 21)]}
         >
           {meta.label}
         </Text>
@@ -727,8 +729,6 @@ const styles = StyleSheet.create({
   },
   question: {
     fontFamily: 'Bungee',
-    fontSize: 16,
-    lineHeight: 21,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     color: '#0a0a0a',

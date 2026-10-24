@@ -3,10 +3,12 @@ import { describe, it } from 'node:test';
 import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
 import { extendaTextWidth } from './extenda-metrics';
 import {
+  TITLE_ELLIPSIS,
   TITLE_MIN_SCALE,
   TITLE_ROUNDING_SLACK,
   emptyTileLabelFit,
   firstUnbreakable,
+  fittedTitle,
   tileTitleFit,
   tileTitleScale,
 } from './tile-title';
@@ -286,6 +288,118 @@ describe('tileTitleScale', () => {
 
   it('ne mesure rien sans largeur de ligne', () => {
     assert.equal(scaleOn('Kickstart My Heart', { ...IPHONE_17_PRO_SM, lineWidth: 0 }), 1);
+  });
+});
+
+/** Le titre d'une case tel qu'elle l'affiche, à la police que `tileTitleScale` lui donne. */
+function shownOn(title: string, line: Line): { shown: string; scale: number } {
+  const scale = scaleOn(title, line);
+  const shown = fittedTitle(
+    title,
+    line.lineWidth,
+    line.fontSize * scale,
+    line.letterSpacing,
+    2,
+    line.pixelRatio,
+  );
+  return { shown, scale };
+}
+
+/**
+ * Les titres qui ne tiennent pas en deux lignes, même au plancher. La recette
+ * des textes d'Android, le 24 octobre 2026, y a trouvé l'ellipse de la
+ * plateforme rognée : « LA COM.. », « CHRONIQUES .. ».
+ */
+const TOO_LONG = [
+  "Le Seigneur des anneaux : La Communauté de l'anneau",
+  'Les Chroniques de Bridgerton',
+  'Glitch Productions',
+  'Telegraph Dow in the Rivers',
+];
+
+describe('fittedTitle', () => {
+  it('rend tel quel un titre qui tient', () => {
+    for (const title of ['Top Gun', 'Jimmy Punchline', 'Bohemian Rhapsody', 'Squeezie']) {
+      assert.equal(shownOn(title, IPHONE_17_PRO_SM).shown, title);
+      assert.equal(shownOn(title, ANDROID_411_SM).shown, title);
+    }
+  });
+
+  it('coupe un titre qui ne tient pas, sur une ellipse qui tient avec lui', () => {
+    for (const line of [IPHONE_17_PRO_SM, ANDROID_411_SM]) {
+      for (const title of TOO_LONG) {
+        const { shown } = shownOn(title, line);
+        assert.ok(shown.endsWith(TITLE_ELLIPSIS), `${title} : « ${shown} »`);
+        assert.ok(title.startsWith(shown.slice(0, -1)), `${title} : « ${shown} »`);
+      }
+    }
+    // Sur toutes les largeurs de petite case : mise en lignes refaite à part,
+    // police arrondie au pixel sur Android.
+    for (const base of [IPHONE_17_PRO_SM, ANDROID_411_SM]) {
+      for (let width = 40; width <= 110; width += 0.25) {
+        const line: Line = { ...base, lineWidth: width };
+        for (const title of TOO_LONG) {
+          const { shown, scale } = shownOn(title, line);
+          assert.ok(fitsWhole(shown, line, scale), `${title} à ${width} déborde : « ${shown} »`);
+        }
+      }
+    }
+  });
+
+  it('garde tout ce qui tient : un caractère de plus et le titre déborde', () => {
+    for (const line of [IPHONE_17_PRO_SM, ANDROID_411_SM]) {
+      for (const title of TOO_LONG) {
+        const { shown, scale } = shownOn(title, line);
+        const kept = shown.slice(0, -1);
+        // Le caractère suivant, espaces sautées : la coupure n'en garde aucune.
+        let end = kept.length + 1;
+        while (end <= title.length && title.slice(0, end).trimEnd().length <= kept.length) end++;
+        if (end > title.length) continue;
+        const next = title.slice(0, end).trimEnd() + TITLE_ELLIPSIS;
+        assert.ok(!fitsWhole(next, line, scale), `${title} : « ${next} » tenait`);
+      }
+    }
+  });
+
+  it('ne laisse jamais une espace avant l’ellipse', () => {
+    for (let width = 40; width <= 90; width += 0.5) {
+      const line: Line = { ...IPHONE_17_PRO_SM, lineWidth: width };
+      for (const title of TOO_LONG) {
+        const { shown } = shownOn(title, line);
+        assert.ok(!/\s…$/.test(shown), `${width} : « ${shown} »`);
+      }
+    }
+  });
+
+  it('mesure les capitales affichées, et rend la casse du titre', () => {
+    const lower = shownOn('les chroniques de bridgerton', IPHONE_17_PRO_SM).shown;
+    const upper = shownOn('LES CHRONIQUES DE BRIDGERTON', IPHONE_17_PRO_SM).shown;
+    assert.equal(lower.toUpperCase(), upper);
+    assert.equal(lower, lower.toLowerCase());
+  });
+
+  /**
+   * Le titre du composer, sur une ligne au plancher de 17 points : seul un
+   * titre fait de lettres larges y descend, et se coupe.
+   */
+  it('coupe sur une seule ligne quand on n’en donne qu’une', () => {
+    const shown = fittedTitle('M'.repeat(30), 335, 17, 1, 1);
+    assert.ok(shown.endsWith(TITLE_ELLIPSIS) && shown.length < 30, shown);
+    const width = extendaTextWidth(shown, 17, 1);
+    assert.ok(width <= 335 - TITLE_ROUNDING_SLACK, `${width} pour 335`);
+    // Plusieurs mots sur une ligne : coupés aussi, et non passés à la ligne.
+    const words = fittedTitle('Une édition au titre bien trop long pour sa ligne', 200, 17, 1, 1);
+    assert.ok(words.endsWith(TITLE_ELLIPSIS), words);
+    assert.ok(extendaTextWidth(words.toUpperCase(), 17, 1) <= 200 - TITLE_ROUNDING_SLACK, words);
+    assert.equal(fittedTitle('Mon bento', 335, 17, 1, 1), 'Mon bento');
+  });
+
+  it('laisse à la plateforme les écritures qui se coupent entre deux caractères', () => {
+    assert.equal(fittedTitle('千と千尋の神隠し', 10, 12, 0.5, 2), '千と千尋の神隠し');
+  });
+
+  it('ne mesure rien sans largeur de ligne', () => {
+    assert.equal(fittedTitle(TOO_LONG[0] ?? '', 0, 12, 0.5, 2), TOO_LONG[0]);
   });
 });
 
