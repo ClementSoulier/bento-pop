@@ -7,8 +7,8 @@
 > **Arbitrages proposés le 23 octobre 2026, en l'absence de Clément**, qui a
 > demandé d'enchaîner ce chantier après le 19. Chaque question que la roadmap
 > laissait « à trancher », celles du 20 comme celles du 26 qu'il porte, prend
-> ici l'option recommandée, chiffres à l'appui. **Toutes sont à confirmer à
-> son retour, avant la fusion** : §11 les marque une par une. En résumé : un
+> ici l'option recommandée, chiffres à l'appui. **Toutes confirmées par
+> Clément le 24 octobre 2026**, une par une, sans changement (§11). En résumé : un
 > match, c'est un même item dans deux bentos de deux comptes, un seul
 > suffit, rangés par rareté ; le réglage « Apparaître dans la recherche »,
 > allumé par défaut, retire un compte de « Trouver » et des matchs, appliqué
@@ -517,8 +517,8 @@ chantier 29.
 - **Une PR** pour les cinq lots, après la confirmation des arbitrages par
   Clément. **Au 24 octobre 2026, les cinq lots sont commités sur
   `feat/ux-20-match-par-bento`, partie de celle du chantier 19, ni poussés
-  ni proposés** : la PR attend ses arbitrages, et la fusion de celle du 19
-  avant elle, la #93, ouverte le 24 octobre.
+  ni proposés** : ses arbitrages confirmés le 24 octobre, la PR n'attend
+  plus que la fusion de celle du 19, la #93, ouverte le même jour.
 - **La migration** s'applique en production à la fusion, comme les
   précédentes, par Clément : compatible avec la 1.1 et la 0.1.0. **De
   préférence juste avant de fusionner** : la landing, redéployée à la
@@ -584,8 +584,8 @@ CI rejouée en local, les Actions du dépôt étant désactivées.
 
 ## 11. Décisions
 
-Toutes proposées le 23 octobre 2026, en l'absence de Clément, **à confirmer
-avant la fusion**.
+Toutes proposées le 23 octobre 2026, en l'absence de Clément, et
+**confirmées par lui le 24 octobre 2026**, une par une, sans changement.
 
 | # | Décision | Raison |
 | --- | --- | --- |
