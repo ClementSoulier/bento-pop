@@ -898,9 +898,11 @@ passage. C'était le défaut des « 12 cartes sur 40 » du chantier 19, lot 4, q
 n'en était pas un. Le constat du chantier 7, les boutons des états sans bento
 de la page publique lus `AXGenericElement` alors qu'ils déclarent « bouton »,
 a la même forme : leur vue reprend celle du libellé de chargement, sans rôle.
-Sur 26 relevés de 8 écrans, chacun lu par un compagnon neuf, 157 éléments sur
-157 avaient leur rôle déclaré, dont 10 sur des vues venues d'un autre rôle, cf.
-[le relevé](./RELEVE-ROLES-IOS.md).
+Sur 34 relevés de 9 écrans, chacun lu par un compagnon neuf, 249 éléments sur
+249 avaient leur rôle déclaré, dont 18 sur des vues venues d'un autre rôle, cf.
+[le relevé](./RELEVE-ROLES-IOS.md). Réglages, relu après le chantier 21, a le
+même dessin : 5 lectures fausses sur 66 avec un seul compagnon, aucune avec un
+compagnon neuf.
 
 **Règle : un compagnon neuf avant chaque relevé d'arbre où le rôle compte.**
 Viser le sien, par son UDID, et jamais `idb kill`, qui vide la liste partagée

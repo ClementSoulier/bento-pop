@@ -5,6 +5,10 @@
 > dans `main`. iPhone 17 Pro au simulateur, iOS 26.4, React Native 0.86.3,
 > Expo SDK 57. **Arbitré par Clément le même jour** : corriger la mesure, et
 > rendre aux cartes d'épisode leur rôle « lien ».
+>
+> **Réglages relu le même jour**, après la fusion du chantier 21 qui l'a créé,
+> sur `chore/roadmap-19-20-21-livres` : ses rôles sont justes, et son mélange
+> venait du compagnon d'`idb`, comme ailleurs (§4, Réglages).
 
 ---
 
@@ -111,8 +115,9 @@ Les écrans où des éléments de rôles différents se succèdent ou se remplac
 « Trouver » et ses quatre états, le profil et ses Crédits, le composer et son
 bandeau, la modale de recherche, « La table » dans ses états de chargement,
 d'erreur, de reprise et de liste vide, la page d'un bento et ses états sans
-bento, les mêmes goûts. Parcourus avec des défilements et des allers-retours
-qui font recycler les vues ; chaque relevé lu par un compagnon `idb` neuf.
+bento, les mêmes goûts, et Réglages, relu à part après le chantier 21.
+Parcourus avec des défilements et des allers-retours qui font recycler les
+vues ; chaque relevé lu par un compagnon `idb` neuf.
 
 Le rôle **déclaré** est celui du code, relevé à part ; **UIKit**, les traits de
 la sonde ; **`idb` neuf**, le rôle lu. Un interrupteur sort en traits bouton et
@@ -132,7 +137,8 @@ l'a vue porter un libellé.
 | Mêmes goûts | 1 | 2 | 2 | 0 |
 | Modale de recherche | 1 | 12 | 12 | 1 |
 | Composer | 5 | 48 | 48 | 0 |
-| **Total** | **26** | **157** | **157** | **10** |
+| Réglages | 8 | 92 | 92 | 8 |
+| **Total** | **34** | **249** | **249** | **18** |
 
 #### Profil
 
@@ -330,6 +336,151 @@ l'a vue porter un libellé.
 | retour à l'édition, après détours | Ajouter la série que tu caches | button | button | button |  |
 | retour à l'édition, après détours | Ajouter le son de ton été | button | button | button |  |
 | retour à l'édition, après détours | Commence par le film que tu trouves surcoté | button | button | button |  |
+
+#### Réglages
+
+Relu à part le 24 octobre 2026, après la fusion du chantier 21 qui l'a créé,
+sur `chore/roadmap-19-20-21-livres` : au lot 3 de ce chantier, après quelques
+allers-retours, `idb` y lisait « Conditions d'utilisation » en case à cocher
+(`UX-21-PROFIL.md`, §8, lot 3). Même banc que plus haut, à trois choses près :
+le simulateur du jeu d'appareils par défaut et la pile Supabase locale commune,
+aucune autre session n'en recettant ce jour-là, et Metro sur 8083. Le compte
+connecté, @recette_proprio, a son bento publié et les notifications
+autorisées. L'écran tient en un défilement : « Retour », deux boutons et deux
+liens sous « À propos », deux interrupteurs sous « Notifications », deux sous
+« Confidentialité », un bouton par compte bloqué, puis « Retirer mon bento du
+fil » et « Supprimer mon compte ».
+
+Le même parcours deux fois, l'app relancée à froid : Réglages ouvert depuis le
+profil, le retour des Crédits, un aller-retour au profil, un détour par
+« Modifier le profil », un par « La table », trois allers-retours ; puis deux
+comptes bloqués posés dans le stockage de l'app, app arrêtée, et retirés après,
+pour Réglages à l'ouverture et après détours.
+
+| Compagnon `idb` | Relevés | Éléments | Traits UIKit faux | Rôle lu par `idb` faux |
+| --- | --- | --- | --- | --- |
+| le même tout le parcours | 6 | 66 | 0 | **5** |
+| neuf à chaque lecture | 8 | 92 | 0 | 0 |
+
+Les cinq lectures fausses suivent la règle de §3 : chacune rend le rôle de la
+première vie de sa vue, que la sonde a vue passer.
+
+- « Retirer mon bento du fil », bouton, lu interrupteur : sa vue avait d'abord
+  servi à « Les éditions » ;
+- « Politique de confidentialité », lien, lu interrupteur : d'abord
+  « Apparaître dans la recherche » ;
+- « Mes items », interrupteur, lu bouton : d'abord « Retirer mon bento du
+  fil » ;
+- « Afficher mes visites », interrupteur, lu lien : d'abord « Conditions
+  d'utilisation » ;
+- « Apparaître dans la recherche », interrupteur, lu bouton : d'abord
+  « Retirer mon bento du fil ».
+
+Avec un compagnon neuf, 92 éléments sur 92 ont leur rôle déclaré, dont 8 sur
+des vues reprises d'un autre rôle : trois Popys et « Changer de pseudo », les
+boutons de « Modifier le profil », repris en lien ou en interrupteur, et
+l'interrupteur « Les éditions », repris en bouton. Les titres, des textes que
+la sonde ne relève pas, sont lus en-têtes à chaque relevé, par les deux
+compagnons : « Réglages », « À propos », « Notifications », « Confidentialité »,
+« Compte », et « Comptes bloqués » quand la liste existe. Les deux autres états
+des notifications, « Activer les notifications » et « Ouvrir les réglages »,
+deux boutons, n'ont pas été relus : ils demandent de retirer l'autorisation au
+simulateur.
+
+| Relevé | Élément | Déclaré | UIKit | `idb` neuf | Vue reprise de |
+| --- | --- | --- | --- | --- | --- |
+| à l'ouverture | Retour | button | button | button |  |
+| à l'ouverture | Crédits & attributions | button | button | button |  |
+| à l'ouverture | Politique de confidentialité | link | link | link |  |
+| à l'ouverture | Conditions d'utilisation | link | link | link |  |
+| à l'ouverture | Exporter mes données | button | button | button |  |
+| à l'ouverture | Mes items | switch | switch | switch |  |
+| à l'ouverture | Les éditions | switch | switch | switch |  |
+| à l'ouverture | Afficher mes visites | switch | switch | switch |  |
+| à l'ouverture | Apparaître dans la recherche | switch | switch | switch |  |
+| à l'ouverture | Retirer mon bento du fil | button | button | button |  |
+| à l'ouverture | Supprimer mon compte | button | button | button |  |
+| retour des Crédits | Retour | button | button | button |  |
+| retour des Crédits | Crédits & attributions | button | button | button |  |
+| retour des Crédits | Politique de confidentialité | link | link | link |  |
+| retour des Crédits | Conditions d'utilisation | link | link | link |  |
+| retour des Crédits | Exporter mes données | button | button | button |  |
+| retour des Crédits | Mes items | switch | switch | switch |  |
+| retour des Crédits | Les éditions | switch | switch | switch |  |
+| retour des Crédits | Afficher mes visites | switch | switch | switch |  |
+| retour des Crédits | Apparaître dans la recherche | switch | switch | switch |  |
+| retour des Crédits | Retirer mon bento du fil | button | button | button |  |
+| retour des Crédits | Supprimer mon compte | button | button | button |  |
+| un aller-retour au profil | Retour | button | button | button |  |
+| un aller-retour au profil | Crédits & attributions | button | button | button |  |
+| un aller-retour au profil | Politique de confidentialité | link | link | link |  |
+| un aller-retour au profil | Conditions d'utilisation | link | link | link |  |
+| un aller-retour au profil | Exporter mes données | button | button | button |  |
+| un aller-retour au profil | Mes items | switch | switch | switch | switch, « Apparaître dans la recherche » |
+| un aller-retour au profil | Les éditions | switch | switch | switch |  |
+| un aller-retour au profil | Afficher mes visites | switch | switch | switch | switch, « Mes items » |
+| un aller-retour au profil | Apparaître dans la recherche | switch | switch | switch |  |
+| un aller-retour au profil | Retirer mon bento du fil | button | button | button | switch, « Les éditions » |
+| un aller-retour au profil | Supprimer mon compte | button | button | button |  |
+| après « Modifier le profil » | Retour | button | button | button |  |
+| après « Modifier le profil » | Crédits & attributions | button | button | button | button, « Popy content » |
+| après « Modifier le profil » | Politique de confidentialité | link | link | link |  |
+| après « Modifier le profil » | Conditions d'utilisation | link | link | link | button, « Popy intello » |
+| après « Modifier le profil » | Exporter mes données | button | button | button |  |
+| après « Modifier le profil » | Mes items | switch | switch | switch | button, « Popy diable » |
+| après « Modifier le profil » | Les éditions | switch | switch | switch |  |
+| après « Modifier le profil » | Afficher mes visites | switch | switch | switch | button, « Popy bisou » |
+| après « Modifier le profil » | Apparaître dans la recherche | switch | switch | switch |  |
+| après « Modifier le profil » | Retirer mon bento du fil | button | button | button | button, « Popy gêné » |
+| après « Modifier le profil » | Supprimer mon compte | button | button | button |  |
+| après « La table » | Retour | button | button | button |  |
+| après « La table » | Crédits & attributions | button | button | button |  |
+| après « La table » | Politique de confidentialité | link | link | link |  |
+| après « La table » | Conditions d'utilisation | link | link | link |  |
+| après « La table » | Exporter mes données | button | button | button |  |
+| après « La table » | Mes items | switch | switch | switch |  |
+| après « La table » | Les éditions | switch | switch | switch |  |
+| après « La table » | Afficher mes visites | switch | switch | switch |  |
+| après « La table » | Apparaître dans la recherche | switch | switch | switch |  |
+| après « La table » | Retirer mon bento du fil | button | button | button |  |
+| après « La table » | Supprimer mon compte | button | button | button |  |
+| trois allers-retours | Retour | button | button | button |  |
+| trois allers-retours | Crédits & attributions | button | button | button |  |
+| trois allers-retours | Politique de confidentialité | link | link | link |  |
+| trois allers-retours | Conditions d'utilisation | link | link | link |  |
+| trois allers-retours | Exporter mes données | button | button | button |  |
+| trois allers-retours | Mes items | switch | switch | switch | switch, « Apparaître dans la recherche » |
+| trois allers-retours | Les éditions | switch | switch | switch |  |
+| trois allers-retours | Afficher mes visites | switch | switch | switch | switch, « Mes items » |
+| trois allers-retours | Apparaître dans la recherche | switch | switch | switch |  |
+| trois allers-retours | Retirer mon bento du fil | button | button | button | switch, « Les éditions » |
+| trois allers-retours | Supprimer mon compte | button | button | button |  |
+| deux comptes bloqués | Retour | button | button | button |  |
+| deux comptes bloqués | Crédits & attributions | button | button | button |  |
+| deux comptes bloqués | Politique de confidentialité | link | link | link |  |
+| deux comptes bloqués | Conditions d'utilisation | link | link | link |  |
+| deux comptes bloqués | Exporter mes données | button | button | button |  |
+| deux comptes bloqués | Mes items | switch | switch | switch |  |
+| deux comptes bloqués | Les éditions | switch | switch | switch |  |
+| deux comptes bloqués | Afficher mes visites | switch | switch | switch |  |
+| deux comptes bloqués | Apparaître dans la recherche | switch | switch | switch |  |
+| deux comptes bloqués | Débloquer @recette_nouveau | button | button | button |  |
+| deux comptes bloqués | Débloquer @recette_se_bis | button | button | button |  |
+| deux comptes bloqués | Retirer mon bento du fil | button | button | button |  |
+| deux comptes bloqués | Supprimer mon compte | button | button | button |  |
+| comptes bloqués, après détours | Retour | button | button | button |  |
+| comptes bloqués, après détours | Crédits & attributions | button | button | button | button, « Popy content » |
+| comptes bloqués, après détours | Politique de confidentialité | link | link | link |  |
+| comptes bloqués, après détours | Conditions d'utilisation | link | link | link | button, « Popy intello » |
+| comptes bloqués, après détours | Exporter mes données | button | button | button |  |
+| comptes bloqués, après détours | Mes items | switch | switch | switch |  |
+| comptes bloqués, après détours | Les éditions | switch | switch | switch | button, « Changer de pseudo » |
+| comptes bloqués, après détours | Afficher mes visites | switch | switch | switch | button, « Popy bisou » |
+| comptes bloqués, après détours | Apparaître dans la recherche | switch | switch | switch |  |
+| comptes bloqués, après détours | Débloquer @recette_nouveau | button | button | button |  |
+| comptes bloqués, après détours | Débloquer @recette_se_bis | button | button | button |  |
+| comptes bloqués, après détours | Retirer mon bento du fil | button | button | button | button, « Popy diable » |
+| comptes bloqués, après détours | Supprimer mon compte | button | button | button |  |
 
 ## 5. L'arbitrage et ce qui reste
 

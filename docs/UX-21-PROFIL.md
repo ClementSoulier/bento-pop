@@ -557,8 +557,11 @@ Réglages.
 > de VoiceOver traite à part. *Revu le 24 octobre* : cette session a montré
 > que Fabric pose le bon rôle sur une vue recyclée, et que c'est le compagnon
 > d'`idb` qui garde celui de sa première vie (cf. [le
-> relevé](./RELEVE-ROLES-IOS.md)) ; Réglages, absent de son relevé, reste à
-> relire avec un compagnon neuf.
+> relevé](./RELEVE-ROLES-IOS.md)) ; Réglages, relu le même jour avec un
+> compagnon neuf avant chaque relevé, a tous ses rôles justes, 92 éléments sur
+> 92, et le mélange n'y revient qu'avec un seul compagnon gardé tout le
+> parcours, chaque lecture fausse au rôle de la première vie de sa vue (§4 du
+> relevé, Réglages).
 >
 > **Tests** : 22 de plus, 838 pour l'app : la liste d'un compte et son
 > principal en tête contre le bouchon PostgREST, qui sait désormais viser une
@@ -905,8 +908,11 @@ recommandée ; D11 à D16 prises par la spécification.
   tous les bentos d'un compte en une requête, et sa bande de liens passe à la
   ligne ; à cinquante éditions, une page longue et lourde. Une pagination, le
   jour où un compte en approchera.
-- **Les rôles mélangés dans Réglages**, relevés au lot 3, à relire avec un
-  compagnon `idb` neuf : la session sur les rôles a montré, sur huit autres
-  écrans, que le mélange venait du compagnon et non de Fabric, 157 éléments
-  sur 157 conformes (cf. [le relevé](./RELEVE-ROLES-IOS.md)), mais Réglages
-  n'y figurait pas.
+- **Les rôles mélangés dans Réglages**, relevés au lot 3 : **clos le
+  24 octobre, ce n'était pas un défaut**. Relu avec un compagnon `idb` neuf
+  avant chaque relevé, à l'ouverture, au retour des Crédits, après des
+  allers-retours et des détours, avec et sans comptes bloqués : 92 éléments sur
+  92 ont leur rôle déclaré, dans les traits UIKit comme pour `idb`, dont 8 sur
+  des vues reprises d'un autre rôle. Le même parcours lu par un seul compagnon
+  donne 5 lectures fausses sur 66, chacune au rôle de la première vie de sa
+  vue (cf. [le relevé](./RELEVE-ROLES-IOS.md), §4, Réglages).
