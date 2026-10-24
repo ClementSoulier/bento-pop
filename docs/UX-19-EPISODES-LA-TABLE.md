@@ -482,7 +482,8 @@ La route, ses tests, la politique de confidentialité.
 >   4, rayon de 22, ombre stamp, vignette 16:9 sur fond plein, pastille et
 >   durée en chasse fixe, titre en Fredoka sur trois lignes au plus. Le tap
 >   passe par `Linking.openURL`. Un seul élément pour VoiceOver et TalkBack,
->   de rôle ~~lien~~ **bouton (lot 4)**, avec son libellé et l'indication du
+>   de rôle lien (**bouton du lot 4 au 24 octobre**, cf. la correction du
+>   lot 4), avec son libellé et l'indication du
 >   tap.
 > - **`src/components/feed/FeedLabel.tsx`** : l'étiquette des posts, sortie
 >   de `FeedPostHeader`, qui garde son interface et son rendu. Celle d'un
@@ -550,7 +551,8 @@ La route, ses tests, la politique de confidentialité.
 > - **L'accessibilité**, lue dans l'arbre d'iOS : un seul élément, de rôle
 >   lien, « Podcast Bento Pop, saison 2, épisode 1 : … 23 minutes. Publié il
 >   y a 1 mois. », avec l'indication « S'ouvre dans Spotify. ». **Le rôle
->   n'était pas fiable, cf. lot 4.**
+>   n'était pas fiable, cf. lot 4.** Il l'était : c'est la lecture d'`idb`
+>   qui ne l'était pas, cf. la correction du 24 octobre au lot 4.
 > - **D9 et D14, mesurés à la milliseconde** par un journal provisoire,
 >   retiré depuis :
 >   - landing à 0,6 s : bentos à +38 ms, fil en attente, puis tout d'un coup
@@ -631,6 +633,22 @@ La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
 >    « BENTO POP · / ÉMISSION », l'accent entier ; un pseudo reste sur une
 >    ligne.
 >
+> **Correction du 24 octobre 2026**, sur `fix/roles-fabric` : le défaut 1
+> n'en était pas un. Fabric recycle bien les vues sans remettre leurs rôles à
+> zéro, mais la vue reprise reçoit le sien avec ses props : une sonde native,
+> qui relève les traits UIKit de chaque vue, les trouve justes sur 44 posts
+> sur 44, cartes en « lien ». C'est le compagnon d'`idb` qui garde le rôle de
+> la première vie d'une vue : gardé tout le parcours, il lit « bouton » 18
+> cartes sur 44, toutes portées par les trois vues des bentos du haut ;
+> relancé avant chaque lecture, aucune. Les cartes reprennent le rôle
+> « lien », arbitré par Clément le 24 octobre ; le piège et la méthode sont
+> dans `RECETTE-MOBILE.md`. Relu le même jour à l'émulateur Pixel 8, sous
+> Android 17 : TalkBack annonce les 41 cartes « Link », l'émulateur étant en
+> anglais (« Lien » dans la chaîne française de React Native), chacune avec
+> son indication, et les bentos « Button » ; un seul nœud
+> `android.view.View` par carte, tapable, sans enfant. Android ne recycle pas
+> les vues en React Native 0.86.
+>
 > **Tests** : rien de plus en unitaire, 759 pour l'app ; les tests qui lisent
 > le code couvrent le rôle et les plafonds de police.
 >
@@ -686,7 +704,7 @@ la CI rejouée en local, les Actions du dépôt étant désactivées.
 | 5 | Fait | Les cinq destinations au simulateur, l'app YouTube à l'émulateur (lot 4, §7.2.3). « Rien d'autre » : `isAllowedOpenUrl`, ses tests et ses défauts introduits exprès (lot 2) |
 | 6 | Fait | Les mêmes parcours : aucun doublon, aucun trou (lot 4) ; la liste d'une page qui commence la suivante, testée (lot 2) |
 | 7 | Fait | Landing coupée, lente et au-delà du délai : le fil sans épisode et sans message, sur iOS (lot 3) et sur Android (lot 4) |
-| 8 | Fait, la voix au chantier 29 | Un seul élément par carte dans les arbres d'iOS et d'Android, son libellé et son indication ; le rôle, fiable depuis le lot 4 |
+| 8 | Fait, la voix au chantier 29 | Un seul élément par carte dans les arbres d'iOS et d'Android, son libellé et son indication ; le rôle « lien », juste sur 44 posts sur 44 à la sonde native et à un compagnon `idb` neuf, et annoncé « Link » par TalkBack sur les 41 cartes à l'émulateur (24 octobre) |
 | 9 | Fait | `/confidentialite`, §2.2 : les vignettes chargées chez YouTube, le tap qui quitte l'app (lot 1) |
 | 10 | Fait, CI rejouée en local | Les six étapes de `ci.yml`, sans cache, à chaque lot : lint et typage 8 sur 8, tests 226, 192 et 759, e2e 38 sur 38, build 3 sur 3 |
 

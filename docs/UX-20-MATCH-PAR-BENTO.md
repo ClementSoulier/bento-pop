@@ -352,7 +352,10 @@ La colonne, `bento_matches`, le réglage appliqué à `search_bentos` et
 >   ouvre le bento. Les états de chargement, d'erreur et de liste vide. Un
 >   `ScrollView` et non une `FlatList` : vingt lignes au plus, et pas de vues
 >   recyclées dont les rôles se mélangeraient, le défaut trouvé au chantier
->   19.
+>   19. **Corrigé le 24 octobre** : ce défaut venait de la lecture d'`idb`, pas
+>   de Fabric, cf. `RECETTE-MOBILE.md` ; et un `ScrollView` reçoit lui aussi des
+>   vues recyclées, Fabric les reprenant à tout montage. Le `ScrollView` reste,
+>   pour ses vingt lignes.
 > - **`PrivacySettings`** : « Apparaître dans la recherche » sous « Afficher
 >   mes visites », sa note quand il est éteint. Changé, il invalide les
 >   matchs en cache sur l'appareil, valables 5 minutes sinon.
