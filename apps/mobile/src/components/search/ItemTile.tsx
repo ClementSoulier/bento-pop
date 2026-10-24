@@ -7,6 +7,7 @@ import {
   scaledType,
 } from '@/components/bento/font-scaling';
 import { PALETTES, paletteKeyForItem } from '@/components/bento/palettes';
+import { fittedTitle } from '@/components/bento/tile-title';
 import { displayTitleScale, extendaAccentRoom } from '@/lib/display-title';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { itemImageUrl } from '@/lib/item-image';
@@ -75,6 +76,20 @@ export function ItemTile({
     0,
     Platform.OS === 'android' ? pixelRatio : undefined,
   );
+  // Un titre long se coupe à la fin de sa seconde ligne. Sur Android, sur une
+  // ellipse écrite et mesurée ici : celle de la plateforme peut y perdre son
+  // dernier point, cf. `fittedTitle`. Celle d'iOS est juste.
+  const shownTitle =
+    Platform.OS === 'android'
+      ? fittedTitle(
+          title,
+          width - TILE_BORDER * 2 - TITLE_INSET * 2,
+          capped.fontSize * shrink,
+          0,
+          2,
+          pixelRatio,
+        )
+      : title;
 
   return (
     <Pressable
@@ -152,7 +167,7 @@ export function ItemTile({
             },
           ]}
         >
-          {title}
+          {shownTitle}
         </Text>
       </View>
       {item.subtitle ? (

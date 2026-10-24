@@ -15,7 +15,9 @@
  *   tenait pas dans les deux lignes se tronquait : « JIMMY / PUNCHLI… »,
  *   « BOHEMIAN / RHAPSO… », 29 des 162 cases publiées. Le titre rétrécit donc
  *   jusqu'à tenir entier, sans descendre sous `TITLE_MIN_SCALE`, et toujours
- *   assez pour que son premier mot tienne : cf. `tileTitleScale` ;
+ *   assez pour que son premier mot tienne : cf. `tileTitleScale`. Ce qui ne
+ *   tient toujours pas se coupe sur une ellipse que l'app écrit et mesure,
+ *   cf. `fittedTitle` ;
  * - les kana, idéogrammes et hangûl se coupent entre deux caractères : deux
  *   lignes, sans rien mesurer.
  *
@@ -261,6 +263,61 @@ export function tileTitleScale(
     else over = middle;
   }
   return snapped(fits) / fontSize;
+}
+
+/** L'ellipse d'un titre coupé, celle que la plateforme aurait posée. */
+export const TITLE_ELLIPSIS = '…';
+
+/**
+ * Le titre tel qu'il s'affiche dans `maxLines` lignes de `lineWidth`, à la
+ * police `fontSize`, déjà réduite : entier s'il y tient, sinon coupé au
+ * caractère et fini par une ellipse écrite ici, plutôt que par la plateforme.
+ * Pour les titres qu'une mise en page tronque à dessein, sous leur plancher :
+ * une case, la vignette d'un item dans la recherche, le titre du composer.
+ *
+ * Android mesure l'ellipse qu'il ajoute avec la police par défaut de la vue,
+ * que React Native ne règle pas, et la dessine en Extenda, plus large : sa fin
+ * sort de la ligne, qui la rogne. Selon la place que laissait la coupure, il ne
+ * restait du dernier point que la moitié, un filet ou rien, « LA COM.. »,
+ * « POUR VOIR .. », sur l'émulateur Pixel 8 (recette des textes d'Android,
+ * 24 octobre 2026). Écrite dans le titre, l'ellipse se mesure comme le reste,
+ * et la plateforme n'a plus rien à tronquer : la mesure majore le rendu, cf.
+ * `extendaTextWidth`.
+ *
+ * Même mise en lignes que `tileTitleScale`, police arrondie au pixel sur
+ * Android comprise. Les écritures qui se coupent entre deux caractères restent
+ * à la plateforme, qu'on ne mesure pas.
+ */
+export function fittedTitle(
+  title: string,
+  lineWidth: number,
+  fontSize: number,
+  letterSpacing: number,
+  maxLines: number,
+  pixelRatio?: number,
+): string {
+  const text = title.trim();
+  if (lineWidth <= 0 || fontSize <= 0 || BREAKS_BETWEEN_CHARACTERS.test(text)) return title;
+
+  const drawn = pixelRatio === undefined ? fontSize : Math.ceil(fontSize * pixelRatio) / pixelRatio;
+  const room = lineWidth - TITLE_ROUNDING_SLACK;
+  const fits = (candidate: string) => {
+    const upper = candidate.normalize('NFC').toUpperCase();
+    const lines = wrapTitle(titleChunks(upper), room, drawn, letterSpacing);
+    return (
+      lines.length <= maxLines &&
+      lines.every((line) => extendaTextWidth(line, drawn, letterSpacing) <= room)
+    );
+  };
+  if (fits(text)) return title;
+
+  // Du plus long au plus court : la coupure garde tout ce qui tient.
+  const chars = [...text];
+  for (let end = chars.length - 1; end > 0; end--) {
+    const candidate = chars.slice(0, end).join('').trimEnd() + TITLE_ELLIPSIS;
+    if (fits(candidate)) return candidate;
+  }
+  return TITLE_ELLIPSIS;
 }
 
 /**

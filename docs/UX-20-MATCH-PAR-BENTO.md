@@ -618,4 +618,8 @@ Toutes proposées le 23 octobre 2026, en l'absence de Clément, et
   les sept qui laissent leur hauteur de ligne à la plateforme, dans le
   composer, « Trouver », « La table » et `FeedLabel`, et la règle de la page
   publique étendue à toute l'app ; l'ellipse d'Extenda rognée, à éprouver
-  dans l'étiquette d'un post avec un pseudo de 20 caractères.
+  dans l'étiquette d'un post avec un pseudo de 20 caractères. **Fait et
+  recetté le 24 octobre 2026** sur `fix/textes-android` : huit textes, la
+  question d'une case d'édition comprise, et toutes les troncatures
+  d'Extenda, rétrécies ou coupées sur une ellipse mesurée par l'app ; cf.
+  la roadmap, §20.

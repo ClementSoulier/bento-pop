@@ -1,5 +1,5 @@
 import { Image, PixelRatio, Platform, Text, View, useWindowDimensions } from 'react-native';
-import { CONTENT_MAX_FONT_MULTIPLIER, fontScaleFor } from '@/components/bento/font-scaling';
+import { CONTENT_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
 import { extendaAccentRoom } from '@/lib/display-title';
 
 const AVATAR = 40;
@@ -7,6 +7,7 @@ const RADIUS = 14;
 const SHADOW_OFFSET = 4;
 const ROTATION = -1.5;
 const TITLE_SIZE = 16;
+const TITLE_LINE_H = 17;
 
 type FeedLabelProps = {
   /** La première ligne, en Extenda : `@pseudo`, ou « Bento Pop · Émission ». */
@@ -18,9 +19,10 @@ type FeedLabelProps = {
   /** Largeur de la boîte, pour empêcher un titre long de la dépasser. */
   maxWidth: number;
   /**
-   * Lignes du titre, une par défaut : un pseudo trop long se coupe. Deux pour
-   * un épisode, dont le type se perdrait sinon aux grandes tailles de police,
-   * « BENTO POP · ÉMIS… », relevé à la recette du chantier 19.
+   * Lignes du titre, une par défaut : un pseudo trop long rétrécit pour y
+   * tenir. Deux pour un épisode, dont le type se perdait sinon aux grandes
+   * tailles de police, « BENTO POP · ÉMIS… », relevé à la recette du
+   * chantier 19.
    */
   titleLines?: number;
 };
@@ -42,12 +44,20 @@ type FeedLabelProps = {
  * Le titre réserve la place de ses accents : Extenda les dessine au-dessus de
  * son ascendante, et le « É » d'« ÉMISSION » serait rogné. Un pseudo n'en a
  * jamais, et la réserve est alors nulle.
+ *
+ * Le titre applique lui-même la taille système, plafonnée, hauteur de ligne
+ * comprise : Android ne plafonne pas la hauteur de ligne, cf. `fontScaleFor`.
+ * Et il reste entier dans ses lignes, quitte à rétrécir, comme le pseudo de
+ * l'en-tête de la page d'un bento : tronqué, son ellipse perdrait sur Android
+ * la moitié de son dernier point, Android la mesurant plus étroite qu'Extenda
+ * ne la dessine (recette du chantier 20, lot 5).
  */
 export function FeedLabel({ title, meta, avatar, maxWidth, titleLines = 1 }: FeedLabelProps) {
   const { fontScale } = useWindowDimensions();
+  const titleType = scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, TITLE_SIZE, TITLE_LINE_H);
   const accentRoom = extendaAccentRoom(
     title,
-    TITLE_SIZE * fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER),
+    titleType.fontSize,
     Platform.OS === 'android' ? PixelRatio.get() : undefined,
   );
 
@@ -103,16 +113,16 @@ export function FeedLabel({ title, meta, avatar, maxWidth, titleLines = 1 }: Fee
           </View>
 
           {/* `minWidth: 0` avec `flexShrink` : sans lui, un enfant flex refuse
-              de passer sous sa largeur intrinsèque et le `numberOfLines` ne
-              tronque jamais. */}
+              de passer sous sa largeur intrinsèque, et le titre ne rétrécit
+              jamais. */}
           <View style={{ flexShrink: 1, minWidth: 0 }}>
             <Text
               numberOfLines={titleLines}
-              maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+              adjustsFontSizeToFit
+              allowFontScaling={false}
               style={{
                 fontFamily: 'Extenda',
-                fontSize: TITLE_SIZE,
-                lineHeight: 17,
+                ...titleType,
                 letterSpacing: 0.6,
                 textTransform: 'uppercase',
                 paddingTop: accentRoom,

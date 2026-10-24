@@ -67,6 +67,7 @@ import {
   naturalLineHeight,
   scaledType,
 } from '@/components/bento/font-scaling';
+import { fittedTitle } from '@/components/bento/tile-title';
 import { composeCta } from '@/lib/compose-cta';
 import {
   markNoLongerHolds,
@@ -464,6 +465,20 @@ export default function ComposeTab() {
       titleType.fontSize,
       Platform.OS === 'android' ? PixelRatio.get() : undefined,
     );
+  // Sous le plancher, le nom se coupe. Sur Android, sur une ellipse écrite et
+  // mesurée ici : celle de la plateforme peut y perdre son dernier point, cf.
+  // `fittedTitle`. Celle d'iOS est juste.
+  const nomAffiche =
+    Platform.OS === 'android'
+      ? fittedTitle(
+          nomDuBento,
+          screenWidth - COMPOSE_HEADER_SIDE * 2,
+          titleFontSize,
+          COMPOSE_TITLE_LETTER_SPACING,
+          1,
+          PixelRatio.get(),
+        )
+      : nomDuBento;
   // Un titre d'édition porte des accents, que la ligne de 26 pt rognait en
   // entier : « EDITION DE RECETTE » à la recette du 26 septembre 2026. Le titre
   // réserve leur place au-dessus de lui, et le pseudo, posé juste au-dessus,
@@ -538,6 +553,8 @@ export default function ComposeTab() {
             </Text>
             <Text
               accessibilityRole="header"
+              // Coupé, le nom se lit encore en entier.
+              accessibilityLabel={nomAffiche === nomDuBento ? undefined : nomDuBento}
               allowFontScaling={false}
               numberOfLines={1}
               style={{
@@ -557,7 +574,7 @@ export default function ComposeTab() {
                   principal, donc l'écran ne change pas tant qu'un compte n'en
                   a qu'un. Chantier 16. Un bento d'édition porte le titre de
                   son édition, et non son slug : cf. `bentoName`. */}
-              {nomDuBento}
+              {nomAffiche}
             </Text>
             {/* Une seule ligne, deux contenus possibles, la même hauteur : le
                 budget vertical de `compose-layout.ts` est mesuré au point et
@@ -727,12 +744,13 @@ export default function ComposeTab() {
                 hitSlop={{ top: 13, bottom: 13, left: 16, right: 16 }}
                 style={{ alignSelf: 'center', marginTop: 12 }}
               >
+                {/* La police système appliquée par l'écran, comme l'en-tête :
+                    Android ne plafonne pas la hauteur de ligne. */}
                 <Text
-                  maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+                  allowFontScaling={false}
                   style={{
                     fontFamily: 'Fredoka',
-                    fontSize: 14,
-                    lineHeight: 18,
+                    ...scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 14, 18),
                     color: '#0a0a0a',
                     textDecorationLine: 'underline',
                   }}
