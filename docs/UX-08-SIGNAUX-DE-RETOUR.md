@@ -46,6 +46,14 @@
 > rejouée en local, les Actions du dépôt étant désactivées depuis le 23
 > octobre 2026 (§8, lot 5 ; §10).
 >
+> **Fusionné et mis en service le 23 octobre 2026** : les PR #90 et #91
+> fusionnées ; la migration appliquée en production, prouvée compatible
+> avant, les lectures des versions publiées identiques à l'octet près
+> après ; le secret posé au coffre et sur la landing ; une visite contrôlée
+> comptée et affichée sur bento-pop.com. DoD 13 points sur 13 (§9, §10). Le
+> web compte depuis ce jour ; l'app comptera et rappellera à la sortie
+> store unique.
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 8, [le chantier
 > 1](./UX-01-PAGE-BENTO-PUBLIQUE.md) pour la page web, [le chantier
 > 9](./UX-16-PLUSIEURS-BENTOS.md) pour le brouillon local, [le chantier
@@ -833,6 +841,40 @@ chantier 29.
   la migration, l'app des lots 3 à 5 lisant `first_published_at` (lot 4).
 - **À la sortie store** : le compteur et le rappel dans l'app.
 
+**Livré le 23 octobre 2026** :
+
+- **Les deux PR fusionnées** à 20 h 04 (Paris), par commits de fusion : la
+  #90 (`5c9094f`), puis la #91 (`e6be769`), que GitHub a rebasculée sur
+  `main` à la suppression de la branche de la #90. Les GitHub Actions étant
+  désactivées, la CI a été rejouée en local sur la tête de chacune (§8,
+  lot 5).
+- **La migration**, collée par Clément dans l'éditeur SQL du projet mobile,
+  d'un seul bloc avec son inscription au registre, sous `20261023100000`.
+  Un premier essai, sur un autre projet, s'est arrêté à la première
+  instruction sans rien appliquer. Vérifié en lecture seule juste après :
+  le registre ; les trois tables, RLS active, sans règle ni droit client ;
+  28 bentos publiés sur 28 portant leur première date, et aucun dont la
+  date de modification ait bougé ; `show_visits` vrai pour les 64 profils ;
+  les déclencheurs, `visits-purge` à 3 h 40, et les droits des fonctions et
+  des colonnes, ceux du lot 1 ; la file de `pg_net` vide.
+- **Les lectures des versions publiées**, relevées avant et après en `GET`
+  à la clé anonyme : neuf empreintes identiques à l'octet près, le fil mis
+  en avant, la recherche de comptes, un compte et son bento publics,
+  `app_config`, 281 items et 28 bentos visibles, la recherche d'items, et
+  la boîte d'une page de la landing.
+- **Le secret**, tiré dans un fichier sans être affiché, posé par Clément au
+  coffre et sur l'app landing de Coolify, au runtime. Une première valeur,
+  apparue en clair dans la conversation avant d'être posée, a été jetée
+  pour une seconde. Vérifié sans lire la valeur : un seul
+  `bento_visit_secret`, de 64 caractères hexadécimaux, qui n'est pas la
+  valeur jetée.
+- **La landing**, redéployée d'elle-même à la fusion, puis redémarrée avec
+  la variable. Une visite contrôlée sur le bento de Clément :
+  `X-Bento-Visit: recorded`, en base une visite web, une clé de 32 octets
+  et le sel du jour, et « 1 visite » sur la page une fois régénérée.
+- **Reste**, en lecture seule le 24 octobre : la purge de 3 h 40 a tourné,
+  et les clés et le sel du 23 ont disparu.
+
 ---
 
 ## 10. Definition of Done
@@ -855,22 +897,22 @@ chantier 29.
 - [x] Publier, ou rendre le bento incomplet, annule le rappel ; un bento
       dépublié n'en propose jamais
 - [x] Le tap du rappel ouvre le composer sur ce bento
-- [ ] Les versions publiées passent `check-privileges.ts` sans échec, et
+- [x] Les versions publiées passent `check-privileges.ts` sans échec, et
       leurs lectures sont identiques avant et après la migration
 - [x] La politique de confidentialité décrit le compteur avant le premier
       comptage en production
 - [x] Tests, typage et lint verts sur l'app, la landing et le package, CI
       verte
 
-**Point par point au 23 octobre 2026, au lot 5** : 12 points faits sur 13,
-en local, sur trois appareils. Le point 11 attend l'application de la
-migration en production, où se comparent les lectures avant et après. Le
-point 13 se prouve par la CI rejouée en local : les Actions du dépôt sont
-désactivées depuis le 23 octobre 2026.
+**Point par point au 23 octobre 2026, à la mise en service** : 13 points
+sur 13. Les points 1 à 10 sont faits en local, sur trois appareils, et le
+point 1 se voit aussi en production ; le point 11 est fait en production, à
+l'application de la migration ; le point 13 par la CI rejouée en local, les
+Actions du dépôt étant désactivées depuis le 23 octobre 2026.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |
-| 1 | Fait | Deux navigateurs, deux visites ; chacun rechargé, rien de plus ; quatre robots d'aperçu écartés par la route, rien en base (lot 5, gestes 3 et 9). Depuis le correctif `8902ee0`, l'adresse de l'image change chaque jour : Safari ne peut plus resservir celle de la veille. Les e2e de la landing, 33 sur 33 |
+| 1 | Fait | Deux navigateurs, deux visites ; chacun rechargé, rien de plus ; quatre robots d'aperçu écartés par la route, rien en base (lot 5, gestes 3 et 9). Depuis le correctif `8902ee0`, l'adresse de l'image change chaque jour : Safari ne peut plus resservir celle de la veille. Les e2e de la landing, 33 sur 33. En production, une visite contrôlée compte, et la page dit « 1 visite » (§9) |
 | 2 | Fait | Une visite d'app à la première ouverture, puis rien par Trouver ni par un lien le même jour ; le propriétaire sur sa page, rien (lot 5, gestes 1 et 2 ; `check-visits.sql`, lot 1) |
 | 3 | Fait | Le bento en tête de La table, le compteur inchangé (lot 5, geste 1) ; D14 : La table n'appelle rien |
 | 4 | Fait | La page de l'app et la page web, « 3 visites », « 2 visites » ; le profil, « En ligne · publié il y a 8 min · 3 visites » ; « 0 visite » sur un bento neuf, dans l'app et sur le web (lots 3 et 5) |
@@ -880,8 +922,8 @@ désactivées depuis le 23 octobre 2026.
 | 8 | Fait | Les trois portes, une question par bento, sur iOS et Android ; la date au 24 octobre à 18 h dans le journal de SpringBoard et dans `dumpsys alarm`, de 18 h à 19 h sur Android (lots 4 et 5) ; `nextReminderDate`, testée, nuit, soir et changements d'heure |
 | 9 | Fait | Publier par le composer comme par l'écran du pseudo, vider une case : le rappel tombe ; un bento dépublié ne propose rien (lot 5, geste 8). La suppression du compte aussi (lot 4) |
 | 10 | Fait | Sur Android, la vraie notification tapée fait passer le composer de « Mon bento » au bento du rappel ; sur iOS, l'arrivée simulée fait de même, brouillon compris (lot 5, geste 6) |
-| 11 | En partie | `check-privileges.ts` conforme (lot 1). Les lectures des versions publiées, relues sur `6426779` : celles de `bentos` sont des listes de colonnes, inchangées ; le `select('*')` de `users` reçoit un champ de plus, `show_visits`, que la 1.1 ne lit pas. La comparaison avant et après se fait à l'application en production (§6.4) |
-| 12 | Fait | `/confidentialite`, revue aux lots 2 et 3 : ce qui est haché, pourquoi, combien de temps, dans l'app et sur le web. Elle part dans le même déploiement que l'image de comptage, qui ne compte rien avant que `BENTO_VISIT_SECRET` soit posé |
+| 11 | Fait | `check-privileges.ts` conforme (lot 1). En production, à l'application de la migration : neuf empreintes identiques à l'octet près avant et après, des lectures de la 1.1 à la boîte d'une page de la landing (§9). Seul le `select('*')` de `users`, qui demande une session, n'a pas été relu en production : il reçoit `show_visits`, que la 1.1 ne lit pas (lot 1) |
+| 12 | Fait | `/confidentialite`, revue aux lots 2 et 3 : ce qui est haché, pourquoi, combien de temps, dans l'app et sur le web. Elle part dans le même déploiement que l'image de comptage, qui ne compte rien avant que `BENTO_VISIT_SECRET` soit posé : en ligne depuis la fusion, avant la première visite comptée |
 | 13 | Fait, CI rejouée en local | Les six étapes de `ci.yml`, sans cache, sur la tête de la #90 (`8902ee0`) et de la #91 (`60b9c25`) : install, lint, typage, tests (app 691 puis 726, landing 177, admin 226), e2e 33 sur 33, build. Sur GitHub, la #90 était verte à `b9ebae8`, avant la désactivation des Actions |
 
 ---
