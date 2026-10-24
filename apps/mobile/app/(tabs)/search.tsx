@@ -8,12 +8,17 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
-import { CONTENT_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  fontScaleFor,
+  scaledType,
+} from '@/components/bento/font-scaling';
 import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, TopChip, YellowBg } from '@/components/primitives';
 import { SEARCH_ICON_BOX } from '@/components/search/layout';
 import { SearchIcon } from '@/components/TabIcons';
@@ -60,6 +65,7 @@ const CATEGORY_LABELS: Record<string, string | undefined> = Object.fromEntries(
  * session ne redéclenche aucun aller-retour.
  */
 export default function SearchTab() {
+  const { fontScale } = useWindowDimensions();
   const [query, setQuery] = useState('');
   // 300 ms, inchangé : c'est la durée qui laisse finir un mot sans donner
   // l'impression d'attendre.
@@ -134,20 +140,18 @@ export default function SearchTab() {
 
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
           {/* Sans plafond, à la plus grande taille système le titre déborde
-              de l'écran et se rogne en « TROUV ». Le défaut est systémique,
-              20 usages d'Extenda dans l'app n'ont pas de plafond, plus
-              `TopChip` : c'est du ressort du chantier 11, mais on ne laisse
-              pas un titre cassé sur l'écran qu'on livre. */}
+              de l'écran et se rogne en « TROUV ». Plafonné par l'écran
+              lui-même, hauteur de ligne comprise : Android ne plafonne pas
+              la hauteur de ligne, cf. `fontScaleFor`. */}
           <Text
             accessibilityRole="header"
+            allowFontScaling={false}
             style={{
               fontFamily: 'Extenda',
-              fontSize: 28,
-              lineHeight: 26,
+              ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 28, 26),
               letterSpacing: 1,
               textTransform: 'uppercase',
             }}
-            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
           >
             {'Trouve un\nbento.'}
           </Text>
@@ -351,32 +355,38 @@ function NoResult({
   items: readonly SharedItem[];
   onPick: (item: SharedItem) => void;
 }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={{ paddingTop: 12 }}>
       <Text
         style={{
           paddingHorizontal: 4,
           fontFamily: 'Extenda',
-          fontSize: 20,
+          fontSize: 20 * fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER),
           letterSpacing: 0.5,
         }}
         // Trois lignes et un plafond : à la plus grande taille système, deux
         // lignes sans plafond rognaient la requête elle-même, c'est-à-dire la
-        // seule information que cet écran apporte.
+        // seule information que cet écran apporte. Une requête plus longue
+        // rétrécit plutôt que d'être tronquée : son ellipse perdait sur
+        // Android tout son dernier point, qu'il mesure plus étroite qu'Extenda
+        // ne la dessine. La police est appliquée par l'écran : laissée à la
+        // plateforme, une taille changée écran ouvert gardait sur iOS la boîte
+        // et la réduction d'avant, le texte trop petit pour sa boîte.
         numberOfLines={3}
-        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+        adjustsFontSizeToFit
+        allowFontScaling={false}
       >
         {`Rien pour « ${query} ».`}
       </Text>
       <Text
+        allowFontScaling={false}
         style={{
           paddingHorizontal: 4,
           paddingTop: 8,
-          fontSize: 13,
-          lineHeight: 19,
+          ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 13, 19),
           color: 'rgba(10,10,10,0.65)',
         }}
-        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
       >
         Essaie un titre de film, une série, un artiste, ou le pseudo de quelqu'un.
       </Text>
@@ -440,16 +450,16 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 function SearchError({ onRetry }: { onRetry: () => void }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={{ alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 }}>
       <Text
+        allowFontScaling={false}
         style={{
-          fontSize: 13,
+          ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 13, 19),
           color: 'rgba(10,10,10,0.65)',
           textAlign: 'center',
-          lineHeight: 19,
         }}
-        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
       >
         Recherche indisponible. Vérifie ta connexion.
       </Text>
@@ -496,6 +506,7 @@ function SearchError({ onRetry }: { onRetry: () => void }) {
  * passera à 52 pt et la ligne à 72 : prévu, à revérifier ce jour-là.
  */
 function Row({ match, index }: { match: SearchMatch; index: number }) {
+  const { fontScale } = useWindowDimensions();
   const popy = popyFor(match.pseudo, match.avatar);
   return (
     <Pressable
@@ -537,10 +548,19 @@ function Row({ match, index }: { match: SearchMatch; index: number }) {
         <Image source={popy.source} style={{ width: 40, height: 40 }} resizeMode="contain" />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
+        {/* Le pseudo applique lui-même la police système, hauteur de ligne
+            comprise, et reste entier sur sa ligne, quitte à rétrécir, comme
+            dans l'en-tête de la page d'un bento. Tronqué, son ellipse perdait
+            sur Android la moitié de son dernier point. */}
         <Text
-          style={{ fontFamily: 'Extenda', fontSize: 16, lineHeight: 16, letterSpacing: 0.6 }}
+          style={{
+            fontFamily: 'Extenda',
+            ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 16, 16),
+            letterSpacing: 0.6,
+          }}
           numberOfLines={1}
-          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+          adjustsFontSizeToFit
+          allowFontScaling={false}
         >
           @{match.pseudo}
         </Text>

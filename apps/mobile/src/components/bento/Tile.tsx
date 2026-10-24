@@ -29,7 +29,7 @@ import {
   tileTextLayout,
   type TileSize,
 } from './tile-text';
-import { tileTitleFit, tileTitleScale } from './tile-title';
+import { fittedTitle, tileTitleFit, tileTitleScale } from './tile-title';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { extendaAccentRoom } from '@/lib/display-title';
 import { cleanTitle } from '@/lib/text';
@@ -189,6 +189,21 @@ export function Tile({
       conf.letterSpacing,
       Platform.OS === 'android' ? PixelRatio.get() : undefined,
     );
+  // Au plancher, ce qui ne tient toujours pas se coupe. Sur Android, l'ellipse
+  // est écrite et mesurée ici : celle de la plateforme y perdait son dernier
+  // point, cf. `fittedTitle`. Celle d'iOS est juste, et tient compte du
+  // crénage, que la mesure ignore : on la lui laisse.
+  const shownTitle =
+    Platform.OS === 'android'
+      ? fittedTitle(
+          title,
+          width === undefined ? 0 : width - TILE_BORDER * 2 - conf.pad * 2,
+          conf.title * titleScale,
+          conf.letterSpacing,
+          titleFit.numberOfLines,
+          PixelRatio.get(),
+        )
+      : title;
   // La place des accents de la première ligne du titre, que sa ligne de 1 em
   // rognait : « À BOUT DE SOUFFLE » perdait 2,0 pt de son accent sur 3,5 à la
   // recette du 26 septembre 2026. Cf. `display-title.ts`.
@@ -388,7 +403,7 @@ export function Tile({
             textShadowRadius: 0,
           }}
         >
-          {title}
+          {shownTitle}
         </Text>
         {data.subtitle && layout.subtitle ? (
           <Text

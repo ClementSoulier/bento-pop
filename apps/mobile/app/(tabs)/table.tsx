@@ -216,23 +216,25 @@ function useGrace(armed: boolean, settled: boolean, ms: number): boolean {
  * l'écran précédent.
  */
 function Header({ sideInset }: { sideInset: number }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={{ paddingBottom: 18, paddingHorizontal: sideInset }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8 }}>
         <Image source={logo} style={{ height: 28, width: 130 }} resizeMode="contain" />
       </View>
       <View style={{ paddingTop: 14 }}>
+        {/* La police système appliquée par l'écran : Android ne plafonne pas la
+            hauteur de ligne, cf. `fontScaleFor`. */}
         <Text
           accessibilityRole="header"
-          // 1,4 et non le plafond des titres : réglé et recetté ainsi au chantier 2.
-          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
+          allowFontScaling={false}
           style={{
             fontFamily: 'Extenda',
-            fontSize: 28,
-            // `lineHeight` supérieur au `fontSize` : Extenda a des jambages
-            // généreux, et l'inverse (présent ailleurs dans l'app) rogne les
-            // glyphes dès que la taille système augmente.
-            lineHeight: 30,
+            // 1,4 et non le plafond des titres : réglé et recetté ainsi au
+            // chantier 2. Hauteur de ligne supérieure à la police : Extenda a
+            // des jambages généreux, et l'inverse (présent ailleurs dans
+            // l'app) rogne les glyphes dès que la taille système augmente.
+            ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 28, 30),
             letterSpacing: 1,
             textTransform: 'uppercase',
           }}
