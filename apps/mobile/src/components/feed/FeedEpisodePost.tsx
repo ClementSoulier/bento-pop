@@ -65,11 +65,13 @@ type FeedEpisodePostProps = {
  * le numéro, le titre, la durée et la date, l'indication dit où s'ouvre
  * l'épisode. Les descendants sont masqués pour ne pas être lus deux fois.
  *
- * Rôle « bouton », celui d'un bento, et non « lien » : Fabric recycle les vues
- * natives d'une cellule à l'autre sans remettre leurs rôles à zéro
- * (`prepareForRecycle`). Avec « lien », 12 cartes sur 40 s'annonçaient
- * « bouton » au parcours du fil, recette du chantier 19, lot 4 ; un bento
- * aurait pu s'annoncer « lien » de même. L'indication dit où mène le tap.
+ * Rôle « lien » et non « bouton » comme un bento : le tap quitte l'app.
+ *
+ * Fabric recycle bien les vues natives d'une cellule à l'autre, et ne remet
+ * pas leurs rôles à zéro (`prepareForRecycle`), mais la vue reprise reçoit le
+ * sien en recevant ses props : relevé à la sonde native le 24 octobre 2026,
+ * 44 posts sur 44 justes. Les 12 cartes sur 40 lues « bouton » au lot 4 du
+ * chantier 19 venaient du cache d'`idb`, cf. `docs/RECETTE-MOBILE.md`.
  */
 export function FeedEpisodePost({ episode, width, sideInset, now }: FeedEpisodePostProps) {
   const { fontScale } = useWindowDimensions();
@@ -86,7 +88,7 @@ export function FeedEpisodePost({ episode, width, sideInset, now }: FeedEpisodeP
     <Pressable
       onPress={open}
       accessible
-      accessibilityRole="button"
+      accessibilityRole="link"
       accessibilityLabel={episodeAccessibilityLabel(episode, now)}
       accessibilityHint={episodeOpenHint(episode.platform)}
       // Style statique, comme `FeedPost` : cf. son commentaire.

@@ -352,7 +352,10 @@ La colonne, `bento_matches`, le réglage appliqué à `search_bentos` et
 >   ouvre le bento. Les états de chargement, d'erreur et de liste vide. Un
 >   `ScrollView` et non une `FlatList` : vingt lignes au plus, et pas de vues
 >   recyclées dont les rôles se mélangeraient, le défaut trouvé au chantier
->   19.
+>   19. **Corrigé le 24 octobre** : ce défaut venait de la lecture d'`idb`, pas
+>   de Fabric, cf. `RECETTE-MOBILE.md` ; et un `ScrollView` reçoit lui aussi des
+>   vues recyclées, Fabric les reprenant à tout montage. Le `ScrollView` reste,
+>   pour ses vingt lignes.
 > - **`PrivacySettings`** : « Apparaître dans la recherche » sous « Afficher
 >   mes visites », sa note quand il est éteint. Changé, il invalide les
 >   matchs en cache sur l'appareil, valables 5 minutes sinon.
@@ -519,6 +522,8 @@ chantier 29.
   `feat/ux-20-match-par-bento`, partie de celle du chantier 19, ni poussés
   ni proposés** : ses arbitrages confirmés le 24 octobre, la PR n'attend
   plus que la fusion de celle du 19, la #93, ouverte le même jour.
+  **Fusionnée le 24 octobre 2026**, la #94, après la #93 ; sa suite pour
+  Android, la #95, le même jour (§12).
 - **La migration** s'applique en production à la fusion, comme les
   précédentes, par Clément : compatible avec la 1.1 et la 0.1.0. **De
   préférence juste avant de fusionner** : la landing, redéployée à la
@@ -564,7 +569,7 @@ chantier 29.
 23 octobre, en local, au simulateur et à l'émulateur ; le point 4 le 24, par
 l'API de production, la migration appliquée. Le point 9 est lu dans les
 arbres d'accessibilité, la voix passant au chantier 29 ; le point 11 par la
-CI rejouée en local, les Actions du dépôt étant désactivées.
+CI rejouée en local.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |
@@ -619,7 +624,7 @@ Toutes proposées le 23 octobre 2026, en l'absence de Clément, et
   composer, « Trouver », « La table » et `FeedLabel`, et la règle de la page
   publique étendue à toute l'app ; l'ellipse d'Extenda rognée, à éprouver
   dans l'étiquette d'un post avec un pseudo de 20 caractères. **Fait et
-  recetté le 24 octobre 2026** sur `fix/textes-android`, PR #95 : huit
-  textes, la question d'une case d'édition comprise, et toutes les
-  troncatures d'Extenda, rétrécies ou coupées sur une ellipse mesurée par
-  l'app ; cf. la roadmap, §20.
+  recetté le 24 octobre 2026** sur `fix/textes-android`, PR #95, fusionnée
+  le même jour : huit textes, la question d'une case d'édition comprise, et
+  toutes les troncatures d'Extenda, rétrécies ou coupées sur une ellipse
+  mesurée par l'app ; cf. la roadmap, §20.

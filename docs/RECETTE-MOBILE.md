@@ -867,14 +867,77 @@ Une planche de ces images suffit à lire la séquence. Les horodatages de
 `showinfo` n'y sont pas fiables : la durée d'un état se lit au journal du
 proxy.
 
-### Le type d'un élément dans `idb` dit ce qu'entend VoiceOver
+### Le type d'un élément dans `idb` dit son rôle, lu par un compagnon neuf
 
 `idb ui describe-all` rend un `role` par élément : `AXButton` pour un bouton
-annoncé comme tel, `AXGenericElement` pour un élément sans rôle. Au
-chantier 7, les boutons des états sans bento de la page publique sortaient en
-`AXGenericElement` alors qu'ils déclarent `accessibilityRole="button"`, comme
-« Retour », qui sort en `AXButton`. Relever le `role`, pas seulement le
-libellé.
+annoncé comme tel, `AXLink` pour un lien, `AXGenericElement` pour un élément
+sans rôle. Relever le `role`, pas seulement le libellé, et le relever avec un
+compagnon `idb` neuf : le sien garde en mémoire le rôle de chaque vue, cf. le
+piège suivant.
+
+### `idb` garde le rôle de la première vie d'une vue recyclée
+
+Fabric recycle les vues natives : une vue démontée attend dans une réserve, par
+type de composant, et sert au montage suivant, sur n'importe quel écran. Elle
+garde ses traits d'accessibilité jusqu'à recevoir ses nouvelles props, qui
+posent le nouveau rôle : la vue elle-même est juste. Le compagnon d'`idb`, lui,
+retient le rôle qu'il a lu la première fois sur une vue, et ne le relit plus.
+
+Mesuré le 24 octobre 2026 sur « La table », cartes d'épisode en « lien », avec
+une sonde qui relève les traits UIKit de chaque vue
+(`apps/mobile/scripts/ax-probe.m`) :
+
+| Compagnon `idb` | Posts | Traits UIKit faux | Rôle lu par `idb` faux |
+| --- | --- | --- | --- |
+| le même tout le parcours | 44 | 0 | 18 |
+| neuf à chaque lecture | 44 | 0 | 0 |
+
+Les 18 venaient de trois vues, celles des trois bentos du haut, reprises
+ensuite par des cartes d'épisode : `idb` les lisait « bouton » à chaque
+passage. C'était le défaut des « 12 cartes sur 40 » du chantier 19, lot 4, qui
+n'en était pas un. Le constat du chantier 7, les boutons des états sans bento
+de la page publique lus `AXGenericElement` alors qu'ils déclarent « bouton »,
+a la même forme : leur vue reprend celle du libellé de chargement, sans rôle.
+Sur 34 relevés de 9 écrans, chacun lu par un compagnon neuf, 249 éléments sur
+249 avaient leur rôle déclaré, dont 18 sur des vues venues d'un autre rôle, cf.
+[le relevé](./RELEVE-ROLES-IOS.md). Réglages, relu après le chantier 21, a le
+même dessin : 5 lectures fausses sur 66 avec un seul compagnon, aucune avec un
+compagnon neuf.
+
+**Règle : un compagnon neuf avant chaque relevé d'arbre où le rôle compte.**
+Viser le sien, par son UDID, et jamais `idb kill`, qui vide la liste partagée
+des compagnons et tue ceux des autres sessions :
+
+```bash
+# Jeu d'appareils par défaut : idb en relance un à la commande suivante.
+pkill -f "idb_companion --udid $SIM"
+idb disconnect $SIM
+# Jeu d'appareils à part (§1) : le relancer à la main, sur son port.
+kill $(lsof -nP -iTCP:10882 -sTCP:LISTEN -t)
+idb_companion --udid $SIM --device-set-path <dossier> --grpc-port 10882 &
+idb connect localhost 10882
+```
+
+`pkill` seul ne suffit pas : `/tmp/idb/state` garde l'adresse du compagnon
+mort, et la commande suivante échoue.
+
+**Pour trancher entre l'app et l'outil**, la sonde, injectée au lancement,
+écrit chaque seconde les traits UIKit de tous les éléments, et à chaque
+montage les traits d'avant et d'après. `lldb` ne s'attache pas ici, le mode
+développeur du Mac étant désactivé.
+
+```bash
+xcrun -sdk iphonesimulator clang -arch arm64 -mios-simulator-version-min=15.1 \
+  -dynamiclib -fobjc-arc -framework UIKit -o /tmp/ax-probe.dylib apps/mobile/scripts/ax-probe.m
+SIMCTL_CHILD_DYLD_INSERT_LIBRARIES=/tmp/ax-probe.dylib xcrun simctl launch $SIM com.bentopop.mobile
+D=$(xcrun simctl get_app_container $SIM com.bentopop.mobile data)
+cat "$D/tmp/ax-probe.json"    # les éléments : libellé, traits, cadre
+cat "$D/tmp/ax-events.json"   # les montages et recyclages des vues libellées
+```
+
+VoiceOver ne passe pas par le compagnon d'`idb` : il lit les traits de la vue
+dans l'app, ceux que relève la sonde. Ce qu'il dit à voix haute s'entend sur un
+vrai téléphone, au chantier 29.
 
 ### Android ignore `color: 'transparent'` sur un `Text`
 
@@ -897,6 +960,41 @@ Deux relevés simultanés échouent, « UiAutomation already registered » dans
 `adb logcat`, et rendent un arbre vide. Juste après une modification du code,
 le premier lancement de l'app peut aussi rester noir plus de 12 s, le temps du
 bundle : attendre un libellé de l'écran plutôt qu'un délai fixe.
+
+### Lire ce que dit TalkBack, sans l'entendre
+
+TalkBack écrit le texte de chaque annonce dans le journal quand la synthèse
+vocale n'est pas prête : sur un AVD de recette, désactiver le moteur de
+synthèse suffit pour lire ses annonces en entier, rôle et indication compris.
+Relevé le 24 octobre 2026, Android 17 : « Émission Bento Pop, saison 2,
+épisode 5 : … Publiée il y a 15 h.. Link. S'ouvre dans YouTube. ».
+
+```bash
+adb -s $EMU shell pm disable-user --user 0 com.google.android.tts
+adb -s $EMU shell settings put secure enabled_accessibility_services \
+  com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService
+adb -s $EMU shell settings put secure accessibility_enabled 1
+adb -s $EMU logcat -c
+adb -s $EMU shell input keyevent KEYCODE_TAB      # élément suivant, annoncé
+adb -s $EMU logcat -d | grep -oE "fragments:\[\{text:[^]]*" | sed 's/, earcons:.*//'
+```
+
+Trois pièges :
+
+- **TalkBack ne capte pas un `input tap` injecté** : le tap active l'élément au
+  lieu de le cibler, et une carte d'épisode a ouvert l'app YouTube. Passer
+  d'un élément à l'autre par la tabulation ;
+- **à chaque démarrage, TalkBack demande à envoyer des notifications**,
+  par-dessus l'app. Refuser, puis fixer le refus :
+  `pm revoke com.google.android.marvin.talkback android.permission.POST_NOTIFICATIONS`
+  et `pm set-permission-flags … user-fixed` ;
+- **la tabulation ne fait pas charger la suite d'une liste** : défiler par
+  `input swipe`, puis tabuler.
+
+Les mots de TalkBack suivent la langue de l'appareil : un AVD en anglais dit
+« Link » et « Button ». En fin de recette, `pm enable` du moteur de synthèse,
+et TalkBack éteint (`enabled_accessibility_services null`,
+`accessibility_enabled 0`).
 
 ### Un lien envoyé pendant le démarrage de l'app se perd
 

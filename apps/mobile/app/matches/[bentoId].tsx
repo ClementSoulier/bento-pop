@@ -43,8 +43,7 @@ const AVATAR = 44;
  *
  * Même requête que la pastille de la page du bento, `bentoMatchesQueryOptions`,
  * donc déjà en cache quand on arrive par elle. Une liste de vingt lignes au
- * plus : un `ScrollView` suffit, et ses vues ne se recyclent pas d'une ligne à
- * l'autre, ce qui a déjà coûté la fiabilité des rôles dans « La table ».
+ * plus : un `ScrollView` suffit.
  *
  * Les textes appliquent eux-mêmes la taille système, plafonnée, cf.
  * `fontScaleFor`. Laissée à `maxFontSizeMultiplier`, la recette du lot 5 a
