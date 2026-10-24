@@ -864,7 +864,7 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 
 > **Spécifié et arbitré le 23 octobre 2026**, cf. [la spécification](./UX-19-EPISODES-LA-TABLE.md), qui tient ses quatorze décisions, D1 à D14, et sa DoD. Le constat ci-dessous est celui du 15 septembre ; celui de la spécification le mesure à nouveau : 40 épisodes, un par semaine. **Fait et recetté le même jour**, ses quatre lots ; la PR attend le feu vert de Clément.
 >
-> **Corrigé le 24 octobre 2026**, sur `fix/roles-fabric`, partie de la branche du 20 : le rôle des cartes, passé de « lien » à « bouton » au lot 4, revient à « lien ». Les 12 cartes sur 40 lues « bouton » venaient du cache du compagnon `idb`, qui garde le rôle de la première vie d'une vue recyclée ; Fabric, lui, pose le bon. Mesuré par une sonde native (`apps/mobile/scripts/ax-probe.m`) : traits UIKit justes sur 44 posts sur 44 ; lus par `idb`, 18 faux avec le même compagnon tout le parcours, aucun avec un compagnon neuf à chaque lecture ; et 157 éléments sur 157 conformes sur 26 relevés de 8 écrans, cf. [le relevé](./RELEVE-ROLES-IOS.md). Ni harmonisation des rôles ni patch de React Native, qui serait d'ailleurs sans effet, l'app embarquant React Native précompilé : la méthode de mesure est corrigée dans [RECETTE-MOBILE.md](./RECETTE-MOBILE.md), §4.
+> **Corrigé le 24 octobre 2026**, sur `fix/roles-fabric`, partie de la branche du 20 : le rôle des cartes, passé de « lien » à « bouton » au lot 4, revient à « lien ». Les 12 cartes sur 40 lues « bouton » venaient du cache du compagnon `idb`, qui garde le rôle de la première vie d'une vue recyclée ; Fabric, lui, pose le bon. Mesuré par une sonde native (`apps/mobile/scripts/ax-probe.m`) : traits UIKit justes sur 44 posts sur 44 ; lus par `idb`, 18 faux avec le même compagnon tout le parcours, aucun avec un compagnon neuf à chaque lecture ; et 157 éléments sur 157 conformes sur 26 relevés de 8 écrans, cf. [le relevé](./RELEVE-ROLES-IOS.md). Ni harmonisation des rôles ni patch de React Native, qui serait d'ailleurs sans effet, l'app embarquant React Native précompilé : la méthode de mesure est corrigée dans [RECETTE-MOBILE.md](./RECETTE-MOBILE.md), §4. Sur Android, relu à l'émulateur le même jour : TalkBack annonce les 41 cartes « Link », l'émulateur étant en anglais (« Lien » dans la chaîne française de React Native).
 
 **Demandé.** Faire entrer dans le fil les épisodes de l'émission et du podcast Bento Pop, via l'API de la landing.
 
@@ -1175,9 +1175,9 @@ fin de chaque chantier.
   que Safari, l'émulateur que l'app YouTube.
 - **VoiceOver et TalkBack à la voix** sur une carte : un seul arrêt, le
   libellé lu en entier, le rôle « lien », rétabli le 24 octobre, et
-  l'indication du tap. Les arbres d'accessibilité d'iOS le disent, pas encore
-  la voix ; celui d'Android a été lu en « bouton » au lot 4, pas encore en
-  « lien ».
+  l'indication du tap. Les arbres d'accessibilité d'iOS le disent, et le
+  journal de TalkBack à l'émulateur, « Link » sur les 41 cartes ; la voix
+  elle-même reste à entendre.
 - **Les épisodes en production**, en build de production sans
   `EXPO_PUBLIC_LANDING_URL`, donc vers bento-pop.com : la route y rend ce
   que montrent les pages publiques.

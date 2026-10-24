@@ -642,8 +642,12 @@ La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
 > cartes sur 44, toutes portées par les trois vues des bentos du haut ;
 > relancé avant chaque lecture, aucune. Les cartes reprennent le rôle
 > « lien », arbitré par Clément le 24 octobre ; le piège et la méthode sont
-> dans `RECETTE-MOBILE.md`. Sur Android, un lien se lit « Lien », comme ceux
-> du profil : pas encore relu à l'émulateur.
+> dans `RECETTE-MOBILE.md`. Relu le même jour à l'émulateur Pixel 8, sous
+> Android 17 : TalkBack annonce les 41 cartes « Link », l'émulateur étant en
+> anglais (« Lien » dans la chaîne française de React Native), chacune avec
+> son indication, et les bentos « Button » ; un seul nœud
+> `android.view.View` par carte, tapable, sans enfant. Android ne recycle pas
+> les vues en React Native 0.86.
 >
 > **Tests** : rien de plus en unitaire, 759 pour l'app ; les tests qui lisent
 > le code couvrent le rôle et les plafonds de police.
@@ -700,7 +704,7 @@ la CI rejouée en local, les Actions du dépôt étant désactivées.
 | 5 | Fait | Les cinq destinations au simulateur, l'app YouTube à l'émulateur (lot 4, §7.2.3). « Rien d'autre » : `isAllowedOpenUrl`, ses tests et ses défauts introduits exprès (lot 2) |
 | 6 | Fait | Les mêmes parcours : aucun doublon, aucun trou (lot 4) ; la liste d'une page qui commence la suivante, testée (lot 2) |
 | 7 | Fait | Landing coupée, lente et au-delà du délai : le fil sans épisode et sans message, sur iOS (lot 3) et sur Android (lot 4) |
-| 8 | Fait, la voix au chantier 29 | Un seul élément par carte dans les arbres d'iOS et d'Android, son libellé et son indication ; le rôle « lien », juste sur 44 posts sur 44 à la sonde native et à un compagnon `idb` neuf (24 octobre), à relire sur Android |
+| 8 | Fait, la voix au chantier 29 | Un seul élément par carte dans les arbres d'iOS et d'Android, son libellé et son indication ; le rôle « lien », juste sur 44 posts sur 44 à la sonde native et à un compagnon `idb` neuf, et annoncé « Link » par TalkBack sur les 41 cartes à l'émulateur (24 octobre) |
 | 9 | Fait | `/confidentialite`, §2.2 : les vignettes chargées chez YouTube, le tap qui quitte l'app (lot 1) |
 | 10 | Fait, CI rejouée en local | Les six étapes de `ci.yml`, sans cache, à chaque lot : lint et typage 8 sur 8, tests 226, 192 et 759, e2e 38 sur 38, build 3 sur 3 |
 

@@ -350,11 +350,19 @@ le rôle des cartes n'ayant aucun test qui le fige ; e2e 41 sur 41 ; build 3
 sur 3. `accessibilite.test.ts` ne change pas : sa règle, un rôle déclaré sur
 chaque élément tapable, reste la bonne.
 
+**Sur Android**, relu le même jour à l'émulateur Pixel 8, sous Android 17,
+dans un AVD à part, l'app branchée sur la même pile : React Native 0.86 n'y
+recycle pas les vues (`enableViewRecycling` éteint), et donne à un lien la
+classe `android.view.View` et le rôle « Lien », sa chaîne française. Lu dans
+le journal de TalkBack, cf. `RECETTE-MOBILE.md`, « Lire ce que dit TalkBack,
+sans l'entendre » : les 41 cartes annoncées « Link », l'émulateur étant en
+anglais, chacune avec son indication, « S'ouvre dans YouTube. », « … Spotify. »,
+« … Deezer. », « … Apple Podcasts. », « … sur bento-pop.com. » ; 22 bentos
+« Button » ; aucun post à deux rôles. Un seul nœud par carte, tapable, sans
+enfant dans l'arbre réduit aux nœuds qu'atteint TalkBack.
+
 **Ce qui reste** :
 
-- **Android en « lien »**, pas encore relu à l'émulateur : React Native y donne
-  la classe `android.view.View` et le rôle « Lien », comme aux liens du profil.
-  Le lot 4 du chantier 19 l'avait lu en « bouton ».
 - **La voix**, sur un vrai téléphone, au chantier 29.
 - **Les états perdus au recyclage**, #57515, corrigé en 0.88.0 : le seul cas
   possible dans l'app est un bouton désactivé qui reprendrait la vue d'un

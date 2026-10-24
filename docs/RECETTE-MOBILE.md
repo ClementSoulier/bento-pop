@@ -934,6 +934,41 @@ Deux relevés simultanés échouent, « UiAutomation already registered » dans
 le premier lancement de l'app peut aussi rester noir plus de 12 s, le temps du
 bundle : attendre un libellé de l'écran plutôt qu'un délai fixe.
 
+### Lire ce que dit TalkBack, sans l'entendre
+
+TalkBack écrit le texte de chaque annonce dans le journal quand la synthèse
+vocale n'est pas prête : sur un AVD de recette, désactiver le moteur de
+synthèse suffit pour lire ses annonces en entier, rôle et indication compris.
+Relevé le 24 octobre 2026, Android 17 : « Émission Bento Pop, saison 2,
+épisode 5 : … Publiée il y a 15 h.. Link. S'ouvre dans YouTube. ».
+
+```bash
+adb -s $EMU shell pm disable-user --user 0 com.google.android.tts
+adb -s $EMU shell settings put secure enabled_accessibility_services \
+  com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService
+adb -s $EMU shell settings put secure accessibility_enabled 1
+adb -s $EMU logcat -c
+adb -s $EMU shell input keyevent KEYCODE_TAB      # élément suivant, annoncé
+adb -s $EMU logcat -d | grep -oE "fragments:\[\{text:[^]]*" | sed 's/, earcons:.*//'
+```
+
+Trois pièges :
+
+- **TalkBack ne capte pas un `input tap` injecté** : le tap active l'élément au
+  lieu de le cibler, et une carte d'épisode a ouvert l'app YouTube. Passer
+  d'un élément à l'autre par la tabulation ;
+- **à chaque démarrage, TalkBack demande à envoyer des notifications**,
+  par-dessus l'app. Refuser, puis fixer le refus :
+  `pm revoke com.google.android.marvin.talkback android.permission.POST_NOTIFICATIONS`
+  et `pm set-permission-flags … user-fixed` ;
+- **la tabulation ne fait pas charger la suite d'une liste** : défiler par
+  `input swipe`, puis tabuler.
+
+Les mots de TalkBack suivent la langue de l'appareil : un AVD en anglais dit
+« Link » et « Button ». En fin de recette, `pm enable` du moteur de synthèse,
+et TalkBack éteint (`enabled_accessibility_services null`,
+`accessibility_enabled 0`).
+
 ### Un lien envoyé pendant le démarrage de l'app se perd
 
 Relancer l'app par `am start -n …/.MainActivity`, attendre 12 s, puis envoyer
