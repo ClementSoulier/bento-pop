@@ -80,3 +80,31 @@ export function ProfileIcon({ size = 22, color = '#0a0a0a', active = false }: Ic
     </View>
   );
 }
+
+/**
+ * Crayon, hors de la tab bar : la pastille « Modifier le profil » de l'onglet
+ * Profil (chantier 21). Même trait que les icônes des onglets.
+ */
+export function PencilIcon({ size = 18, color = '#0a0a0a' }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path
+          d="M14.5 5.5 L18.5 9.5 L8.5 19.5 L3.5 20.5 L4.5 15.5 Z"
+          stroke={color}
+          strokeWidth={STROKE}
+          strokeLinejoin="round"
+          fill="transparent"
+        />
+        <Path
+          d="M14.5 5.5 L16.5 3.5 L20.5 7.5 L18.5 9.5"
+          stroke={color}
+          strokeWidth={STROKE}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          fill="transparent"
+        />
+      </Svg>
+    </View>
+  );
+}

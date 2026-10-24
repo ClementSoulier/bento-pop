@@ -29,7 +29,7 @@ import {
   withoutBlocked,
   type BentoMatch,
 } from '@/lib/matches';
-import { popyForPseudo } from '@/lib/popy-avatar';
+import { popyFor } from '@/lib/popy-avatar';
 import { useBlocked } from '@/state/blocked';
 import { publicSupabase } from '@/supabase/client';
 
@@ -73,7 +73,7 @@ export default function MatchesScreen() {
     ...bentoMatchesQueryOptions(publicSupabase, bentoId),
     enabled: bentoId !== '',
   });
-  const blocked = useBlocked((s) => s.pseudos);
+  const blocked = useBlocked((s) => s.index);
   const matches = data ? withoutBlocked(data, blocked) : [];
 
   const titleSize = TITLE_SIZE * fontScaleFor(fontScale, TITLE_MAX_FONT_MULTIPLIER);
@@ -174,7 +174,7 @@ export default function MatchesScreen() {
 function MatchRow({ match }: { match: BentoMatch }) {
   const { fontScale } = useWindowDimensions();
   const scale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
-  const popy = popyForPseudo(match.pseudo);
+  const popy = popyFor(match.pseudo, match.avatar);
   const subtitle = match.editionTitle ? `« ${match.editionTitle} »` : match.displayName;
 
   return (

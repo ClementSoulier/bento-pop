@@ -23,7 +23,7 @@ import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, TopChip, YellowBg } from '@/compon
 import { SEARCH_ICON_BOX } from '@/components/search/layout';
 import { SearchIcon } from '@/components/TabIcons';
 import { bentoRoute } from '@/lib/bento-address';
-import { popyForPseudo } from '@/lib/popy-avatar';
+import { popyFor } from '@/lib/popy-avatar';
 import { tapFeedback } from '@/lib/haptics';
 import {
   isEmpty,
@@ -72,7 +72,7 @@ export default function SearchTab() {
   const debounced = useDebouncedValue(query.trim(), 300);
   const enabled = isSearchable(debounced);
 
-  const blocked = useBlocked((s) => s.pseudos);
+  const blocked = useBlocked((s) => s.index);
   const {
     data: rows = [],
     isFetching: loading,
@@ -507,7 +507,7 @@ function SearchError({ onRetry }: { onRetry: () => void }) {
  */
 function Row({ match, index }: { match: SearchMatch; index: number }) {
   const { fontScale } = useWindowDimensions();
-  const popy = popyForPseudo(match.pseudo);
+  const popy = popyFor(match.pseudo, match.avatar);
   return (
     <Pressable
       // L'adresse du bento trouvé, et non celle du compte : deux bentos

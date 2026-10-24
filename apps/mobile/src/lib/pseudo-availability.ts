@@ -1,31 +1,41 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/supabase/types';
-import { escapeLikePattern, pickExactPseudo } from './pseudo-match';
 
 export type PseudoClient = SupabaseClient<Database>;
 
+/** Ce que la base dit d'un pseudo, cf. `pseudo_status`. */
+export type ServerPseudoStatus = Database['public']['Functions']['pseudo_status']['Returns'];
+
+const SERVER_STATUSES: readonly ServerPseudoStatus[] = [
+  'invalid',
+  'reserved',
+  'forbidden',
+  'taken',
+  'current',
+  'available',
+];
+
 /**
- * Vrai si un compte porte déjà ce pseudo, à la casse près.
+ * Ce que la base dit d'un pseudo, à la publication comme au changement
+ * (chantier 21) : libre, pris par un pseudo actuel ou par l'ancien pseudo
+ * d'un autre compte, réservé à la marque, non autorisé par les motifs
+ * interdits, invalide, ou le sien.
+ *
+ * Avant le chantier 21, l'app lisait les pseudos actuels de `users` : elle
+ * aurait annoncé libre un ancien pseudo réservé, que la base refuse ensuite.
+ * La fonction compare en minuscules, sans joker : l'échappement de `_` qu'il
+ * fallait à `ilike` n'a plus lieu d'être.
  *
  * Client injecté, comme `public-bento.ts`, pour que la forme de la requête se
  * vérifie sous `node:test` ; `pseudo.ts`, qui importe le client, ne s'y charge
  * pas.
  *
- * Le joker `_` est échappé à la source. Sans ça, `limit(5)` pouvait couper la
- * bonne ligne dès que plus de cinq voisins répondaient au joker, et un pseudo
- * pris aurait été annoncé libre, pour échouer ensuite sur l'index unique à
- * l'inscription. `pickExactPseudo` reste en seconde ligne.
- *
- * Lève en cas d'erreur : l'appelant doit pouvoir distinguer « pris », « libre »
- * et « on ne sait pas ».
+ * Lève en cas d'erreur, ou sur une réponse inconnue : l'appelant doit pouvoir
+ * distinguer « pris », « libre » et « on ne sait pas ».
  */
-export async function isPseudoTaken(client: PseudoClient, pseudo: string): Promise<boolean> {
-  const wanted = pseudo.trim();
-  const { data, error } = await client
-    .from('users')
-    .select('pseudo')
-    .ilike('pseudo', escapeLikePattern(wanted))
-    .limit(5);
+export async function pseudoStatus(client: PseudoClient, pseudo: string): Promise<ServerPseudoStatus> {
+  const { data, error } = await client.rpc('pseudo_status', { p_pseudo: pseudo.trim() });
   if (error) throw new Error(`Pseudo check failed: ${error.message}`);
-  return pickExactPseudo(data ?? [], wanted) !== null;
+  if (!SERVER_STATUSES.includes(data)) throw new Error(`Pseudo check failed: ${String(data)}`);
+  return data;
 }

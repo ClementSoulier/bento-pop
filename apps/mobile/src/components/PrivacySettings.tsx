@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { CONTROL_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
-import { INK_MUTED, SettingSwitch, useToast } from '@/components/primitives';
+import { SectionTitle, SettingSwitch, useToast } from '@/components/primitives';
 import { BENTO_MATCHES_QUERY_ROOT } from '@/lib/matches';
 import { writeSearchable } from '@/lib/search';
 import { writeShowVisits } from '@/lib/visits';
@@ -56,20 +55,7 @@ export function PrivacySettings() {
 
   return (
     <View style={{ marginTop: 24, gap: 8 }}>
-      <Text
-        numberOfLines={1}
-        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-        style={{
-          fontFamily: 'Bungee',
-          fontSize: 10,
-          letterSpacing: 2,
-          color: INK_MUTED,
-          textTransform: 'uppercase',
-          marginBottom: 4,
-        }}
-      >
-        Confidentialité
-      </Text>
+      <SectionTitle>Confidentialité</SectionTitle>
       <SettingSwitch
         label="Afficher mes visites"
         description="Les autres voient combien de fois ton bento a été ouvert."

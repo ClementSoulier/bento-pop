@@ -2,7 +2,15 @@ import { Pressable, View } from 'react-native';
 import { BentoGrid } from '@/components/bento';
 import { GRID_GEOMETRY } from '@/components/bento/geometry';
 import { Sticker } from '@/components/primitives';
-import { feedAccessibilityLabel, type FeedBento } from '@/lib/feed';
+import {
+  accountBentoTitle,
+  feedAccessibilityLabel,
+  type FeedBento,
+  type FeedLabelFor,
+} from '@/lib/feed';
+import { popyFor } from '@/lib/popy-avatar';
+import { relativeDate } from '@/lib/relative-date';
+import { FeedLabel } from './FeedLabel';
 import { FeedPostHeader } from './FeedPostHeader';
 // Les étiquettes vivent dans un module sans dépendance à `react-native`,
 // pour que la règle de priorité entre elles reste testable.
@@ -25,6 +33,8 @@ type FeedPostProps = {
   /** Échelle de la grille, cf. `feedScale`. */
   scale: number;
   onPress: () => void;
+  /** L'auteur, dans le fil ; le bento, dans la liste d'un compte. */
+  labelFor?: FeedLabelFor;
   /** Horloge injectable, pour des captures et des tests reproductibles. */
   now?: number;
 };
@@ -44,15 +54,23 @@ type FeedPostProps = {
  * activable. Les descendants sont masqués pour ne pas être parcourus deux
  * fois.
  */
-export function FeedPost({ bento, width, sideInset, scale, onPress, now }: FeedPostProps) {
-  const ribbon = ribbonFor(bento);
+export function FeedPost({
+  bento,
+  width,
+  sideInset,
+  scale,
+  onPress,
+  labelFor = 'author',
+  now,
+}: FeedPostProps) {
+  const ribbon = ribbonFor(bento, { edition: labelFor === 'author' });
 
   return (
     <Pressable
       onPress={onPress}
       accessible
       accessibilityRole="button"
-      accessibilityLabel={feedAccessibilityLabel(bento, now)}
+      accessibilityLabel={feedAccessibilityLabel(bento, now, labelFor)}
       // Style statique et non fonction de `pressed` : la variante fonction
       // n'appliquait pas les marges au premier rendu sur iOS. Le léger
       // assombrissement à l'appui est repris par `android_ripple` sur Android
@@ -64,13 +82,23 @@ export function FeedPost({ bento, width, sideInset, scale, onPress, now }: FeedP
       }}
     >
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <FeedPostHeader
-          pseudo={bento.pseudo}
-          displayName={bento.displayName}
-          publishedAt={bento.publishedAt}
-          maxWidth={width}
-          now={now}
-        />
+        {labelFor === 'bento' ? (
+          <FeedLabel
+            title={accountBentoTitle(bento)}
+            meta={relativeDate(bento.publishedAt, now)}
+            avatar={popyFor(bento.pseudo, bento.avatar)}
+            maxWidth={width}
+          />
+        ) : (
+          <FeedPostHeader
+            pseudo={bento.pseudo}
+            avatar={bento.avatar}
+            displayName={bento.displayName}
+            publishedAt={bento.publishedAt}
+            maxWidth={width}
+            now={now}
+          />
+        )}
 
         <View style={{ marginTop: HEADER_GAP }}>
           <BentoGrid

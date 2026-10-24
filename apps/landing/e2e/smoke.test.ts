@@ -4,6 +4,7 @@ import { gzipSync } from 'node:zlib';
 import { readFileSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
+import { popyKeyForPseudo } from '@bento-pop/supabase-mobile/bento';
 import { bentoId, startStub, type EpisodeQuery, type VisitCall } from './stub';
 
 /**
@@ -14,11 +15,13 @@ import { bentoId, startStub, type EpisodeQuery, type VisitCall } from './stub';
  * Seul PostgREST est bouchonné, au niveau du protocole (cf. `stub.mjs`).
  *
  * Ports figés : `NEXT_PUBLIC_MOBILE_SUPABASE_URL` est inlinée au build, on
- * ne peut donc pas tirer un port au hasard après coup.
+ * ne peut donc pas tirer un port au hasard après coup. Ils se choisissent
+ * avant le build, par `E2E_STUB_PORT` et `E2E_APP_PORT`, quand une autre
+ * session tient les ports par défaut (chantier 21).
  */
 
-const STUB_PORT = 4599;
-const APP_PORT = 4598;
+const STUB_PORT = Number(process.env.E2E_STUB_PORT ?? 4599);
+const APP_PORT = Number(process.env.E2E_APP_PORT ?? 4598);
 const STUB_URL = `http://127.0.0.1:${STUB_PORT}`;
 const APP_URL = `http://127.0.0.1:${APP_PORT}`;
 const SITE_URL = 'https://bento-pop.test';
@@ -510,6 +513,92 @@ describe('plusieurs bentos par compte', () => {
 
     const plusieurs = await (await get('/u/deuxbentos')).text();
     assert.ok(plusieurs.includes('Les autres bentos de ce compte'), 'témoin du même test');
+  });
+});
+
+/**
+ * Chantier 21 : la page d'un compte suit l'app. Le Popy choisi, les anciens
+ * pseudos redirigés pour toujours, et les autres bentos du compte en entier,
+ * dans l'ordre de la liste de l'app.
+ */
+describe('profil', () => {
+  // La même lecture que la section des métadonnées.
+  const meta = (html: string, key: string) =>
+    new RegExp(`<meta (?:property|name)="${key}" content="([^"]*)"`).exec(html)?.[1];
+
+  it('montre le Popy choisi plutôt que celui du pseudo', async () => {
+    // Le témoin : le pseudo seul tirerait un autre Popy.
+    assert.notEqual(popyKeyForPseudo('popy.choisi'), 'diable');
+    const html = await (await get('/u/popy.choisi')).text();
+    assert.ok(html.includes('popy-diable'), 'le Popy choisi');
+    assert.ok(!html.includes(`popy-${popyKeyForPseudo('popy.choisi')}`), 'et non celui du pseudo');
+  });
+
+  // Deux en-têtes `Location` identiques lors d'une génération à la demande,
+  // cf. la redirection canonique : une seule cible distincte.
+  const targets = (res: Response) => [...new Set((res.headers.get('location') ?? '').split(', '))];
+
+  it('redirige un ancien pseudo pour toujours, vers la forme canonique', async () => {
+    const res = await get('/u/ancien.nom');
+    assert.equal(res.status, 308);
+    assert.deepEqual(targets(res), ['/u/nouveau.nom']);
+  });
+
+  it('redirige un ancien pseudo, le bento nommé compris', async () => {
+    const res = await get('/u/ancien.nom/hebdo-1');
+    assert.equal(res.status, 308);
+    assert.deepEqual(targets(res), ['/u/nouveau.nom/hebdo-1']);
+  });
+
+  it('sert l’aperçu d’un ancien pseudo, celui du compte d’aujourd’hui', async () => {
+    const res = await get('/u/ancien.nom/opengraph-image/bento');
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/jpeg');
+  });
+
+  it('liste les autres bentos en entier, le plus récent d’abord', async () => {
+    const html = await (await get('/u/troisbentos')).text();
+    const list = html.slice(html.indexOf('Ses autres bentos'));
+    assert.ok(list.length < html.length, 'la liste est là');
+    const recent = list.indexOf('href="/u/troisbentos/hebdo-recent"');
+    const ancien = list.indexOf('href="/u/troisbentos/ancien-hebdo"');
+    assert.ok(recent > 0 && ancien > recent, 'le plus récent d’abord');
+    // Chacun en entier : sa boîte, nommée par son titre.
+    assert.ok(list.includes('aria-label="hebdo-recent, un bento de @troisbentos"'));
+    assert.ok(list.includes('aria-label="ancien-hebdo, un bento de @troisbentos"'));
+  });
+
+  it('range la bande comme la liste qu’elle résume', async () => {
+    const html = await (await get('/u/troisbentos')).text();
+    const nav = html.slice(html.indexOf('Les autres bentos de ce compte'), html.indexOf('</nav>'));
+    assert.ok(nav.indexOf('hebdo-recent') < nav.indexOf('ancien-hebdo'), nav);
+  });
+
+  it('met le principal en tête sous un bento nommé', async () => {
+    const html = await (await get('/u/troisbentos/ancien-hebdo')).text();
+    const list = html.slice(html.indexOf('Ses autres bentos'));
+    const principal = list.indexOf('href="/u/troisbentos"');
+    assert.ok(principal > 0 && principal < list.indexOf('href="/u/troisbentos/hebdo-recent"'));
+    assert.ok(list.includes('Bento principal'));
+  });
+
+  it('ne change rien à un compte qui n’a qu’un bento', async () => {
+    assert.ok(!(await (await get('/u/keremasan')).text()).includes('Ses autres bentos'));
+  });
+
+  it('rend la page et dit « introuvable » d’un ancien pseudo, avant la migration', async () => {
+    await fetch(`${STUB_URL}/__avant-21`);
+    try {
+      const res = await get('/u/avant.vingtetun');
+      assert.equal(res.status, 200);
+      const html = await res.text();
+      assert.ok(html.includes('Interstellar'));
+      // Le repli ne retire que la colonne du 21 : `searchable` reste lu.
+      assert.equal(meta(html, 'robots'), 'noindex, follow');
+      assert.equal((await get('/u/ancien.avant')).status, 404);
+    } finally {
+      await resetStub();
+    }
   });
 });
 

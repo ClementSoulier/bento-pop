@@ -138,6 +138,72 @@ describe('éléments tapables', () => {
   });
 });
 
+/**
+ * Chantier 21 : les sections des réglages et de la modification du profil
+ * s'annoncent comme des titres, que VoiceOver et TalkBack parcourent de l'un
+ * à l'autre. Celles que rendaient leurs propres composants, Notifications et
+ * Confidentialité, ne l'étaient pas, à la recette du lot 3 : toutes passent
+ * maintenant par `SectionTitle`.
+ */
+describe('titres des sections', () => {
+  const parse = (path: string) =>
+    ts.createSourceFile(
+      path,
+      readFileSync(join(APP_ROOT, path), 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+
+  /** Le rôle posé sur une balise, `undefined` sans rôle. */
+  const roleOf = (node: ts.JsxOpeningLikeElement) => {
+    for (const attribute of node.attributes.properties) {
+      if (ts.isJsxAttribute(attribute) && attribute.name.getText() === 'accessibilityRole') {
+        const value = attribute.initializer;
+        return value && ts.isStringLiteral(value) ? value.text : value?.getText();
+      }
+    }
+    return undefined;
+  };
+
+  /** Ce que disent les `<SectionTitle>` d'un fichier, dans l'ordre. */
+  const sectionTitles = (path: string): string[] => {
+    const found: string[] = [];
+    const visit = (node: ts.Node) => {
+      if (ts.isJsxElement(node) && node.openingElement.tagName.getText() === 'SectionTitle') {
+        found.push(node.children.map((c) => (ts.isJsxText(c) ? c.text : '?')).join('').trim());
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(parse(path));
+    return found;
+  };
+
+  it('rend un titre', () => {
+    const roles: (string | undefined)[] = [];
+    const visit = (node: ts.Node) => {
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        if (node.tagName.getText() === 'Text') roles.push(roleOf(node));
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(parse('src/components/primitives/SectionTitle.tsx'));
+    assert.deepEqual(roles, ['header']);
+  });
+
+  it('nomme chaque section des réglages et du profil par lui', () => {
+    const expected: [string, string[]][] = [
+      ['app/settings.tsx', ['À propos', 'Comptes bloqués', 'Compte']],
+      ['src/components/NotificationSettings.tsx', ['Notifications']],
+      ['src/components/PrivacySettings.tsx', ['Confidentialité']],
+      ['app/profile/edit.tsx', ['Ton Popy', 'Ton nom', 'Ton pseudo']],
+    ];
+    for (const [path, titles] of expected) {
+      assert.deepEqual(sectionTitles(path), titles, path);
+    }
+  });
+});
+
 describe('champs de saisie', () => {
   const inputs = tags(new Set(['TextInput']));
 

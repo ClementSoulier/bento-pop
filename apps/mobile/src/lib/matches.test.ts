@@ -10,6 +10,7 @@ import {
   withoutBlocked,
   type BentoMatch,
 } from './matches';
+import { blockedIndex } from './blocked-accounts';
 
 const row = (over: Record<string, unknown> = {}) => ({
   bento_id: '3f2b8c1e-5d4a-4b6f-9e0d-1a2b3c4d5e6f',
@@ -24,6 +25,8 @@ const row = (over: Record<string, unknown> = {}) => ({
     { id: 'i1', title: 'Dune', category_id: 1 },
     { id: 'i2', title: 'Arcane', category_id: 2 },
   ],
+  user_id: 'u-alice',
+  avatar: 'nani',
   ...over,
 });
 
@@ -35,8 +38,10 @@ describe('parseMatchRow', () => {
       bentoId: '3f2b8c1e-5d4a-4b6f-9e0d-1a2b3c4d5e6f',
       slug: 'mon-bento',
       isPrimary: true,
+      userId: 'u-alice',
       pseudo: 'alice',
       displayName: 'Alice',
+      avatar: 'nani',
       editionTitle: null,
       shared: 2,
       score: 0.75,
@@ -141,7 +146,15 @@ describe('à l’écran', () => {
   it('écarte les comptes bloqués sur l’appareil, quelle que soit la casse', () => {
     const list: BentoMatch[] = [match({ pseudo: 'Alice' }), match({ pseudo: 'bob' })];
     assert.deepEqual(
-      withoutBlocked(list, new Set(['alice'])).map((m) => m.pseudo),
+      withoutBlocked(list, blockedIndex([{ userId: null, pseudo: 'alice' }])).map((m) => m.pseudo),
+      ['bob'],
+    );
+  });
+
+  it('écarte un compte bloqué qui a changé de pseudo depuis (chantier 21, D8)', () => {
+    const list: BentoMatch[] = [match({ pseudo: 'nouveau', user_id: 'u-1' }), match({ pseudo: 'bob', user_id: 'u-2' })];
+    assert.deepEqual(
+      withoutBlocked(list, blockedIndex([{ userId: 'u-1', pseudo: 'ancien' }])).map((m) => m.pseudo),
       ['bob'],
     );
   });

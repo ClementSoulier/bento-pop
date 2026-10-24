@@ -61,6 +61,8 @@ const row = (pseudo: string): SearchRow => ({
   item_title: null,
   category_id: null,
   score: 2,
+  user_id: `user-${pseudo}`,
+  avatar: null,
 });
 
 const shared = (id: string, picks: number): SharedItemRow => ({

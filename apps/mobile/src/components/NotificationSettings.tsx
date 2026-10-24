@@ -1,11 +1,14 @@
 import { useCallback, useState } from 'react';
-import { AppState, Pressable, Text, View } from 'react-native';
+import { AppState, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { CONTENT_MAX_FONT_MULTIPLIER, fontScaleFor } from '@/components/bento/font-scaling';
 import {
-  CONTENT_MAX_FONT_MULTIPLIER,
-  CONTROL_MAX_FONT_MULTIPLIER,
-} from '@/components/bento/font-scaling';
-import { INK_MUTED, INK_PLACEHOLDER, SettingSwitch, useToast } from '@/components/primitives';
+  INK_MUTED,
+  INK_PLACEHOLDER,
+  SectionTitle,
+  SettingSwitch,
+  useToast,
+} from '@/components/primitives';
 import { type DeviceSettings, type NotificationSection, notificationSection } from '@/lib/push';
 import {
   enablePushFromProfile,
@@ -23,6 +26,9 @@ import {
  * téléphone (D8). Couper un type dans l'app ne retire pas l'autorisation du
  * système, et l'inverse non plus : la section dit lequel des deux bloque,
  * plutôt que de montrer deux interrupteurs qui ne serviraient à rien.
+ *
+ * Ses textes appliquent eux-mêmes la taille système, plafonnée, comme tout
+ * l'écran des réglages, cf. `app/settings.tsx`.
  */
 export function NotificationSettings() {
   const [section, setSection] = useState<NotificationSection | null>(null);
@@ -88,20 +94,7 @@ export function NotificationSettings() {
 
   return (
     <View style={{ marginTop: 24, gap: 8 }}>
-      <Text
-        numberOfLines={1}
-        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-        style={{
-          fontFamily: 'Bungee',
-          fontSize: 10,
-          letterSpacing: 2,
-          color: INK_MUTED,
-          textTransform: 'uppercase',
-          marginBottom: 4,
-        }}
-      >
-        Notifications
-      </Text>
+      <SectionTitle>Notifications</SectionTitle>
 
       {/* Tant que la lecture n'a pas répondu, rien : un état deviné
           clignoterait d'un écran à l'autre. */}
@@ -149,10 +142,11 @@ export function NotificationSettings() {
 }
 
 function Hint({ children }: { children: string }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <Text
-      maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-      style={{ fontSize: 12, color: INK_MUTED }}
+      allowFontScaling={false}
+      style={{ fontSize: 12 * fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER), color: INK_MUTED }}
     >
       {children}
     </Text>
@@ -161,6 +155,7 @@ function Hint({ children }: { children: string }) {
 
 /** Même aspect que les lignes du profil : blanches, cerclées, un chevron. */
 function ActionRow({ label, onPress }: { label: string; onPress: () => void }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <Pressable
       onPress={onPress}
@@ -180,8 +175,12 @@ function ActionRow({ label, onPress }: { label: string; onPress: () => void }) {
       }}
     >
       <Text
-        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-        style={{ fontSize: 14, fontWeight: '600', flexShrink: 1 }}
+        allowFontScaling={false}
+        style={{
+          fontSize: 14 * fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER),
+          fontWeight: '600',
+          flexShrink: 1,
+        }}
       >
         {label}
       </Text>

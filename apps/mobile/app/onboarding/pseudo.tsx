@@ -299,7 +299,7 @@ function StatusBadge({ check }: { check: PseudoCheck }) {
   const color =
     check.status === 'available'
       ? '#2ec4b6'
-      : check.status === 'taken' || check.status === 'reserved'
+      : check.status === 'taken' || check.status === 'reserved' || check.status === 'forbidden'
       ? '#e63946'
       : '#d97706';
   const label =
@@ -309,6 +309,8 @@ function StatusBadge({ check }: { check: PseudoCheck }) {
       ? 'Pris'
       : check.status === 'reserved'
       ? 'Réservé'
+      : check.status === 'forbidden'
+      ? 'Non autorisé'
       : check.status === 'too-short'
       ? 'Trop court'
       : check.status === 'too-long'

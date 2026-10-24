@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { createClient } from '@supabase/supabase-js';
-import { isPseudoTaken, type PseudoClient } from './pseudo-availability';
+import { pseudoStatus, type PseudoClient } from './pseudo-availability';
 import {
   STUB_CLIENT_OPTIONS,
   startPostgrestStub,
@@ -10,9 +10,8 @@ import {
 import type { Database } from '@/supabase/types';
 
 /**
- * Disponibilité d'un pseudo à l'inscription, contre un bouchon PostgREST.
- * C'est la forme de la requête qui compte : un joker non échappé ne casse
- * rien de visible jusqu'au jour où six voisins répondent au même motif.
+ * Ce que la base dit d'un pseudo, contre un bouchon PostgREST. C'est la forme
+ * de l'appel qui compte, et la façon de lire une réponse qu'on ne connaît pas.
  */
 
 let stub: PostgrestStub;
@@ -31,41 +30,34 @@ beforeEach(() => {
   stub.requests.length = 0;
 });
 
-describe('isPseudoTaken', () => {
-  it('interroge `users` avec le joker `_` échappé, antislash encodé sur le fil', async () => {
-    stub.enqueue([]);
-    await isPseudoTaken(client, ' dark_hifus ');
+describe('pseudoStatus', () => {
+  it('appelle `pseudo_status` avec le pseudo débarrassé de ses blancs', async () => {
+    stub.enqueue('available');
+    await pseudoStatus(client, ' dark_hifus ');
 
     const [req] = stub.requests;
     assert.ok(req, 'aucune requête reçue');
-    assert.equal(req.method, 'GET');
-    assert.equal(req.path, '/rest/v1/users');
-    const params = new URLSearchParams(req.rawQuery);
-    assert.equal(params.get('select'), 'pseudo');
-    assert.equal(params.get('pseudo'), 'ilike.dark\\_hifus');
-    assert.ok(req.rawQuery.includes('dark%5C_hifus'), req.rawQuery);
-    assert.equal(params.get('limit'), '5');
+    assert.equal(req.method, 'POST');
+    assert.equal(req.path, '/rest/v1/rpc/pseudo_status');
+    assert.deepEqual(JSON.parse(req.body), { p_pseudo: 'dark_hifus' });
   });
 
-  it('dit « pris » quand un compte porte ce pseudo, à la casse près', async () => {
-    stub.enqueue([{ pseudo: 'Dark_Hifus' }]);
-    assert.equal(await isPseudoTaken(client, 'dark_hifus'), true);
+  it('rend ce que dit la base, ancien pseudo réservé compris', async () => {
+    for (const status of ['available', 'taken', 'reserved', 'forbidden', 'current', 'invalid'] as const) {
+      stub.enqueue(status);
+      assert.equal(await pseudoStatus(client, 'dark_hifus'), status);
+    }
   });
 
-  it('dit « libre » quand aucun compte ne le porte', async () => {
-    stub.enqueue([]);
-    assert.equal(await isPseudoTaken(client, 'dark_hifus'), false);
-  });
-
-  /** Seconde ligne de défense si l'échappement venait à sauter. */
-  it('ne compte pas un voisin que le joker aurait remonté', async () => {
-    stub.enqueue([{ pseudo: 'buyt.k' }, { pseudo: 'buytak' }]);
-    assert.equal(await isPseudoTaken(client, 'buyt_k'), false);
+  /** Une réponse inconnue ne doit se lire ni « pris » ni « libre ». */
+  it('lève sur une réponse inconnue', async () => {
+    stub.enqueue('peut-être');
+    await assert.rejects(() => pseudoStatus(client, 'dark_hifus'), /Pseudo check failed/);
   });
 
   /** « On ne sait pas » ne doit se lire ni « pris » ni « libre ». */
   it('lève en cas d’erreur au lieu de trancher', async () => {
     stub.enqueue({ message: 'boom', code: '500', details: null, hint: null }, 500);
-    await assert.rejects(() => isPseudoTaken(client, 'dark_hifus'), /Pseudo check failed/);
+    await assert.rejects(() => pseudoStatus(client, 'dark_hifus'), /Pseudo check failed/);
   });
 });

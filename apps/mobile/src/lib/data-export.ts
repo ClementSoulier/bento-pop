@@ -40,13 +40,19 @@ export async function exportUserData(userId: string): Promise<void> {
     .order('is_primary', { ascending: false })
     .order('created_at', { ascending: true });
 
+  // 3. Ses anciens pseudos, chantier 21 (D16) : la table n'a pas d'accès
+  // client, la fonction ne rend que ceux du compte connecté.
+  const { data: pseudoHistory } = await supabase.rpc('my_pseudo_history');
+
   const payload = {
     exported_at: new Date().toISOString(),
     // 2 : la clé `bento`, scalaire, devient `bentos`, un tableau. Un lecteur
-    // de l'ancien format le verrait sinon comme un export sans bento.
+    // de l'ancien format le verrait sinon comme un export sans bento. La clé
+    // `pseudo_history`, ajoutée au chantier 21, ne change rien pour lui.
     schema_version: 2,
     profile,
     bentos: bentos ?? [],
+    pseudo_history: pseudoHistory ?? [],
   };
 
   const fileName = `bento-pop-export-${(profile?.pseudo ?? 'user').toLowerCase()}-${

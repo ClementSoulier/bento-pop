@@ -47,6 +47,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (needsCanonicalRedirect(requested)) return {};
 
   const lookup = await getBento(requested, slug);
+  // Un ancien pseudo : la page redirige, cf. la route du compte.
+  if (lookup.kind === 'moved') return {};
   if (lookup.kind !== 'published') {
     return { title: 'Bento introuvable', robots: { index: false, follow: true } };
   }
@@ -78,6 +80,11 @@ export default async function NamedBentoPage({ params }: PageProps) {
   }
 
   const lookup = await getBento(requested, slug);
+
+  // Un ancien pseudo, le bento nommé compris (chantier 21, D6).
+  if (lookup.kind === 'moved') {
+    permanentRedirect(bentoPath(canonicalPseudo(lookup.pseudo), slug));
+  }
 
   // « Pas de bento à cette adresse » et « ce pseudo n'existe pas » se rendent
   // pareil ici : dans les deux cas l'adresse demandée ne désigne rien.

@@ -55,7 +55,8 @@ const FEED_SELECT = `
   published_at,
   is_featured,
   edition_id,
-  users:user_id ( pseudo, display_name, kind ),
+  user_id,
+  users:user_id ( pseudo, display_name, kind, avatar ),
   editions (
     title,
     bento_categories ( key, prompt, stamp, gender, display_order )
@@ -74,7 +75,14 @@ export type FeedRow = {
   published_at: string | null;
   is_featured: boolean;
   edition_id?: number | null;
-  users: { pseudo: string; display_name: string | null; kind: string } | null;
+  user_id?: string;
+  users: {
+    pseudo: string;
+    display_name: string | null;
+    kind: string;
+    /** Le Popy choisi, chantier 21 ; absent d'une réponse d'avant sa migration. */
+    avatar?: string | null;
+  } | null;
   editions?: {
     title: string;
     bento_categories: {
@@ -106,8 +114,12 @@ export type FeedBento = {
    */
   slug: string;
   isPrimary: boolean;
+  /** Le compte du bento, pour le blocage par compte (chantier 21, D8). */
+  userId: string | null;
   pseudo: string;
   displayName: string | null;
+  /** Son Popy choisi, ou `null` pour celui du pseudo (chantier 21, D7). */
+  avatar: string | null;
   isFeatured: boolean;
   /**
    * Bento composé par l'équipe pour un créateur rencontré hors de l'app.
@@ -129,6 +141,14 @@ export type FeedBento = {
 };
 
 export type FeedCursor = { publishedAt: string; id: string };
+
+/**
+ * Le fil d'un seul compte, sans le bento que la page montre déjà : la liste
+ * des autres bentos d'un profil (chantier 21, D11). Même requête, même ordre
+ * et même curseur que « La table », donc un bento s'y lit pareil. `primary`
+ * ne garde que le principal, ou que les autres, cf. `account-bentos.ts`.
+ */
+export type FeedScope = { userId: string; excludeBentoId?: string | null; primary?: boolean };
 
 export type FeedPage = {
   bentos: FeedBento[];
@@ -177,8 +197,10 @@ export function mapFeedRow(row: FeedRow): FeedBento | null {
     bentoId: row.id,
     slug: row.slug,
     isPrimary: row.is_primary,
+    userId: row.user_id ?? null,
     pseudo: user.pseudo,
     displayName: user.display_name,
+    avatar: user.avatar ?? null,
     isFeatured: row.is_featured,
     // Comparaison à la chaîne plutôt qu'au type : une valeur inconnue,
     // ajoutée en base avant que les clients ne soient déployés, doit se lire
@@ -214,6 +236,27 @@ export function cursorOf(row: FeedRow): FeedCursor | null {
 }
 
 /**
+ * Ce que dit l'étiquette d'un post : son auteur, dans le fil ; le bento, dans
+ * la liste d'un compte, dont le pseudo est déjà en tête de page (chantier 21,
+ * D2).
+ */
+export type FeedLabelFor = 'author' | 'bento';
+
+/**
+ * Le titre de l'étiquette d'un bento dans la liste de son compte : celui de
+ * l'édition, « Bento principal » pour le principal, l'adresse d'un bento
+ * libre sinon (D2). Le pseudo, lui, est déjà en tête de page.
+ */
+export function accountBentoTitle(bento: {
+  editionTitle: string | null;
+  isPrimary: boolean;
+  slug: string;
+}): string {
+  if (bento.editionTitle) return bento.editionTitle;
+  return bento.isPrimary ? 'Bento principal' : bento.slug;
+}
+
+/**
  * Libellé lu par VoiceOver pour un post entier.
  *
  * Le post est un seul élément accessible : le laisser ouvert ferait parcourir
@@ -221,15 +264,25 @@ export function cursorOf(row: FeedRow): FeedCursor | null {
  * fil de son contenu pour un utilisateur non voyant. L'énumération donne tout
  * en un balayage, sur un élément activable.
  */
-export function feedAccessibilityLabel(bento: FeedBento, now?: number): string {
+export function feedAccessibilityLabel(
+  bento: FeedBento,
+  now?: number,
+  labelFor: FeedLabelFor = 'author',
+): string {
   const when = relativeDate(bento.publishedAt, now);
-  const parts = [when ? `Bento de @${bento.pseudo}, publié ${when}.` : `Bento de @${bento.pseudo}.`];
+  // Ce que dit l'étiquette, en tête : le libellé contient ce qu'on lit à
+  // l'écran. Dans la liste d'un compte, le bento plutôt que son auteur
+  // (chantier 21).
+  const lead = labelFor === 'bento' ? accountBentoTitle(bento) : `Bento de @${bento.pseudo}`;
+  const parts = [when ? `${lead}, publié ${when}.` : `${lead}.`];
   // Même priorité qu'à l'écran, cf. `ribbonFor` : « invité » d'abord, parce que
   // c'est la seule information qu'un lecteur ne peut déduire de rien d'autre,
-  // puis l'édition, qui dit pourquoi la boîte n'a pas les six cases.
+  // puis l'édition, qui dit pourquoi la boîte n'a pas les six cases. Dans la
+  // liste d'un compte, l'édition est déjà le titre : elle n'est pas redite.
   if (bento.isGuest) parts.push("Bento invité, composé par l'équipe.");
-  else if (bento.editionTitle) parts.push(`Édition « ${bento.editionTitle} ».`);
-  else if (bento.isFeatured) parts.push("Coup de cœur de l'équipe.");
+  else if (bento.editionTitle && labelFor === 'author') {
+    parts.push(`Édition « ${bento.editionTitle} ».`);
+  } else if (bento.isFeatured) parts.push("Coup de cœur de l'équipe.");
   // Les cases de CE bento, dans l'ordre de la boîte, chacune nommée par son
   // intitulé : « Film » pour le principal, la question pour une édition. La
   // boucle parcourait les six du principal, et un bento d'édition s'annonçait
@@ -262,8 +315,15 @@ export function feedAccessibilityLabel(bento: FeedBento, now?: number): string {
 export async function loadFeedPage(
   client: FeedClient,
   cursor?: FeedCursor | null,
+  scope?: FeedScope,
 ): Promise<FeedPage> {
   let query = client.from('bentos').select(FEED_SELECT).not('published_at', 'is', null);
+
+  if (scope) {
+    query = query.eq('user_id', scope.userId);
+    if (scope.excludeBentoId) query = query.neq('id', scope.excludeBentoId);
+    if (scope.primary !== undefined) query = query.eq('is_primary', scope.primary);
+  }
 
   if (cursor) {
     // `.or()` du client et jamais une URL construite à la main : le `+` du

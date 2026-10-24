@@ -61,9 +61,11 @@ export type PublicBentoClient = SupabaseClient<Database>;
  * bento, ce que rien ne savait faire avant.
  */
 const PUBLIC_BENTO_SELECT = `
+  id,
   pseudo,
   display_name,
   kind,
+  avatar,
   bentos (
     id,
     slug,
@@ -134,9 +136,13 @@ type RawPublicBento = {
 };
 
 export type PublicBentoRow = {
+  /** Le compte, chantier 21 : le blocage par compte et la liste de ses bentos. */
+  id?: string;
   pseudo: string;
   display_name: string | null;
   kind: string;
+  /** Le Popy choisi, chantier 21. */
+  avatar?: string | null;
   /** Objet avant la levée de `bentos_user_id_key`, tableau après. */
   bentos: RawPublicBento | RawPublicBento[] | null;
 };
@@ -145,8 +151,12 @@ export type PublicBento = {
   id: string;
   slug: string;
   isPrimary: boolean;
+  /** Le compte du bento, `null` sur une réponse d'avant le chantier 21. */
+  userId: string | null;
   pseudo: string;
   displayName: string | null;
+  /** Son Popy choisi, ou `null` pour celui du pseudo (chantier 21, D7). */
+  avatar: string | null;
   /** Bento composé par l'équipe pour un créateur rencontré hors de l'app. */
   isGuest: boolean;
   isFeatured: boolean;
@@ -163,6 +173,8 @@ export type PublicBento = {
 export type PublicBentoRef = {
   id: string;
   slug: string;
+  /** Le principal se nomme et s'adresse à part, cf. `accountBentoTitle`. */
+  isPrimary: boolean;
   /**
    * Le titre de l'édition composée, ou `null` pour un bento libre. C'est lui
    * qui nomme la pastille : le slug est une adresse, pas un titre.
@@ -176,9 +188,10 @@ export type PublicBentoRef = {
  * `null` : ce pseudo n'existe pas. `{ bento: null }` : il existe et n'a rien
  * en ligne, jamais publié ou retiré depuis.
  *
- * `others` liste les autres bentos publiés du compte, sans celui de `bento`.
- * Vide tant qu'un compte n'a qu'un bento, donc tant que la page n'affiche
- * rien de neuf.
+ * `others` liste les autres bentos publiés du compte, sans celui de `bento`,
+ * dans l'ordre de la liste sous la boîte (chantier 21) : le principal
+ * d'abord, puis du plus récent au plus ancien. Vide tant qu'un compte n'a
+ * qu'un bento, donc tant que la page n'affiche rien de neuf.
  */
 export type PublicBentoResult = {
   pseudo: string;
@@ -241,11 +254,22 @@ export function mapPublicBento(
     : (published.find((b) => b.is_primary) ?? published[0]);
   if (!chosen) return { pseudo: row.pseudo, bento: null, others: [] };
 
+  // La bande des pastilles résume la liste sous la boîte : même ordre
+  // (chantier 21, D2), le principal d'abord, puis celui du fil, du plus récent
+  // au plus ancien. Elle suivait jusque-là le choix du bento, du plus ancien
+  // au plus récent, et se lisait à rebours de la liste.
   const others = published
     .filter((b) => b.id !== chosen.id)
+    .sort(
+      (a, b) =>
+        Number(b.is_primary) - Number(a.is_primary) ||
+        b.published_at.localeCompare(a.published_at) ||
+        (a.id < b.id ? 1 : a.id > b.id ? -1 : 0),
+    )
     .map((b) => ({
       id: b.id,
       slug: b.slug,
+      isPrimary: b.is_primary,
       editionTitle: b.editions?.title ?? null,
       isFeatured: b.is_featured,
       publishedAt: b.published_at,
@@ -286,8 +310,10 @@ export function mapPublicBento(
             }))
         : MAIN_CASES,
       editionTitle: chosen.editions?.title ?? null,
+      userId: row.id ?? null,
       pseudo: row.pseudo,
       displayName: row.display_name,
+      avatar: row.avatar ?? null,
       // Comparaison à la chaîne, comme dans le fil : une valeur inconnue se
       // lit « pas invité » au lieu de faire planter le mapping.
       isGuest: row.kind === 'editorial',

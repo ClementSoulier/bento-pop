@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { withAbortTimeout } from './abort-timeout';
 import { bentoRoute } from './bento-address';
 import { cleanTitle } from './text';
+import { isBlockedAccount, type BlockedAccounts } from './blocked-accounts';
 import type { Database } from '@/supabase/types';
 
 /**
@@ -27,8 +28,12 @@ export type BentoMatch = {
   bentoId: string;
   slug: string;
   isPrimary: boolean;
+  /** Le compte du bento, pour le blocage par compte (chantier 21, D8). */
+  userId: string | null;
   pseudo: string;
   displayName: string | null;
+  /** Son Popy choisi, ou `null` pour celui du pseudo (chantier 21, D7). */
+  avatar: string | null;
   /** Le titre de l'édition, pour un bento d'édition. */
   editionTitle: string | null;
   /** Le nombre d'items communs. */
@@ -88,8 +93,10 @@ export function parseMatchRow(raw: unknown): BentoMatch | null {
     bentoId: r.bento_id,
     slug: r.slug,
     isPrimary: r.is_primary === true,
+    userId: nonEmpty(r.user_id) ? r.user_id : null,
     pseudo: r.pseudo,
     displayName: nonEmpty(r.display_name) ? r.display_name.trim() : null,
+    avatar: nonEmpty(r.avatar) ? r.avatar : null,
     editionTitle: nonEmpty(r.edition_title) ? r.edition_title.trim() : null,
     shared: typeof r.shared === 'number' && r.shared >= items.length ? r.shared : items.length,
     score: typeof r.score === 'number' && Number.isFinite(r.score) ? r.score : 0,
@@ -139,9 +146,9 @@ export function bentoMatchesQueryOptions(
  */
 export function withoutBlocked(
   matches: readonly BentoMatch[],
-  blocked: ReadonlySet<string>,
+  blocked: BlockedAccounts,
 ): BentoMatch[] {
-  return matches.filter((match) => !blocked.has(match.pseudo.toLowerCase()));
+  return matches.filter((match) => !isBlockedAccount(blocked, match));
 }
 
 /** L'adresse du bento d'un match, celle de « Trouver » et du fil. */

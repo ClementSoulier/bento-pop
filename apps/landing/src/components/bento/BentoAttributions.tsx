@@ -1,6 +1,6 @@
-import { CATEGORY_META, CATEGORY_ORDER } from '@bento-pop/supabase-mobile/bento';
-import type { BentoSlots } from '@/lib/bento/map';
+import { creditLabel } from '@/lib/bento/others';
 import { cleanTitle } from '@/lib/bento/text';
+import type { PublicCase } from './cases';
 
 /**
  * Attributions des illustrations, rendues en clair sous la boîte.
@@ -20,32 +20,48 @@ import { cleanTitle } from '@/lib/bento/text';
  * place de son titre. C'est un écart assumé avec l'app, justifié par le
  * fait qu'une page web a de la place sous la ligne de flottaison, pas un
  * écran de téléphone.
+ *
+ * **Les cases du bento, et non les six catégories** (chantier 21) : une case
+ * d'édition n'a pas de catégorie, et ses images restaient sans crédit. Pour
+ * un bento principal, le rendu ne change pas. Sous chaque bento de la liste
+ * d'un compte, les mêmes crédits, sous leur propre titre.
  */
-export function BentoAttributions({ slots }: { slots: BentoSlots }) {
-  const credits = CATEGORY_ORDER.map((category) => {
-    const tile = slots[category];
-    if (!tile?.imageCredit) return null;
-    return { category, title: cleanTitle(tile.title), credit: tile.imageCredit };
-  }).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+export function BentoAttributions({
+  cases,
+  headingId = 'bento-attributions',
+  headingLevel: Heading = 'h2',
+  className = 'mx-auto mt-8 w-full max-w-[420px] lg:max-w-[940px]',
+}: {
+  cases: readonly PublicCase[];
+  /** Unique dans la page : la liste en rend un par bento. */
+  headingId?: string;
+  /** Sous le titre d'un bento de la liste, un niveau de plus que lui. */
+  headingLevel?: 'h2' | 'h4';
+  className?: string;
+}) {
+  const credits = cases
+    .map((meta) => {
+      const tile = meta.tile;
+      if (!tile?.imageCredit) return null;
+      return { key: meta.key, label: creditLabel(meta), title: cleanTitle(tile.title), credit: tile.imageCredit };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
   if (credits.length === 0) return null;
 
   return (
-    <section
-      aria-labelledby="bento-attributions"
-      className="mx-auto mt-8 w-full max-w-[420px] lg:max-w-[940px]"
-    >
-      <h2
-        id="bento-attributions"
+    <section aria-labelledby={headingId} className={className}>
+      <Heading
+        id={headingId}
         className="font-display-sm text-[10px] tracking-[0.18em] text-bento-ink/70"
       >
         Crédits images
-      </h2>
+      </Heading>
       <ul className="mt-2 space-y-1">
-        {credits.map(({ category, title, credit }) => (
-          <li key={category} className="text-[11px] leading-[1.45] text-bento-ink/70">
+        {credits.map(({ key, label, title, credit }) => (
+          <li key={key} className="text-[11px] leading-[1.45] text-bento-ink/70">
             <span className="font-semibold text-bento-ink/85">
-              {CATEGORY_META[category].label} · {title}
+              {label} · {title}
             </span>{' '}
             {credit}
           </li>

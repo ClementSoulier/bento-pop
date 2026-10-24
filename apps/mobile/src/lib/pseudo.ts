@@ -1,5 +1,5 @@
 import { supabase } from '@/supabase/client';
-import { isPseudoTaken } from '@/lib/pseudo-availability';
+import { pseudoStatus } from '@/lib/pseudo-availability';
 import { PSEUDO_MAX, PSEUDO_MIN, PSEUDO_REGEX, isReservedPseudo } from '@/lib/pseudo-match';
 
 // Les règles vivent dans `pseudo-match.ts`, chargeable sans client Supabase :
@@ -15,18 +15,16 @@ export type PseudoCheck =
   | { status: 'available' }
   | { status: 'taken' }
   | { status: 'reserved' }
+  /** Touche un des motifs interdits de la base. Chantier 21. */
+  | { status: 'forbidden' }
+  /** Le pseudo actuel du compte, à l'écran de modification. Chantier 21. */
+  | { status: 'current' }
   | { status: 'error' };
 
 /**
- * Valide le format localement (zéro round-trip) puis interroge Supabase
- * pour vérifier la disponibilité.
- *
- * RLS : `users` est en lecture publique, donc le client anon peut sonder
- * sans authentification spéciale.
- *
- * La correspondance exacte, joker `_` échappé, vit dans
- * `pseudo-availability.ts` : sans elle, `dark_hifus` serait annoncé « pris »
- * dès qu'un `darkahifus` existe.
+ * Valide le format localement (zéro round-trip) puis demande à la base ce
+ * qu'elle dit du pseudo, `pseudo_status` : libre, pris, ancien pseudo d'un
+ * autre compte compris, réservé, non autorisé, ou le sien (chantier 21).
  */
 export async function checkPseudoAvailability(raw: string): Promise<PseudoCheck> {
   const trimmed = raw.trim();
@@ -38,7 +36,7 @@ export async function checkPseudoAvailability(raw: string): Promise<PseudoCheck>
   if (isReservedPseudo(trimmed)) return { status: 'reserved' };
 
   try {
-    return { status: (await isPseudoTaken(supabase, trimmed)) ? 'taken' : 'available' };
+    return { status: await pseudoStatus(supabase, trimmed) };
   } catch {
     return { status: 'error' };
   }
