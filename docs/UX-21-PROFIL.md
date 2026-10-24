@@ -651,6 +651,65 @@ L'écran « Modifier le profil » : le nom, le pseudo, le Popy.
 
 La redirection, le Popy choisi, la liste, le repli, l'e2e.
 
+> **Fait le 24 octobre 2026**, sur la même branche.
+>
+> - **Les anciens pseudos redirigés** : un pseudo introuvable passe à
+>   `resolve_pseudo`, puis `permanentRedirect`, 308, vers la forme canonique
+>   du pseudo d'aujourd'hui, le bento nommé compris. L'image de partage d'un
+>   ancien pseudo est celle du compte d'aujourd'hui.
+> - **Le Popy choisi** dans l'identité de la page, `popyFor` comme dans l'app.
+>   L'image de partage n'a jamais montré de Popy : elle suit le pseudo et le
+>   nom, que le déclencheur fait rafraîchir.
+> - **Les autres bentos en entier**, sous la boîte : chacun sous son titre,
+>   qui mène à sa page, et sa date, dans l'ordre de l'app, le principal en
+>   tête sous un bento nommé. La bande de liens sous l'identité suit le même
+>   ordre et les mêmes titres, « Bento principal » compris.
+> - **Les crédits des images** partent des cases de chaque bento, éditions
+>   comprises, et chaque bento de la liste a les siens, sous lui.
+> - **Le repli** : avant la migration, `avatar` refusé (`42703`) se relit sans
+>   la colonne, et `resolve_pseudo` absente se lit « introuvable », comme
+>   aujourd'hui.
+>
+> **Trois choix** :
+>
+> 1. **`/api/revalidate` n'a pas besoin des adresses des images de partage** :
+>    mesuré en production le 24 octobre, l'image n'est pas tenue par le cache
+>    de Next, sans `x-nextjs-cache`, et se régénère à chaque demande ; seuls
+>    les navigateurs et les intermédiaires la gardent, une heure et un jour,
+>    ce qu'aucune revalidation ne purge.
+> 2. **Les crédits d'une case d'édition** n'existaient pas : la page ne
+>    parcourait que les six catégories du bento principal. Corrigé avec la
+>    liste, puisqu'elle montrera des éditions, et sans rien changer au rendu
+>    d'un bento principal.
+> 3. **Les ports de l'e2e se choisissent**, `E2E_STUB_PORT` et
+>    `E2E_APP_PORT`, mêmes défauts : le 4599 était tenu par la recette d'une
+>    autre session.
+>
+> **Recette** sur la landing de ce worktree, en développement contre le
+> Supabase local, au téléphone et sur grand écran : `/u/recette_profil`
+> redirigée en 308 vers `/u/recettekere`, son nom sous le pseudo, son Popy
+> choisi, ses onze autres bentos en entier, du plus récent au plus ancien,
+> en une colonne puis deux ; `/u/recette_ancien/second` redirigée vers
+> `/u/recette_nouveau/second`, « Bento principal » en tête de la bande et de
+> la liste ; un pseudo que personne n'a porté, 404.
+>
+> **Tests** : 6 de plus pour la landing, 199 : l'ordre des autres, leurs
+> titres, le nom d'une case dans les crédits. Et 9 de plus à l'e2e, 50 : le
+> Popy choisi, les deux redirections, l'aperçu d'un ancien pseudo, la liste
+> et son ordre, la bande, le principal en tête sous un bento nommé, rien de
+> neuf pour un compte qui n'a qu'un bento, le repli d'avant la migration.
+> Le bouchon de l'e2e ne rend plus les colonnes des migrations que
+> demandées, comme PostgREST : sans quoi un repli qui perd `searchable`
+> passait inaperçu, le seul des sept défauts introduits exprès d'abord
+> manqué. Les sept, tous attrapés : le principal à sa date dans la liste, ou
+> nommé par son adresse ; une case d'édition créditée en capitales ; un ancien
+> pseudo dit introuvable ; le Popy choisi ignoré ; les autres dans l'ordre du
+> choix ; le repli d'avant la migration retiré.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226, 199 et
+> 846 ; build 3 sur 3 ; l'e2e de la landing, 50 sur 50, sur les ports 4699
+> et 4698.
+
 ### Lot 6 · Recette et documents
 
 La recette de §7.2, la DoD point par point, la roadmap, la liste du

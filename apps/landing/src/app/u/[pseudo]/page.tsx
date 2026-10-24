@@ -72,6 +72,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (lookup.kind === 'not-found') {
     return { title: 'Bento introuvable', robots: { index: false, follow: true } };
   }
+  // Un ancien pseudo : la page redirige, ses métadonnées sont celles du
+  // nouveau, à sa propre adresse.
+  if (lookup.kind === 'moved') return {};
 
   const canonicalPath = bentoPath(requested);
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
@@ -126,8 +129,19 @@ export default async function PublicBentoPage({ params }: PageProps) {
 
   if (lookup.kind === 'not-found') notFound();
 
+  // Chantier 21 (D6) : un ancien pseudo mène pour toujours au compte qui l'a
+  // quitté, sous son pseudo d'aujourd'hui. Permanente, pour que les moteurs
+  // et les aperçus suivent l'adresse nouvelle.
+  if (lookup.kind === 'moved') permanentRedirect(bentoPath(canonicalPseudo(lookup.pseudo)));
+
   if (lookup.kind === 'unpublished') {
-    return <BentoUnpublishedView pseudo={lookup.pseudo} displayName={lookup.displayName} />;
+    return (
+      <BentoUnpublishedView
+        pseudo={lookup.pseudo}
+        displayName={lookup.displayName}
+        avatar={lookup.avatar}
+      />
+    );
   }
 
   return (

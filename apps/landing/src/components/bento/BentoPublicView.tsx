@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { JsonLd } from '@/components/JsonLd';
 import { BentoAttributions } from '@/components/bento/BentoAttributions';
-import { BentoIdentity } from '@/components/bento/BentoIdentity';
+import { BentoIdentity, formatPublishedDate } from '@/components/bento/BentoIdentity';
 import {
   BentoCallToAction,
   BentoPageShell,
@@ -10,6 +10,7 @@ import {
 import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
 import { VisitBeacon } from '@/components/bento/VisitBeacon';
 import { bentoPath } from '@/lib/bento/metadata';
+import { otherBentoTitle } from '@/lib/bento/others';
 import type { OtherBento, PublicBento } from '@/lib/bento/queries';
 import { mainBentoCases, publicCases } from './cases';
 
@@ -33,9 +34,11 @@ const CALL_TO_ACTION_BLURB =
 export function BentoUnpublishedView({
   pseudo,
   displayName,
+  avatar,
 }: {
   pseudo: string;
   displayName: string | null;
+  avatar: string | null;
 }) {
   return (
     <BentoPageShell pseudo={pseudo}>
@@ -43,6 +46,7 @@ export function BentoUnpublishedView({
         <div className="mx-auto max-w-[420px]">
           <BentoIdentity
             pseudo={pseudo}
+            avatar={avatar}
             displayName={displayName}
             subtitle="bento en cours de préparation"
           />
@@ -78,7 +82,9 @@ export function BentoUnpublishedView({
  * Ne rend rien tant qu'un compte n'a qu'un bento, ce qui est le cas de tous
  * au 16 septembre 2026 : aucune page existante ne change d'aspect. Le libellé
  * est le titre de l'édition pour un bento d'édition, chantier 13, et le slug
- * pour un bento libre, seule chose qu'il porte.
+ * pour un bento libre, seule chose qu'il porte. Depuis le chantier 21, la
+ * bande résume la liste sous la boîte : même ordre, mêmes titres, « Bento
+ * principal » compris, comme dans l'app.
  */
 function OtherBentos({ others }: { others: readonly OtherBento[] }) {
   if (others.length === 0) return null;
@@ -91,12 +97,70 @@ function OtherBentos({ others }: { others: readonly OtherBento[] }) {
               href={bentoPath(other.pseudo, other.isPrimary ? null : other.slug)}
               className="font-display inline-block rounded-full border-[2.5px] border-bento-ink bg-bento-cream px-3.5 py-1.5 text-[13px] tracking-wide text-bento-ink shadow-stamp"
             >
-              {other.editionTitle ?? other.slug}
+              {otherBentoTitle(other)}
             </Link>
           </li>
         ))}
       </ul>
     </nav>
+  );
+}
+
+/**
+ * Les autres bentos du compte, en entier, sous la page (chantier 21, D1, D2,
+ * D9), comme dans l'app : chacun sous son titre et sa date, le titre menant à
+ * sa page, et toute la boîte avec lui. Ses crédits d'images sous lui.
+ *
+ * Rien tant que le compte n'a qu'un bento : la page ne change pas d'un point.
+ */
+function AccountBentoList({ others }: { others: readonly OtherBento[] }) {
+  if (others.length === 0) return null;
+  return (
+    <section
+      aria-labelledby="autres-bentos"
+      className="mx-auto mt-16 w-full max-w-[420px] lg:max-w-[940px]"
+    >
+      <h2
+        id="autres-bentos"
+        className="font-display-sm text-[10px] tracking-[0.18em] text-bento-ink/70"
+      >
+        Ses autres bentos
+      </h2>
+      <ul className="mt-6 grid gap-14 lg:grid-cols-2 lg:gap-x-16">
+        {others.map((other) => {
+          const title = otherBentoTitle(other);
+          const cases = publicCases(other.cases, other.slots);
+          return (
+            <li key={other.id}>
+              {/* Le lien porte le seul titre, et s'étend sur la boîte : un
+                  lien qui engloberait la grille serait lu case par case. */}
+              <div className="relative">
+                <h3 className="font-display text-[clamp(20px,5vw,24px)] text-bento-ink">
+                  <Link
+                    href={bentoPath(other.pseudo, other.isPrimary ? null : other.slug)}
+                    className="after:absolute after:inset-0 after:content-['']"
+                  >
+                    {title}
+                  </Link>
+                </h3>
+                <p className="mt-1 text-[14px] leading-[1.5] text-bento-ink/70">
+                  publié le <time dateTime={other.publishedAt}>{formatPublishedDate(other.publishedAt)}</time>
+                </p>
+                <div className="mt-4">
+                  <PublicBentoGrid cases={cases} label={`${title}, un bento de @${other.pseudo}`} />
+                </div>
+              </div>
+              <BentoAttributions
+                cases={cases}
+                headingId={`credits-${other.id}`}
+                headingLevel="h4"
+                className="mt-6"
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -154,6 +218,7 @@ export function BentoPublishedView({
         <div className="lg:col-start-2 lg:row-start-1">
           <BentoIdentity
             pseudo={bento.pseudo}
+            avatar={bento.avatar}
             displayName={bento.displayName}
             publishedAt={bento.publishedAt}
             {...(bento.edition
@@ -186,8 +251,11 @@ export function BentoPublishedView({
       {/* Les crédits viennent APRÈS l'appel à l'action. Placés juste sous la
           boîte, leurs six lignes repoussaient le seul bouton de la page
           hors de l'écran sur mobile. Ils restent complets et lisibles,
-          simplement à leur juste priorité. */}
-      <BentoAttributions slots={bento.slots} />
+          simplement à leur juste priorité. Avant la liste des autres
+          bentos, qui ont chacun les leurs : les crédits restent près de
+          leurs images. */}
+      <BentoAttributions cases={publicCases(bento.cases, bento.slots)} />
+      <AccountBentoList others={others} />
       <BentoReportLink pseudo={bento.pseudo} />
     </BentoPageShell>
   );

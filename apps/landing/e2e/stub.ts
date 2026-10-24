@@ -176,6 +176,8 @@ type StubUser = {
    * migration : la landing le lit alors allumé.
    */
   searchable?: boolean;
+  /** Le Popy choisi, chantier 21. Absent : celui du pseudo. */
+  avatar?: string | null;
   /**
    * Objet tant que `bentos_user_id_key` existe, TABLEAU dès qu'elle est
    * levée : PostgREST choisit la forme d'après les contraintes, et le change
@@ -321,6 +323,45 @@ export const USERS: StubUser[] = [
     bentos: { id: bentoId(10), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
   },
   {
+    // Chantier 21 : un Popy choisi, que la page doit montrer à la place de
+    // celui que tire son pseudo.
+    pseudo: 'popy.choisi',
+    display_name: null,
+    avatar: 'diable',
+    bentos: { id: bentoId(11), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+  },
+  {
+    // Chantier 21 : le compte qui portait `ancien.nom`, sous un pseudo à
+    // majuscules, pour que la redirection mène à la forme canonique.
+    pseudo: 'Nouveau.Nom',
+    display_name: null,
+    bentos: [
+      { id: bentoId(12), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+      { id: bentoId(13), slug: 'hebdo-1', is_primary: false, published_at: '2026-06-01T10:00:00.000Z', is_featured: false, bento_items: fullItems },
+    ],
+  },
+  {
+    // Chantier 21 : un principal et deux autres, publiés avant et après lui,
+    // pour l'ordre de la liste sous la page.
+    pseudo: 'troisbentos',
+    display_name: null,
+    bentos: [
+      { id: bentoId(14), slug: 'ancien-hebdo', is_primary: false, published_at: '2026-02-01T10:00:00.000Z', is_featured: false, bento_items: fullItems },
+      { id: bentoId(15), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+      { id: bentoId(16), slug: 'hebdo-recent', is_primary: false, published_at: '2026-09-01T10:00:00.000Z', is_featured: false, bento_items: fullItems },
+    ],
+  },
+  {
+    // Réservé au test du repli d'avant la migration du chantier 21, comme
+    // `avant.vingt` pour celle du 20. Mis en avant et retiré de la recherche :
+    // le repli doit garder `searchable`, que la base connaît déjà, et la page
+    // rester en `noindex`.
+    pseudo: 'avant.vingtetun',
+    display_name: null,
+    searchable: false,
+    bentos: { id: bentoId(17), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: true, bento_items: fullItems },
+  },
+  {
     // Profil existant sans bento publié : `bentos_read_published` renvoie
     // `null`, comme pour un bento qui n'existe pas encore.
     pseudo: 'brouillon',
@@ -328,6 +369,16 @@ export const USERS: StubUser[] = [
     bentos: null,
   },
 ];
+
+/**
+ * Les anciens pseudos, chantier 21, tels que `resolve_pseudo` les rend : le
+ * pseudo d'aujourd'hui du compte qui les a portés. `ancien.avant` sert au
+ * repli d'avant la migration, que personne d'autre ne demande.
+ */
+const MOVED: Record<string, string> = {
+  'ancien.nom': 'Nouveau.Nom',
+  'ancien.avant': 'Nouveau.Nom',
+};
 
 /** Les bentos d'un compte, quelle que soit la forme rendue par PostgREST. */
 function bentosOf(user: StubUser): StubBento[] {
@@ -346,6 +397,7 @@ export function startStub(port: number): Promise<Server> {
   let requests = 0;
   let failing = false;
   let before20 = false;
+  let before21 = false;
   const visitCalls: VisitCall[] = [];
   const episodeQueries: EpisodeQuery[] = [];
 
@@ -365,6 +417,7 @@ export function startStub(port: number): Promise<Server> {
       requests = 0;
       failing = false;
       before20 = false;
+      before21 = false;
       visitCalls.length = 0;
       episodeQueries.length = 0;
       return json(res, 200, { ok: true });
@@ -375,6 +428,10 @@ export function startStub(port: number): Promise<Server> {
     }
     if (url.pathname === '/__avant-20') {
       before20 = true;
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === '/__avant-21') {
+      before21 = true;
       return json(res, 200, { ok: true });
     }
 
@@ -409,12 +466,28 @@ export function startStub(port: number): Promise<Server> {
     if (before20 && (url.searchParams.get('select') ?? '').includes('searchable')) {
       return json(res, 400, { code: '42703', message: 'column users.searchable does not exist' });
     }
+    // Avant celle du chantier 21, de même, et sa fonction n'existe pas.
+    if (before21 && /\bavatar\b/.test(url.searchParams.get('select') ?? '')) {
+      return json(res, 400, { code: '42703', message: 'column users.avatar does not exist' });
+    }
+    if (before21 && url.pathname === '/rest/v1/rpc/resolve_pseudo') {
+      return json(res, 404, { code: 'PGRST202', message: 'Could not find the function public.resolve_pseudo' });
+    }
 
     if (url.pathname === '/rest/v1/users') {
       const filter = url.searchParams.get('pseudo') ?? '';
       const pattern = filter.startsWith('ilike.') ? filter.slice('ilike.'.length) : null;
       const rows = pattern ? USERS.filter((u) => ilikeMatches(pattern, u.pseudo)) : [];
-      return json(res, 200, rows);
+      // Les colonnes des migrations ne reviennent que demandées, comme chez
+      // PostgREST : sans ça, un repli qui perd `searchable` passerait inaperçu.
+      const select = url.searchParams.get('select') ?? '';
+      const projected = rows.map((row) => {
+        const copy: Partial<StubUser> = { ...row };
+        if (!/\bsearchable\b/.test(select)) delete copy.searchable;
+        if (!/\bavatar\b/.test(select)) delete copy.avatar;
+        return copy;
+      });
+      return json(res, 200, projected);
     }
 
     if (url.pathname === '/rest/v1/bentos') {
@@ -443,6 +516,10 @@ export function startStub(port: number): Promise<Server> {
         const args = (raw ? JSON.parse(raw) : {}) as Partial<VisitCall>;
         const fn = url.pathname.slice('/rest/v1/rpc/'.length);
         if (fn === 'bento_visit_count') return json(res, 200, visitsOf(args.p_bento));
+        if (fn === 'resolve_pseudo') {
+          const asked = String((args as { p_pseudo?: string }).p_pseudo ?? '').toLowerCase();
+          return json(res, 200, MOVED[asked] ?? null);
+        }
         if (fn === 'record_bento_visit_web') {
           visitCalls.push(args as VisitCall);
           return json(res, 200, visitsOf(args.p_bento));

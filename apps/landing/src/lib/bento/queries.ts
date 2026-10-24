@@ -1,4 +1,5 @@
 import { createMobileAnonClient, type MobileClient } from '@/lib/supabase/mobile';
+import { compareOthers } from './others';
 import { isValidPseudo } from './pseudo';
 import type { CaseMeta } from '@bento-pop/supabase-mobile/bento';
 import {
@@ -19,14 +20,21 @@ import {
  */
 
 /**
- * `users.searchable` arrive avec la migration du chantier 20, que Clément
- * applique en production. La landing, elle, se redéploie d'elle-même à la
- * fusion : si elle part la première, PostgREST refuse la colonne inconnue
- * (`42703`), et toutes les pages de bento rendraient 404 dans l'intervalle.
- * Sur ce refus, la lecture se refait sans la colonne, et le compte se lit
- * « dans la recherche », la valeur par défaut de la migration.
+ * `users.searchable` arrive avec la migration du chantier 20, `users.avatar`
+ * avec celle du chantier 21, que Clément applique en production. La landing,
+ * elle, se redéploie d'elle-même à la fusion : si elle part la première,
+ * PostgREST refuse la colonne inconnue (`42703`), et toutes les pages de
+ * bento rendraient 404 dans l'intervalle. Sur ce refus, la lecture se refait
+ * sans la colonne : le compte se lit « dans la recherche » et sans Popy
+ * choisi, les valeurs par défaut des migrations.
  */
 const UNDEFINED_COLUMN = '42703';
+
+/**
+ * `resolve_pseudo` arrive avec la même migration du chantier 21. Avant, un
+ * ancien pseudo n'existe pas, et PostgREST ne trouve pas la fonction
+ * (`PGRST202`) : la page dit « introuvable », comme aujourd'hui.
+ */
 
 /** Colonnes lues, en une seule requête. */
 const BENTO_SELECT = `
@@ -34,6 +42,7 @@ const BENTO_SELECT = `
   display_name,
   kind,
   searchable,
+  avatar,
   bentos (
     id,
     slug,
@@ -54,8 +63,11 @@ const BENTO_SELECT = `
   )
 ` as const;
 
-/** La même, sans `searchable` : le repli d'avant la migration du chantier 20. */
-const BENTO_SELECT_BEFORE_20 = BENTO_SELECT.replace(/^\s*searchable,\n/m, '');
+/** La même, sans `avatar` : le repli d'avant la migration du chantier 21. */
+const BENTO_SELECT_BEFORE_21 = BENTO_SELECT.replace(/^\s*avatar,\n/m, '');
+
+/** Sans `searchable` non plus : le repli d'avant la migration du chantier 20. */
+const BENTO_SELECT_BEFORE_20 = BENTO_SELECT_BEFORE_21.replace(/^\s*searchable,\n/m, '');
 
 export type PublicBento = {
   /** L'identifiant du bento, que compte l'image de visite. Chantier 8. */
@@ -67,6 +79,8 @@ export type PublicBento = {
   /** Celui que `/u/<pseudo>` met en avant. */
   readonly isPrimary: boolean;
   readonly displayName: string | null;
+  /** Le Popy choisi, ou `null` pour celui du pseudo. Chantier 21 (D7). */
+  readonly avatar: string | null;
   readonly publishedAt: string;
   readonly isFeatured: boolean;
   /**
@@ -105,10 +119,24 @@ export type BentoLookup =
   | {
       readonly kind: 'published';
       readonly bento: PublicBento;
-      /** Les autres bentos publiés du compte, sans celui de `bento`. */
+      /**
+       * Les autres bentos publiés du compte, sans celui de `bento`, en
+       * entier : le principal d'abord, puis du plus récent au plus ancien
+       * (chantier 21, D2).
+       */
       readonly others: readonly OtherBento[];
     }
-  | { readonly kind: 'unpublished'; readonly pseudo: string; readonly displayName: string | null }
+  | {
+      readonly kind: 'unpublished';
+      readonly pseudo: string;
+      readonly displayName: string | null;
+      readonly avatar: string | null;
+    }
+  /**
+   * Un ancien pseudo, que son compte a quitté : la page redirige pour
+   * toujours vers celui d'aujourd'hui (chantier 21, D6).
+   */
+  | { readonly kind: 'moved'; readonly pseudo: string }
   | { readonly kind: 'not-found' };
 
 type RawBentoRow = {
@@ -141,6 +169,8 @@ type RawUserRow = {
   readonly kind: string;
   /** Absente avant la migration du chantier 20 : cf. `UNDEFINED_COLUMN`. */
   readonly searchable?: boolean;
+  /** Absente avant la migration du chantier 21, de même. */
+  readonly avatar?: string | null;
   // Relation « to-one » côté PostgREST, mais certaines versions du client
   // la typent en tableau. On accepte les deux et on normalise.
   readonly bentos: RawBentoRow | readonly RawBentoRow[] | null;
@@ -160,13 +190,21 @@ export type FeaturedBento = {
   readonly isPrimary: boolean;
 };
 
-/** Un autre bento du compte, tel que la page le nomme. */
+/**
+ * Un autre bento du compte, en entier : la page le nomme dans la bande sous
+ * l'identité, et le montre dans la liste sous la boîte (chantier 21, D2).
+ */
 export type OtherBento = FeaturedBento & {
+  readonly id: string;
   /**
    * Le titre de l'édition composée, ou `null` pour un bento libre. C'est lui
    * qui nomme le lien : le slug est une adresse, pas un titre. Chantier 13.
    */
   readonly editionTitle: string | null;
+  readonly publishedAt: string;
+  readonly slots: BentoSlots;
+  /** Ses cases, vides comprises, comme celles de `PublicBento`. */
+  readonly cases: readonly CaseMeta[];
 };
 
 /**
@@ -198,12 +236,14 @@ function bentoRows(raw: RawUserRow['bentos']): readonly RawBentoRow[] {
  * Les chaînes `published_at` sont ISO : l'ordre lexicographique est l'ordre
  * chronologique.
  */
+type PublishedRow = RawBentoRow & { readonly published_at: string };
+
 function pickBento(
   rows: readonly RawBentoRow[],
   slug: string | null,
-): { chosen: RawBentoRow | null; others: readonly RawBentoRow[] } {
+): { chosen: PublishedRow | null; others: readonly PublishedRow[] } {
   const published = rows
-    .filter((row): row is RawBentoRow & { published_at: string } => Boolean(row.published_at))
+    .filter((row): row is PublishedRow => Boolean(row.published_at))
     .slice()
     .sort((a, b) => a.published_at.localeCompare(b.published_at));
 
@@ -211,7 +251,26 @@ function pickBento(
     ? (published.find((row) => row.slug === slug) ?? null)
     : (published.find((row) => row.is_primary) ?? published[0] ?? null);
 
-  return { chosen, others: chosen ? published.filter((row) => row.id !== chosen.id) : [] };
+  // Les autres dans l'ordre de la liste qui les montre, cf. `compareOthers`,
+  // et non dans celui du choix : la bande suivait jusque-là le second.
+  return {
+    chosen,
+    others: chosen ? published.filter((row) => row.id !== chosen.id).sort(compareOthers) : [],
+  };
+}
+
+/**
+ * Le pseudo d'aujourd'hui d'un compte qui a porté celui-ci, ou `null`
+ * (chantier 21, D6). Une erreur, la fonction absente avant la migration
+ * comprise, se lit « personne » : la page dit « introuvable », comme avant.
+ */
+async function resolveMovedPseudo(client: MobileClient, pseudo: string): Promise<string | null> {
+  const { data, error } = await client.rpc('resolve_pseudo', { p_pseudo: pseudo });
+  if (error) {
+    console.warn('[bento/queries] pseudo resolution failed:', error.message);
+    return null;
+  }
+  return typeof data === 'string' && data.toLowerCase() !== pseudo.toLowerCase() ? data : null;
 }
 
 /**
@@ -246,7 +305,9 @@ export async function lookupPublicBento(
       .limit(5)
       .overrideTypes<RawUserRow[], { merge: false }>();
 
+  // Chaque migration manquante retire sa colonne, la plus récente d'abord.
   let { data, error } = await read(BENTO_SELECT);
+  if (error?.code === UNDEFINED_COLUMN) ({ data, error } = await read(BENTO_SELECT_BEFORE_21));
   if (error?.code === UNDEFINED_COLUMN) ({ data, error } = await read(BENTO_SELECT_BEFORE_20));
 
   if (error) {
@@ -260,7 +321,10 @@ export async function lookupPublicBento(
 
   const wanted = requestedPseudo.toLowerCase();
   const user = (data ?? []).find((row) => row.pseudo.toLowerCase() === wanted);
-  if (!user) return { kind: 'not-found' };
+  if (!user) {
+    const moved = await resolveMovedPseudo(client, requestedPseudo);
+    return moved ? { kind: 'moved', pseudo: moved } : { kind: 'not-found' };
+  }
 
   const { chosen: bento, others } = pickBento(bentoRows(user.bentos), slug);
 
@@ -271,16 +335,25 @@ export async function lookupPublicBento(
   // adresse » : l'appelant en fait un 404 de segment plutôt qu'un repli sur
   // le principal.
   if (!bento?.published_at) {
-    return { kind: 'unpublished', pseudo: user.pseudo, displayName: user.display_name };
+    return {
+      kind: 'unpublished',
+      pseudo: user.pseudo,
+      displayName: user.display_name,
+      avatar: user.avatar ?? null,
+    };
   }
 
   return {
     kind: 'published',
     others: others.map((row) => ({
+      id: row.id,
       pseudo: user.pseudo,
       slug: row.slug,
       isPrimary: row.is_primary,
       editionTitle: row.editions?.title ?? null,
+      publishedAt: row.published_at,
+      slots: mapBentoItems(row.bento_items ?? []),
+      cases: bentoCases(row.editions?.bento_categories, row.edition_id !== null),
     })),
     bento: {
       id: bento.id,
@@ -288,6 +361,7 @@ export async function lookupPublicBento(
       slug: bento.slug,
       isPrimary: bento.is_primary,
       displayName: user.display_name,
+      avatar: user.avatar ?? null,
       publishedAt: bento.published_at,
       isFeatured: bento.is_featured,
       searchable: user.searchable !== false,

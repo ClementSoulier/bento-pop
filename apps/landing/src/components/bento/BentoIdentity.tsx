@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { popyForPseudo } from '@/lib/bento/popy';
+import { popyFor } from '@/lib/bento/popy';
 import { formatVisits } from '@/lib/bento/visits';
 
 /**
@@ -12,6 +12,7 @@ import { formatVisits } from '@/lib/bento/visits';
  */
 export function BentoIdentity({
   pseudo,
+  avatar = null,
   displayName,
   publishedAt,
   isFeatured = false,
@@ -20,6 +21,8 @@ export function BentoIdentity({
   visits = null,
 }: {
   pseudo: string;
+  /** Le Popy choisi, ou `null` pour celui du pseudo. Chantier 21 (D7). */
+  avatar?: string | null;
   displayName?: string | null;
   publishedAt?: string;
   isFeatured?: boolean;
@@ -34,7 +37,7 @@ export function BentoIdentity({
    */
   visits?: number | null;
 }) {
-  const popy = popyForPseudo(pseudo);
+  const popy = popyFor(pseudo, avatar);
 
   return (
     <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
@@ -95,7 +98,7 @@ export function BentoIdentity({
  * réhydratée ailleurs peut afficher deux dates différentes et déclencher
  * une erreur d'hydratation.
  */
-function formatPublishedDate(iso: string): string {
+export function formatPublishedDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat('fr-FR', {

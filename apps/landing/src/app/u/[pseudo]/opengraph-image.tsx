@@ -90,7 +90,10 @@ export default async function OpenGraphImage({ params }: ImageParams) {
   const { pseudo: requested, slug } = await params;
 
   try {
-    const lookup = await lookupPublicBento(requested, slug ?? null);
+    let lookup = await lookupPublicBento(requested, slug ?? null);
+    // Un ancien pseudo : l'aperçu est celui du compte sous son pseudo
+    // d'aujourd'hui, comme la page vers laquelle il redirige (chantier 21).
+    if (lookup.kind === 'moved') lookup = await lookupPublicBento(lookup.pseudo, slug ?? null);
     const pseudo =
       lookup.kind === 'not-found'
         ? requested
