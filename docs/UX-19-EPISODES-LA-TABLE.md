@@ -398,7 +398,7 @@ La route, ses tests, la politique de confidentialité.
 > route en production rendra donc les 40 épisodes, dont 3 ouverts sur le
 > site.
 >
-> **La CI, rejouée en local**, les Actions du dépôt étant désactivées : les
+> **La CI, rejouée en local** : les
 > six étapes de `ci.yml`, sans cache. Lint et typage 8 sur 8 ; tests 226 pour
 > l'admin, 192 pour la landing, 726 pour l'app ; e2e 38 sur 38 ; build 3 sur
 > 3, `/api/episodes` en route dynamique. Le build de l'admin a d'abord échoué
@@ -696,7 +696,7 @@ La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
 en local, au simulateur et à l'émulateur. Le point 8 est lu dans les arbres
 d'accessibilité des deux plateformes : la voix de VoiceOver et de TalkBack
 passe au chantier 29, avec ce qui demande un vrai téléphone. Le point 10 par
-la CI rejouée en local, les Actions du dépôt étant désactivées.
+la CI rejouée en local.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |

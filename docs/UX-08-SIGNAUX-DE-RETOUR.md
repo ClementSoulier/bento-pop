@@ -43,8 +43,7 @@
 > l'émulateur, et un défaut de Safari trouvé et corrigé dans la PR des lots
 > 1 et 2. DoD 12 points sur 13 : reste la comparaison des lectures avant
 > et après la migration, à son application en production. La CI est
-> rejouée en local, les Actions du dépôt étant désactivées depuis le 23
-> octobre 2026 (§8, lot 5 ; §10).
+> rejouée en local (§8, lot 5 ; §10).
 >
 > **Fusionné et mis en service le 23 octobre 2026** : les PR #90 et #91
 > fusionnées ; la migration appliquée en production, prouvée compatible
@@ -907,8 +906,7 @@ chantier 29.
 **Point par point au 23 octobre 2026, à la mise en service** : 13 points
 sur 13. Les points 1 à 10 sont faits en local, sur trois appareils, et le
 point 1 se voit aussi en production ; le point 11 est fait en production, à
-l'application de la migration ; le point 13 par la CI rejouée en local, les
-Actions du dépôt étant désactivées depuis le 23 octobre 2026.
+l'application de la migration ; le point 13 par la CI rejouée en local.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |

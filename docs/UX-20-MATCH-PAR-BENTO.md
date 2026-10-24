@@ -569,7 +569,7 @@ chantier 29.
 23 octobre, en local, au simulateur et à l'émulateur ; le point 4 le 24, par
 l'API de production, la migration appliquée. Le point 9 est lu dans les
 arbres d'accessibilité, la voix passant au chantier 29 ; le point 11 par la
-CI rejouée en local, les Actions du dépôt étant désactivées.
+CI rejouée en local.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |

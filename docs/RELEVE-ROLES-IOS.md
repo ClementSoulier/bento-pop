@@ -495,7 +495,7 @@ simulateur.
   spécification du chantier 19 : le tap quitte l'app. Relu sur le code final :
   45 posts sur 45 justes, à la sonde comme à un compagnon `idb` neuf.
 
-**La CI, rejouée en local**, les Actions du dépôt étant désactivées : lint et
+**La CI, rejouée en local** : lint et
 typage 8 sur 8 ; tests 226 pour l'admin, 193 pour la landing, 779 pour l'app,
 le rôle des cartes n'ayant aucun test qui le fige ; e2e 41 sur 41 ; build 3
 sur 3. `accessibilite.test.ts` ne change pas : sa règle, un rôle déclaré sur
