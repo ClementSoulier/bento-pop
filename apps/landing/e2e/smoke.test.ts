@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { bentoId, startStub, type EpisodeQuery, type VisitCall } from './stub';
@@ -80,6 +80,10 @@ const get = (path: string) => fetch(`${APP_URL}${path}`, { redirect: 'manual' })
 
 before(async () => {
   stub = await startStub(STUB_PORT);
+  // Un dossier neuf à chaque lancement : `next build` y laisse les pages que
+  // `next start` a rendues à la demande la fois d'avant, et une page restée
+  // d'un ancien rendu masquerait une régression. Vu au chantier 20.
+  rmSync(DIST_DIR, { recursive: true, force: true });
   await run(['build']);
   app = spawn('node_modules/.bin/next', ['start', '--port', String(APP_PORT)], {
     env: ENV,
@@ -217,6 +221,30 @@ describe('métadonnées', () => {
     assert.equal(meta(ordinary, 'robots'), 'noindex, follow');
     // Une page 200 sans contenu réel serait lue comme un « soft 404 ».
     assert.equal(meta(draft, 'robots'), 'noindex, follow');
+  });
+
+  it('n’indexe pas un bento mis en avant dont le compte s’est retiré de la recherche', async () => {
+    const res = await get('/u/retire.recherche');
+    assert.equal(res.status, 200);
+    assert.equal(meta(await res.text(), 'robots'), 'noindex, follow');
+  });
+
+  it('sort du sitemap un compte retiré de la recherche, mis en avant ou non', async () => {
+    const xml = await (await get('/sitemap.xml')).text();
+    // La casse stockée, celle des adresses du sitemap.
+    assert.ok(xml.includes(`${SITE_URL}/u/Keremasan`), xml);
+    assert.ok(!xml.includes('/u/retire.recherche'), xml);
+  });
+
+  it('rend la page quand la base ne connaît pas encore le réglage (avant sa migration)', async () => {
+    await fetch(`${STUB_URL}/__avant-20`);
+    try {
+      const res = await get('/u/avant.vingt');
+      assert.equal(res.status, 200);
+      assert.ok((await res.text()).includes('Interstellar'));
+    } finally {
+      await resetStub();
+    }
   });
 
   /**

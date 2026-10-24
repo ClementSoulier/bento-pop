@@ -34,6 +34,12 @@ import {
   publicSideInset,
 } from '@/components/bento/public-layout';
 import { INK_MUTED, SHADOWS, YellowBg, useToast } from '@/components/primitives';
+import {
+  bentoMatchesQueryOptions,
+  matchesPillAccessibilityLabel,
+  matchesPillLabel,
+  withoutBlocked,
+} from '@/lib/matches';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import type { PublicBento, PublicBentoRef } from '@/lib/public-bento';
 import { publicBentoQueryOptions } from '@/lib/public-bento-query';
@@ -92,6 +98,17 @@ export default function PublicBentoScreen() {
     enabled: state.kind === 'found',
   });
 
+  // Chantier 20 : les mêmes goûts, une requête à part elle aussi, par le client
+  // sans session, les matchs étant les mêmes pour tous. La pastille n'apparaît
+  // qu'avec leur réponse, dans la barre du haut, à hauteur fixe : rien ne bouge
+  // dans la page (D10). Sans les comptes bloqués sur l'appareil (D13).
+  const { data: matches } = useQuery({
+    ...bentoMatchesQueryOptions(publicSupabase, state.kind === 'found' ? state.bento.id : ''),
+    enabled: state.kind === 'found',
+  });
+  const blocked = useBlocked((s) => s.pseudos);
+  const matchCount = matches ? withoutBlocked(matches, blocked).length : 0;
+
   // De retour en ligne après un échec, la page se recharge d'elle-même : sans
   // ça, « Connexion perdue » resterait affiché une fois le bandeau hors ligne
   // disparu. Seulement au retour : relancer à chaque erreur doublerait les
@@ -130,6 +147,16 @@ export default function PublicBentoScreen() {
           optionsFor={
             state.kind === 'found' && !state.isOwn
               ? { pseudo: state.bento.pseudo, bentoId: state.bento.id }
+              : null
+          }
+          matchesFor={
+            state.kind === 'found' && matchCount > 0
+              ? {
+                  bentoId: state.bento.id,
+                  pseudo: state.bento.pseudo,
+                  count: matchCount,
+                  isOwn: state.isOwn,
+                }
               : null
           }
           // Arrivé par un lien partagé sur `/u/<pseudo>/<slug>`, il n'y a rien
@@ -284,9 +311,12 @@ function OtherBentos({
  */
 function TopBar({
   optionsFor,
+  matchesFor,
   fallback,
 }: {
   optionsFor: { pseudo: string; bentoId: string } | null;
+  /** La pastille des mêmes goûts, dès un match (chantier 20, D10). */
+  matchesFor: { bentoId: string; pseudo: string; count: number; isOwn: boolean } | null;
   /** Où mener quand il n'y a pas d'écran précédent, cf. l'appelant. */
   fallback: '/(tabs)/compose' | `/u/${string}`;
 }) {
@@ -325,10 +355,75 @@ function TopBar({
           ‹
         </Text>
       </Pressable>
-      {optionsFor ? (
-        <BlockReportMenu pseudo={optionsFor.pseudo} bentoId={optionsFor.bentoId} />
-      ) : null}
+      {/* À droite, la pastille puis « Options » : un groupe, et non deux
+          marges automatiques, qui se partageraient l'espace libre. */}
+      <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center' }}>
+        {matchesFor ? <MatchesPill {...matchesFor} /> : null}
+        {optionsFor ? (
+          <BlockReportMenu pseudo={optionsFor.pseudo} bentoId={optionsFor.bentoId} />
+        ) : null}
+      </View>
     </View>
+  );
+}
+
+/**
+ * « Mêmes goûts · 3 », chantier 20 (D10) : la porte de l'écran des matchs.
+ * Plus basse que la pastille « Retour », elle tient dans la barre à hauteur
+ * fixe, et le texte plafonné de même : la page ne bouge pas quand elle arrive.
+ */
+function MatchesPill({
+  bentoId,
+  pseudo,
+  count,
+  isOwn,
+}: {
+  bentoId: string;
+  pseudo: string;
+  count: number;
+  isOwn: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={() =>
+        router.push({
+          pathname: '/matches/[bentoId]',
+          params: { bentoId, pseudo, own: isOwn ? '1' : '0' },
+        })
+      }
+      accessibilityRole="button"
+      accessibilityLabel={matchesPillAccessibilityLabel(count, isOwn)}
+      accessibilityHint="Ouvre la liste des bentos qui lui ressemblent"
+      // La pastille fait 30 pt de haut : la cible tactile en fait 44.
+      hitSlop={{ top: 7, bottom: 7 }}
+      style={[
+        {
+          height: 30,
+          justifyContent: 'center',
+          backgroundColor: '#fbf3de',
+          borderWidth: 2,
+          borderColor: '#0a0a0a',
+          borderRadius: 999,
+          paddingHorizontal: 12,
+        },
+        SHADOWS.stamp,
+      ]}
+    >
+      <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+        style={{
+          fontFamily: 'Bungee',
+          fontSize: 10,
+          letterSpacing: 1,
+          color: '#0a0a0a',
+          textTransform: 'uppercase',
+          includeFontPadding: false,
+        }}
+      >
+        {matchesPillLabel(count)}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -573,9 +668,7 @@ function FoundPage({
   // pas pourquoi cette boîte n'a pas les cases du bento principal. Le bento
   // principal garde sa phrase d'origine, sans virgule : la recette du
   // chantier 13 a relevé « bento, publié le », régression du lot 5.
-  const quoi = bento.editionTitle
-    ? `${bento.editionTitle}, publié le`
-    : 'bento publié le';
+  const quoi = bento.editionTitle ? `${bento.editionTitle}, publié le` : 'bento publié le';
   // Le compteur sur la même ligne que la date, comme sur le web : le modèle de
   // `public-layout.ts` ne compte qu'une ligne, qui rétrécit au besoin.
   const dateLine = withVisits(
@@ -602,7 +695,12 @@ function FoundPage({
         <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
         {/* Marge et non largeur, cf. `publicSideInset`. */}
         <View style={{ marginHorizontal: sideInset }}>
-          <BentoGrid cases={composerCases(bento.cases, bento.slots)} scale={scale} width={boxWidth} readOnly />
+          <BentoGrid
+            cases={composerCases(bento.cases, bento.slots)}
+            scale={scale}
+            width={boxWidth}
+            readOnly
+          />
         </View>
       </ScrollView>
 

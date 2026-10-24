@@ -7,13 +7,7 @@
  * (depuis `/supabase-mobile/` une fois le projet linké)
  */
 
-export type CategoryKey =
-  | 'film'
-  | 'series'
-  | 'artist'
-  | 'track'
-  | 'creator'
-  | 'place';
+export type CategoryKey = 'film' | 'series' | 'artist' | 'track' | 'creator' | 'place';
 
 export type ExternalSource =
   | 'tmdb'
@@ -22,15 +16,10 @@ export type ExternalSource =
   | 'osm'
   | 'igdb'
   | 'manual'
-  | 'user'    // soumis par un utilisateur via le nouveau flow (1.1.0+)
-  | 'admin';  // créé directement par l'équipe via le BO
+  | 'user' // soumis par un utilisateur via le nouveau flow (1.1.0+)
+  | 'admin'; // créé directement par l'équipe via le BO
 
-export type ItemStatus =
-  | 'draft'
-  | 'pending'
-  | 'validated'
-  | 'rejected'
-  | 'merged';
+export type ItemStatus = 'draft' | 'pending' | 'validated' | 'rejected' | 'merged';
 
 export type ImageSuggestionStatus = 'pending' | 'accepted' | 'dismissed';
 
@@ -154,6 +143,12 @@ export type Database = {
            * comptent toujours. Chantier 8, D9.
            */
           show_visits: boolean;
+          /**
+           * « Apparaître dans la recherche », allumé par défaut. Éteint, le
+           * compte sort de « Trouver » et des matchs des autres ; sa page reste
+           * ouverte par son lien. Chantier 20, D5.
+           */
+          searchable: boolean;
         };
         Insert: {
           /** Pour un membre, doit valoir `auth.uid()`. Généré pour un éditorial. */
@@ -170,6 +165,8 @@ export type Database = {
            * l'insertion, un client garde la valeur par défaut.
            */
           show_visits?: boolean;
+          /** Même règle (`grant update (searchable)`), chantier 20. */
+          searchable?: boolean;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
@@ -780,6 +777,29 @@ export type Database = {
       bento_visit_count: {
         Args: { p_bento: string };
         Returns: number | null;
+      };
+      /**
+       * Chantier 20 : les bentos publiés d'autres comptes qui partagent des
+       * items avec `p_bento`, du plus ressemblant au moins. Vide si `p_bento`
+       * n'est pas publié. `lim` plafonné à 50.
+       */
+      bento_matches: {
+        Args: { p_bento: string; lim?: number };
+        Returns: Array<{
+          bento_id: string;
+          slug: string;
+          is_primary: boolean;
+          pseudo: string;
+          display_name: string | null;
+          /** Le titre de l'édition, pour un bento d'édition. */
+          edition_title: string | null;
+          /** Le nombre d'items communs. */
+          shared: number;
+          /** La somme des `1 / n` des items communs, `n` les comptes qui l'ont choisi. */
+          score: number;
+          /** Les items communs, du plus rare au plus commun. */
+          items: Array<{ id: string; title: string; category_id: number | null }>;
+        }>;
       };
       search_bentos: {
         Args: { q: string; lim?: number };

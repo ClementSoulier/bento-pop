@@ -106,4 +106,9 @@ describe('bentoRobots', () => {
     assert.deepEqual(bentoRobots(true), { index: true, follow: true });
     assert.deepEqual(bentoRobots(false), { index: false, follow: true });
   });
+
+  it('n’indexe pas un compte retiré de la recherche, même mis en avant (chantier 20)', () => {
+    assert.deepEqual(bentoRobots(true, false), { index: false, follow: true });
+    assert.deepEqual(bentoRobots(true, true), { index: true, follow: true });
+  });
 });

@@ -137,6 +137,7 @@ const TILE = 'src/components/bento/Tile.tsx';
 const EMPTY_TILE = 'src/components/bento/EmptyTile.tsx';
 const GRID = 'src/components/bento/BentoGrid.tsx';
 const SHARE_IMAGE = 'src/components/bento/ShareImage.tsx';
+const MATCHES = 'app/matches/[bentoId].tsx';
 
 describe('fontScaleFor', () => {
   it('suit la taille système jusqu’au plafond, puis s’y arrête', () => {
@@ -251,6 +252,45 @@ describe('page publique, textes de l’écran', () => {
     const frozen = views.filter((v) => /\bCTA_LABEL_LINE_H\b/.test(v.styleSource));
     assert.equal(following.length, 1, `conteneurs : ${linesOf(following)}`);
     assert.equal(frozen.length, 0, `hauteur figée : ${linesOf(frozen)}`);
+  });
+});
+
+/**
+ * L'écran « Ils ont les mêmes goûts », chantier 20. Sa recette, au lot 5, a
+ * relevé trois défauts de ses textes laissés à `maxFontSizeMultiplier` : à
+ * 2,0 sur Android, des lignes écartées, leur hauteur n'y étant pas plafonnée ;
+ * sur iOS, une taille changée écran ouvert, des textes grandis dans des
+ * boîtes restées à leur ancienne hauteur, donc rognés ; sur Android, l'ellipse
+ * d'un pseudo tronqué rognée de moitié, qu'il mesure plus étroite qu'Extenda
+ * ne la dessine.
+ */
+describe('écran des mêmes goûts', () => {
+  const texts = tagsNamed(parse(MATCHES), 'Text');
+
+  it('trouve les textes de l’écran', () => {
+    // Chevron, titre, « que @alice », liste vide ; pseudo, nom, raison et
+    // flèche d'une ligne ; message et bouton de l'erreur.
+    assert.ok(texts.length >= 10, `${texts.length} textes`);
+  });
+
+  it('applique lui-même la police système à chaque texte', () => {
+    const native = texts.filter((t) => !fixed(t));
+    assert.equal(native.length, 0, `laissé à la plateforme : ${linesOf(native)}`);
+
+    const unscaled = texts.filter((t) => !/\b(?:scaledType|fontScaleFor)\(/.test(t.styleSource));
+    // Le chevron du retour et la flèche d'une ligne : des glyphes, pas des
+    // textes à lire.
+    assert.equal(unscaled.length, 2, `sans la police système : ${linesOf(unscaled)}`);
+  });
+
+  it('fait rétrécir un texte en Extenda plutôt que de le tronquer', () => {
+    const extenda = texts.filter(
+      (t) => /'Extenda'/.test(t.styleSource) && t.attributes.has('numberOfLines'),
+    );
+    // Le pseudo d'une ligne.
+    assert.equal(extenda.length, 1, `en Extenda, lignes comptées : ${linesOf(extenda)}`);
+    const truncated = extenda.filter((t) => t.attributes.get('adjustsFontSizeToFit') !== true);
+    assert.equal(truncated.length, 0, `tronqué : ${linesOf(truncated)}`);
   });
 });
 

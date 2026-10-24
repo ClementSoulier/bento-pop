@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description,
     alternates: { canonical: canonicalPath },
-    robots: bentoRobots(bento.isFeatured),
+    robots: bentoRobots(bento.isFeatured, bento.searchable),
     openGraph: { type: 'profile', title, description, url: canonicalPath },
     twitter: { card: 'summary_large_image', title, description },
     other: { 'apple-itunes-app': smartAppBanner(`${SITE_URL}${canonicalPath}`) },
