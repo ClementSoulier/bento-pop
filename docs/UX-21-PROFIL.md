@@ -715,6 +715,58 @@ La redirection, le Popy choisi, la liste, le repli, l'e2e.
 La recette de §7.2, la DoD point par point, la roadmap, la liste du
 chantier 29.
 
+> **Fait le 24 octobre 2026**, sur la même branche.
+>
+> **La recette du §7.2**, sur le Supabase local, aux simulateurs iPhone 17 Pro
+> et SE, dans un jeu d'appareils à part, et à l'émulateur Pixel 8, sur un AVD
+> à part, chacun avec son compte garni d'un principal et de trois à onze
+> autres bentos :
+>
+> 1. **La page d'un compte qui n'a qu'un bento**, mesurée au pixel avant et
+>    après le chantier, le code du chantier 20 servi au même appareil par un
+>    second Metro : **zéro pixel** de différence sur les trois appareils,
+>    barre d'état figée. Sur le web, la landing du chantier 20 et celle-ci
+>    rendent le même `<main>`, à l'octet près, et leurs captures ne diffèrent
+>    que du compteur de visites, que chaque affichage fait monter. Un premier
+>    essai au 17 Pro différait d'un chiffre, « Mêmes goûts » à 6 contre 5 :
+>    un compte bloqué puis renommé comptait encore pour l'ancien code, qui le
+>    cherchait sous son ancien pseudo. C'est D8 ; refait sans blocage, zéro.
+> 2. **La liste** : l'ordre, les étiquettes, le tap, le défilement jusqu'à la
+>    deuxième page, sur les trois appareils.
+> 3. **L'onglet Profil et Réglages**, sur les trois.
+> 4. **Le nom, le pseudo et le Popy**, leurs refus et les 30 jours, au
+>    17 Pro (lot 4) ; au Pixel, un changement de pseudo de bout en bout, la
+>    confirmation d'Android, le Popy figé, puis l'attente.
+> 5. **Un ancien lien**, dans l'app sur les trois appareils, le bento nommé
+>    compris, et sur la landing de ce worktree.
+> 6. **Le Popy partout** : le fil, la recherche, les mêmes goûts, la page,
+>    l'onglet, la modification et la page web. L'image de partage de l'app
+>    porte le Popy de la marque, comme l'aperçu web : ni l'une ni l'autre n'a
+>    de Popy de compte à suivre.
+> 7. **Un compte bloqué qui change de pseudo** : toujours absent de la
+>    recherche, listé sous son nouveau pseudo dans Réglages, l'entrée gardée
+>    sur le téléphone mise à jour. **La reprise des blocages d'avant** :
+>    l'ancienne clé posée à la main, avec un ancien pseudo à majuscules et un
+>    pseudo sans compte ; au lancement, le premier rattaché à son compte sous
+>    son pseudo d'aujourd'hui, le second gardé tel quel.
+> 8. **VoiceOver et TalkBack**, lus dans les arbres d'iOS et d'Android : un
+>    bento de la liste en un seul élément, annoncé par son titre ; les
+>    sections des réglages et du profil en titres ; le crayon, « Modifier le
+>    profil ». **Les grandes tailles** : la plus grande d'iOS, au lancement et
+>    changée écran ouvert, dans les deux sens ; 2,0 sur Android.
+>
+> **Relevé, sans correction** : dans l'onglet, la boîte est à son plancher
+> d'échelle sur tous les iPhone mesurés, la barre d'onglets prenant le bas de
+> l'écran ; sur le SE, sa moitié basse passe sous les boutons au repos,
+> 172 points, et la page défile, comme celle d'un compte depuis le
+> chantier 7. Cf. les suivis.
+>
+> **Nettoyage** : `popyForPseudo`, sans appelant depuis le lot 2, retiré.
+>
+> **La CI, rejouée en local** sur l'état final : lint et typage 8 sur 8 ;
+> tests 226, 199 et 846 ; build 3 sur 3 ; l'e2e de la landing, 50 sur 50,
+> sur les ports 4699 et 4698.
+
 ---
 
 ## 9. Livraison
@@ -727,34 +779,61 @@ chantier 29.
   contrôles. Compatible avec la 1.1 et la 0.1.0 (§6.4).
 - **Deux sessions en cours touchent des fichiers voisins**, les textes
   d'Android (le fil, la recherche, le composer, `FeedLabel`) et les rôles de
-  VoiceOver : la première fusionnée, l'autre se met à jour sur elle.
+  VoiceOver : la première fusionnée, l'autre se met à jour sur elle. Une
+  fusion à blanc de la branche des textes d'Android dans celle-ci, le
+  24 octobre : `font-scaling.test.ts` se fusionne seul ; un conflit dans
+  `app/(tabs)/search.tsx`, la ligne de `Row` qui tire le Popy, à résoudre en
+  gardant les deux, son `fontScale` et `popyFor(match.pseudo, match.avatar)`
+  d'ici ; deux dans la roadmap, ses lignes de statut. Ses règles nouvelles,
+  la hauteur de ligne et l'ellipse d'Extenda dans toute l'app, sont tenues
+  par les textes de ce chantier à la lecture, pas encore par ses tests.
 - **À la sortie store** : la page d'un compte, le profil, sa modification.
 
 ---
 
 ## 10. Definition of Done
 
-- [ ] Depuis n'importe quel pseudo, dans l'app et sur le web, on voit tous
-      les bentos publiés de la personne, le principal d'abord
-- [ ] La page d'un compte qui n'a qu'un bento ne change pas d'un point
-- [ ] Un lien vers un ancien pseudo, `/u/<ancien>` comme
+Vérifiée point par point le 24 octobre 2026, sur le Supabase local, la
+migration n'étant pas encore appliquée en production.
+
+- [x] Depuis n'importe quel pseudo, dans l'app et sur le web, on voit tous
+      les bentos publiés de la personne, le principal d'abord : la liste et
+      la bande, aux trois appareils et sur la landing, le principal en tête
+      sous un bento nommé (lots 3, 5, 6)
+- [x] La page d'un compte qui n'a qu'un bento ne change pas d'un point :
+      zéro pixel avant et après au 17 Pro, au SE et au Pixel 8 ; le même
+      `<main>` sur le web (lot 6)
+- [x] Un lien vers un ancien pseudo, `/u/<ancien>` comme
       `/u/<ancien>/<slug>`, mène au profil sous le nouveau, dans l'app et
-      sur le web
-- [ ] Personne d'autre ne peut prendre un ancien pseudo ; son titulaire peut
-      le reprendre
-- [ ] Chacun modifie son nom, son pseudo et son Popy depuis son profil ; le
+      sur le web : aux trois appareils, en 308 sur la landing, à l'e2e
+      (lots 3, 5, 6)
+- [x] Personne d'autre ne peut prendre un ancien pseudo ; son titulaire peut
+      le reprendre : `check-profile.sql` et `check-privileges.ts`, et « Déjà
+      pris. » à l'écran pour l'ancien pseudo d'un autre (lots 1, 2, 4)
+- [x] Chacun modifie son nom, son pseudo et son Popy depuis son profil ; le
       pseudo au plus une fois tous les 30 jours, aux règles de la création ;
-      refusé à un autre compte et à la clé anonyme
-- [ ] Le nom affiché fait 30 caractères au plus et passe aux motifs
-      interdits
-- [ ] Le Popy choisi s'affiche partout ; changer de pseudo ne change pas de
-      Popy
-- [ ] Un compte bloqué qui change de pseudo reste bloqué ; les blocages
-      d'avant survivent à la mise à jour
-- [ ] Les versions publiées ne cassent pas
-- [ ] VoiceOver et TalkBack lisent un bento de la liste en un seul élément ;
-      les grandes tailles de police tiennent
-- [ ] Tests, typage, lint et build verts, CI rejouée en local
+      refusé à un autre compte et à la clé anonyme : l'écran, au 17 Pro et
+      au Pixel, le refus des 30 jours venu de la base, et les droits en SQL
+      (lots 1, 2, 4, 6)
+- [x] Le nom affiché fait 30 caractères au plus et passe aux motifs
+      interdits : refusé trop long par l'écran, interdit par la base (lots 1,
+      4)
+- [x] Le Popy choisi s'affiche partout ; changer de pseudo ne change pas de
+      Popy : le fil, la recherche, les mêmes goûts, la page, l'onglet, le web,
+      et le Popy figé en base au changement, sur iOS et Android (lots 2 à 6)
+- [x] Un compte bloqué qui change de pseudo reste bloqué ; les blocages
+      d'avant survivent à la mise à jour : au 17 Pro, l'ancienne clé reprise
+      au lancement (lot 6)
+- [x] Les versions publiées ne cassent pas : la migration ne fait qu'ajouter,
+      `search_bentos` et `bento_matches` gardent leurs arguments, et
+      `check-privileges.ts` rejoue le contrôle de disponibilité du pseudo des
+      versions publiées (§6.4, lots 1, 2)
+- [x] VoiceOver et TalkBack lisent un bento de la liste en un seul élément ;
+      les grandes tailles de police tiennent : les arbres des deux
+      plateformes ; la plus grande taille d'iOS, écran ouvert compris, et
+      2,0 sur Android (lots 3, 4, 6). La voix elle-même passe au chantier 29
+- [x] Tests, typage, lint et build verts, CI rejouée en local, e2e compris
+      (lot 6)
 
 ---
 
@@ -792,3 +871,14 @@ recommandée ; D11 à D16 prises par la spécification.
   en aura.
 - **Le pseudo actuel dans le back-office**, à côté du pseudo signalé, si un
   signalement vise un compte qui a changé de nom depuis.
+- **L'onglet sur un petit écran** : la boîte y est à son plancher d'échelle,
+  et sur le SE, sa moitié basse passe sous les boutons au repos. Deux pistes,
+  à trancher : les boutons plus près de la barre d'onglets dans l'onglet seul,
+  20 points gagnés ; ou un plancher plus bas dans l'onglet, la boîte y étant
+  la sienne et non celle qu'on vient voir.
+- **La liste web d'un compte riche en éditions** : la landing lit et rend
+  tous les bentos d'un compte en une requête, et sa bande de liens passe à la
+  ligne ; à cinquante éditions, une page longue et lourde. Une pagination, le
+  jour où un compte en approchera.
+- **Les rôles mélangés dans Réglages**, relevés au lot 3 : la session sur le
+  recyclage des vues de Fabric.

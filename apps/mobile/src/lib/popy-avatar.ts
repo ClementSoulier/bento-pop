@@ -56,13 +56,5 @@ export function popyFor(pseudo: string, avatar: string | null | undefined): Popy
   return popyOf(popyKeyFor(pseudo, avatar));
 }
 
-/**
- * Le Popy que tire un pseudo seul : pour un pseudo qu'aucun compte ne porte
- * encore, à la saisie de la publication. Un compte passe par `popyFor`.
- */
-export function popyForPseudo(pseudo: string): Popy {
-  return popyFor(pseudo, null);
-}
-
 /** Les six, dans l'ordre de `POPY_KEYS` : le choix de l'écran de profil. */
 export const POPY_CHOICES: readonly Popy[] = POPY_KEYS.map(popyOf);
