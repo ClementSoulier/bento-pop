@@ -93,6 +93,40 @@ describe('loadFeedPage, première page', () => {
   });
 });
 
+describe('loadFeedPage, le fil d’un compte (chantier 21)', () => {
+  it('se limite au compte, écarte le bento de la page et garde l’ordre du fil', async () => {
+    reset();
+    stub.enqueue([]);
+    await loadFeedPage(client, null, { userId: 'u-1', excludeBentoId: 'b-principal' });
+
+    const params = new URLSearchParams(stub.requests[0]!.rawQuery);
+    assert.equal(params.get('user_id'), 'eq.u-1');
+    assert.equal(params.get('id'), 'neq.b-principal');
+    assert.equal(params.get('published_at'), 'not.is.null');
+    assert.equal(params.get('order'), 'published_at.desc,id.desc');
+  });
+
+  it('demande le compte et son Popy avec chaque bento', async () => {
+    reset();
+    stub.enqueue([]);
+    await loadFeedPage(client);
+
+    const select = new URLSearchParams(stub.requests[0]!.rawQuery).get('select') ?? '';
+    assert.match(select, /\buser_id\b/);
+    assert.match(select, /users:user_id\(pseudo,display_name,kind,avatar\)/);
+  });
+
+  it('n’écarte rien sans bento à écarter', async () => {
+    reset();
+    stub.enqueue([]);
+    await loadFeedPage(client, null, { userId: 'u-1' });
+
+    const params = new URLSearchParams(stub.requests[0]!.rawQuery);
+    assert.equal(params.get('user_id'), 'eq.u-1');
+    assert.equal(params.get('id'), null);
+  });
+});
+
 describe('loadFeedPage, pagination par curseur', () => {
   it('émet les deux branches du keyset', async () => {
     reset();

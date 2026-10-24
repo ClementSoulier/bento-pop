@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CATEGORY_BY_ID, CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
 import { cleanTitle } from './text';
+import { isBlockedAccount, type BlockedAccounts } from './blocked-accounts';
 import type { Database } from '@/supabase/types';
 
 /**
@@ -39,8 +40,12 @@ export type SearchMatch = {
   slug: string;
   /** Vrai pour le bento que `/u/<pseudo>` met en avant. */
   isPrimary: boolean;
+  /** Le compte du bento, pour le blocage par compte (chantier 21, D8). */
+  userId: string | null;
   pseudo: string;
   displayName: string | null;
+  /** Son Popy choisi, ou `null` pour celui du pseudo (chantier 21, D7). */
+  avatar: string | null;
   isFeatured: boolean;
   /**
    * L'item qui a provoqué le résultat, `null` quand c'est le pseudo qui a
@@ -117,8 +122,12 @@ export function mapSearchRow(
     bentoId: row.bento_id,
     slug: row.slug,
     isPrimary: row.is_primary,
+    // Absents d'une réponse d'avant la migration du chantier 21 : le résultat
+    // reste, filtré par pseudo et sous le Popy du pseudo.
+    userId: row.user_id ?? null,
     pseudo: row.pseudo,
     displayName: row.display_name,
+    avatar: row.avatar ?? null,
     isFeatured: row.is_featured,
   };
 
@@ -136,7 +145,7 @@ export function mapSearchRow(
 }
 
 /**
- * Découpe les lignes en deux sections et retire les pseudos bloqués.
+ * Découpe les lignes en deux sections et retire les comptes bloqués.
  *
  * **L'ordre du SQL est préservé** dans chaque section. Le client ne dispose
  * pas des critères de départage de la fonction et ne pourrait pas reproduire
@@ -148,7 +157,7 @@ export function mapSearchRow(
  */
 export function splitResults(
   rows: readonly SearchRow[],
-  blocked: ReadonlySet<string>,
+  blocked: BlockedAccounts,
 ): SearchResults {
   const accounts: SearchMatch[] = [];
   const viaItems: SearchMatch[] = [];
@@ -156,10 +165,10 @@ export function splitResults(
   for (const row of rows) {
     const mapped = mapSearchRow(row);
     if (!mapped) continue;
-    // `useBlocked` stocke les pseudos en minuscules, mais la comparaison est
-    // faite ici plutôt que supposée là-bas : un bloqué qui réapparaît dans
-    // les résultats est un défaut de modération, pas un défaut d'affichage.
-    if (blocked.has(mapped.match.pseudo.toLowerCase())) continue;
+    // Par compte, et par pseudo en repli, cf. `isBlockedAccount` : un bloqué
+    // qui réapparaît dans les résultats est un défaut de modération, pas un
+    // défaut d'affichage.
+    if (isBlockedAccount(blocked, mapped.match)) continue;
     (mapped.kind === 'pseudo' ? accounts : viaItems).push(mapped.match);
   }
 

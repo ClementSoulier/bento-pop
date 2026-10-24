@@ -40,7 +40,7 @@ import {
   matchesPillLabel,
   withoutBlocked,
 } from '@/lib/matches';
-import { popyForPseudo } from '@/lib/popy-avatar';
+import { popyFor } from '@/lib/popy-avatar';
 import type { PublicBento, PublicBentoRef } from '@/lib/public-bento';
 import { publicBentoQueryOptions } from '@/lib/public-bento-query';
 import { publicPageState } from '@/lib/public-page-state';
@@ -106,7 +106,7 @@ export default function PublicBentoScreen() {
     ...bentoMatchesQueryOptions(publicSupabase, state.kind === 'found' ? state.bento.id : ''),
     enabled: state.kind === 'found',
   });
-  const blocked = useBlocked((s) => s.pseudos);
+  const blocked = useBlocked((s) => s.index);
   const matchCount = matches ? withoutBlocked(matches, blocked).length : 0;
 
   // De retour en ligne après un échec, la page se recharge d'elle-même : sans
@@ -146,7 +146,7 @@ export default function PublicBentoScreen() {
           // qui a été vu, et un compte peut en avoir plusieurs. Chantier 16.
           optionsFor={
             state.kind === 'found' && !state.isOwn
-              ? { pseudo: state.bento.pseudo, bentoId: state.bento.id }
+              ? { pseudo: state.bento.pseudo, bentoId: state.bento.id, userId: state.bento.userId }
               : null
           }
           matchesFor={
@@ -314,7 +314,7 @@ function TopBar({
   matchesFor,
   fallback,
 }: {
-  optionsFor: { pseudo: string; bentoId: string } | null;
+  optionsFor: { pseudo: string; bentoId: string; userId: string | null } | null;
   /** La pastille des mêmes goûts, dès un match (chantier 20, D10). */
   matchesFor: { bentoId: string; pseudo: string; count: number; isOwn: boolean } | null;
   /** Où mener quand il n'y a pas d'écran précédent, cf. l'appelant. */
@@ -360,7 +360,11 @@ function TopBar({
       <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center' }}>
         {matchesFor ? <MatchesPill {...matchesFor} /> : null}
         {optionsFor ? (
-          <BlockReportMenu pseudo={optionsFor.pseudo} bentoId={optionsFor.bentoId} />
+          <BlockReportMenu
+            pseudo={optionsFor.pseudo}
+            bentoId={optionsFor.bentoId}
+            userId={optionsFor.userId}
+          />
         ) : null}
       </View>
     </View>
@@ -445,14 +449,21 @@ type Pastille = 'guest' | 'featured' | null;
  */
 function ProfileHeader({
   pseudo,
+  avatarKey,
   pastille,
   dateLine,
 }: {
   pseudo: string;
+  /**
+   * Le Popy choisi, `null` pour celui du pseudo (chantier 21, D7). Inconnu
+   * pendant le chargement : l'os montre alors celui du pseudo, le Popy de
+   * presque tous les comptes.
+   */
+  avatarKey: string | null;
   pastille: Pastille;
   dateLine: string | null;
 }) {
-  const popy = popyForPseudo(pseudo);
+  const popy = popyFor(pseudo, avatarKey);
   const avatar = PUBLIC_HEADER.avatarSize;
   // Taille et hauteur de ligne appliquées par l'écran, au plafond du modèle :
   // `maxFontSizeMultiplier` ne plafonne pas la hauteur de ligne sur Android,
@@ -604,7 +615,7 @@ function LoadingPage({
 }) {
   return (
     <View style={{ flex: 1 }} accessible accessibilityLabel={`Chargement du bento de @${pseudo}`}>
-      <ProfileHeader pseudo={pseudo} pastille={null} dateLine={null} />
+      <ProfileHeader pseudo={pseudo} avatarKey={null} pastille={null} dateLine={null} />
       <View style={{ marginHorizontal: sideInset }}>
         <BentoBoxSkeleton scale={scale} />
       </View>
@@ -689,6 +700,7 @@ function FoundPage({
       >
         <ProfileHeader
           pseudo={bento.pseudo}
+          avatarKey={bento.avatar}
           pastille={bento.isGuest ? 'guest' : bento.isFeatured ? 'featured' : null}
           dateLine={dateLine}
         />
@@ -945,8 +957,17 @@ function formatDate(iso: string): string {
  * (ou Débloquer si déjà mute). Le block est purement local au device
  * (AsyncStorage via `useBlocked`), pas notifié au backend.
  */
-function BlockReportMenu({ pseudo, bentoId }: { pseudo: string; bentoId: string }) {
-  const isBlocked = useBlocked((s) => s.isBlocked(pseudo));
+function BlockReportMenu({
+  pseudo,
+  bentoId,
+  userId,
+}: {
+  pseudo: string;
+  bentoId: string;
+  /** Le compte bloqué, retenu avec son pseudo (chantier 21, D8). */
+  userId: string | null;
+}) {
+  const isBlocked = useBlocked((s) => s.isBlocked({ userId, pseudo }));
   const block = useBlocked((s) => s.block);
   const unblock = useBlocked((s) => s.unblock);
   const showToast = useToast((s) => s.show);
@@ -991,7 +1012,7 @@ function BlockReportMenu({ pseudo, bentoId }: { pseudo: string; bentoId: string 
       options.push({
         text: `Débloquer @${pseudo}`,
         onPress: () => {
-          void unblock(pseudo);
+          void unblock({ userId, pseudo });
           showToast(`@${pseudo} débloqué`, { variant: 'neutral' });
         },
       });
@@ -1011,7 +1032,7 @@ function BlockReportMenu({ pseudo, bentoId }: { pseudo: string; bentoId: string 
                 text: 'Bloquer',
                 style: 'destructive',
                 onPress: () => {
-                  void block(pseudo);
+                  void block({ userId, pseudo });
                   showToast(`@${pseudo} est bloqué. Débloque-le depuis ton profil.`, {
                     variant: 'neutral',
                     durationMs: 5000,

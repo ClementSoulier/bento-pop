@@ -77,6 +77,17 @@ describe('mapFeedRow', () => {
     assert.equal(bento?.slots.film?.imageUrl, 'https://example.test/a.jpg');
   });
 
+  it('porte le compte et son Popy choisi (chantier 21)', () => {
+    const bento = mapFeedRow(
+      row({ user_id: 'u-1', users: { pseudo: 'x', display_name: null, kind: 'member', avatar: 'gene' } }),
+    );
+    assert.equal(bento?.userId, 'u-1');
+    assert.equal(bento?.avatar, 'gene');
+    // Une réponse d'avant la migration n'a ni l'un ni l'autre : le post reste.
+    const before = mapFeedRow(row({ users: { pseudo: 'x', display_name: null, kind: 'member' } }));
+    assert.equal(before?.avatar, null);
+  });
+
   it('préserve un `display_name` nul plutôt que de le vider', () => {
     // `null` et `''` ne se rendent pas pareil : l'étiquette d'identité affiche
     // une seconde ligne vide dans le second cas.

@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSession } from '@/state/session';
 import { useBento } from '@/state/bento';
-import { popyForPseudo } from '@/lib/popy-avatar';
+import { popyFor } from '@/lib/popy-avatar';
 import { deleteOwnAccount, editableBentoId, unpublishBento } from '@/lib/bento-actions';
 import { bentoName } from '@/lib/own-bento';
 import { relativeDate } from '@/lib/relative-date';
@@ -43,7 +43,7 @@ export default function ProfileTab() {
   const userId = useSession((s) => s.user?.id);
   const resetAndReinit = useSession((s) => s.resetAndReinit);
   const pseudo = profile?.pseudo ?? '';
-  const popy = popyForPseudo(pseudo);
+  const popy = popyFor(pseudo, profile?.avatar);
   const publishedAt = useBento((s) => s.publishedAt);
   // Chantier 16 : le bento courant et la liste, pour nommer ce sur quoi les
   // actions de cet écran agissent.
@@ -54,11 +54,14 @@ export default function ProfileTab() {
   const [exporting, setExporting] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
   const { fontScale } = useWindowDimensions();
-  const blockedPseudos = useBlocked((s) => s.pseudos);
+  const blockedEntries = useBlocked((s) => s.entries);
   const unblock = useBlocked((s) => s.unblock);
   const showToast = useToast((s) => s.show);
   // Triés : l'ordre d'un `Set` est celui des blocages, que personne ne connaît.
-  const blocked = useMemo(() => [...blockedPseudos].sort(), [blockedPseudos]);
+  const blocked = useMemo(
+    () => [...blockedEntries].sort((a, b) => a.pseudo.localeCompare(b.pseudo)),
+    [blockedEntries],
+  );
   // Chantier 8 : le compteur du bento courant, lu sans compter de visite. Son
   // propriétaire le voit toujours, même masqué aux autres.
   const { data: visits } = useQuery({
@@ -335,13 +338,13 @@ export default function ProfileTab() {
               >
                 Comptes bloqués
               </Text>
-              {blocked.map((blockedPseudo) => (
+              {blocked.map((entry) => (
                 <BlockedRow
-                  key={blockedPseudo}
-                  pseudo={blockedPseudo}
+                  key={entry.userId ?? entry.pseudo}
+                  pseudo={entry.pseudo}
                   onUnblock={() => {
-                    void unblock(blockedPseudo);
-                    showToast(`@${blockedPseudo} débloqué`, { variant: 'neutral' });
+                    void unblock(entry);
+                    showToast(`@${entry.pseudo} débloqué`, { variant: 'neutral' });
                   }}
                 />
               ))}

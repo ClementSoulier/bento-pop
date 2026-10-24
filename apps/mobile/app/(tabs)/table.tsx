@@ -35,6 +35,7 @@ import { FEED_QUERY_KEY, PAGE_SIZE, loadFeedPage, type FeedCursor } from '@/lib/
 import { interleaveFeed, type FeedItem } from '@/lib/feed-merge';
 import { LANDING_URL } from '@/lib/landing-url';
 import { useBlocked } from '@/state/blocked';
+import { isBlockedAccount } from '@/lib/blocked-accounts';
 import { supabase } from '@/supabase/client';
 
 /** Une référence stable tant que la landing n'a rien rendu, pour `useMemo`. */
@@ -73,15 +74,15 @@ export default function TableTab() {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 
-  const blocked = useBlocked((s) => s.pseudos);
+  const blocked = useBlocked((s) => s.index);
   const bentos = useMemo(
     () =>
       (data?.pages ?? [])
         .flatMap((page) => page.bentos)
         // Filtre local au device (AsyncStorage), donc inapplicable côté
         // serveur : une page de 8 peut rendre 7 posts. Sans importance sur un
-        // défilement continu.
-        .filter((bento) => !blocked.has(bento.pseudo.toLowerCase())),
+        // défilement continu. Par compte depuis le chantier 21 (D8).
+        .filter((bento) => !isBlockedAccount(blocked, bento)),
     [data, blocked],
   );
 

@@ -12,6 +12,7 @@ import {
   type SearchMatch,
   type SearchRow,
 } from './search';
+import { NO_BLOCKED_ACCOUNTS, blockedIndex } from './blocked-accounts';
 
 /**
  * Tests de la partie pure de `search.ts` : découpage en sections, filtre des
@@ -35,6 +36,8 @@ const pseudoRow = (pseudo: string, over: Partial<SearchRow> = {}): SearchRow => 
   item_title: null,
   category_id: null,
   score: 2,
+  user_id: `user-${pseudo}`,
+  avatar: null,
   ...over,
 });
 
@@ -50,6 +53,8 @@ const itemRow = (pseudo: string, title: string, categoryId = 1, over: Partial<Se
   item_title: title,
   category_id: categoryId,
   score: 1,
+  user_id: `user-${pseudo}`,
+  avatar: null,
   ...over,
 });
 
@@ -78,7 +83,7 @@ describe('isSearchable', () => {
 
 describe('splitResults, découpage', () => {
   it('range une correspondance de pseudo dans les comptes', () => {
-    const { accounts, viaItems } = splitResults([pseudoRow('dark_hifus')], new Set());
+    const { accounts, viaItems } = splitResults([pseudoRow('dark_hifus')], NO_BLOCKED_ACCOUNTS);
     assert.equal(accounts.length, 1);
     assert.equal(viaItems.length, 0);
     assert.equal(accounts[0]?.pseudo, 'dark_hifus');
@@ -86,7 +91,7 @@ describe('splitResults, découpage', () => {
   });
 
   it('range une correspondance d\'item dans la seconde section, avec sa raison', () => {
-    const { accounts, viaItems } = splitResults([itemRow('ralgan', 'Inception', 1)], new Set());
+    const { accounts, viaItems } = splitResults([itemRow('ralgan', 'Inception', 1)], NO_BLOCKED_ACCOUNTS);
     assert.equal(accounts.length, 0);
     assert.equal(viaItems.length, 1);
     assert.deepEqual(viaItems[0]?.item, {
@@ -99,7 +104,7 @@ describe('splitResults, découpage', () => {
   it('sépare les deux sections d\'une même réponse', () => {
     const { accounts, viaItems } = splitResults(
       [pseudoRow('joycaddict'), itemRow('axl56', 'Joyca', 5), itemRow('chiquito', 'Joyca', 5)],
-      new Set(),
+      NO_BLOCKED_ACCOUNTS,
     );
     assert.deepEqual(accounts.map((a) => a.pseudo), ['joycaddict']);
     assert.deepEqual(viaItems.map((v) => v.pseudo), ['axl56', 'chiquito']);
@@ -112,7 +117,7 @@ describe('splitResults, découpage', () => {
   it('préserve l\'ordre du SQL dans chaque section', () => {
     const { viaItems } = splitResults(
       [itemRow('c', 'X'), itemRow('a', 'X'), itemRow('b', 'X')],
-      new Set(),
+      NO_BLOCKED_ACCOUNTS,
     );
     assert.deepEqual(viaItems.map((v) => v.pseudo), ['c', 'a', 'b']);
   });
@@ -120,14 +125,14 @@ describe('splitResults, découpage', () => {
   it('reporte le nom d\'affichage et le coup de cœur', () => {
     const { accounts } = splitResults(
       [pseudoRow('keremasan', { display_name: 'Clément', is_featured: true })],
-      new Set(),
+      NO_BLOCKED_ACCOUNTS,
     );
     assert.equal(accounts[0]?.displayName, 'Clément');
     assert.equal(accounts[0]?.isFeatured, true);
   });
 
   it('rend deux sections vides sur une entrée vide', () => {
-    const results = splitResults([], new Set());
+    const results = splitResults([], NO_BLOCKED_ACCOUNTS);
     assert.deepEqual(results, { accounts: [], viaItems: [] });
     assert.equal(isEmpty(results), true);
   });
@@ -135,7 +140,7 @@ describe('splitResults, découpage', () => {
 
 describe('splitResults, pseudos bloqués', () => {
   it('retire un compte bloqué', () => {
-    const { accounts } = splitResults([pseudoRow('gênant'), pseudoRow('ok')], new Set(['gênant']));
+    const { accounts } = splitResults([pseudoRow('gênant'), pseudoRow('ok')], blockedIndex([{ userId: null, pseudo: 'gênant' }]));
     assert.deepEqual(accounts.map((a) => a.pseudo), ['ok']);
   });
 
@@ -144,14 +149,14 @@ describe('splitResults, pseudos bloqués', () => {
    * résultat qui renvoie le même pseudo dans une autre casse.
    */
   it('ignore la casse', () => {
-    const { accounts } = splitResults([pseudoRow('Dark_Hifus')], new Set(['dark_hifus']));
+    const { accounts } = splitResults([pseudoRow('Dark_Hifus')], blockedIndex([{ userId: null, pseudo: 'dark_hifus' }]));
     assert.equal(accounts.length, 0);
   });
 
   it('filtre aussi la section des items', () => {
     const { viaItems } = splitResults(
       [itemRow('gênant', 'Inception'), itemRow('ok', 'Inception')],
-      new Set(['gênant']),
+      blockedIndex([{ userId: null, pseudo: 'gênant' }]),
     );
     assert.deepEqual(viaItems.map((v) => v.pseudo), ['ok']);
   });
@@ -164,7 +169,7 @@ describe('mapSearchRow, cas limites', () => {
    * que de perdre la mention de l'item.
    */
   it('garde la ligne quand la catégorie est inconnue, sans sa raison', () => {
-    const { accounts, viaItems } = splitResults([itemRow('naorii', 'Truc', 99)], new Set());
+    const { accounts, viaItems } = splitResults([itemRow('naorii', 'Truc', 99)], NO_BLOCKED_ACCOUNTS);
     assert.equal(viaItems.length, 0);
     assert.equal(accounts.length, 1);
     assert.equal(accounts[0]?.pseudo, 'naorii');
@@ -174,7 +179,7 @@ describe('mapSearchRow, cas limites', () => {
   it('garde la ligne quand l\'item est incomplet', () => {
     const { accounts } = splitResults(
       [itemRow('naorii', 'Truc', 1, { item_id: null })],
-      new Set(),
+      NO_BLOCKED_ACCOUNTS,
     );
     assert.equal(accounts.length, 1);
     assert.equal(accounts[0]?.item, null);
@@ -187,7 +192,23 @@ describe('mapSearchRow, cas limites', () => {
   it('ignore une ligne au match_kind inattendu', () => {
     const rogue = pseudoRow('x', { match_kind: 'alias' });
     assert.equal(mapSearchRow(rogue), null);
-    assert.equal(isEmpty(splitResults([rogue], new Set())), true);
+    assert.equal(isEmpty(splitResults([rogue], NO_BLOCKED_ACCOUNTS)), true);
+  });
+});
+
+describe('le compte et son Popy, chantier 21', () => {
+  it('portent le compte et le Popy choisi de chaque résultat', () => {
+    const mapped = mapSearchRow(pseudoRow('ralgan', { user_id: 'u-1', avatar: 'nani' }));
+    assert.equal(mapped?.match.userId, 'u-1');
+    assert.equal(mapped?.match.avatar, 'nani');
+  });
+
+  it('écartent un compte bloqué qui a changé de pseudo depuis', () => {
+    const { accounts } = splitResults(
+      [pseudoRow('nouveau', { user_id: 'u-1' }), pseudoRow('autre', { user_id: 'u-2' })],
+      blockedIndex([{ userId: 'u-1', pseudo: 'ancien' }]),
+    );
+    assert.deepEqual(accounts.map((m) => m.pseudo), ['autre']);
   });
 });
 
@@ -196,8 +217,10 @@ describe('matchAccessibilityLabel', () => {
     bentoId: 'b',
     slug: 'mon-bento',
     isPrimary: true,
+    userId: null,
     pseudo: 'ralgan',
     displayName: null,
+    avatar: null,
     isFeatured: false,
     item: null,
   };

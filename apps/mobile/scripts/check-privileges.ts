@@ -23,7 +23,9 @@ import { execSync } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { loadFeedPage } from '../src/lib/feed';
 import { loadMatches } from '../src/lib/matches';
-import { isPseudoTaken } from '../src/lib/pseudo-availability';
+import { pseudoStatus } from '../src/lib/pseudo-availability';
+import { escapeLikePattern } from '../src/lib/pseudo-match';
+import { changePseudo, writeAvatar, writeDisplayName, ProfileWriteFailure } from '../src/lib/profile-edit';
 import { loadPublicBento } from '../src/lib/public-bento';
 import { loadSharedItems, searchBentos, writeSearchable } from '../src/lib/search';
 import { loadSuggestions } from '../src/lib/suggestions';
@@ -105,7 +107,16 @@ async function main(): Promise<void> {
 
   console.log('\nParcours de l’app, tel que les versions publiées l’envoient\n');
 
-  check('pseudo libre', !(await isPseudoTaken(alice.client, alicePseudo)));
+  {
+    // La requête des versions publiées : la nouvelle app passe par
+    // `pseudo_status`, éprouvée dans la section du chantier 21.
+    const { data, error } = await alice.client
+      .from('users')
+      .select('pseudo')
+      .ilike('pseudo', escapeLikePattern(alicePseudo))
+      .limit(5);
+    check('pseudo libre', !error && (data ?? []).length === 0, error?.message);
+  }
   {
     const { error } = await alice.client
       .from('users')
@@ -377,6 +388,68 @@ async function main(): Promise<void> {
       'rallumée, « Trouver » la retrouve',
       back.some((row) => row.pseudo === alicePseudo),
     );
+  }
+
+  console.log('\nProfil, chantier 21\n');
+
+  {
+    check(
+      'la base dit le pseudo libre, et le sien (pseudo-availability.ts)',
+      (await pseudoStatus(anon as unknown as Typed, `libre${stamp}`)) === 'available' &&
+        (await pseudoStatus(alice.client, alicePseudo)) === 'current',
+    );
+    const name = await writeDisplayName(alice.client, '  Alice  ');
+    check('elle écrit son nom (profile-edit.ts)', name === 'Alice');
+    const avatar = await writeAvatar(alice.client, 'gene');
+    check('et son Popy', avatar === 'gene');
+    const { error: rawName } = await alice.rawClient
+      .from('users')
+      .update({ display_name: 'Contourné' })
+      .eq('id', alice.uid);
+    check('mais jamais par la colonne, contournant les règles', !!rawName, rawName?.message);
+    const { error: anonName } = await anon.rpc('set_display_name', { p_display_name: 'Personne' });
+    check('un visiteur sans session n’écrit aucun nom', !!anonName, anonName?.message);
+
+    const renamed = `alice2${stamp}`;
+    await changePseudo(alice.client, renamed, 'gene');
+    const moved = await loadPublicBento(anon as unknown as Typed, renamed);
+    check('elle change de pseudo, sa page suit', moved?.bento?.avatar === 'gene', JSON.stringify(moved?.bento?.pseudo));
+    const { data: redirect } = await anon.rpc('resolve_pseudo', { p_pseudo: alicePseudo });
+    check('l’ancien pseudo mène au nouveau, sans session', redirect === renamed, String(redirect));
+    check(
+      'pour la base, l’ancien pseudo est pris',
+      (await pseudoStatus(bob.client, alicePseudo)) === 'taken',
+    );
+    let refused = '';
+    try {
+      await changePseudo(bob.client, alicePseudo, 'content');
+    } catch (e) {
+      refused = e instanceof ProfileWriteFailure ? e.reason.kind : String(e);
+    }
+    check('un autre compte ne le prend pas', refused === 'taken', refused);
+    let soon = '';
+    try {
+      await changePseudo(alice.client, `alice3${stamp}`, 'gene');
+    } catch (e) {
+      soon = e instanceof ProfileWriteFailure ? e.reason.kind : String(e);
+    }
+    check('un second changement attend 30 jours', soon === 'too-soon', soon);
+    const { error: history } = await bob.rawClient.from('pseudo_history').select('pseudo');
+    check('personne ne lit l’historique des pseudos', !!history, history?.message);
+    const found = await searchBentos(anon as unknown as Typed, renamed);
+    check(
+      'la recherche rend son compte et son Popy',
+      found.some((row) => row.pseudo === renamed && row.user_id === alice.uid && row.avatar === 'gene'),
+    );
+    // Les sections suivantes la cherchent sous son pseudo d'origine : le
+    // délai levé, le rôle de service le lui rend, par la même fonction (D10).
+    await service.from('users').update({ pseudo_changed_at: null }).eq('id', alice.uid);
+    const { error: back } = await service.rpc('apply_pseudo_change', {
+      p_user: alice.uid,
+      p_pseudo: alicePseudo,
+    });
+    check('le rôle de service change un pseudo par la même fonction', !back, back?.message);
+    await service.from('users').update({ pseudo_changed_at: null }).eq('id', alice.uid);
   }
 
   console.log('\nAttaques, à refuser ou à neutraliser\n');

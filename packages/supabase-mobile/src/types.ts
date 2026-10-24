@@ -149,6 +149,18 @@ export type Database = {
            * ouverte par son lien. Chantier 20, D5.
            */
           searchable: boolean;
+          /**
+           * Le Popy choisi, une des clés de `POPY_KEYS`, ou `null` pour celui
+           * du pseudo, cf. `popyKeyFor`. Écrit par `set_avatar` et
+           * `change_pseudo` seulement. Chantier 21, D7.
+           */
+          avatar: string | null;
+          /**
+           * La date du dernier changement de pseudo, `null` tant qu'il n'a pas
+           * changé depuis la publication. Le suivant attend 30 jours.
+           * Chantier 21, D5.
+           */
+          pseudo_changed_at: string | null;
         };
         Insert: {
           /** Pour un membre, doit valoir `auth.uid()`. Généré pour un éditorial. */
@@ -799,6 +811,10 @@ export type Database = {
           score: number;
           /** Les items communs, du plus rare au plus commun. */
           items: Array<{ id: string; title: string; category_id: number | null }>;
+          /** Le compte du bento, pour le blocage par compte. Chantier 21, D14. */
+          user_id: string;
+          /** Son Popy choisi, ou `null`. Chantier 21, D14. */
+          avatar: string | null;
         }>;
       };
       search_bentos: {
@@ -819,7 +835,52 @@ export type Database = {
           item_title: string | null;
           category_id: number | null;
           score: number;
+          /** Le compte du bento, pour le blocage par compte. Chantier 21, D14. */
+          user_id: string;
+          /** Son Popy choisi, ou `null`. Chantier 21, D14. */
+          avatar: string | null;
         }>;
+      };
+      /**
+       * Les écritures du profil, chantier 21, pour son propre compte. Chacune
+       * lève avec un code lisible, cf. `src/lib/profile-edit.ts` : `22001`
+       * trop long, `22023` invalide, `23505` pris, `23514` non autorisé,
+       * `P0001` trop tôt, la date du prochain changement en `hint`.
+       */
+      set_display_name: {
+        Args: { p_display_name: string | null };
+        /** Le nom enregistré, débarrassé de ses blancs, ou `null`. */
+        Returns: string | null;
+      };
+      set_avatar: {
+        Args: { p_avatar: string | null };
+        Returns: string | null;
+      };
+      change_pseudo: {
+        /** `p_keep_avatar` : le Popy affiché, figé s'il n'a jamais été choisi. */
+        Args: { p_pseudo: string; p_keep_avatar?: string | null };
+        /** Le pseudo enregistré. */
+        Returns: string;
+      };
+      /** Ce que l'écran peut dire d'un pseudo pendant la saisie. Chantier 21. */
+      pseudo_status: {
+        Args: { p_pseudo: string };
+        Returns: 'invalid' | 'reserved' | 'forbidden' | 'taken' | 'current' | 'available';
+      };
+      /** Le pseudo actuel du compte qui a porté celui-ci, ou `null`. Chantier 21, D6. */
+      resolve_pseudo: {
+        Args: { p_pseudo: string };
+        Returns: string | null;
+      };
+      /** Le compte derrière chaque pseudo, actuel ou ancien. Chantier 21, D8. */
+      resolve_accounts: {
+        Args: { p_pseudos: string[] };
+        Returns: Array<{ pseudo: string; user_id: string; current_pseudo: string }>;
+      };
+      /** Ses propres anciens pseudos, pour l'export de ses données. Chantier 21, D16. */
+      my_pseudo_history: {
+        Args: Record<string, never>;
+        Returns: Array<{ pseudo: string; changed_at: string }>;
       };
       /**
        * Items présents dans **au moins deux** bentos publiés. Sert de bloc

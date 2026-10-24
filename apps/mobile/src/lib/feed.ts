@@ -55,7 +55,8 @@ const FEED_SELECT = `
   published_at,
   is_featured,
   edition_id,
-  users:user_id ( pseudo, display_name, kind ),
+  user_id,
+  users:user_id ( pseudo, display_name, kind, avatar ),
   editions (
     title,
     bento_categories ( key, prompt, stamp, gender, display_order )
@@ -74,7 +75,14 @@ export type FeedRow = {
   published_at: string | null;
   is_featured: boolean;
   edition_id?: number | null;
-  users: { pseudo: string; display_name: string | null; kind: string } | null;
+  user_id?: string;
+  users: {
+    pseudo: string;
+    display_name: string | null;
+    kind: string;
+    /** Le Popy choisi, chantier 21 ; absent d'une réponse d'avant sa migration. */
+    avatar?: string | null;
+  } | null;
   editions?: {
     title: string;
     bento_categories: {
@@ -106,8 +114,12 @@ export type FeedBento = {
    */
   slug: string;
   isPrimary: boolean;
+  /** Le compte du bento, pour le blocage par compte (chantier 21, D8). */
+  userId: string | null;
   pseudo: string;
   displayName: string | null;
+  /** Son Popy choisi, ou `null` pour celui du pseudo (chantier 21, D7). */
+  avatar: string | null;
   isFeatured: boolean;
   /**
    * Bento composé par l'équipe pour un créateur rencontré hors de l'app.
@@ -129,6 +141,13 @@ export type FeedBento = {
 };
 
 export type FeedCursor = { publishedAt: string; id: string };
+
+/**
+ * Le fil d'un seul compte, sans le bento que la page montre déjà : la liste
+ * des autres bentos d'un profil (chantier 21, D11). Même requête, même ordre
+ * et même curseur que « La table », donc un bento s'y lit pareil.
+ */
+export type FeedScope = { userId: string; excludeBentoId?: string | null };
 
 export type FeedPage = {
   bentos: FeedBento[];
@@ -177,8 +196,10 @@ export function mapFeedRow(row: FeedRow): FeedBento | null {
     bentoId: row.id,
     slug: row.slug,
     isPrimary: row.is_primary,
+    userId: row.user_id ?? null,
     pseudo: user.pseudo,
     displayName: user.display_name,
+    avatar: user.avatar ?? null,
     isFeatured: row.is_featured,
     // Comparaison à la chaîne plutôt qu'au type : une valeur inconnue,
     // ajoutée en base avant que les clients ne soient déployés, doit se lire
@@ -262,8 +283,14 @@ export function feedAccessibilityLabel(bento: FeedBento, now?: number): string {
 export async function loadFeedPage(
   client: FeedClient,
   cursor?: FeedCursor | null,
+  scope?: FeedScope,
 ): Promise<FeedPage> {
   let query = client.from('bentos').select(FEED_SELECT).not('published_at', 'is', null);
+
+  if (scope) {
+    query = query.eq('user_id', scope.userId);
+    if (scope.excludeBentoId) query = query.neq('id', scope.excludeBentoId);
+  }
 
   if (cursor) {
     // `.or()` du client et jamais une URL construite à la main : le `+` du

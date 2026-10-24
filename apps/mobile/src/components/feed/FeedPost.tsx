@@ -66,6 +66,7 @@ export function FeedPost({ bento, width, sideInset, scale, onPress, now }: FeedP
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <FeedPostHeader
           pseudo={bento.pseudo}
+          avatar={bento.avatar}
           displayName={bento.displayName}
           publishedAt={bento.publishedAt}
           maxWidth={width}

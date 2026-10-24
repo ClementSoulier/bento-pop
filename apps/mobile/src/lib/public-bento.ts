@@ -61,9 +61,11 @@ export type PublicBentoClient = SupabaseClient<Database>;
  * bento, ce que rien ne savait faire avant.
  */
 const PUBLIC_BENTO_SELECT = `
+  id,
   pseudo,
   display_name,
   kind,
+  avatar,
   bentos (
     id,
     slug,
@@ -134,9 +136,13 @@ type RawPublicBento = {
 };
 
 export type PublicBentoRow = {
+  /** Le compte, chantier 21 : le blocage par compte et la liste de ses bentos. */
+  id?: string;
   pseudo: string;
   display_name: string | null;
   kind: string;
+  /** Le Popy choisi, chantier 21. */
+  avatar?: string | null;
   /** Objet avant la levée de `bentos_user_id_key`, tableau après. */
   bentos: RawPublicBento | RawPublicBento[] | null;
 };
@@ -145,8 +151,12 @@ export type PublicBento = {
   id: string;
   slug: string;
   isPrimary: boolean;
+  /** Le compte du bento, `null` sur une réponse d'avant le chantier 21. */
+  userId: string | null;
   pseudo: string;
   displayName: string | null;
+  /** Son Popy choisi, ou `null` pour celui du pseudo (chantier 21, D7). */
+  avatar: string | null;
   /** Bento composé par l'équipe pour un créateur rencontré hors de l'app. */
   isGuest: boolean;
   isFeatured: boolean;
@@ -286,8 +296,10 @@ export function mapPublicBento(
             }))
         : MAIN_CASES,
       editionTitle: chosen.editions?.title ?? null,
+      userId: row.id ?? null,
       pseudo: row.pseudo,
       displayName: row.display_name,
+      avatar: row.avatar ?? null,
       // Comparaison à la chaîne, comme dans le fil : une valeur inconnue se
       // lit « pas invité » au lieu de faire planter le mapping.
       isGuest: row.kind === 'editorial',

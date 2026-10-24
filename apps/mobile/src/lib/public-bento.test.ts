@@ -113,6 +113,13 @@ describe('mapPublicBento', () => {
     assert.equal(mapPublicBento(row()).bento?.displayName, null);
   });
 
+  it('porte le compte et son Popy choisi (chantier 21)', () => {
+    const bento = mapPublicBento(row({ id: 'u-1', avatar: 'diable' })).bento;
+    assert.equal(bento?.userId, 'u-1');
+    assert.equal(bento?.avatar, 'diable');
+    assert.equal(mapPublicBento(row()).bento?.avatar, null);
+  });
+
   it('reconnaît le bento invité, et lui seul', () => {
     assert.equal(mapPublicBento(row({ kind: 'editorial' })).bento?.isGuest, true);
     // Une valeur ajoutée en base avant les clients se lit « pas invité ».

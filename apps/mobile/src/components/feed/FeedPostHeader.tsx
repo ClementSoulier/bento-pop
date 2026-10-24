@@ -1,9 +1,11 @@
-import { popyForPseudo } from '@/lib/popy-avatar';
+import { popyFor } from '@/lib/popy-avatar';
 import { relativeDate } from '@/lib/relative-date';
 import { FeedLabel } from './FeedLabel';
 
 type FeedPostHeaderProps = {
   pseudo: string;
+  /** Le Popy choisi, ou `null` pour celui du pseudo (chantier 21, D7). */
+  avatar: string | null;
   displayName: string | null;
   publishedAt: string;
   /** Largeur de la boîte, pour empêcher un pseudo long de la dépasser. */
@@ -19,6 +21,7 @@ type FeedPostHeaderProps = {
  */
 export function FeedPostHeader({
   pseudo,
+  avatar,
   displayName,
   publishedAt,
   maxWidth,
@@ -31,7 +34,7 @@ export function FeedPostHeader({
     <FeedLabel
       title={`@${pseudo}`}
       meta={meta}
-      avatar={popyForPseudo(pseudo)}
+      avatar={popyFor(pseudo, avatar)}
       maxWidth={maxWidth}
     />
   );

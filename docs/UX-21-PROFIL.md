@@ -288,7 +288,7 @@ Une migration :
   messages, la date du prochain changement de pseudo, et les écritures par
   les fonctions de la base.
 - **`src/lib/account-bentos.ts`** : les autres bentos publiés d'un compte,
-  par pages de dix, les plus récents d'abord (D11).
+  par pages de huit, comme le fil, les plus récents d'abord (D11).
 - **`src/state/blocked.ts`** : des entrées `{ userId, pseudo }`, filtrées par
   identifiant ; la reprise des pseudos d'aujourd'hui au premier lancement.
 - **`app/u/[pseudo].tsx`** : la liste sous la boîte ; un pseudo introuvable
@@ -421,6 +421,65 @@ déclencheur, `check-profile.sql`.
 `popyFor` partout, `profile-edit.ts`, `account-bentos.ts`, le blocage par
 compte et sa reprise, le type `Database`, `check-privileges.ts`.
 
+> **Fait le 24 octobre 2026**, sur la même branche. Rien de neuf à l'écran :
+> le Popy choisi s'affiche partout où un compte apparaît, mais personne ne
+> peut encore en choisir.
+>
+> - **`popyKeyFor`**, dans `@bento-pop/supabase-mobile/bento`, partagé avec la
+>   landing, et **`popyFor`** dans l'app : le Popy choisi, ou celui du pseudo ;
+>   une clé inconnue se lit comme pas de choix. Le fil, la recherche, les
+>   matchs, la page publique et l'onglet Profil y passent tous. Chacun des six
+>   a un nom, pour le choix et pour VoiceOver, d'après son dessin : content,
+>   intello, bisou, gêné, surpris, diable.
+> - **Le compte et son Popy** dans chaque post du fil, chaque résultat de la
+>   recherche, chaque match et sur la page publique.
+> - **`blocked-accounts.ts`**, pur, et **`src/state/blocked.ts`** : le blocage
+>   par compte (D8). La liste d'avant, des pseudos, est reprise au premier
+>   lancement, chaque pseudo rattaché à son compte par `resolve_accounts` ;
+>   une entrée sans compte réessaie à chaque lancement, et les pseudos
+>   affichés suivent ceux des comptes. Rien de tout cela ne retarde
+>   l'hydratation : la liste lue sert tout de suite.
+> - **`profile-edit.ts`** : la validation du nom, compté en caractères comme
+>   la base, la date du prochain changement de pseudo, les trois écritures et
+>   la lecture de leurs refus, en phrases.
+> - **`account-bentos.ts`** : les autres bentos d'un compte, par la requête du
+>   fil, limitée au compte et sans le bento de la page.
+> - **`pseudo_status` à la publication aussi** : l'écran du pseudo annonce
+>   « Pris » un ancien pseudo réservé, et « Non autorisé » un pseudo interdit,
+>   au lieu de les découvrir à l'envoi.
+> - **L'export de ses données** inclut ses anciens pseudos (D16).
+> - **`check-privileges.ts`** gagne la section du chantier, treize contrôles
+>   par les fonctions de l'app contre l'API locale : le nom et le Popy écrits
+>   par leurs fonctions et jamais par la colonne, le pseudo changé et sa page
+>   qui suit, la redirection sans session, la réserve, les 30 jours,
+>   l'historique fermé, la recherche qui rend le compte et son Popy, le rôle
+>   de service par la même fonction (D10). Conforme.
+>
+> **Deux choix** :
+>
+> 1. **Huit bentos par page, comme le fil**, et non dix : la même requête, au
+>    poids mesuré au chantier 2. D11 est corrigée en ce sens.
+> 2. **Le parcours des versions publiées garde son contrôle** :
+>    `check-privileges.ts` rejoue toujours leur test de disponibilité, sur
+>    `users`, quand la nouvelle app passe par `pseudo_status`.
+>
+> **Tests** : 37 de plus, 816 pour l'app : le blocage par compte et sa
+> reprise, la modification du profil et ses refus contre le bouchon
+> PostgREST, `pseudo_status`, le fil d'un compte, le compte et le Popy dans
+> chaque mise en forme. Quinze défauts introduits exprès, tous attrapés : le
+> blocage aveugle au compte ; la reprise sous l'ancien pseudo ; un compte
+> bloqué deux fois ; le déblocage par le seul pseudo ; le nom compté en
+> unités UTF-16 ; 29 jours entre deux pseudos ; un pseudo interdit lu comme
+> pris ; le Popy affiché jamais transmis ; une réponse inconnue lue comme
+> libre ; le fil d'un compte qui montre aussi le bento de la page ; le fil
+> sans le Popy, la recherche sans le compte, les matchs sans le Popy, la page
+> sans le compte ; le Popy choisi ignoré.
+>
+> **La CI, rejouée en local, en deux temps** : lint et typage 8 sur 8 ;
+> tests 226, 193 et 816 ; build 3 sur 3. L'e2e de la landing, que ce lot ne
+> touche pas, passe au lot 5 : le port 4599 de son bouchon est tenu par une
+> autre session.
+
 ### Lot 3 · L'app : la page d'un compte et son profil
 
 La liste sous la boîte, l'ancien pseudo résolu, l'onglet Profil, l'écran
@@ -499,7 +558,7 @@ recommandée ; D11 à D16 prises par la spécification.
 | **D8** | Le blocage suit le compte : l'identifiant en plus du pseudo, les blocages d'avant rattachés à leur compte | Changer de pseudo ne suffit plus à se débloquer |
 | **D9** | La page web suit l'app : la liste, la redirection 308, le Popy choisi | Les liens partagés mènent d'abord au web |
 | **D10** | Les profils éditoriaux hors du chantier ; les fonctions acceptent l'appel du back-office | Aucun en production aujourd'hui |
-| **D11** | Les autres bentos chargés à part, par pages de dix, après le bento de la page | Le premier écran n'attend jamais la liste, et une liste longue d'éditions ne pèse que ce qu'on en voit |
+| **D11** | Les autres bentos chargés à part, après le bento de la page, par la requête du fil : pages de huit, mêmes ordre et curseur | Le premier écran n'attend jamais la liste, et une liste longue d'éditions ne pèse que ce qu'on en voit ; huit et non dix, corrigé au lot 2, pour garder la requête du fil telle quelle |
 | **D12** | Les anciens pseudos dans `pseudo_history`, uniques sans tenir compte de la casse, supprimés avec le compte | La réserve et la redirection lisent la même table ; supprimer son compte libère ses pseudos, comme aujourd'hui |
 | **D13** | Le pseudo et le nom écrits par `change_pseudo` et `update_profile`, jamais par un droit sur la colonne | Les règles vivent en base, et la clé anonyme ne peut rien |
 | **D14** | `search_bentos` et `bento_matches` rendent aussi `user_id` et `avatar` | Le Popy choisi et le blocage par compte, en un aller-retour ; les versions publiées ignorent les colonnes en plus |

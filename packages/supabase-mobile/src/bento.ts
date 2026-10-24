@@ -778,12 +778,26 @@ export const POPY_KEYS = [
 export type PopyKey = (typeof POPY_KEYS)[number];
 
 /**
- * Avatar déterministe par pseudo, insensible à la casse. Évite une colonne
- * dédiée en base tant que le choix manuel n'existe pas. Chaque app mappe
- * ensuite la clé vers son propre fichier d'image.
+ * Avatar déterministe par pseudo, insensible à la casse : le Popy d'un compte
+ * qui n'en a pas choisi. Chaque app mappe ensuite la clé vers son propre
+ * fichier d'image.
  */
 export function popyKeyForPseudo(pseudo: string): PopyKey {
   return POPY_KEYS[stableHash(pseudo.toLowerCase()) % POPY_KEYS.length] ?? 'content';
+}
+
+/** Vrai pour une des six clés de `POPY_KEYS`. */
+export function isPopyKey(value: unknown): value is PopyKey {
+  return typeof value === 'string' && (POPY_KEYS as readonly string[]).includes(value);
+}
+
+/**
+ * Le Popy d'un compte : celui qu'il a choisi, `users.avatar`, ou celui de son
+ * pseudo (chantier 21, D7). Une valeur inconnue se lit comme pas de choix,
+ * pour qu'une clé ajoutée en base avant les clients ne fasse rien planter.
+ */
+export function popyKeyFor(pseudo: string, avatar: string | null | undefined): PopyKey {
+  return isPopyKey(avatar) ? avatar : popyKeyForPseudo(pseudo);
 }
 
 const VISITS_NUMBER = new Intl.NumberFormat('fr-FR');
