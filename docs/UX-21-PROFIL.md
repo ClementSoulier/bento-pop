@@ -771,7 +771,7 @@ chantier 29.
 
 ## 9. Livraison
 
-- **Une PR** pour les six lots, empilée sur celle du chantier 20, la #94.
+- **Une PR**, la #96, pour les six lots, empilée sur celle du chantier 20, la #94.
 - **La migration**, par Clément, dans l'éditeur SQL du projet Supabase
   « My Bento Pop », ref `ggjgktbcqumfxrixcdyx`,
   `https://supabase.com/dashboard/project/ggjgktbcqumfxrixcdyx/sql/new`, avant
