@@ -358,6 +358,64 @@ Effort **L**, comme à la roadmap.
 `resolve_pseudo`, `search_bentos` et `bento_matches` élargies, le
 déclencheur, `check-profile.sql`.
 
+> **Fait le 24 octobre 2026**, sur la branche `feat/ux-21-profil`, partie de
+> celle du chantier 20.
+>
+> - **`supabase/migrations/20261024100000_profile.sql`** : `users.avatar` et
+>   `users.pseudo_changed_at` ; `pseudo_history`, sans accès client, et sa
+>   réserve ; les écritures `set_display_name`, `set_avatar` et
+>   `change_pseudo`, et leurs pendants `apply_*` pour le rôle de service
+>   (D10) ; les lectures `pseudo_status`, `resolve_pseudo`,
+>   `resolve_accounts` et `my_pseudo_history` ; `search_bentos` et
+>   `bento_matches` recréées avec `user_id` et `avatar` ; le déclencheur des
+>   pages web, qui suit aussi le pseudo, le nom et le Popy. Appliquée au
+>   Supabase local seulement.
+> - **`scripts/check-profile.sql`** : 39 contrôles en transaction annulée,
+>   sur quatre comptes construits pour l'occasion.
+>
+> **Quatre choix que la spécification laissait ouverts** :
+>
+> 1. **Une écriture par champ**, `set_display_name` et `set_avatar`, plutôt
+>    que `update_profile(nom, Popy)` : l'écran enregistre chaque champ à part,
+>    et un nom vide ne se confond plus avec « ne pas toucher au nom ».
+> 2. **La réserve tenue par un déclencheur**, et pas seulement dans
+>    `change_pseudo` : un compte neuf ne prend pas non plus l'ancien pseudo
+>    d'un autre à sa première publication.
+> 3. **`pseudo_status`**, ce que l'écran peut dire d'un pseudo pendant la
+>    saisie : libre, pris, réservé, non autorisé, invalide ou le sien. L'app
+>    d'aujourd'hui ne lit que les pseudos actuels : elle annoncerait libre un
+>    ancien pseudo réservé, que la base refuserait ensuite.
+> 4. **`users.pseudo_changed_at`**, la date du dernier changement, qui tient
+>    les 30 jours. Changer seulement la casse compte comme un changement, sans
+>    rien verser à l'historique : les adresses, en minuscules, ne changent
+>    pas.
+>
+> **La marque, couverte deux fois** : le contrôle que `change_pseudo` en
+> faisait doublait deux des 41 motifs interdits, en local comme en
+> production. Retiré, les motifs refusant ces pseudos comme à la première
+> publication ; `pseudo_status` garde la réponse « réservé », plus juste
+> pour l'écran que « non autorisé ».
+>
+> **Défauts introduits exprès** : vingt-deux, tous attrapés, après une
+> correction de chaque côté : un défaut mal écrit, le Popy jamais figé, et un
+> contrôle ajouté, un pseudo écrit directement sans toucher au Popy, que
+> `change_pseudo` masquait en écrivant toujours cette colonne. Le nom à 40
+> caractères, sans les motifs ou sur deux lignes ; un Popy inconnu ; aucun
+> délai ; aucune réserve, ou une réserve sensible à la casse ; l'historique
+> jamais écrit, gardé à la reprise ou survivant au compte ; le Popy jamais
+> figé, ou écrasé ; la redirection fermée aux visiteurs ; l'historique
+> lisible par tous ; le statut aveugle aux anciens pseudos ou à la marque ;
+> la recherche sans le Popy, les matchs sans le compte ; les pages sourdes au
+> pseudo, oubliant l'ancienne adresse ou le sitemap ; son pseudo actuel
+> compté comme un changement.
+>
+> **Non-régression** : `check-matches.sql`, 17 sur 17, sur `bento_matches`
+> recréée ; `check-visits.sql`, 43 sur 43, le déclencheur partagé compris.
+>
+> **Pour le lot 2** : `check-privileges.ts` gagnera la section du chantier,
+> par les fonctions de l'app. La CI ne lit pas le SQL : elle sera rejouée au
+> lot 2.
+
 ### Lot 2 · L'app : les données
 
 `popyFor` partout, `profile-edit.ts`, `account-bentos.ts`, le blocage par
