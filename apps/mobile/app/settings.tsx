@@ -25,7 +25,14 @@ import {
   fontScaleFor,
   scaledType,
 } from '@/components/bento/font-scaling';
-import { INK_MUTED, INK_PLACEHOLDER, SHADOWS, YellowBg, useToast } from '@/components/primitives';
+import {
+  INK_MUTED,
+  INK_PLACEHOLDER,
+  SHADOWS,
+  SectionTitle,
+  YellowBg,
+  useToast,
+} from '@/components/primitives';
 import { useBlocked } from '@/state/blocked';
 import { userErrorMessage } from '@/lib/user-error-message';
 import { NotificationSettings } from '@/components/NotificationSettings';
@@ -341,28 +348,6 @@ export default function SettingsScreen() {
         </ScrollView>
       </SafeAreaView>
     </YellowBg>
-  );
-}
-
-/** Le titre d'une section, en petites capitales. */
-function SectionTitle({ children }: { children: string }) {
-  const { fontScale } = useWindowDimensions();
-  return (
-    <Text
-      accessibilityRole="header"
-      numberOfLines={1}
-      allowFontScaling={false}
-      style={{
-        fontFamily: 'Bungee',
-        fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
-        letterSpacing: 2,
-        color: INK_MUTED,
-        textTransform: 'uppercase',
-        marginBottom: 4,
-      }}
-    >
-      {children}
-    </Text>
   );
 }
 

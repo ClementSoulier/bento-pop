@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { isPopyKey, type PopyKey } from '@bento-pop/supabase-mobile/bento';
 import type { Database } from '@/supabase/types';
 import { timeOf } from './episodes';
+import type { PseudoCheck } from './pseudo';
 
 /**
  * Modifier son profil, chantier 21 : le nom affiché, le pseudo et le Popy
@@ -64,6 +65,69 @@ export function formatChangeDate(date: Date, now = Date.now()): string {
     month: 'long',
     ...(sameYear ? {} : { year: 'numeric' }),
   });
+}
+
+/** Le nom compté comme la base le compte, pour le compteur sous le champ. */
+export function displayNameLength(raw: string): number {
+  return [...raw.trim()].length;
+}
+
+/** Ce que le bouton du nom propose : rien, l'enregistrer, le retirer, ou pourquoi il ne le peut pas. */
+export type NameAction =
+  | { kind: 'none' }
+  | { kind: 'save' }
+  | { kind: 'remove' }
+  | { kind: 'invalid'; message: string };
+
+/**
+ * L'action du champ du nom, d'après la saisie et le nom enregistré : rien
+ * tant qu'il ne change pas, blancs compris ; vide, il se retire (D4).
+ */
+export function nameAction(raw: string, current: string | null): NameAction {
+  const check = checkDisplayName(raw);
+  if (check.status === 'too-long') {
+    return { kind: 'invalid', message: profileWriteMessage({ kind: 'too-long' }, 'name') };
+  }
+  if (check.status === 'multiline') {
+    return { kind: 'invalid', message: profileWriteMessage({ kind: 'invalid' }, 'name') };
+  }
+  if (check.value === (current?.trim() || null)) return { kind: 'none' };
+  return check.value === null ? { kind: 'remove' } : { kind: 'save' };
+}
+
+/** La phrase sous le champ du pseudo, et ce qu'elle annonce. */
+export type FieldMessage = { text: string; tone: 'ok' | 'error' | 'neutral' };
+
+/**
+ * Ce que dit l'écran d'un pseudo pendant la saisie, d'après `pseudo_status` et
+ * les règles de la création : une phrase plutôt qu'une pastille, la place ne
+ * manquant pas sous le champ.
+ */
+export function pseudoFieldMessage(check: PseudoCheck): FieldMessage | null {
+  switch (check.status) {
+    case 'idle':
+      return null;
+    case 'checking':
+      return { text: 'Vérification…', tone: 'neutral' };
+    case 'current':
+      return { text: 'C’est ton pseudo actuel.', tone: 'neutral' };
+    case 'available':
+      return { text: 'Libre.', tone: 'ok' };
+    case 'taken':
+      return { text: 'Déjà pris.', tone: 'error' };
+    case 'reserved':
+      return { text: 'Réservé à l’équipe Bento Pop.', tone: 'error' };
+    case 'forbidden':
+      return { text: 'Ce pseudo n’est pas autorisé.', tone: 'error' };
+    case 'too-short':
+      return { text: '3 caractères au moins.', tone: 'error' };
+    case 'too-long':
+      return { text: '20 caractères au plus.', tone: 'error' };
+    case 'invalid':
+      return { text: 'Lettres, chiffres, points et underscores seulement.', tone: 'error' };
+    case 'error':
+      return { text: 'Vérification impossible pour l’instant. Réessaie dans un instant.', tone: 'error' };
+  }
 }
 
 /** Ce qu'un refus de la base veut dire pour l'écran. */

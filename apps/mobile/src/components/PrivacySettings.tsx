@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Text, View, useWindowDimensions } from 'react-native';
+import { View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { CONTROL_MAX_FONT_MULTIPLIER, fontScaleFor } from '@/components/bento/font-scaling';
-import { INK_MUTED, SettingSwitch, useToast } from '@/components/primitives';
+import { SectionTitle, SettingSwitch, useToast } from '@/components/primitives';
 import { BENTO_MATCHES_QUERY_ROOT } from '@/lib/matches';
 import { writeSearchable } from '@/lib/search';
 import { writeShowVisits } from '@/lib/visits';
@@ -27,9 +26,6 @@ export function PrivacySettings() {
   const [busy, setBusy] = useState(false);
   const showToast = useToast((s) => s.show);
   const queryClient = useQueryClient();
-  // Le titre applique lui-même la taille système, comme tout l'écran des
-  // réglages, cf. `app/settings.tsx`.
-  const { fontScale } = useWindowDimensions();
 
   if (!profile) return null;
 
@@ -59,23 +55,7 @@ export function PrivacySettings() {
 
   return (
     <View style={{ marginTop: 24, gap: 8 }}>
-      {/* Un titre, comme ceux des autres sections des réglages (chantier 21) :
-          VoiceOver et TalkBack passent de l'un à l'autre. */}
-      <Text
-        accessibilityRole="header"
-        numberOfLines={1}
-        allowFontScaling={false}
-        style={{
-          fontFamily: 'Bungee',
-          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
-          letterSpacing: 2,
-          color: INK_MUTED,
-          textTransform: 'uppercase',
-          marginBottom: 4,
-        }}
-      >
-        Confidentialité
-      </Text>
+      <SectionTitle>Confidentialité</SectionTitle>
       <SettingSwitch
         label="Afficher mes visites"
         description="Les autres voient combien de fois ton bento a été ouvert."

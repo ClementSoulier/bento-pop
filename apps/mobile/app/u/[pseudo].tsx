@@ -61,6 +61,7 @@ import { accountBentosQueryOptions } from '@/lib/account-bentos';
 import { bentoRoute } from '@/lib/bento-address';
 import { accountBentoTitle, type FeedBento } from '@/lib/feed';
 import { FeedPost } from '@/components/feed/FeedPost';
+import { PencilIcon } from '@/components/TabIcons';
 import { feedBoxWidth, feedScale, feedSideInset } from '@/components/feed/layout';
 
 /** En route, `/u/<pseudo>`, ou dans l'onglet Profil pour son propre compte. */
@@ -430,11 +431,14 @@ function TopBar({
           </Text>
         </Pressable>
       )}
-      {/* À droite, la pastille puis « Options » : un groupe, et non deux
-          marges automatiques, qui se partageraient l'espace libre. */}
+      {/* À droite, la pastille puis « Options », ou « Modifier le profil »
+          dans l'onglet : un groupe, et non deux marges automatiques, qui se
+          partageraient l'espace libre. */}
       <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center' }}>
         {matchesFor ? <MatchesPill {...matchesFor} /> : null}
-        {optionsFor ? (
+        {mode === 'tab' ? (
+          <EditProfileButton />
+        ) : optionsFor ? (
           <BlockReportMenu
             pseudo={optionsFor.pseudo}
             bentoId={optionsFor.bentoId}
@@ -477,6 +481,43 @@ export function SettingsButton() {
       >
         Réglages
       </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * « Modifier le profil », chantier 21 (D3) : dans l'onglet, une pastille
+ * comme « Retour », un crayon. Un libellé n'avait pas sa place : avec
+ * « Réglages » et « Mêmes goûts », la barre aurait demandé 379 points pour
+ * 370 ; sous l'identité, il aurait poussé la boîte, déjà à son plancher dans
+ * l'onglet, de 44 points sous les boutons. La pastille est là dans tous les
+ * états de la page, chargement et « Rien en ligne » compris.
+ */
+function EditProfileButton() {
+  return (
+    <Pressable
+      onPress={() => router.push('/profile/edit')}
+      accessibilityRole="button"
+      accessibilityLabel="Modifier le profil"
+      accessibilityHint="Ton nom, ton pseudo et ton Popy"
+      // La pastille fait 36 pt : la cible tactile en fait 44.
+      hitSlop={4}
+      style={[
+        {
+          marginLeft: 10,
+          backgroundColor: '#ffffff',
+          borderWidth: 2.5,
+          borderColor: '#0a0a0a',
+          borderRadius: 999,
+          width: PUBLIC_TOP_BAR.buttonSize,
+          height: PUBLIC_TOP_BAR.buttonSize,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        SHADOWS.stamp,
+      ]}
+    >
+      <PencilIcon size={18} />
     </Pressable>
   );
 }

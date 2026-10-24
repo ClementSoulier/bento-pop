@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
 import { AppState, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { CONTENT_MAX_FONT_MULTIPLIER, fontScaleFor } from '@/components/bento/font-scaling';
 import {
-  CONTENT_MAX_FONT_MULTIPLIER,
-  CONTROL_MAX_FONT_MULTIPLIER,
-  fontScaleFor,
-} from '@/components/bento/font-scaling';
-import { INK_MUTED, INK_PLACEHOLDER, SettingSwitch, useToast } from '@/components/primitives';
+  INK_MUTED,
+  INK_PLACEHOLDER,
+  SectionTitle,
+  SettingSwitch,
+  useToast,
+} from '@/components/primitives';
 import { type DeviceSettings, type NotificationSection, notificationSection } from '@/lib/push';
 import {
   enablePushFromProfile,
@@ -29,7 +31,6 @@ import {
  * l'écran des réglages, cf. `app/settings.tsx`.
  */
 export function NotificationSettings() {
-  const { fontScale } = useWindowDimensions();
   const [section, setSection] = useState<NotificationSection | null>(null);
   const [busy, setBusy] = useState(false);
   const showToast = useToast((s) => s.show);
@@ -93,23 +94,7 @@ export function NotificationSettings() {
 
   return (
     <View style={{ marginTop: 24, gap: 8 }}>
-      {/* Un titre, comme ceux des autres sections des réglages (chantier 21) :
-          VoiceOver et TalkBack passent de l'un à l'autre. */}
-      <Text
-        accessibilityRole="header"
-        numberOfLines={1}
-        allowFontScaling={false}
-        style={{
-          fontFamily: 'Bungee',
-          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
-          letterSpacing: 2,
-          color: INK_MUTED,
-          textTransform: 'uppercase',
-          marginBottom: 4,
-        }}
-      >
-        Notifications
-      </Text>
+      <SectionTitle>Notifications</SectionTitle>
 
       {/* Tant que la lecture n'a pas répondu, rien : un état deviné
           clignoterait d'un écran à l'autre. */}

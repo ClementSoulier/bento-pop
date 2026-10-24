@@ -7,10 +7,13 @@ import {
   ProfileWriteFailure,
   changePseudo,
   checkDisplayName,
+  displayNameLength,
   formatChangeDate,
+  nameAction,
   nextPseudoChangeAt,
   profileWriteError,
   profileWriteMessage,
+  pseudoFieldMessage,
   writeAvatar,
   writeDisplayName,
   type ProfileClient,
@@ -42,6 +45,51 @@ describe('checkDisplayName', () => {
   it('refuse un nom sur deux lignes', () => {
     assert.equal(checkDisplayName('Alice\nMartin').status, 'multiline');
     assert.equal(checkDisplayName('Alice\tMartin').status, 'multiline');
+  });
+});
+
+describe('le champ du nom', () => {
+  it('compte ce que la base gardera', () => {
+    assert.equal(displayNameLength('  Alice  '), 5);
+    assert.equal(displayNameLength('🍙🍙'), 2);
+  });
+
+  it('ne propose rien tant que le nom ne change pas, blancs compris', () => {
+    assert.deepEqual(nameAction('Alice', 'Alice'), { kind: 'none' });
+    assert.deepEqual(nameAction('  Alice ', 'Alice'), { kind: 'none' });
+    assert.deepEqual(nameAction('', null), { kind: 'none' });
+    assert.deepEqual(nameAction('   ', null), { kind: 'none' });
+  });
+
+  it('enregistre un nom changé, retire un nom vidé', () => {
+    assert.deepEqual(nameAction('Alice B.', 'Alice'), { kind: 'save' });
+    assert.deepEqual(nameAction('Alice', null), { kind: 'save' });
+    assert.deepEqual(nameAction('  ', 'Alice'), { kind: 'remove' });
+  });
+
+  it('dit pourquoi un nom ne passe pas', () => {
+    assert.deepEqual(nameAction('n'.repeat(DISPLAY_NAME_MAX + 1), null), {
+      kind: 'invalid',
+      message: `${DISPLAY_NAME_MAX} caractères au plus.`,
+    });
+    assert.deepEqual(nameAction('deux\nlignes', null), { kind: 'invalid', message: 'Une seule ligne.' });
+  });
+});
+
+describe('pseudoFieldMessage', () => {
+  it('se tait au repos, annonce le libre et le refusé', () => {
+    assert.equal(pseudoFieldMessage({ status: 'idle' }), null);
+    assert.equal(pseudoFieldMessage({ status: 'available' })?.tone, 'ok');
+    for (const status of ['taken', 'reserved', 'forbidden', 'too-short', 'too-long', 'invalid', 'error'] as const) {
+      assert.equal(pseudoFieldMessage({ status })?.tone, 'error', status);
+    }
+    assert.equal(pseudoFieldMessage({ status: 'current' })?.tone, 'neutral');
+  });
+
+  /** Un ancien pseudo d'un autre compte est « pris » : personne ne le récupère (D6). */
+  it('dit « pris » d’un pseudo pris, et « non autorisé » d’un pseudo interdit', () => {
+    assert.equal(pseudoFieldMessage({ status: 'taken' })?.text, 'Déjà pris.');
+    assert.equal(pseudoFieldMessage({ status: 'forbidden' })?.text, 'Ce pseudo n’est pas autorisé.');
   });
 });
 

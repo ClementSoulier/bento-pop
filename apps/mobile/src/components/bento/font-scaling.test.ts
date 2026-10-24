@@ -312,20 +312,43 @@ describe('écran des mêmes goûts', () => {
 });
 
 /**
- * Les réglages et l'onglet Profil, chantier 21. Recette du lot 3 : laissés à
+ * Les réglages, l'onglet Profil et la modification du profil, chantier 21.
+ * Recette du lot 3 : laissés à
  * `maxFontSizeMultiplier`, les textes des réglages gardaient, une taille
  * réduite écran ouvert, leur ancienne hauteur sur iOS, et le sous-titre d'un
  * interrupteur rogné ; le défaut de l'écran des mêmes goûts au chantier 20.
  */
 describe('réglages et onglet Profil', () => {
-  /** Chaque fichier, et ses glyphes : des chevrons, pas des textes à lire. */
+  /**
+   * Chaque fichier, et ses glyphes : des chevrons, pas des textes à lire. La
+   * section Confidentialité n'a plus de texte à elle : son titre et ses
+   * interrupteurs sont ceux de `SectionTitle` et `SettingSwitch`.
+   */
   const FILES: [string, number][] = [
     ['app/settings.tsx', 2],
     ['src/components/NotificationSettings.tsx', 1],
-    ['src/components/PrivacySettings.tsx', 0],
     ['src/components/primitives/SettingSwitch.tsx', 0],
     ['app/(tabs)/profile.tsx', 0],
+    ['app/profile/edit.tsx', 1],
+    ['src/components/primitives/SectionTitle.tsx', 0],
   ];
+
+  /**
+   * Recette du lot 4 : un champ de saisie natif gardait, une taille réduite
+   * écran ouvert, la hauteur de la plus grande, 9 points de trop sur iOS. Il
+   * applique la taille lui-même, et pose sa hauteur.
+   */
+  it('pose la taille et la hauteur de ses champs de saisie', () => {
+    const inputs = tagsNamed(parse('app/profile/edit.tsx'), 'TextInput');
+    // Le nom et le pseudo.
+    assert.equal(inputs.length, 2, `${inputs.length} champs`);
+    const native = inputs.filter((t) => !fixed(t));
+    assert.equal(native.length, 0, `laissé à la plateforme : ${linesOf(native)}`);
+    const measured = inputs.filter(
+      (t) => !/\bheight:/.test(t.styleSource) || !/\bfontScaleFor\(/.test(t.styleSource),
+    );
+    assert.equal(measured.length, 0, `hauteur ou taille laissée à la mesure : ${linesOf(measured)}`);
+  });
 
   for (const [path, glyphs] of FILES) {
     it(`applique lui-même la police système à chaque texte : ${path}`, () => {

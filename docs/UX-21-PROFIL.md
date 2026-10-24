@@ -582,6 +582,71 @@ Réglages.
 
 L'écran « Modifier le profil » : le nom, le pseudo, le Popy.
 
+> **Fait le 24 octobre 2026**, sur la même branche.
+>
+> - **L'écran « Modifier le profil »**, `app/profile/edit.tsx`, ouvert par un
+>   crayon dans la barre du haut de l'onglet Profil : le Popy, le nom et le
+>   pseudo, chacun enregistré à part par sa fonction de la base.
+> - **Le Popy** : les six, le sien cerclé de rouge, chacun sous son nom ;
+>   enregistré au tap, comme un interrupteur des réglages, et rendu si
+>   l'écriture échoue.
+> - **Le nom** : facultatif, compté comme la base le compte, « Retirer le
+>   nom » quand on le vide ; un nom interdit est refusé par la base, en
+>   phrase sous le champ.
+> - **Le pseudo** : vérifié pendant la saisie par `pseudo_status`, en phrase
+>   sous le champ ; changé après une confirmation qui dit où mèneront les
+>   anciens liens, que personne d'autre ne prendra l'ancien pseudo, et la
+>   date du changement suivant. Ensuite, le champ laisse place à « Prochain
+>   changement possible le … ». Le Popy affiché est figé au changement.
+>
+> **Trois choix** :
+>
+> 1. **« Modifier le profil » est un crayon, dans la barre du haut de
+>    l'onglet**, en pastille comme « Retour ». Un libellé n'y tenait pas :
+>    379 points pour 370, avec « Réglages » et « Mêmes goûts ». Sous
+>    l'identité, il aurait poussé la boîte de 44 points sous les boutons, et
+>    dans l'onglet elle est déjà à son plancher, sur le SE comme sur le
+>    17 Pro. Le crayon est là dans tous les états de la page, chargement et
+>    « Rien en ligne » compris.
+> 2. **Le Popy d'abord, puis le nom, puis le pseudo** : l'ordre de l'identité
+>    à l'écran, et le geste le plus lourd en dernier.
+> 3. **Une phrase sous le champ du pseudo**, plutôt que la pastille de la
+>    publication : « Libre. », « Déjà pris. », « Réservé à l'équipe Bento
+>    Pop. ». La place ne manque pas, et la couleur ne porte jamais le sens
+>    seule. Les titres des sections des réglages et du profil passent tous
+>    par un même `SectionTitle`.
+>
+> **Recette** au simulateur iPhone 17 Pro, sur le Supabase local : le Popy
+> choisi, retrouvé sur la page ; le nom enregistré, puis refusé trop long et
+> interdit ; le pseudo pris, l'ancien pseudo d'un autre compte, réservé,
+> interdit, libre, sa seule casse changée ; un changement confirmé, l'ancien
+> pseudo versé à l'historique et le Popy figé en base, la page et l'ancien
+> lien d'un bento nommé qui suivent ; le refus des 30 jours venu de la base,
+> pour un pseudo changé ailleurs, l'écran repassant de lui-même à l'attente ;
+> la plus grande taille de texte, et le retour à la taille par défaut écran
+> ouvert.
+>
+> **Un défaut relevé, corrigé** : revenu à la taille par défaut écran ouvert,
+> un champ de saisie gardait la hauteur prise à la plus grande, 9 points de
+> trop, sur iOS. L'écran pose maintenant sa hauteur.
+>
+> **Tests** : 8 de plus, 846 pour l'app : l'action du champ du nom et son
+> compteur, la phrase sous le champ du pseudo ; les titres des sections,
+> lus dans le code ; les textes et les champs de l'écran, leur taille et la
+> hauteur des champs posées par lui. Quatorze défauts introduits exprès, tous
+> attrapés : un blanc compté comme un changement de nom ; un nom vidé
+> enregistré plutôt que retiré ; un nom trop long proposé ; le compteur en
+> unités UTF-16 ; un pseudo interdit annoncé pris, un pseudo libre sans sa
+> couleur, un pseudo réservé annoncé libre ; le titre de section muet, une
+> section titrée à la main ; une phrase d'aide rendue à la plateforme, le
+> champ du nom à hauteur mesurée, celui du pseudo rendu à la plateforme, le
+> nom d'un Popy figé à sa taille ; un Popy sans son état. Restent vérifiés à
+> la seule recette : les écritures depuis l'écran, le crayon de l'onglet, et
+> le retour à l'attente après le refus des 30 jours.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226, 193 et
+> 846 ; build 3 sur 3. L'e2e de la landing passe au lot 5.
+
 ### Lot 5 · La landing
 
 La redirection, le Popy choisi, la liste, le repli, l'e2e.
