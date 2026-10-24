@@ -36,6 +36,127 @@ const visitsOf = (id: string | undefined) => (id && id in VISITS ? VISITS[id]! :
 /** Un appel de `record_bento_visit_web`, tel que la landing l'envoie. */
 export type VisitCall = { p_bento: string; p_fingerprint: string; p_secret: string };
 
+/**
+ * Les épisodes de la landing, chantier 19, tels que la base les rendrait…
+ * sans appliquer de filtre : un épisode programmé et un épisode sans date en
+ * font partie, et c'est à la route de les écarter. Les filtres qu'elle
+ * demande à la base sont relevés à part, cf. `/__episodes`.
+ */
+const SHOW_EPISODES = [
+  {
+    id: 'show-1',
+    slug: 'il-reprend-les-generiques',
+    title: 'Il reprend les génériques avec les vraies voix FR',
+    youtube_id: 'dQw4w9WgXcQ',
+    thumbnail_url: null,
+    duration_seconds: 2530,
+    published_at: '2026-10-20T16:00:00+00:00',
+    season: 2,
+    episode_number: 5,
+  },
+  {
+    id: 'show-2',
+    slug: 'vivre-de-tiktok-a-20-ans',
+    title: 'Vivre de TikTok à 20 ans',
+    youtube_id: 'aBcDeF12345',
+    thumbnail_url: 'https://cdn.bento-pop.test/miniature.jpg',
+    duration_seconds: null,
+    published_at: '2026-10-06T16:00:00+00:00',
+    season: 2,
+    episode_number: 3,
+  },
+  {
+    id: 'show-programmee',
+    slug: 'pas-encore-sortie',
+    title: 'Pas encore sortie',
+    youtube_id: 'zZzZzZzZzZz',
+    thumbnail_url: null,
+    duration_seconds: 1800,
+    published_at: '2099-01-01T16:00:00+00:00',
+    season: 3,
+    episode_number: 1,
+  },
+  {
+    id: 'show-sans-date',
+    slug: 'sans-date',
+    title: 'Sans date',
+    youtube_id: 'yYyYyYyYyYy',
+    thumbnail_url: null,
+    duration_seconds: 1200,
+    published_at: null,
+    season: 1,
+    episode_number: null,
+  },
+];
+
+const PODCAST_EPISODES = [
+  {
+    id: 'podcast-1',
+    slug: 'du-mont-fuji-a-fukushima',
+    title: 'Du mont Fuji à Fukushima',
+    spotify_episode_id: '4rOoJ6Egrf8K2IrywzwOMk',
+    audio_platform: 'spotify',
+    audio_show_id: null,
+    thumbnail_url: null,
+    duration_seconds: 2280,
+    published_at: '2026-10-13T16:00:00+00:00',
+    season: 2,
+    episode_number: 4,
+  },
+  {
+    // Pas encore repris par Spotify, comme 3 podcasts sur 20 au 23 octobre
+    // 2026 : il s'ouvre sur sa page du site (D13).
+    id: 'podcast-a-remplacer',
+    slug: 'ambiance-tokyo-a-la-maison',
+    title: 'Ambiance Tokyo à la maison',
+    spotify_episode_id: 'A_REMPLACER',
+    audio_platform: 'spotify',
+    audio_show_id: null,
+    thumbnail_url: null,
+    duration_seconds: 2000,
+    published_at: '2026-10-01T16:00:00+00:00',
+    season: 2,
+    episode_number: 3,
+  },
+  {
+    id: 'podcast-2',
+    slug: 'le-plus-grand-musee-du-jeu-video',
+    title: 'Le plus grand musée du jeu vidéo',
+    spotify_episode_id: '1000650000001',
+    audio_platform: 'apple',
+    audio_show_id: '1234567890',
+    thumbnail_url: null,
+    duration_seconds: 2400,
+    published_at: '2026-09-29T16:00:00+00:00',
+    season: 2,
+    episode_number: 2,
+  },
+  {
+    id: 'podcast-3',
+    slug: 'le-petit-chaperon-rouge-en-manga',
+    title: 'Le Petit Chaperon rouge en manga',
+    spotify_episode_id: '700000001',
+    audio_platform: 'deezer',
+    audio_show_id: null,
+    thumbnail_url: null,
+    duration_seconds: 2100,
+    published_at: '2026-09-15T16:00:00+00:00',
+    season: 2,
+    episode_number: 1,
+  },
+];
+
+/** La sélection légère de `/api/episodes`, que seule la route demande. */
+const EPISODE_SELECTS: Record<string, string> = {
+  '/rest/v1/landing_show_episodes':
+    'id,slug,title,youtube_id,thumbnail_url,duration_seconds,published_at,season,episode_number',
+  '/rest/v1/landing_podcast_episodes':
+    'id,slug,title,spotify_episode_id,audio_platform,audio_show_id,thumbnail_url,duration_seconds,published_at,season,episode_number',
+};
+
+/** Une lecture d'épisodes telle que la base l'a reçue : la table et ses paramètres. */
+export type EpisodeQuery = { table: string; params: Record<string, string[]> };
+
 type StubItem = {
   id: string;
   title: string;
@@ -204,6 +325,7 @@ export function startStub(port: number): Promise<Server> {
   let requests = 0;
   let failing = false;
   const visitCalls: VisitCall[] = [];
+  const episodeQueries: EpisodeQuery[] = [];
 
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', `http://127.0.0.1:${port}`);
@@ -214,15 +336,40 @@ export function startStub(port: number): Promise<Server> {
     if (url.pathname === '/__visits') {
       return json(res, 200, visitCalls);
     }
+    if (url.pathname === '/__episodes') {
+      return json(res, 200, episodeQueries);
+    }
     if (url.pathname === '/__reset') {
       requests = 0;
       failing = false;
       visitCalls.length = 0;
+      episodeQueries.length = 0;
       return json(res, 200, { ok: true });
     }
     if (url.pathname === '/__fail') {
       failing = true;
       return json(res, 200, { ok: true });
+    }
+
+    // Le Supabase de la landing, branché sur le même bouchon depuis le
+    // chantier 19. Ses lectures ne comptent pas dans `requests`, qui dit si
+    // la base mobile a été interrogée. Seule la sélection de `/api/episodes`
+    // a des données : les pages du catalogue, du site et des épisodes, qui
+    // demandent d'autres colonnes, restent sur leur repli comme avant.
+    if (url.pathname.startsWith('/rest/v1/landing_')) {
+      if (failing) return json(res, 500, { message: 'stub en panne simulée' });
+      const expected = EPISODE_SELECTS[url.pathname];
+      if (!expected || url.searchParams.get('select') !== expected) {
+        return json(res, 404, { message: 'route non bouchonnée', path: url.pathname });
+      }
+      const params: Record<string, string[]> = {};
+      for (const [key, value] of url.searchParams) (params[key] ??= []).push(value);
+      episodeQueries.push({ table: url.pathname.slice('/rest/v1/'.length), params });
+      return json(
+        res,
+        200,
+        url.pathname === '/rest/v1/landing_show_episodes' ? SHOW_EPISODES : PODCAST_EPISODES,
+      );
     }
 
     requests += 1;

@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { bentoId, startStub, type VisitCall } from './stub';
+import { bentoId, startStub, type EpisodeQuery, type VisitCall } from './stub';
 
 /**
  * Tests d'intégration HTTP de la page bento publique.
@@ -25,12 +25,19 @@ const SITE_URL = 'https://bento-pop.test';
 const DIST_DIR = '.next-e2e';
 const ANON_KEY = 'cle-anon-de-test-ne-doit-jamais-fuiter';
 const VISIT_SECRET = 'secret-de-visite-ne-doit-jamais-fuiter';
+/** La clé du Supabase de la landing, publique par nature : `NEXT_PUBLIC_`. */
+const LANDING_ANON_KEY = 'cle-anon-landing-de-test';
 
 const ENV = {
   ...process.env,
   NEXT_DIST_DIR: DIST_DIR,
   NEXT_PUBLIC_MOBILE_SUPABASE_URL: STUB_URL,
   MOBILE_SUPABASE_ANON_KEY: ANON_KEY,
+  // Le Supabase de la landing, sur le même bouchon depuis le chantier 19,
+  // pour `/api/episodes`. Il ne sert que la sélection de cette route : le
+  // reste de la landing garde son repli, comme sans base.
+  NEXT_PUBLIC_SUPABASE_URL: STUB_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: LANDING_ANON_KEY,
   BENTO_VISIT_SECRET: VISIT_SECRET,
   NEXT_PUBLIC_SITE_URL: SITE_URL,
   NEXT_TELEMETRY_DISABLED: '1',
@@ -475,5 +482,72 @@ describe('plusieurs bentos par compte', () => {
 
     const plusieurs = await (await get('/u/deuxbentos')).text();
     assert.ok(plusieurs.includes('Les autres bentos de ce compte'), 'témoin du même test');
+  });
+});
+
+/**
+ * Chantier 19 : les épisodes que l'app range dans « La table ». Le bouchon
+ * rend aussi un épisode programmé et un épisode sans date, sans filtrer :
+ * c'est à la route de les écarter, et elle doit aussi demander à la base le
+ * filtre du catalogue.
+ */
+describe('épisodes pour l’app', () => {
+  type Episode = Record<string, unknown> & { id: string };
+  const episodes = async () => ((await (await get('/api/episodes')).json()) as { episodes: Episode[] }).episodes;
+  const episodeQueries = () => fetch(`${STUB_URL}/__episodes`).then((r) => r.json() as Promise<EpisodeQuery[]>);
+
+  it('rend les épisodes publiés du plus récent au plus ancien, sans programmé ni épisode sans date', async () => {
+    await resetStub();
+    const res = await get('/api/episodes');
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type') ?? '', /application\/json/);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=60, stale-while-revalidate=300');
+    const { episodes: list } = (await res.json()) as { episodes: Episode[] };
+    assert.deepEqual(
+      list.map((e) => e.id),
+      ['show-1', 'podcast-1', 'show-2', 'podcast-a-remplacer', 'podcast-2', 'podcast-3'],
+    );
+  });
+
+  it('ouvre sur le site un podcast que sa plateforme n’a pas encore repris', async () => {
+    const byId = Object.fromEntries((await episodes()).map((e) => [e.id, e]));
+    assert.equal(byId['podcast-a-remplacer']?.platform, 'site');
+    assert.equal(byId['podcast-a-remplacer']?.openUrl, `${SITE_URL}/podcasts/ambiance-tokyo-a-la-maison`);
+  });
+
+  it('ouvre YouTube pour une émission, la plateforme du podcast pour un podcast', async () => {
+    const byId = Object.fromEntries((await episodes()).map((e) => [e.id, e]));
+    assert.equal(byId['show-1']?.openUrl, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    assert.equal(byId['show-1']?.thumbnailUrl, 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+    assert.equal(byId['show-2']?.thumbnailUrl, 'https://cdn.bento-pop.test/miniature.jpg');
+    assert.equal(byId['podcast-1']?.openUrl, 'https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk');
+    assert.equal(byId['podcast-2']?.openUrl, 'https://podcasts.apple.com/fr/podcast/id1234567890?i=1000650000001');
+    assert.equal(byId['podcast-3']?.openUrl, 'https://www.deezer.com/episode/700000001');
+  });
+
+  it('demande à la base les seuls épisodes publiés, sans date ou à date passée', async () => {
+    await resetStub();
+    const before = Date.now();
+    await get('/api/episodes');
+    const after = Date.now();
+    const queries = await episodeQueries();
+    assert.deepEqual(queries.map((q) => q.table).sort(), ['landing_podcast_episodes', 'landing_show_episodes']);
+    for (const q of queries) {
+      assert.deepEqual(q.params.status, ['eq.published'], q.table);
+      const or = q.params.or?.[0] ?? '';
+      const at = or.match(/^\(published_at\.is\.null,published_at\.lte\.(.+)\)$/)?.[1];
+      assert.ok(at, `${q.table} : filtre de visibilité absent, « ${or} »`);
+      // L'heure de la requête, et non une heure figée au démarrage du serveur.
+      const time = Date.parse(at);
+      assert.ok(time >= before - 1000 && time <= after + 1000, `${q.table} : filtre daté du ${at}`);
+    }
+  });
+
+  it('répond 503 sans cache quand la base ne répond pas', async () => {
+    await breakStub();
+    const res = await get('/api/episodes');
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    await resetStub();
   });
 });

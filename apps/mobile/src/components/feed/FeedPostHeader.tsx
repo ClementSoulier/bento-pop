@@ -1,13 +1,6 @@
-import { Image, Text, View } from 'react-native';
 import { popyForPseudo } from '@/lib/popy-avatar';
 import { relativeDate } from '@/lib/relative-date';
-import { CONTENT_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
-
-const AVATAR = 40;
-const RADIUS = 14;
-const SHADOW_OFFSET = 4;
-const ROTATION = -1.5;
-
+import { FeedLabel } from './FeedLabel';
 
 type FeedPostHeaderProps = {
   pseudo: string;
@@ -20,17 +13,9 @@ type FeedPostHeaderProps = {
 };
 
 /**
- * Étiquette d'identité posée au-dessus de la boîte d'un post.
- *
- * Elle ne chevauche volontairement pas la boîte. Superposer deux frères sur
- * Android demande une `elevation`, or les ombres du produit sont dessinées à
- * la main précisément parce que les ombres natives se décalent sous `rotate`
- * sur iOS. La rotation, la bordure et l'ombre plate suffisent à l'effet
- * « collé à la main », sans piège de plateforme.
- *
- * L'ombre est une vue clonée derrière la boîte, et non un `shadow*` natif :
- * même raison que dans `Sticker`, dont ce composant reprend le vocabulaire.
- * Combinée à `transform: rotate(...)`, l'ombre native iOS bave sur la droite.
+ * Étiquette d'identité posée au-dessus de la boîte d'un post : le Popy et le
+ * pseudo de l'auteur, son nom affiché et la date relative. Le dessin est celui
+ * de `FeedLabel`, partagé avec les épisodes.
  */
 export function FeedPostHeader({
   pseudo,
@@ -39,90 +24,15 @@ export function FeedPostHeader({
   maxWidth,
   now,
 }: FeedPostHeaderProps) {
-  const popy = popyForPseudo(pseudo);
   const when = relativeDate(publishedAt, now);
   const meta = [displayName, when].filter(Boolean).join(' · ');
 
   return (
-    <View style={{ alignSelf: 'flex-start', maxWidth, transform: [{ rotate: `${ROTATION}deg` }] }}>
-      <View>
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: SHADOW_OFFSET,
-            bottom: -SHADOW_OFFSET,
-            left: 0,
-            right: 0,
-            backgroundColor: '#0a0a0a',
-            borderRadius: RADIUS,
-          }}
-        />
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            backgroundColor: '#ffffff',
-            borderWidth: 2.5,
-            borderColor: '#0a0a0a',
-            borderRadius: RADIUS,
-            paddingLeft: 8,
-            paddingRight: 16,
-            paddingVertical: 8,
-          }}
-        >
-          <View
-            style={{
-              width: AVATAR,
-              height: AVATAR,
-              borderRadius: AVATAR / 2,
-              backgroundColor: popy.accent,
-              borderWidth: 2.5,
-              borderColor: '#0a0a0a',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Le Popy est plus petit que le masque rond : à taille égale, le
-                cercle lui rogne les oreilles. */}
-            <Image
-              source={popy.source}
-              style={{ width: AVATAR - 9, height: AVATAR - 9 }}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* `minWidth: 0` avec `flexShrink` : sans lui, un enfant flex refuse
-              de passer sous sa largeur intrinsèque et le `numberOfLines` ne
-              tronque jamais. */}
-          <View style={{ flexShrink: 1, minWidth: 0 }}>
-            <Text
-              numberOfLines={1}
-              maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-              style={{
-                fontFamily: 'Extenda',
-                fontSize: 16,
-                lineHeight: 17,
-                letterSpacing: 0.6,
-                textTransform: 'uppercase',
-              }}
-            >
-              @{pseudo}
-            </Text>
-            {meta ? (
-              <Text
-                numberOfLines={1}
-                maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                style={{ marginTop: 3, fontSize: 11, color: 'rgba(10,10,10,0.6)' }}
-              >
-                {meta}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      </View>
-    </View>
+    <FeedLabel
+      title={`@${pseudo}`}
+      meta={meta}
+      avatar={popyForPseudo(pseudo)}
+      maxWidth={maxWidth}
+    />
   );
 }

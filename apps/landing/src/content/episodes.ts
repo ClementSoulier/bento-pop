@@ -1,6 +1,13 @@
 import { cache } from 'react';
 import { createAnonServerClient } from '@/lib/supabase/server';
 import { isAudioPlatform, type AudioPlatform } from '@/lib/podcast-platform';
+import {
+  PODCAST_API_SELECT,
+  SHOW_API_SELECT,
+  type EpisodeRows,
+  type PodcastEpisodeRow,
+  type ShowEpisodeRow,
+} from '@/lib/episodes-api';
 
 export type EpisodeGuest = {
   name: string;
@@ -322,3 +329,39 @@ export const getLatestShowEpisode = cache(async (): Promise<LatestShowEpisode | 
     episodeNumber: row.episode_number,
   };
 });
+
+/**
+ * Les épisodes que l'app range dans « La table », pour `/api/episodes`.
+ * Chantier 19.
+ *
+ * Mêmes règles de visibilité que le catalogue, sélection légère : les seules
+ * colonnes de la carte du fil. **`null` quand la base ne répond pas**, là où
+ * les chargeurs du catalogue rendent une liste vide : la route doit dire 503,
+ * pas « aucun épisode », qu'un cache garderait une minute pour une vérité.
+ */
+export async function getApiEpisodeRows(): Promise<EpisodeRows | null> {
+  const supabase = createAnonServerClient();
+  if (!supabase) return null;
+
+  const visibility = publicVisibilityFilter();
+  const [shows, podcasts] = await Promise.all([
+    supabase
+      .from('landing_show_episodes')
+      .select(SHOW_API_SELECT)
+      .eq('status', 'published')
+      .or(visibility)
+      .order('published_at', { ascending: false, nullsFirst: false }),
+    supabase
+      .from('landing_podcast_episodes')
+      .select(PODCAST_API_SELECT)
+      .eq('status', 'published')
+      .or(visibility)
+      .order('published_at', { ascending: false, nullsFirst: false }),
+  ]);
+
+  if (shows.error || podcasts.error || !shows.data || !podcasts.data) return null;
+  return {
+    shows: shows.data as unknown as ShowEpisodeRow[],
+    podcasts: podcasts.data as unknown as PodcastEpisodeRow[],
+  };
+}
