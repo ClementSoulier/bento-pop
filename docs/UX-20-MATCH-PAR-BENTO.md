@@ -522,6 +522,8 @@ chantier 29.
   `feat/ux-20-match-par-bento`, partie de celle du chantier 19, ni poussés
   ni proposés** : ses arbitrages confirmés le 24 octobre, la PR n'attend
   plus que la fusion de celle du 19, la #93, ouverte le même jour.
+  **Fusionnée le 24 octobre 2026**, la #94, après la #93 ; sa suite pour
+  Android, la #95, le même jour (§12).
 - **La migration** s'applique en production à la fusion, comme les
   précédentes, par Clément : compatible avec la 1.1 et la 0.1.0. **De
   préférence juste avant de fusionner** : la landing, redéployée à la
@@ -622,7 +624,7 @@ Toutes proposées le 23 octobre 2026, en l'absence de Clément, et
   composer, « Trouver », « La table » et `FeedLabel`, et la règle de la page
   publique étendue à toute l'app ; l'ellipse d'Extenda rognée, à éprouver
   dans l'étiquette d'un post avec un pseudo de 20 caractères. **Fait et
-  recetté le 24 octobre 2026** sur `fix/textes-android`, PR #95 : huit
-  textes, la question d'une case d'édition comprise, et toutes les
-  troncatures d'Extenda, rétrécies ou coupées sur une ellipse mesurée par
-  l'app ; cf. la roadmap, §20.
+  recetté le 24 octobre 2026** sur `fix/textes-android`, PR #95, fusionnée
+  le même jour : huit textes, la question d'une case d'édition comprise, et
+  toutes les troncatures d'Extenda, rétrécies ou coupées sur une ellipse
+  mesurée par l'app ; cf. la roadmap, §20.

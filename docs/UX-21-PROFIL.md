@@ -13,9 +13,11 @@
 > pseudo et son Popy ; un changement de pseudo redirige pour toujours les
 > anciens liens, et le blocage suit le compte plutôt que le pseudo.
 >
-> **Fait et recetté le 24 octobre 2026**, en six lots, en PR (#96) ; **la
-> migration appliquée le même jour par Clément**, dans l'éditeur SQL de
-> « My Bento Pop », et contrôlée en lecture seule (§9).
+> **Fait et recetté le 24 octobre 2026**, en six lots, **fusionné le même
+> jour** (PR #96) ; **la migration appliquée le même jour par Clément**,
+> dans l'éditeur SQL de « My Bento Pop », et contrôlée en lecture seule (§9).
+> La landing suit le profil depuis ce jour ; l'app le montrera à la sortie
+> store unique.
 >
 > Absorbe le chantier 10, profil éditable, fondu dans celui-ci le
 > 15 septembre. Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantiers 21
@@ -552,7 +554,11 @@ Réglages.
 > **Relevé, hors du lot** : dans les Réglages, après quelques allers-retours,
 > VoiceOver lit des rôles mélangés, « Conditions d'utilisation » en case à
 > cocher. C'est le recyclage des vues de Fabric, que la session sur les rôles
-> de VoiceOver traite à part.
+> de VoiceOver traite à part. *Revu le 24 octobre* : cette session a montré
+> que Fabric pose le bon rôle sur une vue recyclée, et que c'est le compagnon
+> d'`idb` qui garde celui de sa première vie (cf. [le
+> relevé](./RELEVE-ROLES-IOS.md)) ; Réglages, absent de son relevé, reste à
+> relire avec un compagnon neuf.
 >
 > **Tests** : 22 de plus, 838 pour l'app : la liste d'un compte et son
 > principal en tête contre le bouchon PostgREST, qui sait désormais viser une
@@ -777,7 +783,10 @@ chantier 29.
 
 - **Une PR**, la #96, pour les six lots, d'abord empilée sur celle du
   chantier 20, la #94, puis sur `main` une fois la #94 fusionnée, le
-  24 octobre.
+  24 octobre. **Fusionnée le 24 octobre 2026** ; la landing redéployée le
+  même jour, vérifiée en production : ses feuilles de style portent les
+  classes que seule la #96 apporte, une page de compte répond 200 et un
+  pseudo inconnu 404.
 - **La migration**, par Clément, dans l'éditeur SQL du projet Supabase
   « My Bento Pop », ref `ggjgktbcqumfxrixcdyx`,
   `https://supabase.com/dashboard/project/ggjgktbcqumfxrixcdyx/sql/new`, avant
@@ -800,7 +809,9 @@ chantier 29.
   Popy, résolu en gardant les deux, son `fontScale` et
   `popyFor(match.pseudo, match.avatar)` d'ici (`1892591`). Ses règles
   nouvelles, la hauteur de ligne et l'ellipse d'Extenda dans toute l'app,
-  passent depuis sur les textes de ce chantier, tests compris.
+  passent depuis sur les textes de ce chantier, tests compris. La seconde,
+  `fix/roles-fabric`, entre dans `main` après la #96, avec la roadmap des
+  chantiers 19 à 21 livrés.
 - **À la sortie store** : la page d'un compte, le profil, sa modification.
 
 ---
@@ -894,5 +905,8 @@ recommandée ; D11 à D16 prises par la spécification.
   tous les bentos d'un compte en une requête, et sa bande de liens passe à la
   ligne ; à cinquante éditions, une page longue et lourde. Une pagination, le
   jour où un compte en approchera.
-- **Les rôles mélangés dans Réglages**, relevés au lot 3 : la session sur le
-  recyclage des vues de Fabric.
+- **Les rôles mélangés dans Réglages**, relevés au lot 3, à relire avec un
+  compagnon `idb` neuf : la session sur les rôles a montré, sur huit autres
+  écrans, que le mélange venait du compagnon et non de Fabric, 157 éléments
+  sur 157 conformes (cf. [le relevé](./RELEVE-ROLES-IOS.md)), mais Réglages
+  n'y figurait pas.

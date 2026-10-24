@@ -32,7 +32,8 @@
 > **Lot 4 fait le 23 octobre 2026** : la recette de §7.2 sur l'iPhone 17 Pro,
 > l'iPhone SE et le Pixel 8, deux défauts trouvés et corrigés, la DoD 10 sur 10
 > (§10), et ce qui demande un vrai téléphone versé au chantier 29. **Le
-> chantier est fait, à fusionner** (§9).
+> chantier est fait, fusionné le 24 octobre 2026** (PR #93) : la route des
+> épisodes est en service depuis ce jour (§9).
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 19, [le chantier
 > 2](./UX-02-FIL-LA-TABLE.md) pour le fil et [le chantier
@@ -666,7 +667,9 @@ La recette de §7.2, la DoD point par point, la roadmap, la liste du chantier
   sont commités sur `feat/ux-19-episodes-la-table`, ni poussés ni proposés :
   la PR attend le feu vert de Clément.** Après la fusion, relire
   `https://bento-pop.com/api/episodes` : 40 épisodes au moins, 20 sur
-  YouTube, 17 sur Spotify et 3 sur le site au 23 octobre.
+  YouTube, 17 sur Spotify et 3 sur le site au 23 octobre. **Fusionnée le
+  24 octobre 2026**, la #93 ; relue en production le même jour, la route
+  rend ses 40 épisodes, 20 sur YouTube, 17 sur Spotify et 3 sur le site.
 - **À la sortie store** : les épisodes dans « La table ».
 
 ---
