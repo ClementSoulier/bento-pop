@@ -40,15 +40,19 @@ export type StubRequest = {
   body: string;
 };
 
-type Reply = { status: number; body: unknown };
+type Reply = { status: number; body: unknown; match?: (request: StubRequest) => boolean };
 
 export type PostgrestStub = {
   /** À passer tel quel à `createClient`. */
   url: string;
   /** Requêtes reçues, dans l'ordre. */
   requests: StubRequest[];
-  /** Empile une réponse. Les réponses sont consommées dans l'ordre d'ajout. */
-  enqueue: (body: unknown, status?: number) => void;
+  /**
+   * Empile une réponse. Les réponses sont consommées dans l'ordre d'ajout ;
+   * avec `match`, par la première requête qu'il reconnaît, pour des requêtes
+   * parties ensemble, dont l'ordre d'arrivée n'est pas garanti.
+   */
+  enqueue: (body: unknown, status?: number, match?: (request: StubRequest) => boolean) => void;
   close: () => Promise<void>;
 };
 
@@ -89,17 +93,19 @@ export async function startPostgrestStub(): Promise<PostgrestStub> {
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', () => {
-      requests.push({
+      const request: StubRequest = {
         method: req.method ?? 'GET',
         path: cut === -1 ? raw : raw.slice(0, cut),
         rawQuery,
         query: decodeURIComponent(rawQuery),
         body: Buffer.concat(chunks).toString('utf8'),
-      });
+      };
+      requests.push(request);
 
       // Défaut : liste vide. Un test qui oublie d'empiler une réponse obtient
       // un résultat vide plutôt qu'une attente infinie.
-      const reply = replies.shift() ?? { status: 200, body: [] };
+      const at = replies.findIndex((r) => !r.match || r.match(request));
+      const reply = (at === -1 ? undefined : replies.splice(at, 1)[0]) ?? { status: 200, body: [] };
       const payload = JSON.stringify(reply.body);
       res.writeHead(reply.status, {
         'content-type': 'application/json; charset=utf-8',
@@ -115,7 +121,7 @@ export async function startPostgrestStub(): Promise<PostgrestStub> {
   return {
     url: `http://127.0.0.1:${port}`,
     requests,
-    enqueue: (body, status = 200) => replies.push({ status, body }),
+    enqueue: (body, status = 200, match) => replies.push({ status, body, match }),
     close: () =>
       new Promise<void>((resolve, reject) =>
         server.close((err) => (err ? reject(err) : resolve())),

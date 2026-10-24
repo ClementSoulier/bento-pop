@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { AbortTimeoutError } from './abort-timeout';
+import { ACCOUNT_BENTOS_QUERY_ROOT } from './account-bentos';
 import { FEED_QUERY_KEY } from './feed';
 import type { PublicBentoResult } from './public-bento';
 import { MAIN_CASES } from '@bento-pop/supabase-mobile/bento';
@@ -212,5 +213,17 @@ describe('refreshPublicViews', () => {
 
     assert.equal(client.getQueryState(FEED_QUERY_KEY)?.isInvalidated, true);
     assert.deepEqual(client.getQueryData(FEED_QUERY_KEY), { pages: ['page 1'] });
+  });
+
+  /** Chantier 21 : la liste sous la page d'un compte suit sa publication. */
+  it('invalide la liste des autres bentos d’un compte sans la vider', () => {
+    const client = newQueryClient();
+    const key = [ACCOUNT_BENTOS_QUERY_ROOT, 'u-1', 'b-principal'];
+    client.setQueryData(key, { pages: ['page 1'] });
+
+    refreshPublicViews(client);
+
+    assert.equal(client.getQueryState(key)?.isInvalidated, true);
+    assert.deepEqual(client.getQueryData(key), { pages: ['page 1'] });
   });
 });

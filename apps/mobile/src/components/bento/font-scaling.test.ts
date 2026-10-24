@@ -53,18 +53,25 @@ function attributesOf(node: ts.JsxOpeningLikeElement): Map<string, string | true
  * La source d'une valeur de style, et celle des constantes qu'elle nomme, de
  * proche en proche : `style={[dateStyle, …]}` renvoie à `const dateStyle`, qui
  * renvoie à `const textScale = fontScaleFor(…)`, déclarés dans le composant.
+ * Toutes les fonctions englobantes, la plus proche d'abord : un texte rendu
+ * dans un `.map()` lit aussi les constantes du composant (chantier 21).
  */
 function resolvedSource(expression: ts.Expression, from: ts.Node): string {
-  let scope: ts.Node | undefined = from.parent;
-  while (scope && !ts.isFunctionLike(scope)) scope = scope.parent;
   const declarations = new Map<string, ts.Expression>();
   const collect = (node: ts.Node) => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      !declarations.has(node.name.text)
+    ) {
       declarations.set(node.name.text, node.initializer);
     }
     ts.forEachChild(node, collect);
   };
-  if (scope) collect(scope);
+  for (let scope: ts.Node | undefined = from.parent; scope; scope = scope.parent) {
+    if (ts.isFunctionLike(scope)) collect(scope);
+  }
 
   const parts = [expression.getText()];
   const resolved = new Set<string>();
@@ -196,9 +203,19 @@ describe('page publique, textes de l’écran', () => {
     assert.ok(texts.length >= 11, `${texts.length} textes`);
   });
 
-  it('plafonne chaque texte, ou lui applique la police lui-même', () => {
-    const uncapped = texts.filter((t) => !t.attributes.has('maxFontSizeMultiplier') && !fixed(t));
-    assert.equal(uncapped.length, 0, `sans plafond : ${linesOf(uncapped)}`);
+  /**
+   * Recette du lot 3 du chantier 21 : laissés à `maxFontSizeMultiplier`, les
+   * libellés de la barre du haut gardaient, une taille agrandie écran ouvert,
+   * leur ancienne largeur sur iOS, « Options » coupé en « OPTI… ».
+   */
+  it('applique lui-même la police système à chaque texte', () => {
+    const native = texts.filter((t) => !fixed(t));
+    assert.equal(native.length, 0, `laissé à la plateforme : ${linesOf(native)}`);
+
+    const unscaled = texts.filter((t) => !/\b(?:scaledType|fontScaleFor)\(/.test(t.styleSource));
+    // Le chevron du retour et le glyphe de la pastille d'invité ou de coup de
+    // cœur : des glyphes dans des cibles à taille fixe, pas des textes à lire.
+    assert.equal(unscaled.length, 2, `sans la police système : ${linesOf(unscaled)}`);
   });
 
   it('ne laisse jamais la plateforme agrandir une hauteur de ligne', () => {
@@ -292,6 +309,36 @@ describe('écran des mêmes goûts', () => {
     const truncated = extenda.filter((t) => t.attributes.get('adjustsFontSizeToFit') !== true);
     assert.equal(truncated.length, 0, `tronqué : ${linesOf(truncated)}`);
   });
+});
+
+/**
+ * Les réglages et l'onglet Profil, chantier 21. Recette du lot 3 : laissés à
+ * `maxFontSizeMultiplier`, les textes des réglages gardaient, une taille
+ * réduite écran ouvert, leur ancienne hauteur sur iOS, et le sous-titre d'un
+ * interrupteur rogné ; le défaut de l'écran des mêmes goûts au chantier 20.
+ */
+describe('réglages et onglet Profil', () => {
+  /** Chaque fichier, et ses glyphes : des chevrons, pas des textes à lire. */
+  const FILES: [string, number][] = [
+    ['app/settings.tsx', 2],
+    ['src/components/NotificationSettings.tsx', 1],
+    ['src/components/PrivacySettings.tsx', 0],
+    ['src/components/primitives/SettingSwitch.tsx', 0],
+    ['app/(tabs)/profile.tsx', 0],
+  ];
+
+  for (const [path, glyphs] of FILES) {
+    it(`applique lui-même la police système à chaque texte : ${path}`, () => {
+      const texts = tagsNamed(parse(path), 'Text');
+      assert.ok(texts.length > glyphs, `${texts.length} textes`);
+
+      const native = texts.filter((t) => !fixed(t));
+      assert.equal(native.length, 0, `laissé à la plateforme : ${linesOf(native)}`);
+
+      const unscaled = texts.filter((t) => !/\b(?:scaledType|fontScaleFor)\(/.test(t.styleSource));
+      assert.equal(unscaled.length, glyphs, `sans la police système : ${linesOf(unscaled)}`);
+    });
+  }
 });
 
 describe('cases du bento', () => {

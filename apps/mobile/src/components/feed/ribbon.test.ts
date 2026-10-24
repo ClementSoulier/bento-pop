@@ -73,6 +73,20 @@ describe('l’étiquette d’une édition', () => {
     assert.equal(ribbonFor(base), null);
   });
 
+  /** Chantier 21 (D2) : dans la liste d'un compte, l'étiquette la nomme déjà. */
+  it('se tait dans la liste d’un compte, sans masquer le coup de cœur ni l’invité', () => {
+    const noEdition = { edition: false };
+    assert.equal(ribbonFor({ ...base, editionTitle: 'Semaine 38' }, noEdition), null);
+    assert.equal(
+      ribbonFor({ ...base, isFeatured: true, editionTitle: 'Semaine 38' }, noEdition),
+      FEATURED_RIBBON,
+    );
+    assert.equal(
+      ribbonFor({ isGuest: true, isFeatured: false, editionTitle: 'Semaine 38' }, noEdition),
+      GUEST_RIBBON,
+    );
+  });
+
   it('reste lisible : encre sur jaune de la marque', () => {
     const r = editionRibbon('Semaine 38');
     assert.equal(r.color, '#fbbf24');

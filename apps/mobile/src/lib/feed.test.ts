@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
-import { cursorOf, feedAccessibilityLabel, mapFeedRow, type FeedRow } from './feed';
+import {
+  accountBentoTitle,
+  cursorOf,
+  feedAccessibilityLabel,
+  mapFeedRow,
+  type FeedRow,
+} from './feed';
 
 const NOW = Date.parse('2026-09-11T12:00:00.000Z');
 const PUBLISHED = '2026-09-08T15:49:11.227+00:00';
@@ -233,5 +239,65 @@ describe('feedAccessibilityLabel', () => {
     assert.ok(bento);
     const label = feedAccessibilityLabel({ ...bento, publishedAt: 'nawak' }, NOW);
     assert.match(label, /^Bento de @dark_hifus\. Film/);
+  });
+});
+
+/**
+ * La liste d'un compte, chantier 21 (D2) : l'étiquette dit le bento, et non
+ * son auteur, déjà en tête de page. Le libellé lu commence par ce qu'on lit à
+ * l'écran, recette du 24 octobre 2026 : il annonçait « Bento de @… » sous une
+ * étiquette « TROISIEME ».
+ */
+describe('un bento dans la liste de son compte', () => {
+  it('nomme l’édition, le principal, ou l’adresse d’un bento libre', () => {
+    assert.equal(
+      accountBentoTitle({ editionTitle: 'Ton film de l’été', isPrimary: false, slug: 's-1' }),
+      'Ton film de l’été',
+    );
+    assert.equal(
+      accountBentoTitle({ editionTitle: null, isPrimary: true, slug: 'mon-bento' }),
+      'Bento principal',
+    );
+    assert.equal(
+      accountBentoTitle({ editionTitle: null, isPrimary: false, slug: 'mes-jeux' }),
+      'mes-jeux',
+    );
+  });
+
+  it('s’annonce par son titre, puis sa composition', () => {
+    const bento = mapFeedRow(row({ is_primary: false, slug: 'mes-jeux' }));
+    assert.ok(bento);
+    assert.equal(
+      feedAccessibilityLabel(bento, NOW, 'bento'),
+      'mes-jeux, publié il y a 2 jours. ' +
+        'Film : Interstellar. Série : Severance. Artiste : Orelsan. ' +
+        'Chanson : La Quête. Créateur de contenu : Squeezie. Lieu : Japan Expo.',
+    );
+  });
+
+  it('ne redit pas l’édition, déjà son titre', () => {
+    const bento = mapFeedRow(
+      row({
+        is_primary: false,
+        slug: 'rec-deux',
+        edition_id: 7,
+        editions: { title: 'Le duel du samedi', bento_categories: [] },
+      }),
+    );
+    assert.ok(bento);
+    assert.equal(
+      feedAccessibilityLabel(bento, NOW, 'bento'),
+      'Le duel du samedi, publié il y a 2 jours.',
+    );
+  });
+
+  it('garde l’invité et le coup de cœur', () => {
+    const guest = mapFeedRow(
+      row({ users: { pseudo: 'dark_hifus', display_name: null, kind: 'editorial' } }),
+    );
+    const featured = mapFeedRow(row({ is_featured: true }));
+    assert.ok(guest && featured);
+    assert.match(feedAccessibilityLabel(guest, NOW, 'bento'), /^Bento principal, .* Bento invité/);
+    assert.match(feedAccessibilityLabel(featured, NOW, 'bento'), /Coup de cœur de l'équipe\./);
   });
 });

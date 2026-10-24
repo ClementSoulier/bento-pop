@@ -138,6 +138,77 @@ describe('éléments tapables', () => {
   });
 });
 
+/**
+ * Chantier 21 : les sections des réglages s'annoncent comme des titres, que
+ * VoiceOver et TalkBack parcourent de l'un à l'autre. Celles que rendent leurs
+ * propres composants, Notifications et Confidentialité, ne l'étaient pas, à la
+ * recette du lot 3.
+ */
+describe('titres des réglages', () => {
+  const parse = (path: string) =>
+    ts.createSourceFile(
+      path,
+      readFileSync(join(APP_ROOT, path), 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+
+  /** Le rôle posé sur une balise, `undefined` sans rôle. */
+  const roleOf = (node: ts.JsxOpeningLikeElement) => {
+    for (const attribute of node.attributes.properties) {
+      if (ts.isJsxAttribute(attribute) && attribute.name.getText() === 'accessibilityRole') {
+        const value = attribute.initializer;
+        return value && ts.isStringLiteral(value) ? value.text : value?.getText();
+      }
+    }
+    return undefined;
+  };
+
+  /** Les `Text` d'un fichier qui ne disent que ce mot. */
+  const textsSaying = (path: string, word: string): ts.JsxElement[] => {
+    const found: ts.JsxElement[] = [];
+    const visit = (node: ts.Node) => {
+      if (
+        ts.isJsxElement(node) &&
+        node.openingElement.tagName.getText() === 'Text' &&
+        node.children.map((c) => (ts.isJsxText(c) ? c.text : '?')).join('').trim() === word
+      ) {
+        found.push(node);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(parse(path));
+    return found;
+  };
+
+  it('annonce Notifications et Confidentialité comme des titres', () => {
+    for (const [path, word] of [
+      ['src/components/NotificationSettings.tsx', 'Notifications'],
+      ['src/components/PrivacySettings.tsx', 'Confidentialité'],
+    ] as const) {
+      const titles = textsSaying(path, word);
+      assert.equal(titles.length, 1, `${path} : ${titles.length} titres « ${word} »`);
+      assert.equal(roleOf(titles[0]!.openingElement), 'header', `${path} : « ${word} »`);
+    }
+  });
+
+  it('annonce comme un titre chaque section de l’écran', () => {
+    const file = parse('app/settings.tsx');
+    const roles: (string | undefined)[] = [];
+    const visit = (node: ts.Node, inSectionTitle: boolean) => {
+      const inside =
+        inSectionTitle || (ts.isFunctionDeclaration(node) && node.name?.text === 'SectionTitle');
+      if (inside && (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))) {
+        if (node.tagName.getText() === 'Text') roles.push(roleOf(node));
+      }
+      ts.forEachChild(node, (child) => visit(child, inside));
+    };
+    visit(file, false);
+    assert.deepEqual(roles, ['header'], '`SectionTitle` rend un titre');
+  });
+});
+
 describe('champs de saisie', () => {
   const inputs = tags(new Set(['TextInput']));
 

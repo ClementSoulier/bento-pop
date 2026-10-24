@@ -59,13 +59,20 @@ export function editionRibbon(title: string): FeedRibbon {
  * lecteur ne comprend pas pourquoi. C'est une information sur ce qu'il voit,
  * pas un avis dessus.
  */
-export function ribbonFor(bento: {
-  isGuest: boolean;
-  isFeatured: boolean;
-  editionTitle?: string | null;
-}): FeedRibbon | null {
+export function ribbonFor(
+  bento: {
+    isGuest: boolean;
+    isFeatured: boolean;
+    editionTitle?: string | null;
+  },
+  /**
+   * `false` dans la liste d'un compte, où le titre de l'édition est déjà
+   * celui de l'étiquette (chantier 21, D2) : la boîte ne le redit pas.
+   */
+  { edition = true }: { edition?: boolean } = {},
+): FeedRibbon | null {
   if (bento.isGuest) return GUEST_RIBBON;
-  if (bento.editionTitle) return editionRibbon(bento.editionTitle);
+  if (edition && bento.editionTitle) return editionRibbon(bento.editionTitle);
   if (bento.isFeatured) return FEATURED_RIBBON;
   return null;
 }

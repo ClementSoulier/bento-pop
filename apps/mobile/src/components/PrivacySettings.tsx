@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { CONTROL_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
+import { CONTROL_MAX_FONT_MULTIPLIER, fontScaleFor } from '@/components/bento/font-scaling';
 import { INK_MUTED, SettingSwitch, useToast } from '@/components/primitives';
 import { BENTO_MATCHES_QUERY_ROOT } from '@/lib/matches';
 import { writeSearchable } from '@/lib/search';
@@ -27,6 +27,9 @@ export function PrivacySettings() {
   const [busy, setBusy] = useState(false);
   const showToast = useToast((s) => s.show);
   const queryClient = useQueryClient();
+  // Le titre applique lui-même la taille système, comme tout l'écran des
+  // réglages, cf. `app/settings.tsx`.
+  const { fontScale } = useWindowDimensions();
 
   if (!profile) return null;
 
@@ -56,12 +59,15 @@ export function PrivacySettings() {
 
   return (
     <View style={{ marginTop: 24, gap: 8 }}>
+      {/* Un titre, comme ceux des autres sections des réglages (chantier 21) :
+          VoiceOver et TalkBack passent de l'un à l'autre. */}
       <Text
+        accessibilityRole="header"
         numberOfLines={1}
-        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+        allowFontScaling={false}
         style={{
           fontFamily: 'Bungee',
-          fontSize: 10,
+          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
           letterSpacing: 2,
           color: INK_MUTED,
           textTransform: 'uppercase',

@@ -269,12 +269,31 @@ describe('mapPublicBento, plusieurs bentos par compte', () => {
     assert.deepEqual(result.others, [], 'le brouillon ne se liste pas');
   });
 
-  it('classe les autres du plus ancien au plus récent', () => {
+  /**
+   * Chantier 21 (D2) : la bande résume la liste sous la boîte, dans son ordre,
+   * le plus récent d'abord. Elle allait du plus ancien au plus récent, l'ordre
+   * du choix du bento, et se lisait à rebours de la liste.
+   */
+  it('classe les autres comme la liste : du plus récent au plus ancien', () => {
     const vieux = secondaire({ id: 'b-vieux', slug: 'archives-2025', published_at: '2025-01-01T00:00:00.000000+00:00' });
-    const result = mapPublicBento(row({ bentos: [secondaire(), principal(), vieux] }));
+    const result = mapPublicBento(row({ bentos: [vieux, principal(), secondaire()] }));
     assert.deepEqual(
       result.others.map((o) => o.slug),
-      ['archives-2025', 'hebdo-38'],
+      ['hebdo-38', 'archives-2025'],
+    );
+  });
+
+  it('met le principal en tête sous un bento nommé, comme la liste', () => {
+    const vieux = secondaire({ id: 'b-vieux', slug: 'archives-2025', published_at: '2025-01-01T00:00:00.000000+00:00' });
+    const recent = secondaire({ id: 'b-recent', slug: 'semaine-43', published_at: '2026-10-20T00:00:00.000000+00:00' });
+    const result = mapPublicBento(row({ bentos: [vieux, recent, principal(), secondaire()] }), 'hebdo-38');
+    assert.deepEqual(
+      result.others.map((o) => [o.slug, o.isPrimary]),
+      [
+        ['mon-bento', true],
+        ['semaine-43', false],
+        ['archives-2025', false],
+      ],
     );
   });
 

@@ -1,5 +1,5 @@
-import { Pressable, Switch, Text, View } from 'react-native';
-import { CONTENT_MAX_FONT_MULTIPLIER } from '@/components/bento/font-scaling';
+import { Pressable, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { CONTENT_MAX_FONT_MULTIPLIER, fontScaleFor } from '@/components/bento/font-scaling';
 import { INK_MUTED } from './ink';
 
 /**
@@ -17,6 +17,11 @@ const TRACK_OFF = 'rgba(10,10,10,0.5)';
  * et ce qu'il règle en indication. L'interrupteur natif ne fait que montrer
  * l'état : il ne reçoit ni le toucher ni le focus, sinon la ligne serait lue
  * deux fois. Les textes passent à la ligne à la plus grande police.
+ *
+ * Ils appliquent eux-mêmes la taille système, plafonnée, cf. `fontScaleFor` :
+ * laissée à `maxFontSizeMultiplier`, une taille réduite écran ouvert gardait
+ * la ligne à son ancienne hauteur, et rognait sa description, sur iOS
+ * (recette du chantier 21).
  */
 export function SettingSwitch({
   label,
@@ -35,6 +40,8 @@ export function SettingSwitch({
   note?: string;
   disabled?: boolean;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const scale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
   return (
     <Pressable
       onPress={() => onChange(!value)}
@@ -58,18 +65,18 @@ export function SettingSwitch({
     >
       <View style={{ flex: 1, gap: 2 }}>
         <Text
-          maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-          style={{ fontSize: 14, fontWeight: '600', color: '#0a0a0a' }}
+          allowFontScaling={false}
+          style={{ fontSize: 14 * scale, fontWeight: '600', color: '#0a0a0a' }}
         >
           {label}
         </Text>
-        <Text maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER} style={{ fontSize: 12, color: INK_MUTED }}>
+        <Text allowFontScaling={false} style={{ fontSize: 12 * scale, color: INK_MUTED }}>
           {description}
         </Text>
         {note ? (
           <Text
-            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-            style={{ fontSize: 12, fontWeight: '600', color: '#0a0a0a' }}
+            allowFontScaling={false}
+            style={{ fontSize: 12 * scale, fontWeight: '600', color: '#0a0a0a' }}
           >
             {note}
           </Text>

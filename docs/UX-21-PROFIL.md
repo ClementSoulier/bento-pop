@@ -485,6 +485,99 @@ compte et sa reprise, le type `Database`, `check-privileges.ts`.
 La liste sous la boîte, l'ancien pseudo résolu, l'onglet Profil, l'écran
 Réglages.
 
+> **Fait le 24 octobre 2026**, sur la même branche.
+>
+> - **La liste sous la boîte**, `AccountBentoList` : les autres bentos du
+>   compte, chacun en entier, comme dans « La table », sous une étiquette qui
+>   dit son titre, celui de l'édition, « Bento principal » ou l'adresse d'un
+>   bento libre, et sa date ; un tap ouvre sa page. Chargée à part de la page,
+>   par pages de huit, la suivante à 600 points du bas. Sous un bento nommé, le
+>   principal passe en tête (§5.1), demandé à part en même temps que la
+>   première page des autres (`loadAccountBentosPage`).
+> - **L'ancien pseudo résolu** : un pseudo introuvable passe à
+>   `resolve_pseudo`, la page restant en chargement le temps de la réponse,
+>   puis l'adresse est remplacée, le bento nommé compris. Un pseudo que
+>   personne n'a porté dit toujours « Bento introuvable ».
+> - **L'onglet Profil** rend la page de son compte, `AccountScreen`, tenue
+>   au-dessus de la barre d'onglets, « Réglages » à la place de « Retour ».
+>   Avant la première publication, « Pas encore publié » et « Reprendre mon
+>   bento », sous le Popy content plutôt que le diable que tirait un pseudo
+>   vide.
+> - **L'écran Réglages**, `app/settings.tsx` : À propos, Notifications,
+>   Confidentialité, Comptes bloqués et Compte, repris de l'onglet, dans le
+>   même ordre. Les phrases qui renvoyaient au profil pour débloquer un compte
+>   renvoient aux réglages.
+>
+> **Trois choix** :
+>
+> 1. **La bande des pastilles suit la liste** : même ordre, le principal
+>    d'abord, puis du plus récent au plus ancien, et mêmes titres, « Bento
+>    principal » compris, qui mène à l'adresse du compte. Elle allait du plus
+>    ancien au plus récent, l'ordre du choix du bento au chantier 16, et se
+>    lisait à rebours de la liste qu'elle résume. Aucun compte n'en montre en
+>    production ; la landing suivra au lot 5.
+> 2. **Dans la liste, l'édition n'est dite qu'une fois** : son titre est déjà
+>    celui de l'étiquette, la boîte n'en porte plus le ruban. « Invité » et
+>    « Coup de cœur » restent.
+> 3. **Tous les textes de la page, des réglages et de l'onglet appliquent
+>    eux-mêmes la taille système**, plafonnée, comme l'écran des mêmes goûts
+>    au chantier 20 : c'est la correction des défauts 3 et 4 ci-dessous.
+>
+> **Recette** au simulateur iPhone 17 Pro, à part de celui des autres
+> sessions, sur le Supabase local : un compte garni d'un principal et de onze
+> autres bentos, la liste et ses deux pages jusqu'au bout, les étiquettes, la
+> bande, le tap ; l'onglet Profil et les Réglages ; un compte bloqué depuis
+> sa page, retrouvé dans les Réglages et débloqué ; un compte qui change de
+> pseudo, ses anciens liens `/u/<ancien>` et `/u/<ancien>/<slug>`, son Popy
+> figé au changement, et un pseudo que personne n'a porté ; la plus grande
+> taille de texte, au lancement et changée écran ouvert.
+>
+> **Quatre défauts relevés, corrigés** :
+>
+> 1. VoiceOver annonçait un bento de la liste « Bento de @recette_profil »,
+>    sous une étiquette « TROISIEME » : son libellé commence maintenant par ce
+>    qu'on lit, son titre puis sa date.
+> 2. Notifications et Confidentialité ne s'annonçaient pas comme des titres,
+>    à la différence des trois autres sections des réglages.
+> 3. Une taille réduite écran ouvert laissait les lignes des réglages à leur
+>    ancienne hauteur, et le sous-titre d'un interrupteur rogné, sur iOS.
+> 4. Une taille agrandie écran ouvert coupait « Réglages », « Options » et
+>    « Mêmes goûts » en « RÉGLA… », « OPTI… » et « MÊMES GOÛ… », sur iOS. Les
+>    deux derniers dataient des chantiers 7 et 20.
+>
+> **Relevé, hors du lot** : dans les Réglages, après quelques allers-retours,
+> VoiceOver lit des rôles mélangés, « Conditions d'utilisation » en case à
+> cocher. C'est le recyclage des vues de Fabric, que la session sur les rôles
+> de VoiceOver traite à part.
+>
+> **Tests** : 22 de plus, 838 pour l'app : la liste d'un compte et son
+> principal en tête contre le bouchon PostgREST, qui sait désormais viser une
+> requête parmi plusieurs parties ensemble ; l'ordre, le rang et les titres de
+> la bande ; le libellé lu d'un bento de la liste, le ruban tu ; l'ancien
+> pseudo ; la liste rafraîchie après une publication ; les textes de la page,
+> des réglages et de l'onglet, et les titres des réglages, lus dans le code.
+> La lecture des styles remonte désormais toutes les fonctions englobantes :
+> un texte rendu dans un `.map()` y trouve les constantes du composant.
+>
+> **Défauts introduits exprès** : vingt-quatre, tous attrapés. La liste
+> annoncée par l'auteur ; l'édition redite ; le principal nommé par son
+> adresse ; le filtre du principal perdu ; le ruban d'édition sur la boîte de
+> la liste ; la bande à rebours, le principal à sa date, sa pastille sans son
+> rang ; le principal absent de la liste d'un bento nommé, redemandé à chaque
+> page, ou listé deux fois ; la liste qui montre le bento de la page ;
+> l'ancien pseudo cherché avec ses blancs, la redirection qui oublie le bento
+> nommé, une panne lue comme « introuvable » ; la liste jamais rafraîchie ;
+> un titre des réglages, « Réglages », « Options », la description d'un
+> interrupteur et « Pas encore publié » rendus à la plateforme ou figés ;
+> trois sections des réglages annoncées comme du texte. Restent vérifiés à la
+> seule recette, faute de test d'écran : le titre et l'adresse d'une pastille,
+> et la redirection réservée à la route.
+>
+> **La CI, rejouée en local** : lint et typage 8 sur 8 ; tests 226, 193 et
+> 838 ; build 3 sur 3. L'e2e de la landing, que ce lot ne touche pas, passe
+> au lot 5 : le port 4599 de son bouchon est toujours tenu par une autre
+> session.
+
 ### Lot 4 · L'app : modifier son profil
 
 L'écran « Modifier le profil » : le nom, le pseudo, le Popy.

@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
   Pressable,
   ScrollView,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   StyleSheet,
   Text,
   View,
@@ -13,7 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { BentoBoxSkeleton, BentoGrid, SKELETON_BONE, ShareImage } from '@/components/bento';
 import { fontScaleFor } from '@/components/bento/font-scaling';
 import {
@@ -54,6 +56,15 @@ import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
 import { publicSupabase, supabase } from '@/supabase/client';
 import { composerCases } from '@/components/bento/cases';
+import { redirectPath, resolvePseudoQueryOptions } from '@/lib/pseudo-redirect';
+import { accountBentosQueryOptions } from '@/lib/account-bentos';
+import { bentoRoute } from '@/lib/bento-address';
+import { accountBentoTitle, type FeedBento } from '@/lib/feed';
+import { FeedPost } from '@/components/feed/FeedPost';
+import { feedBoxWidth, feedScale, feedSideInset } from '@/components/feed/layout';
+
+/** En route, `/u/<pseudo>`, ou dans l'onglet Profil pour son propre compte. */
+type AccountMode = 'route' | 'tab';
 
 /**
  * Page publique d'un compte, `/u/<pseudo>`, et d'un bento nommé,
@@ -69,16 +80,44 @@ import { composerCases } from '@/components/bento/cases';
  * `public-bento-query.ts`, et l'état à montrer de `public-page-state.ts` :
  * trois modules purs, testés sans appareil. Cf.
  * `docs/UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md`.
+ *
+ * Depuis le chantier 21, c'est le profil du compte (D1) : sous la boîte, en
+ * faisant défiler, ses autres bentos. Et l'onglet Profil rend ce même écran
+ * pour son propre compte (D3), cf. `AccountScreen`.
+ *
+ * Tous ses textes appliquent eux-mêmes la taille système, plafonnée, cf.
+ * `fontScaleFor`. Ceux de la barre du haut et des états la laissaient à
+ * `maxFontSizeMultiplier` : une taille agrandie écran ouvert les gardait à
+ * leur ancienne largeur, sur iOS, « Options » coupé en « OPTI… » et
+ * « Mêmes goûts » en « MÊMES GOÛ… » (recette du lot 3 du chantier 21).
  */
-export default function PublicBentoScreen() {
+export default function PublicBentoRoute() {
   const { pseudo: rawPseudo, slug: rawSlug } = useLocalSearchParams<{
     pseudo: string;
     slug?: string;
   }>();
-  const pseudo = rawPseudo ?? '';
   // `undefined` sur `/u/<pseudo>` : c'est la page du compte, pas celle d'un
   // bento nommé, et les deux ont leur propre entrée de cache.
-  const slug = rawSlug ?? null;
+  return <AccountScreen pseudo={rawPseudo ?? ''} slug={rawSlug ?? null} mode="route" />;
+}
+
+/**
+ * La page d'un compte, en route, `/u/<pseudo>`, ou dans l'onglet Profil pour
+ * son propre compte (chantier 21, D3). Dans l'onglet, la barre d'onglets prend
+ * le bas de l'écran : le modèle d'échelle le compte, par `tabBarHeight`, et la
+ * barre du haut mène aux réglages plutôt qu'en arrière.
+ */
+export function AccountScreen({
+  pseudo,
+  slug,
+  mode,
+  tabBarHeight = 0,
+}: {
+  pseudo: string;
+  slug: string | null;
+  mode: AccountMode;
+  tabBarHeight?: number;
+}) {
   const ownPseudo = useSession((s) => s.profile?.pseudo);
   const isOffline = useIsOffline();
 
@@ -120,6 +159,23 @@ export default function PublicBentoScreen() {
     if (cameBackOnline && isError) void refetch();
   }, [isOffline, isError, refetch]);
 
+  // Chantier 21 (D6) : un pseudo introuvable a peut-être changé. La base dit
+  // quel pseudo l'a remplacé, et l'adresse est remplacée, le bento nommé
+  // compris. Le temps de la réponse, la page reste en chargement plutôt que de
+  // dire « introuvable ».
+  const redirect = useQuery({
+    ...resolvePseudoQueryOptions(publicSupabase, pseudo),
+    enabled: mode === 'route' && state.kind === 'not-found' && pseudo !== '',
+  });
+  const redirectTo = redirect.data ?? null;
+  useEffect(() => {
+    if (redirectTo) router.replace(redirectPath(redirectTo, slug));
+  }, [redirectTo, slug]);
+  const resolving =
+    mode === 'route' &&
+    state.kind === 'not-found' &&
+    (redirect.fetchStatus === 'fetching' || redirectTo !== null);
+
   const { width, height, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   // Le bandeau hors ligne descend l'écran, et c'est justement dans l'état
@@ -128,11 +184,13 @@ export default function PublicBentoScreen() {
   // La bande des autres bentos prend de la place au-dessus de la boîte : le
   // modèle la compte, sans quoi la boîte passerait sous le bloc de boutons.
   const otherBentos = state.kind === 'found' ? state.others.length : 0;
+  // Dans l'onglet, la barre d'onglets prend le bas de l'écran, marge de
+  // sécurité comprise : la page tient au-dessus d'elle.
   const scale = publicBentoScale({
     width,
-    height,
+    height: height - tabBarHeight,
     insetTop: insets.top + offlineInset,
-    insetBottom: insets.bottom,
+    insetBottom: mode === 'tab' ? 0 : insets.bottom,
     fontScale,
     otherBentos,
   });
@@ -140,8 +198,12 @@ export default function PublicBentoScreen() {
 
   return (
     <YellowBg>
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView
+        style={{ flex: 1 }}
+        edges={mode === 'tab' ? ['top', 'left', 'right'] : undefined}
+      >
         <TopBar
+          mode={mode}
           // Le bento et non le seul pseudo : un signalement doit nommer ce
           // qui a été vu, et un compte peut en avoir plusieurs. Chantier 16.
           optionsFor={
@@ -175,7 +237,7 @@ export default function PublicBentoScreen() {
             boxWidth={width - sideInset * 2}
             fontScale={fontScale}
           />
-        ) : state.kind === 'loading' ? (
+        ) : state.kind === 'loading' || resolving ? (
           <LoadingPage pseudo={pseudo} scale={scale} sideInset={sideInset} />
         ) : state.kind === 'not-found' ? (
           <StateMessage
@@ -246,7 +308,9 @@ export default function PublicBentoScreen() {
  *
  * Le libellé est le titre de l'édition pour un bento d'édition, chantier 13,
  * et le slug tel quel pour un bento libre : c'est son adresse, et c'est tout
- * ce qu'il porte.
+ * ce qu'il porte. Depuis le chantier 21, la bande résume la liste sous la
+ * boîte : même ordre, mêmes titres, « Bento principal » compris, qui mène à
+ * l'adresse du compte.
  */
 function OtherBentos({
   pseudo,
@@ -270,9 +334,13 @@ function OtherBentos({
       {others.map((other) => (
         <Pressable
           key={other.id}
-          onPress={() => router.push(`/u/${pseudo}/${other.slug}` as const)}
+          onPress={() => router.push(bentoRoute(pseudo, other.slug, other.isPrimary))}
           accessibilityRole="button"
-          accessibilityLabel={`Voir le bento ${other.editionTitle ?? other.slug} de @${pseudo}`}
+          accessibilityLabel={
+            other.isPrimary
+              ? `Voir le bento principal de @${pseudo}`
+              : `Voir le bento ${accountBentoTitle(other)} de @${pseudo}`
+          }
           style={[
             {
               height: OTHERS_CHIP_H * scale,
@@ -297,7 +365,7 @@ function OtherBentos({
               color: '#0a0a0a',
             }}
           >
-            {other.editionTitle ?? other.slug}
+            {accountBentoTitle(other)}
           </Text>
         </Pressable>
       ))}
@@ -310,10 +378,13 @@ function OtherBentos({
  * sans que rien ne bouge en dessous.
  */
 function TopBar({
+  mode,
   optionsFor,
   matchesFor,
   fallback,
 }: {
+  /** Dans l'onglet, « Réglages » à la place de « Retour » (chantier 21, D3). */
+  mode: AccountMode;
   optionsFor: { pseudo: string; bentoId: string; userId: string | null } | null;
   /** La pastille des mêmes goûts, dès un match (chantier 20, D10). */
   matchesFor: { bentoId: string; pseudo: string; count: number; isOwn: boolean } | null;
@@ -330,31 +401,35 @@ function TopBar({
         alignItems: 'center',
       }}
     >
-      <Pressable
-        onPress={() => (router.canGoBack() ? router.back() : router.replace(fallback))}
-        accessibilityRole="button"
-        accessibilityLabel="Retour"
-        // La pastille fait 36 pt : la cible tactile en fait 44.
-        hitSlop={4}
-        style={[
-          {
-            backgroundColor: '#ffffff',
-            borderWidth: 2.5,
-            borderColor: '#0a0a0a',
-            borderRadius: 999,
-            width: PUBLIC_TOP_BAR.buttonSize,
-            height: PUBLIC_TOP_BAR.buttonSize,
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-          SHADOWS.stamp,
-        ]}
-      >
-        {/* Un glyphe dans une cible de 36 pt, pas un texte à lire : grossi, il sortait de sa pastille. */}
-        <Text allowFontScaling={false} style={{ fontSize: 16, fontWeight: '800' }}>
-          ‹
-        </Text>
-      </Pressable>
+      {mode === 'tab' ? (
+        <SettingsButton />
+      ) : (
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace(fallback))}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+          // La pastille fait 36 pt : la cible tactile en fait 44.
+          hitSlop={4}
+          style={[
+            {
+              backgroundColor: '#ffffff',
+              borderWidth: 2.5,
+              borderColor: '#0a0a0a',
+              borderRadius: 999,
+              width: PUBLIC_TOP_BAR.buttonSize,
+              height: PUBLIC_TOP_BAR.buttonSize,
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+            SHADOWS.stamp,
+          ]}
+        >
+          {/* Un glyphe dans une cible de 36 pt, pas un texte à lire : grossi, il sortait de sa pastille. */}
+          <Text allowFontScaling={false} style={{ fontSize: 16, fontWeight: '800' }}>
+            ‹
+          </Text>
+        </Pressable>
+      )}
       {/* À droite, la pastille puis « Options » : un groupe, et non deux
           marges automatiques, qui se partageraient l'espace libre. */}
       <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center' }}>
@@ -368,6 +443,41 @@ function TopBar({
         ) : null}
       </View>
     </View>
+  );
+}
+
+/**
+ * « Réglages », chantier 21 (D3) : dans l'onglet Profil, la page du compte
+ * remplace l'ancien tableau de bord, et ses réglages ont leur écran. Même
+ * dessin que « Options », un libellé et non une pastille : la barre garde sa
+ * hauteur.
+ */
+export function SettingsButton() {
+  const { fontScale } = useWindowDimensions();
+  return (
+    <Pressable
+      onPress={() => router.push('/settings')}
+      accessibilityRole="button"
+      accessibilityLabel="Réglages"
+      accessibilityHint="Ouvre les réglages de ton compte"
+      // Le libellé fait 25 pt de haut : la cible tactile en fait 44.
+      hitSlop={{ top: 10, bottom: 10 }}
+      style={{ paddingRight: 12, paddingVertical: 6 }}
+    >
+      <Text
+        numberOfLines={1}
+        allowFontScaling={false}
+        style={{
+          fontFamily: 'Bungee',
+          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
+          letterSpacing: 1.5,
+          color: INK_MUTED,
+          textTransform: 'uppercase',
+        }}
+      >
+        Réglages
+      </Text>
+    </Pressable>
   );
 }
 
@@ -387,6 +497,7 @@ function MatchesPill({
   count: number;
   isOwn: boolean;
 }) {
+  const { fontScale } = useWindowDimensions();
   return (
     <Pressable
       onPress={() =>
@@ -415,10 +526,10 @@ function MatchesPill({
     >
       <Text
         numberOfLines={1}
-        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+        allowFontScaling={false}
         style={{
           fontFamily: 'Bungee',
-          fontSize: 10,
+          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
           letterSpacing: 1,
           color: '#0a0a0a',
           textTransform: 'uppercase',
@@ -651,6 +762,31 @@ function FoundPage({
   const shareImageRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
 
+  // Chantier 21 (D1, D2, D11) : ses autres bentos, sous la boîte, en entier.
+  // Par le client sans session, comme la page, et à part d'elle : le premier
+  // écran ne les attend jamais. Une page de plus quand on approche du bas.
+  const accountBentos = useInfiniteQuery(
+    accountBentosQueryOptions(publicSupabase, bento.userId ?? '', {
+      id: bento.id,
+      isPrimary: bento.isPrimary,
+    }),
+  );
+  const listed = useMemo(
+    () => (accountBentos.data?.pages ?? []).flatMap((page) => page.bentos),
+    [accountBentos.data],
+  );
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = accountBentos;
+  const onScroll = useCallback(
+    ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!hasNextPage || isFetchingNextPage) return;
+      const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+      if (layoutMeasurement.height + contentOffset.y >= contentSize.height - LIST_NEAR_END) {
+        void fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage],
+  );
+
   const onShare = async () => {
     if (sharing) return;
     setSharing(true);
@@ -697,6 +833,8 @@ function FoundPage({
       <ScrollView
         alwaysBounceVertical={false}
         contentContainerStyle={{ paddingBottom: publicScrollBottomInset(fontScale) }}
+        onScroll={onScroll}
+        scrollEventThrottle={200}
       >
         <ProfileHeader
           pseudo={bento.pseudo}
@@ -714,6 +852,7 @@ function FoundPage({
             readOnly
           />
         </View>
+        <AccountBentoList bentos={listed} isOwn={isOwn} />
       </ScrollView>
 
       <CtaBar isOwn={isOwn} sharing={sharing} onShare={onShare} fontScale={fontScale} />
@@ -750,6 +889,55 @@ function FoundPage({
           editionTitle={bento.editionTitle}
         />
       </View>
+    </View>
+  );
+}
+
+/** À cette distance du bas, la page suivante de la liste se charge. */
+const LIST_NEAR_END = 600;
+
+/** L'écart entre la boîte de la page et le titre de la liste. */
+const LIST_GAP = 48;
+
+/**
+ * Les autres bentos du compte, sous la boîte de sa page (chantier 21, D1, D2).
+ * Chacun en entier, comme dans « La table », sous une étiquette qui dit son
+ * édition ou son adresse plutôt que son auteur, déjà en tête de page. Rien
+ * tant que le compte n'a qu'un bento : la page ne change pas d'un point.
+ */
+function AccountBentoList({ bentos, isOwn }: { bentos: readonly FeedBento[]; isOwn: boolean }) {
+  const { width, fontScale } = useWindowDimensions();
+  if (bentos.length === 0) return null;
+  const sideInset = feedSideInset(width);
+  return (
+    <View style={{ marginTop: LIST_GAP }}>
+      <Text
+        accessibilityRole="header"
+        numberOfLines={1}
+        allowFontScaling={false}
+        style={{
+          marginHorizontal: sideInset,
+          marginBottom: 16,
+          fontFamily: 'Bungee',
+          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
+          letterSpacing: 2,
+          color: INK_MUTED,
+          textTransform: 'uppercase',
+        }}
+      >
+        {isOwn ? 'Tes autres bentos' : 'Ses autres bentos'}
+      </Text>
+      {bentos.map((other) => (
+        <FeedPost
+          key={other.bentoId}
+          bento={other}
+          width={feedBoxWidth(width)}
+          sideInset={sideInset}
+          scale={feedScale(width)}
+          labelFor="bento"
+          onPress={() => router.push(bentoRoute(other.pseudo, other.slug, other.isPrimary))}
+        />
+      ))}
     </View>
   );
 }
@@ -897,8 +1085,13 @@ function StateMessage({
         numberOfLines={2}
         adjustsFontSizeToFit
         textBreakStrategy="simple"
-        maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-        style={{ fontFamily: 'Extenda', fontSize: 36, textAlign: 'center', letterSpacing: 1 }}
+        allowFontScaling={false}
+        style={{
+          fontFamily: 'Extenda',
+          fontSize: 36 * bodyScale,
+          textAlign: 'center',
+          letterSpacing: 1,
+        }}
       >
         {title}
       </Text>
@@ -930,10 +1123,10 @@ function StateMessage({
         >
           <Text
             numberOfLines={1}
-            maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+            allowFontScaling={false}
             style={{
               fontFamily: 'Bungee',
-              fontSize: 12,
+              fontSize: 12 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
               letterSpacing: 1,
               color: '#fbbf24',
               textTransform: 'uppercase',
@@ -967,6 +1160,7 @@ function BlockReportMenu({
   /** Le compte bloqué, retenu avec son pseudo (chantier 21, D8). */
   userId: string | null;
 }) {
+  const { fontScale } = useWindowDimensions();
   const isBlocked = useBlocked((s) => s.isBlocked({ userId, pseudo }));
   const block = useBlocked((s) => s.block);
   const unblock = useBlocked((s) => s.unblock);
@@ -1025,7 +1219,7 @@ function BlockReportMenu({
           // désormais le chemin de retour, et la phrase le dit.
           Alert.alert(
             'Bloquer cet utilisateur ?',
-            'Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux le débloquer depuis ton profil.',
+            'Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux le débloquer depuis tes réglages.',
             [
               { text: 'Annuler', style: 'cancel' },
               {
@@ -1033,7 +1227,7 @@ function BlockReportMenu({
                 style: 'destructive',
                 onPress: () => {
                   void block({ userId, pseudo });
-                  showToast(`@${pseudo} est bloqué. Débloque-le depuis ton profil.`, {
+                  showToast(`@${pseudo} est bloqué. Débloque-le depuis tes réglages.`, {
                     variant: 'neutral',
                     durationMs: 5000,
                   });
@@ -1063,10 +1257,10 @@ function BlockReportMenu({
     >
       <Text
         numberOfLines={1}
-        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+        allowFontScaling={false}
         style={{
           fontFamily: 'Bungee',
-          fontSize: 10,
+          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
           letterSpacing: 1.5,
           color: INK_MUTED,
           textTransform: 'uppercase',

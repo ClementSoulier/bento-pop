@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { withAbortTimeout } from './abort-timeout';
+import { ACCOUNT_BENTOS_QUERY_ROOT } from './account-bentos';
 import { FEED_QUERY_KEY } from './feed';
 import { loadPublicBento, type PublicBentoClient, type PublicBentoResult } from './public-bento';
 
@@ -96,5 +97,8 @@ export function publicBentoQueryOptions(
  */
 export function refreshPublicViews(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY });
+  // La liste des autres bentos d'un compte, sous sa page, est une liste comme
+  // le fil (chantier 21) : invalidée, pas remise à zéro.
+  void queryClient.invalidateQueries({ queryKey: [ACCOUNT_BENTOS_QUERY_ROOT] });
   void queryClient.resetQueries({ queryKey: [PUBLIC_BENTO_QUERY_ROOT] });
 }
