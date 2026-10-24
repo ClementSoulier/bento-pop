@@ -15,6 +15,10 @@
 > par les fonctions SQL ; l'entrée est une pastille « Mêmes goûts » dans la
 > barre du haut de la page d'un bento.
 >
+> **Migration appliquée en production le 24 octobre 2026**, par Clément, dans
+> l'éditeur SQL du projet « My Bento Pop », et contrôlée le même jour, en
+> lecture seule, dans la base et par l'API (§9). La DoD est à 11 sur 11 (§10).
+>
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantiers 20 et 26,
 > [le chantier 6](./UX-06-TROUVER.md) pour `search_bentos` et
 > [le chantier 8](./UX-08-SIGNAUX-DE-RETOUR.md) pour le modèle du réglage
@@ -511,20 +515,29 @@ chantier 29.
 ## 9. Livraison
 
 - **Une PR** pour les cinq lots, après la confirmation des arbitrages par
-  Clément. **Au 23 octobre 2026, les cinq lots sont commités sur
+  Clément. **Au 24 octobre 2026, les cinq lots sont commités sur
   `feat/ux-20-match-par-bento`, partie de celle du chantier 19, ni poussés
-  ni proposés** : la PR attend ses arbitrages, et la fusion du 19 avant
-  elle.
+  ni proposés** : la PR attend ses arbitrages, et la fusion de celle du 19
+  avant elle, la #93, ouverte le 24 octobre.
 - **La migration** s'applique en production à la fusion, comme les
   précédentes, par Clément : compatible avec la 1.1 et la 0.1.0. **De
   préférence juste avant de fusionner** : la landing, redéployée à la
   fusion, lit `users.searchable`. Elle sait s'en passer (lot 4), et personne
   ne peut se retirer de la recherche avant la sortie store ; l'ordre ne
   casse donc rien, mais la migration d'abord laisse la landing sur son
-  chemin normal.
-- **Après application** : les contrôles en fin de migration, puis
-  `check-search-bentos.mjs`, qui mesure `search_bentos` par l'API, et un
-  appel à `bento_matches` à la clé anonyme pour la latence réelle.
+  chemin normal. **Appliquée le 24 octobre 2026**, avant la fusion, dans
+  l'éditeur SQL du projet « My Bento Pop », ref `ggjgktbcqumfxrixcdyx`.
+- **Après application**, contrôlé le 24 octobre 2026, en lecture seule :
+  - **dans la base** : les 64 comptes dans la recherche ; les commentaires,
+    accents compris, intacts ; le déclencheur qui suit les deux réglages et
+    rafraîchit le sitemap ; `bento_matches` ouvert à la clé anonyme et
+    `searchable` écrit par un compte connecté ; `search_bentos` et
+    `shared_items` qui suivent le réglage, à signature inchangée ;
+  - **par l'API, à la clé anonyme** : `bento_matches` sur les 28 bentos
+    publiés, sans erreur ; 23 ont au moins un match, et 38 paires partagent
+    un item, 35 un seul, 2 deux et 1 trois, les chiffres de §1.2 ; jamais le
+    même compte ; à chaud, 57 ms au p50, 103 au p90 et 136 au pire ;
+  - **`check-search-bentos.mjs`** : tout vert, la recherche à 55 ms au p50.
 - **À la sortie store** : la pastille, l'écran et le réglage.
 
 ---
@@ -535,7 +548,7 @@ chantier 29.
       bentos qui lui ressemblent, chacun avec ses items en commun
 - [x] Un item rare pèse plus qu'un item que beaucoup ont choisi
 - [x] Jamais deux bentos du même compte, jamais un brouillon
-- [ ] La fonction de match tient dans 200 ms à chaud, au p50
+- [x] La fonction de match tient dans 200 ms à chaud, au p50
 - [x] Le réglage éteint retire le compte de « Trouver » et des matchs,
       prouvé à la clé anonyme ; seul son propriétaire peut l'écrire
 - [x] La page d'un compte retiré reste ouverte par son lien
@@ -547,19 +560,18 @@ chantier 29.
       `shared_items` gardent leur signature
 - [x] Tests, typage, lint et build verts, CI rejouée en local
 
-**Point par point au 23 octobre 2026, au lot 5** : 10 points sur 11, faits en
-local, au simulateur et à l'émulateur. Le point 4 attend la migration : le
-corps de la fonction, mesuré une fois en production, tient largement, mais
-le p50 se mesure par l'API, une fois `bento_matches` en place. Le point 9 est
-lu dans les arbres d'accessibilité, la voix passant au chantier 29 ; le
-point 11 par la CI rejouée en local, les Actions du dépôt étant désactivées.
+**Point par point au 24 octobre 2026** : 11 points sur 11. Dix au lot 5, le
+23 octobre, en local, au simulateur et à l'émulateur ; le point 4 le 24, par
+l'API de production, la migration appliquée. Le point 9 est lu dans les
+arbres d'accessibilité, la voix passant au chantier 29 ; le point 11 par la
+CI rejouée en local, les Actions du dépôt étant désactivées.
 
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |
 | 1 | Fait | La pastille sur la page d'un bento publié et l'écran de ses matchs, chacun avec ses items en commun, à l'iPhone 17 Pro, au SE et au Pixel 8 (lots 3 et 5) ; `bento_matches` pour tout bento publié, en base (lot 1) |
 | 2 | Fait | Les scores en `1 / n` et l'ordre exact de `check-matches.sql`, du plus rare au plus commun ; les scores sans la rareté, défaut introduit exprès, attrapés (lot 1) |
 | 3 | Fait | `check-matches.sql` écarte le même compte et le brouillon ; les deux défauts introduits exprès, attrapés (lot 1) |
-| 4 | Attend la migration | 12 ms d'exécution et 11 ms de planification, en production, en lecture seule, sur le bento le plus fourni en matchs (lot 1). Le p50 par l'API, à la clé anonyme, après l'application (§9, chantier 29) |
+| 4 | Fait | 57 ms au p50, 103 au p90 et 136 au pire, à chaud, par l'API de production à la clé anonyme, sur les 28 bentos publiés, le 24 octobre (§9) ; le corps de la fonction en 12 ms d'exécution (lot 1) |
 | 5 | Fait | Le réglage tenu sous le rôle `anon` par les trois fonctions, `check-matches.sql` (lot 1), et par l'API, `check-privileges.ts`, son écriture refusée à un autre compte et à un visiteur (lot 2) ; de bout en bout au simulateur (lot 3) |
 | 6 | Fait | `check-privileges.ts` : retirée de la recherche, une personne garde sa page (lot 2) ; la landing la sert, en `noindex` (lot 4) |
 | 7 | Fait, à revoir en production | En e2e, le `noindex` et le sitemap sans le compte, et le repli si la landing part avant la migration (lot 4) ; sur bento-pop.com au chantier 29 |
