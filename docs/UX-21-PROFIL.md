@@ -13,6 +13,10 @@
 > pseudo et son Popy ; un changement de pseudo redirige pour toujours les
 > anciens liens, et le blocage suit le compte plutôt que le pseudo.
 >
+> **Fait et recetté le 24 octobre 2026**, en six lots, en PR (#96) ; **la
+> migration appliquée le même jour par Clément**, dans l'éditeur SQL de
+> « My Bento Pop », et contrôlée en lecture seule (§9).
+>
 > Absorbe le chantier 10, profil éditable, fondu dans celui-ci le
 > 15 septembre. Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantiers 21
 > et 10, [le chantier 7](./UX-07-PAGE-BENTO-PUBLIQUE-MOBILE.md) pour
@@ -771,30 +775,40 @@ chantier 29.
 
 ## 9. Livraison
 
-- **Une PR**, la #96, pour les six lots, empilée sur celle du chantier 20, la #94.
+- **Une PR**, la #96, pour les six lots, d'abord empilée sur celle du
+  chantier 20, la #94, puis sur `main` une fois la #94 fusionnée, le
+  24 octobre.
 - **La migration**, par Clément, dans l'éditeur SQL du projet Supabase
   « My Bento Pop », ref `ggjgktbcqumfxrixcdyx`,
   `https://supabase.com/dashboard/project/ggjgktbcqumfxrixcdyx/sql/new`, avant
   la fusion ; le SQL lui sera envoyé en bloc et en fichier, avec ses
   contrôles. Compatible avec la 1.1 et la 0.1.0 (§6.4).
-- **Deux sessions en cours touchent des fichiers voisins**, les textes
-  d'Android (le fil, la recherche, le composer, `FeedLabel`) et les rôles de
-  VoiceOver : la première fusionnée, l'autre se met à jour sur elle. Une
-  fusion à blanc de la branche des textes d'Android dans celle-ci, le
-  24 octobre : `font-scaling.test.ts` se fusionne seul ; un conflit dans
-  `app/(tabs)/search.tsx`, la ligne de `Row` qui tire le Popy, à résoudre en
-  gardant les deux, son `fontScale` et `popyFor(match.pseudo, match.avatar)`
-  d'ici ; deux dans la roadmap, ses lignes de statut. Ses règles nouvelles,
-  la hauteur de ligne et l'ellipse d'Extenda dans toute l'app, sont tenues
-  par les textes de ce chantier à la lecture, pas encore par ses tests.
+  **Appliquée le 24 octobre 2026 par Clément, et contrôlée le même jour**, en
+  lecture seule : les colonnes `avatar` et `pseudo_changed_at`, vides pour les
+  64 comptes, et la contrainte des six Popys ; `pseudo_history` vide, sous
+  RLS, sans droit client, avec ses trois index ; les quatorze fonctions
+  identiques à l'octet près à celles du Supabase local, leurs droits
+  compris ; les trois déclencheurs de `users` ; les commentaires, accents
+  intacts. Par l'API à la clé anonyme : `avatar` se lit, `search_bentos` et
+  `bento_matches` rendent le compte et son Popy, `pseudo_status`,
+  `resolve_pseudo` et `resolve_accounts` répondent. La landing de production
+  sert toujours ses pages.
+- **Deux sessions touchaient des fichiers voisins**, les textes d'Android
+  (le fil, la recherche, le composer, `FeedLabel`) et les rôles de
+  VoiceOver. La première, la #95, fusionnée le 24 octobre avant la #96 : un
+  seul conflit, dans `app/(tabs)/search.tsx`, la ligne de `Row` qui tire le
+  Popy, résolu en gardant les deux, son `fontScale` et
+  `popyFor(match.pseudo, match.avatar)` d'ici (`1892591`). Ses règles
+  nouvelles, la hauteur de ligne et l'ellipse d'Extenda dans toute l'app,
+  passent depuis sur les textes de ce chantier, tests compris.
 - **À la sortie store** : la page d'un compte, le profil, sa modification.
 
 ---
 
 ## 10. Definition of Done
 
-Vérifiée point par point le 24 octobre 2026, sur le Supabase local, la
-migration n'étant pas encore appliquée en production.
+Vérifiée point par point le 24 octobre 2026, sur le Supabase local ; la
+migration appliquée en production le même jour, et contrôlée (§9).
 
 - [x] Depuis n'importe quel pseudo, dans l'app et sur le web, on voit tous
       les bentos publiés de la personne, le principal d'abord : la liste et
