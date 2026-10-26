@@ -2,7 +2,7 @@
 
 > Spécification écrite le 26 octobre 2026, à partir du code de la branche du
 > chantier 28 (`feat/ux-28-compte-recuperable`, `47c972a`), dont le 22 dépend
-> et qui n'est pas encore fusionnée, et de lectures sur la production, en
+> et qui n'était pas encore fusionnée, et de lectures sur la production, en
 > lecture seule : la base mobile, projet « My Bento Pop ». Aucune écriture en
 > production.
 >
@@ -21,8 +21,9 @@
 > défauts introduits exprès et tous attrapés, le défaut du signalement
 > reproduit puis corrigé ; la recette au simulateur iPhone 17 Pro et iPhone SE
 > et à l'émulateur Pixel 8, sept défauts trouvés et corrigés en chemin, dont
-> un déblocage qu'un autre téléphone défaisait (§9). **Rien n'est appliqué en
-> production** : la mise en service attend Clément, §9.6.
+> un déblocage qu'un autre téléphone défaisait (§9). **Fusionné le soir même**
+> (PR #99) : la landing sert ses pages depuis ; **rien n'est appliqué en
+> base**, la mise en service attend Clément, §9.6.
 >
 > Deuxième des quatre fondations de la roadmap produit du 15 septembre, la
 > modération côté serveur, placée après le chantier 28, qui exige un compte
@@ -643,9 +644,9 @@ Cinq lots, chacun validé par Clément avant le suivant.
 
 Fait et recetté le 26 octobre 2026, en cinq lots enchaînés à la demande de
 Clément, sur `feat/ux-22-likes-commentaires`, en PR #99, empilée sur la #98
-du chantier 28 tant qu'elle n'est pas fusionnée. Rien n'est appliqué en
-production :
-la mise en service attend Clément (§9.6).
+du chantier 28, toutes deux fusionnées le soir même. La landing sert ses
+pages depuis ; rien n'est appliqué en base : la mise en service attend
+Clément (§9.6).
 
 ### 9.1 Lot 1 · La base
 
@@ -749,7 +750,10 @@ aucune clé.
    les adresses de l'équipe ; `ADMIN_PUBLIC_URL`, `https://admin.bento-pop.com`.
 3. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
    contrôles en lecture de `scripts/check-social.sql`.
-4. **La landing et le back-office** redéployés sur Coolify, après la fusion.
+4. **La landing et le back-office** redéployés sur Coolify, après la fusion :
+   la landing l'a été d'elle-même, servie le 26 octobre à 19:50 UTC ; le
+   back-office attend la migration, et celle du 12, dont il porte aussi le
+   code.
 5. **Les fiches des stores**, à la sortie store unique : le contenu des
    utilisateurs et la classification d'âge. Versées au chantier 29.
 
@@ -757,7 +761,7 @@ aucune clé.
 
 ## 10. Definition of Done
 
-État au 26 octobre 2026 : 12 sur 14, les deux derniers à la mise en service.
+État au 26 octobre 2026 : 13 sur 14, le point 13 à la mise en service.
 
 1. ✅ Aimer et ne plus aimer, depuis le fil et la page ; un cœur par compte
    et par bento ; jamais le sien ; vérifié en base : contrôles 1 de
@@ -784,8 +788,9 @@ aucune clé.
 10. ✅ La 1.1 et la 0.1.0 lisent et signalent comme avant : leur insertion de
     signalement, leurs lectures du profil et de la configuration, relues sur
     `6426779`, contrôles 8.
-11. ⬜ La politique de confidentialité et les mentions légales à jour, **en
-    production** : écrites, la landing à redéployer après la fusion.
+11. ✅ La politique de confidentialité et les mentions légales à jour, **en
+    production** : servies par bento-pop.com depuis le 26 octobre à 19:50 UTC,
+    après la fusion de la PR #99, chaque phrase ajoutée relevée en ligne.
 12. ✅ La recette de §7.2 aux trois appareils, §9.3 et §9.5.
 13. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : compatible, et la CI rejouée sans échec (§9.5) ;

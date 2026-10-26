@@ -24,8 +24,9 @@
 > trouvés et corrigés en chemin (§9). **Mis en service le même jour par
 > Clément** : Resend et son domaine `auth.bento-pop.com`, l'authentification
 > de « My Bento Pop », et la migration, appliquée puis contrôlée en lecture
-> (§9.6). Restent la fusion de la PR #98 et le redéploiement de la landing et
-> du back-office.
+> (§9.6). **Fusionné le soir même** (PR #98) : la landing sert ses pages
+> depuis, et le back-office sera redéployé après les migrations du 22 et du
+> 12, dont il porte aussi le code.
 >
 > Première des quatre fondations de la roadmap produit du 15 septembre, placée
 > avant le chantier 22. Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md)
@@ -504,9 +505,10 @@ Cinq lots, chacun validé par Clément avant le suivant.
 ## 9. Livraison
 
 Fait le 26 octobre 2026, en cinq lots enchaînés à la demande de Clément, sur
-`feat/ux-28-compte-recuperable`, PR #98. Mis en service le même jour par
-Clément, migration comprise (§9.6) ; la landing et le back-office attendent
-la fusion.
+`feat/ux-28-compte-recuperable`, PR #98, fusionnée le soir même. Mis en
+service le même jour par Clément, migration comprise (§9.6) ; la landing sert
+ses pages depuis la fusion, et le back-office attend les migrations du 22 et
+du 12.
 
 ### 9.1 Lot 1 · La base et l'authentification locale
 
@@ -629,8 +631,9 @@ aucune clé, aucun mot de passe. **Les trois premières faites par Clément le
    28 publiés et 20 entrées au registre des suppressions, inchangés ; la
    règle `users_delete_own`, par laquelle la 1.1 et la 0.1.0 suppriment, en
    place. Aucune donnée touchée.
-4. ⬜ **La landing et le back-office** redéployés sur Coolify, après la
-   fusion : le point 10 de la DoD.
+4. ⬜ **Le back-office** redéployé sur Coolify, après les migrations du 22 et
+   du 12, dont il porte aussi le code. La landing l'a été d'elle-même à la
+   fusion, servie le 26 octobre à 19:50 UTC : le point 10 de la DoD.
 5. ⬜ **Les fiches de confidentialité** de l'App Store et de Google Play, à la
    sortie store unique : l'adresse email, liée à l'identité, pour le
    fonctionnement de l'app. Versées à la liste du chantier 29.
@@ -639,8 +642,8 @@ aucune clé, aucun mot de passe. **Les trois premières faites par Clément le
 
 ## 10. Definition of Done
 
-État au 26 octobre 2026 : 11 sur 12, le point 10 attendant la fusion et le
-redéploiement de la landing.
+État au 26 octobre 2026 : 12 sur 12, le point 10 rempli par la fusion, le
+soir même.
 
 1. ✅ Garder son compte ne change pas son identifiant, vérifié en base :
    contrôles 1 de `check-account.mjs`, recette aux trois appareils.
@@ -661,8 +664,9 @@ redéploiement de la landing.
    compte déjà publié ; la ligne dans Réglages : iPhone SE et 17 Pro, Pixel 8.
 9. ✅ Aucun service payant, aucun dépassement facturable : le plan gratuit de
    Resend n'en prévoit pas.
-10. ⬜ La politique de confidentialité et la page de suppression à jour, **en
-    production** : écrites, la landing à redéployer après la fusion.
+10. ✅ La politique de confidentialité et la page de suppression à jour, **en
+    production** : servies par bento-pop.com depuis le 26 octobre à 19:50 UTC,
+    après la fusion de la PR #98, chaque phrase ajoutée relevée en ligne.
 11. ✅ La recette de §7.2 aux trois appareils, §9.3 et §9.5.
 12. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : appliquée par Clément le 26 octobre, contrôlée en
