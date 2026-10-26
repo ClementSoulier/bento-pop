@@ -10,7 +10,11 @@
 export type UserKind = 'member' | 'editorial';
 
 /** Ce que l'admin sait d'un compte d'authentification. */
-export type AuthAccount = { id: string; createdAt: string };
+/**
+ * Un compte d'authentification. `email`, l'adresse qui garde le compte depuis
+ * le chantier 28, ou `null` pour un compte anonyme.
+ */
+export type AuthAccount = { id: string; createdAt: string; email?: string | null };
 
 /** Une ligne de `public.users`, telle que lue par le service-role. */
 export type ProfileRow = {
@@ -60,6 +64,12 @@ export type UserListRow = {
   appVersion: string | null;
   /** `true` si un compte d'authentification existe pour cet identifiant. */
   hasAuthAccount: boolean;
+  /**
+   * L'adresse qui garde ce compte, ou `null`. Chantier 28, D13 : en entier
+   * ici, pour retrouver le compte d'une demande de suppression écrite depuis
+   * cette adresse ; masquée dans l'app.
+   */
+  keptEmail: string | null;
   /** Le bento principal : c'est lui que `/u/<pseudo>` met en avant. */
   slots: number;
   publishedAt: string | null;
@@ -167,6 +177,7 @@ export function buildUserRows(
   profiles: ProfileRow[],
   bentos: BentoRow[],
   authIds: ReadonlySet<string>,
+  keptEmails: ReadonlyMap<string, string> = new Map(),
 ): UserListRow[] {
   // Tous les bentos d'une personne, et non le dernier arrivé. Le `Map` que
   // ce groupement remplace écrasait silencieusement les précédents : une
@@ -195,6 +206,7 @@ export function buildUserRows(
         platform: p.platform,
         appVersion: p.app_version,
         hasAuthAccount: authIds.has(p.id),
+        keptEmail: keptEmails.get(p.id) ?? null,
         slots: bento?.slots ?? 0,
         publishedAt: bento?.published_at ?? null,
         isFeatured: bento?.is_featured ?? false,
@@ -221,7 +233,8 @@ export function buildOrphanRows(
 }
 
 /**
- * Filtre de recherche, sur le pseudo et le nom affiché.
+ * Filtre de recherche, sur le pseudo, le nom affiché et l'adresse d'un compte
+ * gardé (chantier 28).
  *
  * Insensible à la casse et aux accents : chercher « eleonore » doit trouver
  * « Éléonore ». `normalize('NFD')` sépare les accents de leur lettre, la
@@ -231,7 +244,10 @@ export function filterUsers(rows: UserListRow[], query: string): UserListRow[] {
   const needle = fold(query);
   if (!needle) return rows;
   return rows.filter(
-    (r) => fold(r.pseudo).includes(needle) || fold(r.displayName ?? '').includes(needle),
+    (r) =>
+      fold(r.pseudo).includes(needle) ||
+      fold(r.displayName ?? '').includes(needle) ||
+      fold(r.keptEmail ?? '').includes(needle),
   );
 }
 

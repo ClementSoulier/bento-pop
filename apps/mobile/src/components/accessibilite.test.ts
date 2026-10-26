@@ -145,6 +145,23 @@ describe('éléments tapables', () => {
  * Confidentialité, ne l'étaient pas, à la recette du lot 3 : toutes passent
  * maintenant par `SectionTitle`.
  */
+describe('champs de saisie', () => {
+  /**
+   * Fabric recycle un champ de saisie sans remettre à zéro ses attributs de
+   * texte : un attribut facultatif, absent du champ suivant, y survit. Relevé
+   * au chantier 28, lot 3 : l'espacement du champ du code ressortait dans
+   * l'exemple du champ d'adresse affiché après lui. Un champ n'en pose donc
+   * aucun ; la mise en forme passe par la police, sa taille et sa couleur.
+   */
+  it('ne pose ni espacement, ni soulignement, ni ombre que le recyclage garderait', () => {
+    const fautifs = tags(new Set(['TextInput'])).filter((t) => {
+      const style = t.attributes.get('style');
+      return typeof style === 'string' && /letterSpacing|textDecoration|textShadow/.test(style);
+    });
+    assert.equal(fautifs.length, 0, where(fautifs));
+  });
+});
+
 describe('titres des sections', () => {
   const parse = (path: string) =>
     ts.createSourceFile(

@@ -7,6 +7,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { queryClient } from '@/lib/query-client';
 import { FONTS } from '@/lib/fonts';
 import { useSession } from '@/state/session';
@@ -22,6 +23,7 @@ import { ToastHost } from '@/components/primitives';
 import { runStartupUpdateWithExpo } from '@/lib/ota-runtime';
 import type { OtaPhase } from '@/lib/ota';
 import { startPushRegistration, startPushResponses } from '@/lib/push-runtime';
+import { AccountResponder } from '@/components/account/AccountResponder';
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
@@ -152,8 +154,22 @@ export default function RootLayout() {
                 contentStyle: { backgroundColor: '#fbf3de' },
               }}
             />
+            {/* Chantier 28, D4 : la feuille « Garde ton bento ». */}
+            <Stack.Screen
+              name="account/keep-offer"
+              options={{
+                presentation: 'formSheet',
+                sheetAllowedDetents: 'fitToContents',
+                sheetGrabberVisible: true,
+                // Android dessine sinon la feuille à angles droits ; iOS garde
+                // les siens.
+                sheetCornerRadius: Platform.OS === 'android' ? 28 : undefined,
+                contentStyle: { backgroundColor: '#fbf3de' },
+              }}
+            />
           </Stack>
           <PushResponder />
+          <AccountResponder />
           <UpdateBanner />
           <OfflineBanner />
           <ToastHost />

@@ -883,6 +883,14 @@ export type Database = {
         Returns: Array<{ pseudo: string; changed_at: string }>;
       };
       /**
+       * Supprime le compte appelant : registre et profil s'il en a un, puis la
+       * ligne d'`auth.users`, adresse et identités comprises. Chantier 28, D8.
+       */
+      delete_own_account: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
+      /**
        * Items présents dans **au moins deux** bentos publiés. Sert de bloc
        * de suggestions avant la frappe : ce sont exactement les recherches
        * qui ramènent plus d'une personne.

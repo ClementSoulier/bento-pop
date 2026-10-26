@@ -1189,6 +1189,89 @@ composants ne citant que `ContextNavigator` et `ExpoRoot`.
 
 ---
 
+### Lire un code de connexion dans Mailpit
+
+Chantier 28. Garder son compte et se reconnecter passent par un code à 6
+chiffres envoyé par mail. En local, Mailpit reçoit tout et rien ne part : la
+pile ne doit donc pas l'exclure (`-x … mailpit` du montage à part, plus haut).
+Il écoute sur 54334 pour la pile du projet mobile (`[inbucket]` de
+`config.toml`), et sur le port que lui donne une pile à part.
+
+```bash
+curl -s "http://127.0.0.1:54334/api/v1/search?query=to:%22adresse@recette.test%22"   # la liste, champ ID
+curl -s "http://127.0.0.1:54334/api/v1/message/<ID>"                                  # le corps, champ Text
+```
+
+Le corps ne porte qu'un nombre de six chiffres, le code. Derrière le filtre
+`rtk`, `curl` rend une version abrégée du JSON : `rtk proxy curl`. Une même
+adresse ne reçoit qu'un code par minute (`max_frequency`) : l'app le dit,
+« Attends encore 12 secondes… », il suffit d'attendre.
+`apps/mobile/scripts/check-account.mjs` joue les mêmes allers-retours sans
+écran.
+
+### Le clavier matériel d'un simulateur neuf suit l'AZERTY du Mac
+
+Un simulateur créé dans un jeu d'appareils à part hérite du français. `idb ui
+text` tape en positions QWERTY : « garde28@recette.test » devient
+« gqrdeé!2recette:test », et les chiffres d'un champ numérique n'entrent pas du
+tout. Lui donner un clavier américain, puis le redémarrer :
+
+```bash
+xcrun simctl --set <dossier> spawn <UDID> defaults write -g AppleKeyboards -array "en_US@sw=QWERTY;hw=US"
+xcrun simctl --set <dossier> shutdown <UDID> && xcrun simctl --set <dossier> boot <UDID>
+```
+
+`hw=Automatic` a suffi à l'iPhone 17 Pro, pas à l'iPhone SE : poser `hw=US`.
+En AZERTY, l'arobase est la touche HID 100, `idb ui key --udid <UDID> 100`.
+Enfin, `idb ui text` perd ce qui suit un point dans un même appel : taper
+« adresse@recette », « . » et « test » en trois fois.
+
+### Un champ de saisie recyclé garde l'espacement de sa vie précédente
+
+Fabric recycle les champs de saisie sans remettre à zéro leurs attributs de
+texte : un attribut facultatif, absent des propriétés du champ suivant, y
+survit. Au chantier 28, le champ du code, espacé de 8 points, a ressorti
+l'exemple du champ d'adresse affiché après lui en « t o n @ a d r e s s e . f
+r », le texte tapé restant normal. Aucun champ de l'app ne pose donc
+d'espacement, de soulignement ni d'ombre, ce que garde
+`src/components/accessibilite.test.ts`.
+
+### Sur Android, Bungee rogne le haut d'un champ de saisie
+
+Le champ du code, en Bungee, montrait la moitié basse de ses chiffres sur
+l'émulateur Pixel 8, à la hauteur posée par l'écran. Il est en police système
+grasse. Un rechargement à chaud ne suffit pas à le constater : la police d'un
+champ déjà monté reste celle d'avant, relancer l'app.
+
+### Sur Android, `autoFocus` ne prend pas quand un champ en remplace un autre
+
+Le champ du code arrive à la place du champ d'adresse, qui rend le focus au
+même moment : sur Android, il ne le prenait pas, `focused="false"` dans
+`uiautomator dump`. Il le redemande une fois monté, cf. `CodeField`.
+
+### Ralentir ou refuser le renouvellement d'une session, exprès
+
+Pour le lancement du chantier 28 (D5, D6), sur une pile à part seulement :
+
+- **le jeton expiré** : app arrêtée, la session rangée vit dans un fichier de
+  `Library/Application Support/com.bentopop.mobile/RCTAsyncLocalStorage_V1/`
+  du conteneur de données, nommé par le MD5 de sa clé, `sb-127-auth-token`
+  pour une pile locale. Y reculer `expires_at` d'une heure ;
+- **un renouvellement qui traîne** : `docker pause supabase_auth_<projet>`,
+  lancer l'app, puis `docker unpause`. Aucun compte ne doit naître pendant la
+  pause, et le compte doit revenir seul à la reprise ;
+- **un refus définitif** : `delete from auth.sessions where user_id = …` sur la
+  base de la pile, avec le jeton expiré. Un compte gardé mène à « Reconnecte-toi »,
+  un anonyme à un compte neuf.
+
+En développement, LogBox affiche alors l'erreur qu'`auth-js` écrit lui-même
+dans la console, « Invalid Refresh Token » : elle n'existe pas en production.
+
+### Un lien profond `bentopop://` demande une confirmation
+
+`xcrun simctl openurl <UDID> bentopop://account/keep` affiche « Ouvrir dans
+« Mon Bento Pop » ? » avant d'ouvrir l'écran : toucher « Ouvrir ».
+
 ## 5. Après la recette
 
 ```bash

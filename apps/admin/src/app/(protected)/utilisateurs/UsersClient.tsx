@@ -74,7 +74,7 @@ export function UsersClient({ funnel, rows: initialRows, orphans }: UsersClientP
           <div className="flex flex-wrap items-center gap-2">
             <input
               className="admin-input max-w-xs"
-              placeholder="Chercher un pseudo ou un nom…"
+              placeholder="Chercher un pseudo, un nom ou une adresse…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -362,7 +362,19 @@ function ProfilesTable({
                       Sans compte
                     </span>
                   ) : null}
+                  {/* Chantier 28, D13 : un compte gardé, et l'adresse qui le
+                      garde, pour une demande écrite depuis elle. */}
+                  {r.keptEmail ? (
+                    <span className="admin-badge admin-badge-info" title="Compte gardé par une adresse email">
+                      Gardé
+                    </span>
+                  ) : null}
                 </span>
+                {r.keptEmail ? (
+                  <span className="mt-0.5 block font-mono text-[11px] font-normal text-admin-muted">
+                    {r.keptEmail}
+                  </span>
+                ) : null}
               </td>
               <td className="px-4 py-3 text-admin-muted">{r.displayName ?? '—'}</td>
               <td className="px-4 py-3">

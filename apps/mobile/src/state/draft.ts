@@ -44,6 +44,11 @@ type DraftState = {
   acceptTerms: () => void;
   /** Après publication : le brouillon a trouvé sa place en base. */
   clear: () => void;
+  /**
+   * Chantier 28 : après une déconnexion ou une suppression, l'appareil
+   * revient à son premier lancement, règles comprises (D8, D10).
+   */
+  reset: () => void;
 };
 
 export const useDraft = create<DraftState>()(
@@ -55,6 +60,7 @@ export const useDraft = create<DraftState>()(
       setSlot: (slots) => set({ slots }),
       acceptTerms: () => set({ termsAcceptedAt: new Date().toISOString() }),
       clear: () => set({ slots: {} }),
+      reset: () => set({ slots: {}, termsAcceptedAt: null }),
     }),
     {
       name: 'bento-pop-draft',

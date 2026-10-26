@@ -59,7 +59,11 @@ export default async function UtilisateursPage() {
   ]);
 
   const funnel = computeFunnel(accounts, profiles, bentos);
-  const rows = buildUserRows(profiles, bentos, new Set(accounts.map((a) => a.id)));
+  // Chantier 28 : l'adresse des comptes gardés, pour la ligne de chacun.
+  const keptEmails = new Map(
+    accounts.flatMap((a) => (a.email ? [[a.id, a.email] as const] : [])),
+  );
+  const rows = buildUserRows(profiles, bentos, new Set(accounts.map((a) => a.id)), keptEmails);
   const orphans = buildOrphanRows(accounts, profiles);
 
   return (
@@ -92,7 +96,15 @@ async function listAuthAccounts(mobile: Mobile): Promise<AuthAccount[]> {
     const { data, error } = await mobile.auth.admin.listUsers({ page, perPage: 200 });
     if (error) throw new Error(`Lecture des comptes échouée : ${error.message}`);
     const users = data?.users ?? [];
-    all.push(...users.map((u) => ({ id: u.id, createdAt: u.created_at })));
+    all.push(
+      ...users.map((u) => ({
+        id: u.id,
+        createdAt: u.created_at,
+        // Une adresse en attente de son code vit dans `new_email`, et un
+        // compte anonyme n'en a pas : seule celle d'un compte gardé compte.
+        email: !u.is_anonymous && u.email ? u.email : null,
+      })),
+    );
     if (users.length < 200) return all;
   }
 }

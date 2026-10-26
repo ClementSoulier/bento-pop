@@ -14,7 +14,7 @@ export default function ConfidentialitePage() {
     <LegalPage
       eyebrow="Données personnelles"
       title="Politique de confidentialité"
-      updatedAt="23/10/2026"
+      updatedAt="26/10/2026"
     >
       <section>
         <h2>1. Responsable du traitement</h2>
@@ -78,8 +78,19 @@ export default function ConfidentialitePage() {
             <strong>Identifiant anonyme</strong> : un UUID généré automatiquement
             au premier lancement, persisté dans le stockage sécurisé de
             l&apos;appareil. Sert de clé pour relier l&apos;utilisateur à son
-            bento. Aucune information personnelle (nom réel, email, téléphone)
-            n&apos;y est associée.
+            bento. Aucune information personnelle (nom réel, téléphone)
+            n&apos;y est associée, ni d&apos;adresse email, sauf si
+            l&apos;utilisateur choisit de garder son compte (ci-dessous).
+          </li>
+          <li>
+            <strong>Adresse email</strong> (facultative) : si
+            l&apos;utilisateur choisit de <em>« garder son compte »</em>,
+            l&apos;adresse qu&apos;il saisit, rattachée à son identifiant
+            après la saisie d&apos;un code reçu à cette adresse. Elle sert
+            uniquement à retrouver son compte sur un autre appareil ou après
+            une réinstallation, par un nouveau code. Elle n&apos;est jamais
+            affichée publiquement, ni partagée, ni utilisée pour lui écrire
+            autre chose que ces codes.
           </li>
           <li>
             <strong>Pseudonyme</strong> : choisi par l&apos;utilisateur à
@@ -128,8 +139,10 @@ export default function ConfidentialitePage() {
           </li>
         </ul>
         <p>
-          L&apos;application <strong>ne collecte ni email, ni téléphone, ni
-          adresse réelle, ni identifiant publicitaire (IDFA / GAID).</strong>
+          L&apos;application <strong>ne collecte ni téléphone, ni adresse
+          réelle, ni identifiant publicitaire (IDFA / GAID)</strong>, et ne
+          collecte une adresse email que si l&apos;utilisateur choisit de
+          garder son compte.
           Aucun SDK de tracking tiers (Google Analytics, Meta SDK, Firebase
           Analytics…) n&apos;est intégré.
         </p>
@@ -169,6 +182,11 @@ export default function ConfidentialitePage() {
             technique permettant la persistance du bento (intérêt légitime).
           </li>
           <li>
+            <strong>Adresse email</strong> : retrouver son compte sur un autre
+            appareil (consentement, donné en choisissant de garder son compte
+            et retiré en supprimant son compte).
+          </li>
+          <li>
             <strong>Pseudonyme + composition de bento</strong> : exécution du
             service de partage culturel (consentement, recueilli à
             l&apos;onboarding et révocable à tout moment via la suppression de
@@ -199,8 +217,9 @@ export default function ConfidentialitePage() {
             anonymisés à la clôture de la semaine concernée.</li>
           <li>
             <strong>Données utilisateur app mobile</strong> (pseudo, bento,
-            composition) : conservées tant que l&apos;utilisateur n&apos;a pas
-            supprimé son compte depuis l&apos;app. Suppression définitive
+            composition, adresse email d&apos;un compte gardé) : conservées
+            tant que l&apos;utilisateur n&apos;a pas supprimé son compte depuis
+            l&apos;app. Suppression définitive
             immédiate (cascade sur l&apos;ensemble des données liées) sur
             demande via le bouton <em>« Supprimer mon compte »</em> de la tab
             Profil.
@@ -211,6 +230,9 @@ export default function ConfidentialitePage() {
             <code>reporter_id</code>.
           </li>
           <li>Logs serveur : 30 jours.</li>
+          <li>
+            Journaux d&apos;envoi des codes de connexion chez Resend : 30 jours.
+          </li>
           <li>Logs Supabase API : 7 jours.</li>
           <li>
             Empreintes hachées des visiteurs d&apos;un bento, et leur sel :
@@ -234,6 +256,14 @@ export default function ConfidentialitePage() {
             <strong>Supabase Inc.</strong> (Singapour, instance UE) — bases de
             données PostgreSQL (deux projets distincts : un pour la landing /
             BO, un dédié à l&apos;app mobile).
+          </li>
+          <li>
+            <strong>Plus Five Five, Inc.</strong> (Resend, San Francisco,
+            États-Unis) : envoi des codes de connexion par email, pour les
+            utilisateurs qui gardent leur compte. Resend reçoit l&apos;adresse
+            et le code. Le transfert hors de l&apos;Union européenne est
+            encadré par les clauses contractuelles types de la Commission
+            européenne, prévues par son accord de traitement des données.
           </li>
           <li>
             <strong>Apple Inc.</strong> et <strong>Google LLC</strong> — pour
