@@ -520,9 +520,9 @@ locale :
 ## 9. Livraison
 
 Fait et recetté le 26 octobre 2026, en cinq lots enchaînés, sur
-`feat/ux-12-pourquoi-par-case`, partie de la branche du 22 tant qu'elle n'est
-pas fusionnée. Rien n'est appliqué en production : la mise en service attend
-Clément (§9.6).
+`feat/ux-12-pourquoi-par-case`, en PR #100, empilée sur la #99 du chantier 22
+tant qu'elle n'est pas fusionnée. Rien n'est appliqué en production : la mise
+en service attend Clément (§9.6).
 
 ### 9.1 Lot 1 · La base
 
