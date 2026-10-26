@@ -121,3 +121,58 @@ export function parseBlockedEntries(raw: string | null): BlockedEntry[] | null {
     return [];
   }
 }
+
+/**
+ * Un blocage ou un déblocage que la base n'a pas reçu, faute de réseau :
+ * il repart à la prochaine synchronisation (chantier 22, D9).
+ */
+export type PendingBlock = { userId: string; on: boolean };
+
+/** Le dernier geste sur un compte remplace le précédent. */
+export function withPendingBlock(pending: readonly PendingBlock[], op: PendingBlock): PendingBlock[] {
+  return [...pending.filter((p) => p.userId !== op.userId), op];
+}
+
+export function parsePendingBlocks(raw: string | null): PendingBlock[] {
+  if (!raw) return [];
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((v) => {
+      if (!v || typeof v !== 'object') return [];
+      const r = v as Record<string, unknown>;
+      return typeof r.userId === 'string' && typeof r.on === 'boolean' ? [{ userId: r.userId, on: r.on }] : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * La liste du téléphone après une synchronisation (chantier 22, D9) : celle de
+ * la base fait foi pour les comptes, sous leur pseudo du moment ; les entrées
+ * sans compte, que la base ne connaît pas, restent ; les gestes encore en
+ * attente s'appliquent par-dessus. Un compte bloqué sans profil ni pseudo
+ * connu n'a rien à masquer, et ne s'affiche pas.
+ */
+export function mergeServerBlocks(
+  local: readonly BlockedEntry[],
+  server: readonly { blocked_id: string; pseudo: string | null }[],
+  pending: readonly PendingBlock[] = [],
+): BlockedEntry[] {
+  const localPseudo = new Map(local.flatMap((e) => (e.userId ? [[e.userId, e.pseudo] as const] : [])));
+  let next: BlockedEntry[] = [];
+  for (const row of server) {
+    const pseudo = row.pseudo ?? localPseudo.get(row.blocked_id);
+    if (pseudo) next = withBlocked(next, { userId: row.blocked_id, pseudo });
+  }
+  for (const entry of local) {
+    if (!entry.userId) next = withBlocked(next, entry);
+  }
+  for (const op of pending) {
+    const pseudo = localPseudo.get(op.userId) ?? next.find((e) => e.userId === op.userId)?.pseudo;
+    if (op.on && pseudo) next = withBlocked(next, { userId: op.userId, pseudo });
+    if (!op.on && pseudo) next = withoutBlockedEntry(next, { userId: op.userId, pseudo });
+  }
+  return next;
+}

@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { BentoGrid } from '@/components/bento';
 import { GRID_GEOMETRY } from '@/components/bento/geometry';
 import { Sticker } from '@/components/primitives';
+import { ActionBar } from '@/components/social/ActionBar';
 import {
   accountBentoTitle,
   feedAccessibilityLabel,
@@ -53,6 +54,9 @@ type FeedPostProps = {
  * énumère la composition, donc un balayage donne tout, sur un élément
  * activable. Les descendants sont masqués pour ne pas être parcourus deux
  * fois.
+ *
+ * **Le cœur et la bulle vivent sous le post, à côté de lui** (chantier 22) :
+ * dedans, ils seraient masqués avec le reste.
  */
 export function FeedPost({
   bento,
@@ -66,65 +70,63 @@ export function FeedPost({
   const ribbon = ribbonFor(bento, { edition: labelFor === 'author' });
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessible
-      accessibilityRole="button"
-      accessibilityLabel={feedAccessibilityLabel(bento, now, labelFor)}
-      // Style statique et non fonction de `pressed` : la variante fonction
-      // n'appliquait pas les marges au premier rendu sur iOS. Le léger
-      // assombrissement à l'appui est repris par `android_ripple` sur Android
-      // et par l'opacité par défaut du `Pressable` sur iOS.
-      style={{
-        // Marges et non `width` + `alignSelf` : cf. `feedSideInset`.
-        marginHorizontal: sideInset,
-        marginBottom: POST_GAP,
-      }}
-    >
-      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        {labelFor === 'bento' ? (
-          <FeedLabel
-            title={accountBentoTitle(bento)}
-            meta={relativeDate(bento.publishedAt, now)}
-            avatar={popyFor(bento.pseudo, bento.avatar)}
-            maxWidth={width}
-          />
-        ) : (
-          <FeedPostHeader
-            pseudo={bento.pseudo}
-            avatar={bento.avatar}
-            displayName={bento.displayName}
-            publishedAt={bento.publishedAt}
-            maxWidth={width}
-            now={now}
-          />
-        )}
+    // Marges et non `width` + `alignSelf` : cf. `feedSideInset`. Portées par
+    // le conteneur depuis le chantier 22, qui pose la barre sous le post.
+    <View style={{ marginHorizontal: sideInset, marginBottom: POST_GAP }}>
+      <Pressable
+        onPress={onPress}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={feedAccessibilityLabel(bento, now, labelFor)}
+        // Le léger assombrissement à l'appui est repris par `android_ripple`
+        // sur Android et par l'opacité par défaut du `Pressable` sur iOS.
+      >
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {labelFor === 'bento' ? (
+            <FeedLabel
+              title={accountBentoTitle(bento)}
+              meta={relativeDate(bento.publishedAt, now)}
+              avatar={popyFor(bento.pseudo, bento.avatar)}
+              maxWidth={width}
+            />
+          ) : (
+            <FeedPostHeader
+              pseudo={bento.pseudo}
+              avatar={bento.avatar}
+              displayName={bento.displayName}
+              publishedAt={bento.publishedAt}
+              maxWidth={width}
+              now={now}
+            />
+          )}
 
-        <View style={{ marginTop: HEADER_GAP }}>
-          <BentoGrid
-            cases={composerCases(bento.cases, bento.slots)}
-            scale={scale}
-            width={width}
-            readOnly
-            frameBorderWidth={ribbon ? RIBBON_BORDER : GRID_GEOMETRY.BORDER}
-          />
+          <View style={{ marginTop: HEADER_GAP }}>
+            <BentoGrid
+              cases={composerCases(bento.cases, bento.slots)}
+              scale={scale}
+              width={width}
+              readOnly
+              frameBorderWidth={ribbon ? RIBBON_BORDER : GRID_GEOMETRY.BORDER}
+            />
 
-          {/* Rendue APRÈS la boîte : elle passe donc au-dessus sur les deux
+            {/* Rendue APRÈS la boîte : elle passe donc au-dessus sur les deux
               plateformes sans avoir à toucher au `zIndex`, qui demanderait une
               `elevation` sur Android. */}
-          {ribbon ? (
-            <Sticker
-              color={ribbon.color}
-              textColor={ribbon.textColor ?? '#ffffff'}
-              rotation={-8}
-              size={11}
-              style={{ position: 'absolute', top: RIBBON_OFFSET.top, right: RIBBON_OFFSET.right }}
-            >
-              {ribbon.label}
-            </Sticker>
-          ) : null}
+            {ribbon ? (
+              <Sticker
+                color={ribbon.color}
+                textColor={ribbon.textColor ?? '#ffffff'}
+                rotation={-8}
+                size={11}
+                style={{ position: 'absolute', top: RIBBON_OFFSET.top, right: RIBBON_OFFSET.right }}
+              >
+                {ribbon.label}
+              </Sticker>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </Pressable>
+      </Pressable>
+      <ActionBar bentoId={bento.bentoId} ownerId={bento.userId} />
+    </View>
   );
 }

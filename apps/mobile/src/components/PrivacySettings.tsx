@@ -4,18 +4,21 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SectionTitle, SettingSwitch, useToast } from '@/components/primitives';
 import { BENTO_MATCHES_QUERY_ROOT } from '@/lib/matches';
 import { writeSearchable } from '@/lib/search';
+import { writeSocialSetting } from '@/lib/social-actions';
 import { writeShowVisits } from '@/lib/visits';
 import { useSession } from '@/state/session';
+import { useSocial } from '@/state/social';
 import { supabase } from '@/supabase/client';
 
-type Setting = 'show_visits' | 'searchable';
+type Setting = 'show_visits' | 'searchable' | 'accept_comments' | 'accept_likes';
 
 /**
  * La section Confidentialité du profil : « Afficher mes visites » (chantier 8,
  * D9) et « Apparaître dans la recherche » (chantier 20, D5). C'est la règle du
  * 15 septembre, chaque réglage de confidentialité part avec sa fonctionnalité,
  * et ils se retrouvent tous ici (chantier 20, D9) : un écran à part viendra
- * quand les chantiers 22, 23 et 25 ajouteront les leurs.
+ * quand les chantiers 22, 23 et 25 ajouteront les leurs. Le 22 y ajoute
+ * « Accepter les commentaires » et « Afficher les j'aime » (D14).
  *
  * Rien sans profil : sans pseudo, aucun bento n'est en ligne, et il n'y a
  * rien à masquer ni à retirer de la recherche.
@@ -38,6 +41,11 @@ export function PrivacySettings() {
     try {
       if (setting === 'show_visits') {
         await writeShowVisits(supabase, profile.id, on);
+      } else if (setting === 'accept_comments' || setting === 'accept_likes') {
+        await writeSocialSetting(supabase, profile.id, setting, on);
+        // Les nombres lus montrent encore l'ancien réglage : relus tout de
+        // suite, les barres gardant leur place.
+        void useSocial.getState().refreshAll();
       } else {
         await writeSearchable(supabase, profile.id, on);
         // Les matchs en cache, valables 5 minutes, le montreraient encore sur
@@ -74,6 +82,26 @@ export function PrivacySettings() {
             ? undefined
             : 'Retiré de la recherche : ta page reste ouverte à qui a le lien.'
         }
+        disabled={busy}
+      />
+      <SettingSwitch
+        label="Accepter les commentaires"
+        description="Sur tous tes bentos."
+        value={profile.accept_comments}
+        onChange={(on) => void toggle('accept_comments', on)}
+        note={
+          profile.accept_comments
+            ? undefined
+            : 'Fermés : ceux déjà écrits sont masqués, et reviennent si tu les rouvres.'
+        }
+        disabled={busy}
+      />
+      <SettingSwitch
+        label="Afficher les j'aime"
+        description="Le cœur et son nombre sur tes bentos."
+        value={profile.accept_likes}
+        onChange={(on) => void toggle('accept_likes', on)}
+        note={profile.accept_likes ? undefined : 'Masqués : personne ne peut aimer tes bentos.'}
         disabled={busy}
       />
     </View>

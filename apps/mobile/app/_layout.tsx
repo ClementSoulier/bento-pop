@@ -154,6 +154,23 @@ export default function RootLayout() {
                 contentStyle: { backgroundColor: '#fbf3de' },
               }}
             />
+            {/* Chantier 22 : les commentaires d'un bento, et « Signaler ». */}
+            <Stack.Screen
+              name="comments/[bentoId]"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                contentStyle: { backgroundColor: '#fbf3de' },
+              }}
+            />
+            <Stack.Screen
+              name="report"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                contentStyle: { backgroundColor: '#fbf3de' },
+              }}
+            />
             {/* Chantier 28, D4 : la feuille « Garde ton bento ». */}
             <Stack.Screen
               name="account/keep-offer"

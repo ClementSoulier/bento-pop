@@ -6,6 +6,8 @@ export { FeedPostHeader } from './FeedPostHeader';
 export { FeedPostSkeleton } from './FeedPostSkeleton';
 export {
   ACTIONS_HEIGHT,
+  ACTION_BAR,
+  actionBarHeight,
   DESIGN_HEIGHT,
   DESIGN_WIDTH,
   HEADER_GAP,

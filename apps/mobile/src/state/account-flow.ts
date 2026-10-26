@@ -2,7 +2,9 @@ import { confirmSignInCode } from '@/lib/account-actions';
 import { deleteOwnAccount } from '@/lib/bento-actions';
 import { forgetReadyReminders, refreshPush } from '@/lib/push-runtime';
 import { createSignInClient } from '@/supabase/client';
+import { useBlocked } from './blocked';
 import { useSession } from './session';
+import { useSocial } from './social';
 
 /**
  * Les gestes du chantier 28 qui touchent plus que la session : les rappels de
@@ -29,11 +31,18 @@ export async function signInWithCode(
   // l'enregistre.
   await forgetReadyReminders().catch((e) => console.warn('[compte] rappels', e));
   void refreshPush(true);
+  // Chantier 22 (D9) : les cœurs lus étaient ceux de l'autre compte, et la
+  // liste des comptes bloqués suit le compte retrouvé.
+  useSocial.getState().reset();
+  void useBlocked.getState().syncWithServer();
 }
 
 /** « Se déconnecter », pour un compte gardé (D10). */
 export async function signOutAccount(): Promise<void> {
   await forgetReadyReminders().catch((e) => console.warn('[compte] rappels', e));
+  // Chantier 22 (D9) : sa liste reste en base, et revient à la reconnexion.
+  await useBlocked.getState().clear();
+  useSocial.getState().reset();
   await useSession.getState().resetAndReinit();
 }
 
@@ -42,5 +51,7 @@ export async function deleteAccountAndRestart(): Promise<void> {
   await deleteOwnAccount();
   // Chantier 8 : ses rappels de bento prêt partent avec lui.
   await forgetReadyReminders();
+  await useBlocked.getState().clear();
+  useSocial.getState().reset();
   await useSession.getState().resetAndReinit();
 }

@@ -1,3 +1,4 @@
+import { CONTROL_MAX_FONT_MULTIPLIER, fontScaleFor } from '@/components/bento/font-scaling';
 import { GRID_HEIGHT, GRID_WIDTH } from '@/components/bento/geometry';
 
 /**
@@ -69,14 +70,40 @@ export const POST_GAP = 72;
 export const RIBBON_OFFSET = { top: -8, right: -6 } as const;
 
 /**
- * Barre d'actions (likes, commentaires) : rien en v1.
+ * Barre d'actions, le cœur et la bulle, chantier 22 (§5.1, D16).
  *
- * Une rangée cœur / bulle grisée annoncerait une fonctionnalité inexistante
- * et récolterait des taps sans réponse. La constante existe pour que le
- * chantier 8 soit un changement de valeur et pas une reprise de la mise en
- * page.
+ * Sa hauteur est réservée sous chaque boîte dès le premier rendu, nombres
+ * arrivés ou non, et même vide pour un propriétaire qui refuse likes et
+ * commentaires : rien ne bouge à leur arrivée. Les libellés sont ceux des
+ * boutons de la page, Bungee 13 plafonné comme les contrôles.
+ *
+ * Réservée par le chantier 2 sous le nom `ACTIONS_HEIGHT`, à zéro, pour que
+ * l'ajout soit une affaire de cotes et pas une reprise de la mise en page.
  */
-export const ACTIONS_HEIGHT = 0;
+export const ACTION_BAR = {
+  marginTop: 10,
+  borderWidth: 2.5,
+  paddingVertical: 6,
+  paddingHorizontal: 12,
+  gap: 8,
+  iconSize: 16,
+  /** Bungee 13, mesuré comme `CTA_LABEL_LINE_H` de la page. */
+  labelLineHeight: 17,
+} as const;
+
+/** Hauteur de la barre, marge comprise, à une taille de police donnée. */
+export function actionBarHeight(fontScale: number): number {
+  const label = ACTION_BAR.labelLineHeight * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
+  return (
+    ACTION_BAR.marginTop +
+    ACTION_BAR.borderWidth * 2 +
+    ACTION_BAR.paddingVertical * 2 +
+    Math.max(ACTION_BAR.iconSize, label)
+  );
+}
+
+/** La barre à la taille de police par défaut. */
+export const ACTIONS_HEIGHT = actionBarHeight(1);
 
 /** Largeur de la boîte pour une largeur de fenêtre donnée. */
 export function feedBoxWidth(windowWidth: number): number {

@@ -25,6 +25,11 @@ export type AppConfig = {
   iosLatestVersion: string;
   androidMinVersion: string | null;
   androidLatestVersion: string | null;
+  /**
+   * Chantier 22 (D15) : éteint, l'app cache tout ce qui touche aux
+   * commentaires, sans nouvelle version. La base refuse aussi d'en écrire.
+   */
+  commentsEnabled: boolean;
 };
 
 /**
@@ -49,7 +54,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     supabase
       .from('app_config')
       .select(
-        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version',
+        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled',
       )
       .eq('id', 1)
       .maybeSingle();
@@ -66,6 +71,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     iosLatestVersion: r.ios_latest_version,
     androidMinVersion: r.android_min_version,
     androidLatestVersion: r.android_latest_version,
+    commentsEnabled: r.comments_enabled,
   };
 }
 
