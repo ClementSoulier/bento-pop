@@ -14,7 +14,7 @@ export default function SuppressionComptePage() {
     <LegalPage
       eyebrow="Compte utilisateur"
       title={'Supprimer\nmon compte.'}
-      updatedAt="28/05/2026"
+      updatedAt="26/10/2026"
     >
       <section>
         <h2>1. Depuis l’app mobile (recommandé)</h2>
@@ -27,7 +27,9 @@ export default function SuppressionComptePage() {
             Ouvre <strong>Mon Bento Pop</strong> sur ton téléphone.
           </li>
           <li>
-            Va dans l’onglet <strong>Profil</strong> (icône en bas à droite).
+            Va dans l’onglet <strong>Profil</strong> (icône en bas à droite),
+            puis touche <strong>Réglages</strong> s’il apparaît en haut de
+            l’écran.
           </li>
           <li>
             Fais défiler jusqu’à la section <strong>Compte</strong>.
@@ -46,8 +48,8 @@ export default function SuppressionComptePage() {
         <h2>2. Par email (si l’app ne marche pas)</h2>
         <p>
           Si tu n’as plus accès à l’app (téléphone perdu, désinstallée, bug),
-          écris-nous depuis l’adresse email associée à ton compte — ou en
-          précisant ton pseudo <code>@…</code> — à&nbsp;:
+          écris-nous depuis l’adresse email qui garde ton compte, si tu
+          l’as gardé, ou en précisant ton pseudo <code>@…</code>, à&nbsp;:
         </p>
         <p>
           <strong>
@@ -69,11 +71,14 @@ export default function SuppressionComptePage() {
           récupération&nbsp;:
         </p>
         <ul>
-          <li>Ton compte d’authentification (identifiant anonyme).</li>
+          <li>
+            Ton compte d’authentification : ton identifiant, et ton adresse
+            email si tu as gardé ton compte.
+          </li>
           <li>Ton pseudo (<code>@…</code>) et ton nom affiché.</li>
           <li>
-            Ton bento publié ainsi que toutes les cases que tu y as
-            sélectionnées (films, séries, artistes, etc.).
+            Tes bentos ainsi que toutes les cases que tu y as sélectionnées
+            (films, séries, artistes, etc.).
           </li>
           <li>
             L’URL publique <code>bento-pop.com/u/&lt;pseudo&gt;</code> renvoie
@@ -103,11 +108,16 @@ export default function SuppressionComptePage() {
             jours glissants, après quoi les données supprimées sortent
             définitivement du système.
           </li>
+          <li>
+            <strong>Journaux d’envoi des codes</strong> chez Resend, si tu
+            as gardé ton compte : 30 jours.
+          </li>
         </ul>
         <p>
-          Aucune donnée commerciale (email, téléphone, moyen de paiement)
-          n’est jamais collectée par Mon Bento Pop, l’app est intégralement
-          gratuite et utilise un identifiant anonyme.
+          Mon Bento Pop ne collecte aucune donnée commerciale (téléphone,
+          moyen de paiement) : l’app est intégralement gratuite. Une adresse
+          email n’est collectée que si tu choisis de garder ton compte, pour
+          t’envoyer les codes qui le retrouvent, et elle part avec lui.
         </p>
       </section>
 

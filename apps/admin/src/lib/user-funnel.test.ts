@@ -151,6 +151,23 @@ describe('buildUserRows', () => {
     assert.equal(rows.find((r) => r.id === 'e')?.hasAuthAccount, false);
   });
 
+  /** Chantier 28, D13 : l'adresse d'un compte gardé, en entier, sur sa ligne. */
+  it('porte l\'adresse d\'un compte gardé, et rien pour un anonyme', () => {
+    const rows = buildUserRows(
+      [profile('g'), profile('a')],
+      [],
+      new Set(['g', 'a']),
+      new Map([['g', 'popy@recette.test']]),
+    );
+    assert.equal(rows.find((r) => r.id === 'g')?.keptEmail, 'popy@recette.test');
+    assert.equal(rows.find((r) => r.id === 'a')?.keptEmail, null);
+  });
+
+  it('ne suppose aucune adresse quand on ne lui en donne pas', () => {
+    const rows = buildUserRows([profile('a')], [], new Set(['a']));
+    assert.equal(rows[0]?.keptEmail, null);
+  });
+
   /**
    * Tant que l'app instrumentée n'est pas déployée, `last_seen_at` est nul
    * pour tout le monde. Sans le repli sur la date d'inscription, la liste
@@ -228,7 +245,19 @@ describe('filterUsers', () => {
     ],
     [],
     new Set(),
+    new Map([['2', 'Hifus.Dark@Exemple.fr']]),
   );
+
+  /**
+   * Chantier 28 : une demande de suppression arrive par mail, depuis
+   * l'adresse qui garde le compte. Elle doit suffire à le retrouver.
+   */
+  it('cherche aussi dans l\'adresse d\'un compte gardé, sans tenir compte de la casse', () => {
+    assert.deepEqual(
+      filterUsers(rows, 'hifus.dark@exemple').map((r) => r.id),
+      ['2'],
+    );
+  });
 
   it('rend tout sur une recherche vide', () => {
     assert.equal(filterUsers(rows, '').length, 3);
