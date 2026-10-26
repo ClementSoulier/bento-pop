@@ -9,4 +9,5 @@ export type {
   ReportReason,
   ReportTargetKind,
   BentoCommentRow,
+  BentoWhyRow,
 } from '@bento-pop/supabase-mobile/types';

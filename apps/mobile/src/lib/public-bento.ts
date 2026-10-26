@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { BentoItems } from '@/components/bento';
 import type { Database } from '@/supabase/types';
 import { PSEUDO_REGEX, escapeLikePattern, pickExactPseudo } from './pseudo-match';
+import type { BentoWhys, PublicWhy } from './whys';
 
 /**
  * Chargement de la page publique d'un compte, `app/u/[pseudo].tsx`, et de
@@ -81,7 +82,8 @@ const PUBLIC_BENTO_SELECT = `
     bento_items (
       category_id,
       bento_categories ( key ),
-      items ( id, title, subtitle, image_url, image_credit )
+      items ( id, title, subtitle, image_url, image_credit ),
+      bento_whys ( id, body )
     )
   )
 ` as const;
@@ -131,6 +133,13 @@ type RawPublicBento = {
           image_url: string | null;
           image_credit: string | null;
         } | null;
+        /**
+         * Le pourquoi de la case, chantier 12, si la règle de lecture le
+         * laisse voir. Objet ou tableau selon que PostgREST lit la clé unique
+         * de `bento_whys` comme un un-à-un : `publicWhy` prend les deux.
+         * L'identifiant sert au signalement.
+         */
+        bento_whys?: { id: string; body: string } | { id: string; body: string }[] | null;
       }[]
     | null;
 };
@@ -167,6 +176,11 @@ export type PublicBento = {
   cases: readonly CaseMeta[];
   /** Le titre de l'édition composée, ou `null` pour un bento libre. */
   editionTitle: string | null;
+  /**
+   * Les pourquoi visibles, par clé de case (chantier 12, D1). Ceux d'une
+   * case dont l'item est masqué ne viennent pas : la case est vide.
+   */
+  whys: BentoWhys;
 };
 
 /** De quoi lister les autres bentos d'un compte sans charger leurs cases. */
@@ -209,6 +223,14 @@ export type PublicBentoResult = {
 export function bentoRows(raw: PublicBentoRow['bentos']): RawPublicBento[] {
   if (raw === null || raw === undefined) return [];
   return Array.isArray(raw) ? raw : [raw];
+}
+
+/** Le pourquoi embarqué, quelle que soit la forme de la relation. */
+export function publicWhy(
+  raw: NonNullable<RawPublicBento['bento_items']>[number]['bento_whys'],
+): PublicWhy | null {
+  const one = Array.isArray(raw) ? raw[0] : raw;
+  return one?.id && one.body?.trim() ? { id: one.id, body: one.body } : null;
 }
 
 /**
@@ -276,6 +298,7 @@ export function mapPublicBento(
     }));
 
   const slots: BentoItems = {};
+  const whys: Partial<Record<string, PublicWhy>> = {};
   for (const link of chosen.bento_items ?? []) {
     // La clé jointe d'abord : une case d'édition n'est pas dans la table des
     // six, et la deviner reviendrait à poser un item dans la mauvaise case.
@@ -289,6 +312,8 @@ export function mapPublicBento(
       imageCredit: item.image_credit ?? undefined,
       paletteKey: paletteKeyForItem(item.id),
     };
+    const why = publicWhy(link.bento_whys);
+    if (why) whys[cat] = why;
   }
   if (Object.keys(slots).length === 0) return { pseudo: row.pseudo, bento: null, others };
 
@@ -320,6 +345,7 @@ export function mapPublicBento(
       isFeatured: chosen.is_featured,
       publishedAt: chosen.published_at,
       slots,
+      whys,
     },
   };
 }

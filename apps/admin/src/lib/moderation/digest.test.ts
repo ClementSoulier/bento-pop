@@ -71,6 +71,14 @@ describe("le mail à l'équipe (§5.8)", () => {
     assert.match(mail.text, /Ouvrir la modération : https:\/\/bo\.example\.test\/reports/);
   });
 
+  it('nomme un pourquoi signalé, chantier 12', () => {
+    const mail = composeDigest(
+      [report({ target_kind: 'why', target_pseudo: 'carla', reason_code: 'hate', target_text: 'Un pourquoi' })],
+      { adminUrl: 'https://bo.example.test' },
+    );
+    assert.match(mail.text, /• Pourquoi de @carla · .+ · « Un pourquoi »/);
+  });
+
   it('au singulier pour un seul', () => {
     assert.equal(
       composeDigest([report()], { adminUrl: 'https://bo.example.test' }).subject,

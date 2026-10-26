@@ -603,6 +603,43 @@ describe('profil', () => {
 });
 
 /**
+ * Chantier 12 : le pourquoi des cases, sous la boîte et « Compose le tien »,
+ * rendu au serveur. Une page sans pourquoi ne change pas, et une base d'avant
+ * la migration rend la page comme avant.
+ */
+describe('le pourquoi par case', () => {
+  it('montre les pourquoi sous la boîte, dans le HTML', async () => {
+    const res = await get('/u/avec.pourquoi');
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.ok(html.includes('Pourquoi ces choix'), 'section absente');
+    assert.ok(html.includes('Le premier film vu au cinéma avec mon père.'));
+    assert.ok(html.includes('Le refrain de mes vacances 🎶'));
+    // Après l'appel à l'action, comme les crédits.
+    assert.ok(html.indexOf('Pourquoi ces choix') > html.indexOf('Compose le tien'));
+    assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1, 'il faut exactement un <h1>');
+    assert.ok(gzipSync(Buffer.from(html)).byteLength < 60 * 1024);
+  });
+
+  it('ne change rien à un bento sans pourquoi', async () => {
+    assert.ok(!(await (await get('/u/keremasan')).text()).includes('Pourquoi ces choix'));
+  });
+
+  it('rend la page quand la base ne connaît pas encore les pourquoi (avant sa migration)', async () => {
+    await fetch(`${STUB_URL}/__avant-12`);
+    try {
+      const res = await get('/u/avant.douze');
+      assert.equal(res.status, 200);
+      const html = await res.text();
+      assert.ok(html.includes('Interstellar'));
+      assert.ok(!html.includes('Pourquoi ces choix'));
+    } finally {
+      await resetStub();
+    }
+  });
+});
+
+/**
  * Chantier 19 : les épisodes que l'app range dans « La table ». Le bouchon
  * rend aussi un épisode programmé et un épisode sans date, sans filtrer :
  * c'est à la route de les écarter, et elle doit aussi demander à la base le

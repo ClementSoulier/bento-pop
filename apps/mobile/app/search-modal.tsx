@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   PixelRatio,
   Platform,
@@ -46,6 +47,7 @@ import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
 import { MAIN_CASE_SET } from '@/lib/case-set';
 import { useBento } from '@/state/bento';
+import { useOwnWhys } from '@/state/own-whys';
 import { useSession } from '@/state/session';
 import { searchItems, submitItem, type ItemSearchResult } from '@/lib/items';
 import { offerPushAfterProposal } from '@/lib/push-runtime';
@@ -242,6 +244,39 @@ export default function SearchModal() {
   };
 
   /**
+   * Chantier 12 (D7) : remplacer ou vider une case expliquée efface son
+   * pourquoi, qui expliquait l'autre item. La question d'abord, seulement
+   * quand la case en a un ; `true` quand on peut continuer.
+   */
+  const confirmWhyLoss = (verb: 'replace' | 'clear'): Promise<boolean> => {
+    const bentoId = useBento.getState().current?.id;
+    if (!currentSlot?.itemId || !useOwnWhys.getState().has(bentoId, category)) {
+      return Promise.resolve(true);
+    }
+    const title = cleanTitle(currentSlot.title, 30);
+    return new Promise((resolve) => {
+      Alert.alert(
+        verb === 'replace' ? `Remplacer « ${title} » ?` : `Vider la case « ${title} » ?`,
+        'Son pourquoi sera effacé.',
+        [
+          { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: verb === 'replace' ? 'Remplacer' : 'Vider',
+            style: 'destructive',
+            onPress: () => resolve(true),
+          },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
+  };
+
+  /** Ce que la base vient d'effacer, effacé ici aussi. */
+  const forgetWhy = (bentoId: string | null) => {
+    if (bentoId) useOwnWhys.getState().put(bentoId, category, null);
+  };
+
+  /**
    * Un tap sur une tuile remplit la case et ferme la modale.
    *
    * Le double tap d'avant (sélectionner, puis « Choisir X » en bas) coûtait
@@ -274,6 +309,11 @@ export default function SearchModal() {
     tapFeedback();
 
     const previous = currentSlot ?? null;
+    const replacing = Boolean(previous?.itemId && previous.itemId !== item.id);
+    if (replacing && !(await confirmWhyLoss('replace'))) {
+      choosingRef.current = false;
+      return;
+    }
     // Posé avant l'écriture optimiste : le composer reprend le focus dès le
     // `router.back()` ci-dessous et relit le bento en base, où la nouvelle
     // case n'existe pas encore. Sans ce verrou, l'hydratation écraserait la
@@ -296,6 +336,7 @@ export default function SearchModal() {
       // elle partira en base à la publication. Chantier 9.
       const bentoId = userId ? await editableBentoId(userId) : null;
       if (bentoId && caseId !== null) await setBentoSlot(bentoId, caseId, item.id);
+      if (replacing) forgetWhy(bentoId);
       slotFilledFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
         variant: 'success',
@@ -338,6 +379,7 @@ export default function SearchModal() {
     if (!userId) return;
     const title = query.trim();
     if (title.length < 2) return;
+    if (!(await confirmWhyLoss('replace'))) return;
 
     setSubmitting(true);
     try {
@@ -345,6 +387,7 @@ export default function SearchModal() {
       const itemId = await submitItem(caseId, title);
       const bentoId = await editableBentoId(userId);
       if (bentoId && caseId !== null) await setBentoSlot(bentoId, caseId, itemId);
+      forgetWhy(bentoId);
       setSlot(category, {
         title,
         subtitle: undefined,
@@ -374,11 +417,13 @@ export default function SearchModal() {
 
   const onClear = async () => {
     if (!userId || !currentSlot) return;
+    if (!(await confirmWhyLoss('clear'))) return;
     const snapshot = currentSlot;
     setSubmitting(true);
     try {
       const bentoId = await editableBentoId(userId);
       if (bentoId && caseId !== null) await clearBentoSlot(bentoId, caseId);
+      forgetWhy(bentoId);
       clearSlot(category);
       router.back();
       showToast('Case vidée', {

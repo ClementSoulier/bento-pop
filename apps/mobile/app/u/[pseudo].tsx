@@ -51,7 +51,6 @@ import { publicPageState } from '@/lib/public-page-state';
 import { shareBentoImage } from '@/lib/share-image';
 import { useIsOffline } from '@/lib/use-is-offline';
 import { useOfflineInset } from '@/lib/use-offline-inset';
-import { userErrorMessage } from '@/lib/user-error-message';
 import { bentoVisitsQueryOptions, withVisits } from '@/lib/visits';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
@@ -62,6 +61,7 @@ import { accountBentosQueryOptions } from '@/lib/account-bentos';
 import { bentoRoute } from '@/lib/bento-address';
 import { accountBentoTitle, type FeedBento } from '@/lib/feed';
 import { FeedPost } from '@/components/feed/FeedPost';
+import { WhySection } from '@/components/whys/WhySection';
 import { PencilIcon } from '@/components/TabIcons';
 import { feedBoxWidth, feedScale, feedSideInset } from '@/components/feed/layout';
 
@@ -909,6 +909,17 @@ function FoundPage({
             readOnly
           />
         </View>
+        {/* Chantier 12 (D1) : sous la boîte, que le budget garde entière. */}
+        <WhySection
+          bentoId={bento.id}
+          pseudo={bento.pseudo}
+          slug={bento.isPrimary ? null : bento.slug}
+          cases={bento.cases}
+          slots={bento.slots}
+          whys={bento.whys}
+          isOwn={isOwn}
+          sideInset={sideInset}
+        />
         <AccountBentoList bentos={listed} isOwn={isOwn} />
       </ScrollView>
 

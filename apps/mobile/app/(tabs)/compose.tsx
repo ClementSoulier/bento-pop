@@ -21,6 +21,7 @@ import { ProgressBar } from '@/components/bento/ProgressBar';
 import { INK_MUTED, SHADOWS, StampButton, YellowBg, useToast } from '@/components/primitives';
 import { failureFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
+import { useOwnWhys } from '@/state/own-whys';
 import { useSession } from '@/state/session';
 import { usePushTarget } from '@/state/push-target';
 import {
@@ -179,6 +180,17 @@ export default function ComposeTab() {
       });
       return () => abonnement.remove();
     }, [refreshProfile]),
+  );
+
+  // Chantier 12 (D7) : les pourquoi du bento composé, pour que remplacer ou
+  // vider une case expliquée le demande d'abord. Lus à chaque retour, comme
+  // le bento ; rien sans profil, le brouillon n'en ayant aucun.
+  const currentId = current?.id ?? null;
+  const withProfile = useSession((s) => s.profile != null);
+  useFocusEffect(
+    useCallback(() => {
+      if (currentId && withProfile) void useOwnWhys.getState().load(currentId);
+    }, [currentId, withProfile]),
   );
 
   // Chantier 17, lot 4 : le tap d'une notification, suivi une fois le bento

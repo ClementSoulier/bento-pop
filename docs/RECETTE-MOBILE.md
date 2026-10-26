@@ -1339,6 +1339,70 @@ copie. Pour vérifier qu'un geste fait sur l'un est suivi par l'autre, lire
 deux apps (manifeste de `RCTAsyncLocalStorage_V1`), après une relance de
 chacune. C'est ce qui a montré un déblocage défait par l'autre téléphone.
 
+### `idb` ne tape ni accent, et le clavier américain corrige les mots
+
+Chantier 12. `idb ui text` n'a pas de touche pour « ê » (`No keycode found`),
+et le clavier américain posé contre l'AZERTY corrige ce qu'il reçoit :
+« quel connard ce refrain » arrivait « Quel Conrad cue refrain », que le
+filtre laissait passer. Pour un texte exact, passer par le presse-papiers du
+simulateur, puis un appui long sur le champ et « Paste » :
+
+```bash
+printf '%s' "Le rêve dans le rêve 🌀" | LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
+  xcrun simctl --set <dossier> pbcopy <UDID>
+```
+
+Sans la locale UTF-8, le texte arrive lu en MacRoman, « r√™ve ». Coller dans
+un champ vide : effacer demande de poser le curseur au coin bas droit du
+champ, puis des retours arrière ; fermer l'écran sans enregistrer vide tout.
+
+### Changer la taille du texte d'Android, écran ouvert, redémarre l'activité
+
+`adb shell settings put system font_scale 2.0` relance l'app, qui revient au
+compositeur et perd un champ non enregistré. iOS change la taille à chaud.
+Poser la taille avant d'ouvrir l'écran à recetter, puis la rendre à 1,0.
+
+### Le lecteur d'écran d'iOS lit de haut en bas
+
+Un bouton dont le cadre remonte au-dessus de la ligne qu'il sert, par un
+`marginTop` négatif, s'annonce avant elle : « Options du pourquoi » passait
+avant le pourquoi. Aligner les cadres, et placer l'icône dans le sien.
+
+### Comparer deux versions au pixel
+
+La même page avec le JavaScript de la branche et celui d'avant : un Metro
+depuis l'arbre d'avant sur un autre port, l'app relancée par
+`-RCT_jsLocation 127.0.0.1:<port>`, les captures recadrées sous la barre
+d'état, où l'heure change, puis `PIL.ImageChops.difference(a, b).getbbox()`,
+`None` quand rien ne diffère. Éteindre `show_visits` du compte : le compteur
+change à chaque affichage. Le nombre de modules du bundle, dans le journal de
+Metro, dit quelle version l'app a chargée.
+
+### Le battement du back-office veut un corps
+
+`POST /api/push/tick` répond 400 sans `{"type":"tick"}` en JSON, jeton ou
+non.
+
+### La purge de la landing, en local
+
+Le mode développement ne garde aucun cache : `next build` puis `next start`,
+contre la pile à part, `NEXT_PUBLIC_MOBILE_SUPABASE_URL` se figeant au
+build. Le coffre de la pile reçoit `landing_base_url`,
+`http://host.docker.internal:<port>`, et `landing_revalidate_token`, le
+`REVALIDATE_TOKEN` de la landing. `x-nextjs-cache: MISS` à la lecture qui
+suit une écriture prouve la purge, `HIT` à la suivante. Un `NEXT_DIST_DIR`
+neuf ajoute son dossier de types à l'`include` du `tsconfig.json` : construire
+dans `.next-e2e`, déjà listé.
+
+### Le bouchon de l'e2e de la landing rend ce que rend PostgREST
+
+`edition_id` manquait aux bentos du bouchon, que PostgREST rend toujours,
+nul pour un bento libre : la landing lisait chacun comme une édition sans
+cases, et depuis le chantier 13 l'e2e dessinait des boîtes vides sans
+qu'aucun test le voie, les titres passant par la description. Relevé au
+chantier 12, quand la section des pourquoi n'a trouvé aucune case. Un champ
+que la requête demande se pose dans le bouchon, même nul.
+
 ## 5. Après la recette
 
 ```bash

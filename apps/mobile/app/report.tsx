@@ -30,17 +30,19 @@ import type { ReportReason, ReportTargetKind } from '@/supabase/types';
 
 const INK = '#0a0a0a';
 
-type Kind = Extract<ReportTargetKind, 'comment' | 'account' | 'bento'>;
+type Kind = Extract<ReportTargetKind, 'comment' | 'account' | 'bento' | 'why'>;
 
 const TITLES: Record<Kind, (pseudo: string) => string> = {
   comment: (pseudo) => `Signaler le commentaire de @${pseudo}`,
   account: (pseudo) => `Signaler @${pseudo}`,
   bento: (pseudo) => `Signaler le bento de @${pseudo}`,
+  why: (pseudo) => `Signaler un pourquoi de @${pseudo}`,
 };
 
 /**
  * « Signaler », chantier 22 (§5.4, D10) : un commentaire, un compte ou un
- * bento, un motif parmi six, un détail facultatif. Une alerte système ne
+ * bento, et depuis le chantier 12 un pourquoi (D8), un motif parmi six, un
+ * détail facultatif. Une alerte système ne
  * suffit pas : Android n'y affiche que trois boutons.
  *
  * Ouvert par `router.push('/report', { kind, id, pseudo })`. La cible se lit
@@ -53,7 +55,7 @@ const TITLES: Record<Kind, (pseudo: string) => string> = {
  */
 export default function ReportScreen() {
   const params = useLocalSearchParams<{ kind: string; id: string; pseudo?: string }>();
-  const kind = (['comment', 'account', 'bento'] as const).find((k) => k === params.kind) ?? 'bento';
+  const kind = (['comment', 'account', 'bento', 'why'] as const).find((k) => k === params.kind) ?? 'bento';
   const { fontScale } = useWindowDimensions();
   const [sent, setSent] = useState(false);
   const [reason, setReason] = useState<ReportReason | null>(null);

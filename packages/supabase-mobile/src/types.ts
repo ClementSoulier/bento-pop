@@ -31,9 +31,23 @@ export type ReportReason = 'hate' | 'harassment' | 'sexual' | 'violence' | 'spam
 
 /**
  * Ce qu'on signale. `pseudo` ne vient plus que des signalements d'avant le
- * chantier 16 ; `comment` et `account` du chantier 22.
+ * chantier 16 ; `comment` et `account` du chantier 22 ; `why` du 12.
  */
-export type ReportTargetKind = 'bento' | 'pseudo' | 'comment' | 'account';
+export type ReportTargetKind = 'bento' | 'pseudo' | 'comment' | 'account' | 'why';
+
+/**
+ * Le pourquoi d'une case tel que `set_bento_why` et `my_bento_whys` le
+ * rendent à son propriétaire, chantier 12. `hidden_reason` n'est rendu qu'à
+ * lui (D8).
+ */
+export type BentoWhyRow = {
+  /** La clé de la case : `film`, ou `ed3_2` pour une édition. */
+  case_key: string;
+  body: string;
+  status: 'visible' | 'hidden';
+  hidden_reason: string | null;
+  updated_at: string;
+};
 
 /**
  * Un commentaire tel que `list_bento_comments` et `post_comment` le rendent,
@@ -474,7 +488,9 @@ export type Database = {
           target_user_id: string | null;
           reason_code: ReportReason | null;
           details: string | null;
-          /** Le commentaire tel qu'il était au signalement. */
+          /** Chantier 12 (D8) : le pourquoi visé, nul s'il a été effacé. */
+          target_why_id: string | null;
+          /** Le commentaire ou le pourquoi tel qu'il était au signalement. */
           target_text: string | null;
           /** Posé par le back-office quand un mail a prévenu l'équipe (D11). */
           alerted_at: string | null;
@@ -520,6 +536,11 @@ export type Database = {
            * refuse d'en écrire, sans nouvelle version. Chantier 22, D15.
            */
           comments_enabled: boolean;
+          /**
+           * Éteint, l'app cache les pourquoi, la base refuse d'en écrire et
+           * n'en rend plus aucun, web compris. Chantier 12, D10.
+           */
+          whys_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -532,6 +553,7 @@ export type Database = {
           android_min_version?: string | null;
           android_latest_version?: string | null;
           comments_enabled?: boolean;
+          whys_enabled?: boolean;
         };
         Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
         Relationships: [];
@@ -590,6 +612,46 @@ export type Database = {
         };
         Insert: { term: string; kind?: 'word' | 'stem'; label: string; is_active?: boolean };
         Update: Partial<Database['public']['Tables']['blocked_terms']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Chantier 12 : le pourquoi d'une case. Les clients en lisent quelques
+       * colonnes, des pourquoi visibles seulement, et n'y écrivent que par
+       * `set_bento_why` ; le back-office masque par la clé de service.
+       */
+      bento_whys: {
+        Row: {
+          id: string;
+          bento_id: string;
+          category_id: number;
+          body: string;
+          status: 'visible' | 'hidden';
+          hidden_reason: string | null;
+          hidden_at: string | null;
+          hidden_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          bento_id: string;
+          category_id: number;
+          body: string;
+          status?: 'visible' | 'hidden';
+          hidden_reason?: string | null;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['bento_whys']['Insert']>;
+        Relationships: [];
+      };
+      /** Chantier 12 (D18) : le journal du rythme, sans accès client. */
+      bento_why_writes: {
+        Row: { user_id: string; written_at: string };
+        Insert: { user_id: string; written_at?: string };
+        Update: Partial<Database['public']['Tables']['bento_why_writes']['Insert']>;
         Relationships: [];
       };
       user_deletions: {
@@ -1051,14 +1113,36 @@ export type Database = {
         Args: { p_blocked: string[] };
         Returns: Array<{ blocked_id: string; pseudo: string | null }>;
       };
-      /** Chantier 22 (D21). */
+      /** Chantiers 22 (D21) et 12 (D13). */
       my_social_export: {
         Args: Record<string, never>;
         Returns: {
           comments: Array<{ bento_id: string; body: string; status: string; created_at: string }>;
           likes: Array<{ bento_id: string; created_at: string }>;
           blocks: Array<{ blocked_id: string; created_at: string }>;
+          whys: Array<{
+            bento_id: string;
+            /** La clé de la case : `film`, ou `ed3_2` pour une édition. */
+            case: string;
+            body: string;
+            status: string;
+            hidden_reason: string | null;
+            updated_at: string;
+          }>;
         };
+      };
+      /**
+       * Chantier 12 (D2, D3, D5, D18) : écrit, remplace ou, vide, efface le
+       * pourquoi d'une case de son bento. Rien rendu quand il s'efface.
+       */
+      set_bento_why: {
+        Args: { p_bento: string; p_case: string; p_body: string };
+        Returns: BentoWhyRow[];
+      };
+      /** Chantier 12 (D8) : les pourquoi de son bento, masqués compris. */
+      my_bento_whys: {
+        Args: { p_bento: string };
+        Returns: BentoWhyRow[];
       };
       /**
        * Items présents dans **au moins deux** bentos publiés. Sert de bloc

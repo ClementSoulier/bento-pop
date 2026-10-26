@@ -48,8 +48,9 @@ export async function exportUserData(userId: string): Promise<void> {
   // 4. L'adresse qui garde le compte, chantier 28 (D14), lue dans la session :
   // elle vit dans `auth.users`, que le client ne lit pas autrement.
   const { data: auth } = await supabase.auth.getSession();
-  // 5. Ses commentaires, ses likes et ses blocages, chantier 22 (D21) : les
-  // tables n'ont pas d'accès client, la fonction ne rend que les siens.
+  // 5. Ses commentaires, ses likes et ses blocages, chantier 22 (D21), et
+  // ses pourquoi, chantier 12 (D13), masqués compris : la fonction ne rend
+  // que les siens.
   const { data: social } = await supabase.rpc('my_social_export');
 
   const payload = {
@@ -57,8 +58,8 @@ export async function exportUserData(userId: string): Promise<void> {
     // 2 : la clé `bento`, scalaire, devient `bentos`, un tableau. Un lecteur
     // de l'ancien format le verrait sinon comme un export sans bento. La clé
     // `pseudo_history`, ajoutée au chantier 21, ni `account`, au chantier 28,
-    // ni `comments`, `likes` et `blocked_accounts`, au chantier 22, ne
-    // changent rien pour lui.
+    // ni `comments`, `likes` et `blocked_accounts`, au chantier 22, ni
+    // `whys`, au chantier 12, ne changent rien pour lui.
     schema_version: 2,
     profile,
     account: { email: keptEmail(auth.session?.user) },
@@ -67,6 +68,7 @@ export async function exportUserData(userId: string): Promise<void> {
     comments: social?.comments ?? [],
     likes: social?.likes ?? [],
     blocked_accounts: social?.blocks ?? [],
+    whys: social?.whys ?? [],
   };
 
   const fileName = `bento-pop-export-${(profile?.pseudo ?? 'user').toLowerCase()}-${

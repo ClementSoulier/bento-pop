@@ -18,6 +18,7 @@ const BENTO: PublicBento = {
   slots: {},
   cases: MAIN_CASES,
   editionTitle: null,
+  whys: {},
 };
 
 const input = (overrides: Partial<PublicPageInput> = {}): PublicPageInput => ({

@@ -77,7 +77,17 @@ export type RawBentoItemRow = {
     readonly image_url: string | null;
     readonly image_credit: string | null;
   } | null;
+  /**
+   * Le pourquoi de la case, chantier 12, si la règle de lecture le laisse
+   * voir : visible, bento publié, item validé. Objet ou tableau selon que
+   * PostgREST lit la clé unique de `bento_whys` comme un un-à-un. Absent sur
+   * une base d'avant sa migration.
+   */
+  readonly bento_whys?: { readonly body: string } | readonly { readonly body: string }[] | null;
 };
+
+/** Les pourquoi d'un bento, par clé de case. Chantier 12. */
+export type BentoWhys = Partial<Record<string, string>>;
 
 /**
  * Construit les cases à partir des lignes renvoyées par Supabase.
@@ -122,6 +132,24 @@ export function mapBentoItems(rows: readonly RawBentoItemRow[]): BentoSlots {
   }
 
   return slots as BentoSlots;
+}
+
+/**
+ * Les pourquoi des cases, par clé de case (chantier 12, D4). Mêmes règles
+ * que `mapBentoItems` : une case sans item ou d'une catégorie inconnue ne
+ * garde pas le sien, et la première ligne d'une case gagne.
+ */
+export function mapBentoWhys(rows: readonly RawBentoItemRow[]): BentoWhys {
+  const whys: Record<string, string> = {};
+  for (const row of rows) {
+    const category = row.bento_categories?.key ?? CATEGORY_BY_ID[row.category_id];
+    if (!category || !row.items || whys[category]) continue;
+    const raw = row.bento_whys;
+    const one = Array.isArray(raw) ? raw[0] : raw;
+    const body = (one as { body?: string } | null | undefined)?.body?.trim();
+    if (body) whys[category] = body;
+  }
+  return whys;
 }
 
 /** Nombre de cases effectivement remplies. */
