@@ -126,10 +126,29 @@ export default function ConfidentialitePage() {
             s&apos;appliquent alors.
           </li>
           <li>
+            <strong>Commentaires</strong> : les commentaires qu&apos;un
+            utilisateur écrit sous les bentos, avec leur date et son
+            pseudonyme, visibles dans l&apos;app. Il peut supprimer les siens,
+            et le propriétaire d&apos;un bento ceux de son bento. L&apos;équipe
+            peut en masquer un, avec un motif que seul son auteur voit.
+          </li>
+          <li>
+            <strong>J&apos;aime</strong> : les bentos qu&apos;un utilisateur
+            aime. Le nombre est visible des autres, la liste des personnes
+            non.
+          </li>
+          <li>
+            <strong>Comptes bloqués</strong> : les comptes qu&apos;un
+            utilisateur bloque, rangés avec son compte pour le suivre
+            d&apos;un appareil à l&apos;autre. Ni les autres ni le compte
+            bloqué ne le voient.
+          </li>
+          <li>
             <strong>Signalements</strong> (table <code>reports</code>) : si
-            l&apos;utilisateur signale un bento ou un pseudo, le motif éventuel
-            est conservé pour la modération. Le signalement est lié à
-            l&apos;identifiant anonyme du signaleur (jamais visible
+            l&apos;utilisateur signale un bento, un commentaire ou un compte,
+            le motif choisi, le détail éventuel et, pour un commentaire, une
+            copie de son texte, conservés pour la modération. Le signalement
+            est lié à l&apos;identifiant du signaleur (jamais visible
             publiquement).
           </li>
           <li>
@@ -193,9 +212,20 @@ export default function ConfidentialitePage() {
             compte).
           </li>
           <li>
-            <strong>Signalements</strong> : modération des contenus
-            utilisateurs (intérêt légitime — obligation Apple App Store
-            guideline 1.2).
+            <strong>Commentaires et j&apos;aime</strong> : exécution du
+            service de partage culturel (consentement, donné en écrivant ou en
+            aimant, et retiré en supprimant le commentaire, le j&apos;aime ou
+            son compte).
+          </li>
+          <li>
+            <strong>Comptes bloqués</strong> : protéger l&apos;utilisateur de
+            ceux qu&apos;il ne veut plus voir ni lire (intérêt légitime).
+          </li>
+          <li>
+            <strong>Signalements et modération</strong> : modération des
+            contenus utilisateurs (intérêt légitime, et obligations de la règle
+            1.2 de l&apos;App Store et du règlement européen sur les services
+            numériques).
           </li>
           <li>
             <strong>Logs serveur</strong> : sécurité et diagnostic (intérêt
@@ -225,13 +255,18 @@ export default function ConfidentialitePage() {
             Profil.
           </li>
           <li>
-            <strong>Signalements</strong> : 1 an après traitement par
-            l&apos;équipe modération, puis anonymisation du
-            <code>reporter_id</code>.
+            <strong>Commentaires, j&apos;aime et comptes bloqués</strong> :
+            tant que l&apos;utilisateur ne les retire pas ou ne supprime pas
+            son compte.
+          </li>
+          <li>
+            <strong>Signalements</strong>, et commentaires masqués par
+            l&apos;équipe : 1 an après leur traitement, puis effacés.
           </li>
           <li>Logs serveur : 30 jours.</li>
           <li>
-            Journaux d&apos;envoi des codes de connexion chez Resend : 30 jours.
+            Journaux d&apos;envoi chez Resend, codes de connexion et mails de
+            modération : 30 jours.
           </li>
           <li>Logs Supabase API : 7 jours.</li>
           <li>
@@ -260,8 +295,10 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Plus Five Five, Inc.</strong> (Resend, San Francisco,
             États-Unis) : envoi des codes de connexion par email, pour les
-            utilisateurs qui gardent leur compte. Resend reçoit l&apos;adresse
-            et le code. Le transfert hors de l&apos;Union européenne est
+            utilisateurs qui gardent leur compte, et des mails de modération :
+            à l&apos;équipe, et à l&apos;adresse d&apos;un compte gardé que
+            l&apos;équipe supprime, pour lui en donner le motif. Resend reçoit
+            l&apos;adresse et le message. Le transfert hors de l&apos;Union européenne est
             encadré par les clauses contractuelles types de la Commission
             européenne, prévues par son accord de traitement des données.
           </li>

@@ -13,7 +13,7 @@ export default function MentionsLegalesPage() {
     <LegalPage
       eyebrow="Information légale"
       title="Mentions légales"
-      updatedAt="11/05/2026"
+      updatedAt="26/10/2026"
     >
       <section>
         <h2>1. Éditeur du site et de l&apos;application</h2>
@@ -109,11 +109,32 @@ export default function MentionsLegalesPage() {
           publicité, et conçue à des fins de divertissement culturel.
         </p>
         <p>
-          <strong>Modération des contenus utilisateurs</strong> : conformément
-          aux règles des stores, tout pseudonyme ou bento contraire aux bonnes
-          mœurs, aux droits d&apos;autrui ou à l&apos;ordre public peut être
-          signalé via le bouton <em>« Signaler »</em> dans l&apos;application.
-          Notre équipe examine les signalements sous 24 heures.
+          <strong>Règles de la communauté</strong> : l&apos;application
+          accueille des pseudonymes, des bentos et des commentaires. Tolérance
+          zéro pour les contenus haineux, racistes, sexistes, homophobes,
+          transphobes, validistes ou discriminatoires ; le harcèlement, les
+          insultes et les menaces ; les contenus illégaux, sexuels non
+          consentis ou promouvant la violence ; l&apos;usurpation
+          d&apos;identité, le spam, les arnaques et la divulgation
+          d&apos;informations personnelles.
+        </p>
+        <p>
+          <strong>Modération</strong> : un filtre refuse avant publication les
+          injures d&apos;une liste et les liens. Tout bento, commentaire ou
+          compte contraire à ces règles, aux droits d&apos;autrui ou à
+          l&apos;ordre public peut être signalé via le bouton{' '}
+          <em>« Signaler »</em> de l&apos;application ; notre équipe examine
+          les signalements sous 24 heures. Elle peut masquer un commentaire,
+          dont l&apos;auteur voit alors le motif, et supprimer un compte qui
+          enfreint ces règles ; s&apos;il a gardé son compte, le motif lui est
+          envoyé à son adresse. Toute décision se conteste en écrivant à{' '}
+          <a href="mailto:contact@bento-pop.com">contact@bento-pop.com</a>.
+        </p>
+        <p>
+          <strong>Se protéger</strong> : chaque utilisateur peut bloquer un
+          compte, qui ne peut alors plus commenter ni aimer ses bentos,
+          refuser les commentaires sur ses bentos, ou y masquer les
+          j&apos;aime.
         </p>
         <p>
           <strong>Sources de données</strong> : films/séries via{' '}
