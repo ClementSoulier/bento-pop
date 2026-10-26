@@ -21,8 +21,11 @@
 > contre l'authentification locale, sept défauts introduits exprès et tous
 > attrapés, le défaut du lancement reproduit puis corrigé, la recette au
 > simulateur iPhone 17 Pro et iPhone SE et à l'émulateur Pixel 8, cinq défauts
-> trouvés et corrigés en chemin (§9). **Rien n'est appliqué en production** :
-> la mise en service attend Clément, §9.6.
+> trouvés et corrigés en chemin (§9). **Mis en service le même jour par
+> Clément** : Resend et son domaine `auth.bento-pop.com`, l'authentification
+> de « My Bento Pop », et la migration, appliquée puis contrôlée en lecture
+> (§9.6). Restent la fusion de la PR #98 et le redéploiement de la landing et
+> du back-office.
 >
 > Première des quatre fondations de la roadmap produit du 15 septembre, placée
 > avant le chantier 22. Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md)
@@ -501,8 +504,9 @@ Cinq lots, chacun validé par Clément avant le suivant.
 ## 9. Livraison
 
 Fait le 26 octobre 2026, en cinq lots enchaînés à la demande de Clément, sur
-`feat/ux-28-compte-recuperable`. Rien n'est appliqué en production : la mise
-en service attend Clément (§9.6).
+`feat/ux-28-compte-recuperable`, PR #98. Mis en service le même jour par
+Clément, migration comprise (§9.6) ; la landing et le back-office attendent
+la fusion.
 
 ### 9.1 Lot 1 · La base et l'authentification locale
 
@@ -597,23 +601,37 @@ en service attend Clément (§9.6).
 ### 9.6 La mise en service, par Clément
 
 Dans cet ordre, chaque étape guidée pas à pas ; l'agent ne voit ni ne saisit
-aucune clé, aucun mot de passe.
+aucune clé, aucun mot de passe. **Les trois premières faites par Clément le
+26 octobre 2026.**
 
-1. **Resend** : un compte sur le plan gratuit ; le domaine d'envoi
+1. ✅ **Resend** : un compte sur le plan gratuit ; le domaine d'envoi
    `auth.bento-pop.com` ; ses enregistrements DNS posés chez l'hébergeur de
    `bento-pop.com`, jusqu'à « Verified » ; une clé d'envoi limitée à ce
-   domaine.
-2. **« My Bento Pop »** (`ggjgktbcqumfxrixcdyx`), Authentication : SMTP
+   domaine. Les DNS publics le confirment, relus le 26 octobre : la clé DKIM
+   de Resend sur `resend._domainkey.auth.bento-pop.com`, le MX de retour et
+   le SPF sur `send.auth.bento-pop.com`, et la règle DMARC de
+   `bento-pop.com`, `p=none`, qui suffit à un sous-domaine d'envoi.
+2. ✅ **« My Bento Pop »** (`ggjgktbcqumfxrixcdyx`), Authentication : SMTP
    personnalisé, `smtp.resend.com`, port 465, utilisateur `resend`, la clé
    comme mot de passe, expéditeur `code@auth.bento-pop.com`, nom
    « Mon Bento Pop » ; « Confirm email » allumé ; code de 6 chiffres valable
    3 600 secondes ; les modèles « Change Email Address » et « Magic Link »,
-   sujets et corps de `supabase/templates/` ; 30 envois par heure.
-3. **La migration**, `20261026100000_delete_own_account.sql`, dans l'éditeur
+   sujets et corps de `supabase/templates/` ; 30 envois par heure. Ces
+   réglages ne se lisent que dans le tableau de bord, et aucun envoi d'essai
+   ne se fait sans écrire en production : le premier vrai mail partira à la
+   recette du chantier 29.
+3. ✅ **La migration**, `20261026100000_delete_own_account.sql`, dans l'éditeur
    SQL, puis les contrôles en lecture de
-   `scripts/check-delete-own-account.sql`.
-4. **La landing et le back-office** redéployés sur Coolify, après la fusion.
-5. **Les fiches de confidentialité** de l'App Store et de Google Play, à la
+   `scripts/check-delete-own-account.sql`, tous passés : une fonction,
+   commentée, en `security definer`, propriétaire `postgres`,
+   `search_path=""` ; son exécution refusée à `anon` et à `public`, permise à
+   `authenticated` ; 113 comptes, tous anonymes, 64 profils, 53 bentos dont
+   28 publiés et 20 entrées au registre des suppressions, inchangés ; la
+   règle `users_delete_own`, par laquelle la 1.1 et la 0.1.0 suppriment, en
+   place. Aucune donnée touchée.
+4. ⬜ **La landing et le back-office** redéployés sur Coolify, après la
+   fusion : le point 10 de la DoD.
+5. ⬜ **Les fiches de confidentialité** de l'App Store et de Google Play, à la
    sortie store unique : l'adresse email, liée à l'identité, pour le
    fonctionnement de l'app. Versées à la liste du chantier 29.
 
@@ -621,7 +639,8 @@ aucune clé, aucun mot de passe.
 
 ## 10. Definition of Done
 
-État au 26 octobre 2026 : 10 sur 12, les deux derniers à la mise en service.
+État au 26 octobre 2026 : 11 sur 12, le point 10 attendant la fusion et le
+redéploiement de la landing.
 
 1. ✅ Garder son compte ne change pas son identifiant, vérifié en base :
    contrôles 1 de `check-account.mjs`, recette aux trois appareils.
@@ -645,8 +664,9 @@ aucune clé, aucun mot de passe.
 10. ⬜ La politique de confidentialité et la page de suppression à jour, **en
     production** : écrites, la landing à redéployer après la fusion.
 11. ✅ La recette de §7.2 aux trois appareils, §9.3 et §9.5.
-12. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
-    rejouée en local.
+12. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
+    rejouée en local : appliquée par Clément le 26 octobre, contrôlée en
+    lecture, §9.6.
 
 ---
 
