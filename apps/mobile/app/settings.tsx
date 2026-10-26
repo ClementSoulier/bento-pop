@@ -308,7 +308,8 @@ export default function SettingsScreen() {
                   color: INK_MUTED,
                 }}
               >
-                Leurs bentos ne s&apos;affichent ni dans « La table » ni dans la recherche.
+                Leurs bentos ne s&apos;affichent ni dans « La table » ni dans la recherche, et ils
+                ne peuvent plus commenter ni aimer les tiens.
               </Text>
             </View>
           ) : null}
@@ -323,7 +324,10 @@ export default function SettingsScreen() {
               <View style={{ marginBottom: 8, gap: 8 }}>
                 <Text
                   allowFontScaling={false}
-                  style={{ ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 14, 20), fontWeight: '600' }}
+                  style={{
+                    ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 14, 20),
+                    fontWeight: '600',
+                  }}
                 >
                   Compte gardé avec {maskEmail(kept)}
                 </Text>
@@ -334,14 +338,23 @@ export default function SettingsScreen() {
               </View>
             ) : (
               <View style={{ marginBottom: 8, gap: 8 }}>
-                <SettingsLink label="Garder mon compte" onPress={() => router.push('/account/keep')} />
+                <SettingsLink
+                  label="Garder mon compte"
+                  onPress={() => router.push('/account/keep')}
+                />
                 <Text
                   allowFontScaling={false}
-                  style={{ ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 11, 16), color: INK_MUTED }}
+                  style={{
+                    ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 11, 16),
+                    color: INK_MUTED,
+                  }}
                 >
                   Pour le retrouver sur un autre téléphone, ou après une réinstallation.
                 </Text>
-                <SettingsLink label="J'ai déjà un compte" onPress={() => router.push('/account/sign-in')} />
+                <SettingsLink
+                  label="J'ai déjà un compte"
+                  onPress={() => router.push('/account/sign-in')}
+                />
               </View>
             )}
 

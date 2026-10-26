@@ -4,10 +4,13 @@ import {
   NO_BLOCKED_ACCOUNTS,
   blockedIndex,
   isBlockedAccount,
+  mergeServerBlocks,
   migrateBlockedPseudos,
   parseBlockedEntries,
+  parsePendingBlocks,
   withBlocked,
   withCurrentPseudos,
+  withPendingBlock,
   withoutBlockedEntry,
 } from './blocked-accounts';
 
@@ -121,5 +124,61 @@ describe('parseBlockedEntries', () => {
     ]);
     assert.deepEqual(parseBlockedEntries('pas du json'), []);
     assert.deepEqual(parseBlockedEntries('{"pseudo":"seul"}'), []);
+  });
+});
+
+describe('la liste en base (chantier 22, D9)', () => {
+  it('fait foi pour les comptes, sous leur pseudo du moment', () => {
+    const local = [
+      { userId: 'u1', pseudo: 'ancien' },
+      { userId: 'u2', pseudo: 'debloque-ailleurs' },
+    ];
+    assert.deepEqual(mergeServerBlocks(local, [{ blocked_id: 'u1', pseudo: 'Nouveau' }]), [
+      { userId: 'u1', pseudo: 'nouveau' },
+    ]);
+  });
+
+  it('garde les entrées sans compte, que la base ne connaît pas', () => {
+    const local = [{ userId: null, pseudo: 'parti' }];
+    assert.deepEqual(mergeServerBlocks(local, []), local);
+  });
+
+  it('reprend le pseudo du téléphone pour un compte sans profil, et oublie celui qu\'on ne connaît pas', () => {
+    const local = [{ userId: 'u1', pseudo: 'alice' }];
+    assert.deepEqual(
+      mergeServerBlocks(local, [
+        { blocked_id: 'u1', pseudo: null },
+        { blocked_id: 'u9', pseudo: null },
+      ]),
+      [{ userId: 'u1', pseudo: 'alice' }],
+    );
+  });
+
+  it('applique par-dessus les gestes encore en attente', () => {
+    const local = [
+      { userId: 'u1', pseudo: 'alice' },
+      { userId: 'u3', pseudo: 'carole' },
+    ];
+    const merged = mergeServerBlocks(local, [{ blocked_id: 'u1', pseudo: 'alice' }], [
+      { userId: 'u1', on: false },
+      { userId: 'u3', on: true },
+    ]);
+    assert.deepEqual(merged, [{ userId: 'u3', pseudo: 'carole' }]);
+  });
+
+  it('ne garde que le dernier geste sur un compte', () => {
+    assert.deepEqual(
+      withPendingBlock([{ userId: 'u1', on: true }, { userId: 'u2', on: true }], { userId: 'u1', on: false }),
+      [
+        { userId: 'u2', on: true },
+        { userId: 'u1', on: false },
+      ],
+    );
+  });
+
+  it('lit les gestes en attente en tolérant tout', () => {
+    assert.deepEqual(parsePendingBlocks(null), []);
+    assert.deepEqual(parsePendingBlocks('pas du json'), []);
+    assert.deepEqual(parsePendingBlocks('[{"userId":"u1","on":true},{"userId":2},"x"]'), [{ userId: 'u1', on: true }]);
   });
 });

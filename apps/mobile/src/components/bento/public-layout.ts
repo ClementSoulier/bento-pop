@@ -1,5 +1,9 @@
 import { feedScale } from '@/components/feed/layout';
-import { CONTENT_MAX_FONT_MULTIPLIER, CONTROL_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
+import {
+  CONTENT_MAX_FONT_MULTIPLIER,
+  CONTROL_MAX_FONT_MULTIPLIER,
+  fontScaleFor,
+} from './font-scaling';
 import { GRID_WIDTH, gridBoxHeight, gridScaleForHeight } from './geometry';
 
 /**
@@ -205,7 +209,15 @@ export function publicScrollBottomInset(fontScale: number): number {
   return publicCtaBlockHeight(fontScale) + CTA_GAP;
 }
 
-/** Hauteur laissée à la boîte une fois la barre, l'en-tête et les boutons servis. */
+/**
+ * Hauteur laissée à la boîte une fois la barre, l'en-tête et les boutons servis.
+ *
+ * Le cœur et la bulle du chantier 22 n'y prennent rien : sur cette page, ils
+ * flanquent le Popy de l'en-tête, dans une bande que l'avatar laissait vide.
+ * Sous la boîte, comme dans le fil, ils coûtaient 44 pt, que le budget n'a
+ * pas : mesuré au modèle, la boîte d'un 17 Pro passait au plancher, 8 % sous
+ * celle du fil, et la page défilait encore de 1,5 pt.
+ */
 export function publicBoxAvailableHeight(metrics: PublicLayoutMetrics): number {
   return (
     metrics.height -

@@ -4,6 +4,10 @@ import { isAuthorizedPushCall } from '@/lib/push/auth';
 import { runTick } from '@/lib/push/pipeline';
 import { createPushRuntime } from '@/lib/push/runtime';
 import { noteTick } from '@/lib/push/store';
+import { parseRecipients } from '@/lib/moderation/digest';
+import { createMailer } from '@/lib/moderation/mailer';
+import { runModerationDigest } from '@/lib/moderation/run-digest';
+import { createSupabaseModerationStore } from '@/lib/moderation/store';
 
 /**
  * Le battement du travail planifié : `pg_cron` appelle `push_tick()` toutes
@@ -16,7 +20,8 @@ import { noteTick } from '@/lib/push/store';
  *
  * Après la réponse : le battement se note d'abord, c'est la preuve lue par le
  * contrôle de santé que toute la chaîne tourne ; puis l'annonce des éditions
- * et la relecture des accusés.
+ * et la relecture des accusés ; puis, chantier 22 (D11), le mail à l'équipe
+ * quand des signalements l'attendent, au plus un par heure.
  */
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +61,22 @@ export async function POST(req: NextRequest) {
     }
     const outcome = await runTick(runtime);
     console.info('[push] tick', JSON.stringify(outcome));
+    // À part : une panne des push ne retient pas la modération, ni l'inverse.
+    try {
+      const adminUrl = process.env.ADMIN_PUBLIC_URL;
+      const moderation = await runModerationDigest({
+        store: createSupabaseModerationStore(runtime.db),
+        // Sans l'adresse du back-office, le mail n'aurait pas de lien à
+        // suivre : il attend la mise en service, comme sans transport.
+        mailer: adminUrl ? createMailer() : null,
+        recipients: parseRecipients(process.env.MODERATION_ALERT_TO),
+        adminUrl: adminUrl ?? '',
+        now: runtime.now(),
+      });
+      console.info('[modération] battement', JSON.stringify(moderation));
+    } catch (error) {
+      console.error('[modération] battement', error);
+    }
   });
 
   return NextResponse.json({ accepted: true }, { status: 202 });

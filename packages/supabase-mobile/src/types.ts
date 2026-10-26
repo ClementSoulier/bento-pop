@@ -26,6 +26,33 @@ export type ImageSuggestionStatus = 'pending' | 'accepted' | 'dismissed';
 /** Nature d'un profil, cf. la migration `20260913000000_admin_users.sql`. */
 export type UserKind = 'member' | 'editorial';
 
+/** Les six motifs d'un signalement, chantier 22 (D10). */
+export type ReportReason = 'hate' | 'harassment' | 'sexual' | 'violence' | 'spam' | 'other';
+
+/**
+ * Ce qu'on signale. `pseudo` ne vient plus que des signalements d'avant le
+ * chantier 16 ; `comment` et `account` du chantier 22.
+ */
+export type ReportTargetKind = 'bento' | 'pseudo' | 'comment' | 'account';
+
+/**
+ * Un commentaire tel que `list_bento_comments` et `post_comment` le rendent,
+ * chantier 22. `hidden_reason` n'est rendu qu'à son auteur (D8).
+ */
+export type BentoCommentRow = {
+  id: string;
+  bento_id: string;
+  body: string;
+  status: 'visible' | 'hidden';
+  hidden_reason: string | null;
+  created_at: string;
+  author_id: string;
+  author_pseudo: string;
+  author_avatar: string | null;
+  is_mine: boolean;
+  can_delete: boolean;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -161,6 +188,14 @@ export type Database = {
            * Chantier 21, D5.
            */
           pseudo_changed_at: string | null;
+          /**
+           * « Accepter les commentaires », allumé par défaut. Éteint, rien ne
+           * s'écrit sur ses bentos, et ce qui existe est masqué, rendu au
+           * rallumage. Chantier 22, D14.
+           */
+          accept_comments: boolean;
+          /** « Afficher les j'aime », allumé par défaut. Chantier 22, D14. */
+          accept_likes: boolean;
         };
         Insert: {
           /** Pour un membre, doit valoir `auth.uid()`. Généré pour un éditorial. */
@@ -179,6 +214,9 @@ export type Database = {
           show_visits?: boolean;
           /** Même règle (`grant update (searchable)`), chantier 20. */
           searchable?: boolean;
+          /** Même règle, chantier 22 (D14). */
+          accept_comments?: boolean;
+          accept_likes?: boolean;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
@@ -419,15 +457,27 @@ export type Database = {
       reports: {
         Row: {
           id: string;
+          /** Le compte d'authentification, anonyme compris, depuis le chantier 22. */
           reporter_id: string | null;
-          target_kind: 'bento' | 'pseudo';
+          target_kind: ReportTargetKind;
           target_pseudo: string;
           target_bento_id: string | null;
+          /** Texte libre des versions publiées, jamais rempli. */
           reason: string | null;
           status: 'pending' | 'reviewed' | 'dismissed';
           created_at: string;
           reviewed_at: string | null;
           reviewed_by: string | null;
+          /** Chantier 22 (D10) : le commentaire visé, nul s'il a été supprimé. */
+          target_comment_id: string | null;
+          /** Le compte visé, sans clé étrangère : la trace survit au compte. */
+          target_user_id: string | null;
+          reason_code: ReportReason | null;
+          details: string | null;
+          /** Le commentaire tel qu'il était au signalement. */
+          target_text: string | null;
+          /** Posé par le back-office quand un mail a prévenu l'équipe (D11). */
+          alerted_at: string | null;
         };
         Insert: {
           reporter_id?: string | null;
@@ -465,6 +515,11 @@ export type Database = {
           ios_latest_version: string;
           android_min_version: string | null;
           android_latest_version: string | null;
+          /**
+           * Éteint, l'app cache tout ce qui touche aux commentaires et la base
+           * refuse d'en écrire, sans nouvelle version. Chantier 22, D15.
+           */
+          comments_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -476,8 +531,65 @@ export type Database = {
           ios_latest_version?: string;
           android_min_version?: string | null;
           android_latest_version?: string | null;
+          comments_enabled?: boolean;
         };
         Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Chantier 22 : les quatre tables des likes, des commentaires, du
+       * blocage et du filtre. Aucun droit des clients : l'app passe par les
+       * fonctions, le back-office par la clé de service.
+       */
+      bento_likes: {
+        Row: { bento_id: string; user_id: string; created_at: string };
+        Insert: { bento_id: string; user_id: string; created_at?: string };
+        Update: Partial<Database['public']['Tables']['bento_likes']['Insert']>;
+        Relationships: [];
+      };
+      bento_comments: {
+        Row: {
+          id: string;
+          bento_id: string;
+          author_id: string;
+          body: string;
+          status: 'visible' | 'hidden';
+          hidden_reason: string | null;
+          hidden_at: string | null;
+          hidden_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          bento_id: string;
+          author_id: string;
+          body: string;
+          status?: 'visible' | 'hidden';
+          hidden_reason?: string | null;
+          hidden_at?: string | null;
+          hidden_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['bento_comments']['Insert']>;
+        Relationships: [];
+      };
+      account_blocks: {
+        Row: { blocker_id: string; blocked_id: string; created_at: string };
+        Insert: { blocker_id: string; blocked_id: string; created_at?: string };
+        Update: Partial<Database['public']['Tables']['account_blocks']['Insert']>;
+        Relationships: [];
+      };
+      blocked_terms: {
+        Row: {
+          id: number;
+          term: string;
+          kind: 'word' | 'stem';
+          label: string;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: { term: string; kind?: 'word' | 'stem'; label: string; is_active?: boolean };
+        Update: Partial<Database['public']['Tables']['blocked_terms']['Insert']>;
         Relationships: [];
       };
       user_deletions: {
@@ -889,6 +1001,64 @@ export type Database = {
       delete_own_account: {
         Args: Record<string, never>;
         Returns: void;
+      };
+      /** Chantier 22 (D5) : aimer ou ne plus aimer. */
+      set_like: {
+        Args: { p_bento: string; p_liked: boolean };
+        Returns: Array<{ likes: number; liked: boolean }>;
+      };
+      /** Chantier 22 (D3, D6, D7) : un commentaire, nettoyé et filtré. */
+      post_comment: {
+        Args: { p_bento: string; p_body: string };
+        Returns: BentoCommentRow[];
+      };
+      /** Chantier 22 (D8) : le sien, ou n'importe lequel de son bento. */
+      delete_comment: {
+        Args: { p_comment: string };
+        Returns: boolean;
+      };
+      /** Chantier 22 : du plus récent au plus ancien, par pages. */
+      list_bento_comments: {
+        Args: { p_bento: string; p_before?: string | null; p_limit?: number };
+        Returns: BentoCommentRow[];
+      };
+      /** Chantier 22 (D16) : les nombres de 100 bentos au plus. */
+      bento_social: {
+        Args: { p_bentos: string[] };
+        Returns: Array<{
+          bento_id: string;
+          /** `null` quand le propriétaire n'affiche pas les j'aime. */
+          likes: number | null;
+          /** `null` quand il refuse les commentaires, ou l'interrupteur éteint. */
+          comments: number | null;
+          liked: boolean;
+          accepts_likes: boolean;
+          accepts_comments: boolean;
+        }>;
+      };
+      /** Chantier 22 (D10) : rend l'identifiant du signalement. */
+      submit_report: {
+        Args: { p_target_kind: ReportTargetKind; p_target: string; p_reason: ReportReason; p_details?: string | null };
+        Returns: string;
+      };
+      /** Chantier 22 (D9). */
+      set_block: {
+        Args: { p_blocked: string; p_on: boolean };
+        Returns: boolean;
+      };
+      /** Chantier 22 (D9) : verse la liste locale, rend celle de la base. */
+      sync_blocks: {
+        Args: { p_blocked: string[] };
+        Returns: Array<{ blocked_id: string; pseudo: string | null }>;
+      };
+      /** Chantier 22 (D21). */
+      my_social_export: {
+        Args: Record<string, never>;
+        Returns: {
+          comments: Array<{ bento_id: string; body: string; status: string; created_at: string }>;
+          likes: Array<{ bento_id: string; created_at: string }>;
+          blocks: Array<{ blocked_id: string; created_at: string }>;
+        };
       };
       /**
        * Items présents dans **au moins deux** bentos publiés. Sert de bloc

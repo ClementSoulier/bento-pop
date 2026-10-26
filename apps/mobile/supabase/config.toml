@@ -40,6 +40,10 @@ enable_signup = true
 # tout vient de 127.0.0.1 : les contrôles du chantier 28 en créent une dizaine
 # à chaque passage, la recette un par réinstallation.
 anonymous_users = 300
+# Connexions et inscriptions par 5 minutes et par adresse IP, 30 par défaut :
+# les contrôles du chantier 22 connectent quatre comptes gardés à chaque
+# passage, et le lot 1 en enchaîne une dizaine, défauts introduits compris.
+sign_in_sign_ups = 300
 
 [auth.email]
 enable_signup = true

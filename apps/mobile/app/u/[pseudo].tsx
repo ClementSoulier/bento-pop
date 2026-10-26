@@ -17,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { BentoBoxSkeleton, BentoGrid, SKELETON_BONE, ShareImage } from '@/components/bento';
+import { HeaderActions } from '@/components/social/ActionBar';
+import { ActionSheet, type SheetAction } from '@/components/social/ActionSheet';
 import { fontScaleFor } from '@/components/bento/font-scaling';
 import {
   CONTROL_MAX_FONT_MULTIPLIER,
@@ -46,7 +48,6 @@ import { popyFor } from '@/lib/popy-avatar';
 import type { PublicBento, PublicBentoRef } from '@/lib/public-bento';
 import { publicBentoQueryOptions } from '@/lib/public-bento-query';
 import { publicPageState } from '@/lib/public-page-state';
-import { submitReport } from '@/lib/report';
 import { shareBentoImage } from '@/lib/share-image';
 import { useIsOffline } from '@/lib/use-is-offline';
 import { useOfflineInset } from '@/lib/use-offline-inset';
@@ -604,8 +605,14 @@ function ProfileHeader({
   avatarKey,
   pastille,
   dateLine,
+  actionsFor,
 }: {
   pseudo: string;
+  /**
+   * Le cœur et la bulle du bento, de part et d'autre du Popy (chantier 22).
+   * Absents de l'os de chargement.
+   */
+  actionsFor?: { bentoId: string; ownerId: string | null };
   /**
    * Le Popy choisi, `null` pour celui du pseudo (chantier 21, D7). Inconnu
    * pendant le chargement : l'os montre alors celui du pseudo, le Popy de
@@ -705,6 +712,14 @@ function ProfileHeader({
           {dateLine}
         </Text>
       )}
+      {actionsFor ? (
+        <HeaderActions
+          bentoId={actionsFor.bentoId}
+          ownerId={actionsFor.ownerId}
+          bandTop={PUBLIC_HEADER.paddingTop}
+          bandHeight={PUBLIC_HEADER.avatarSize}
+        />
+      ) : null}
     </View>
   );
 }
@@ -882,6 +897,7 @@ function FoundPage({
           avatarKey={bento.avatar}
           pastille={bento.isGuest ? 'guest' : bento.isFeatured ? 'featured' : null}
           dateLine={dateLine}
+          actionsFor={{ bentoId: bento.id, ownerId: bento.userId }}
         />
         <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
         {/* Marge et non largeur, cf. `publicSideInset`. */}
@@ -1187,9 +1203,13 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Menu d'actions modération sur le bento d'autrui : Signaler + Bloquer
- * (ou Débloquer si déjà mute). Le block est purement local au device
- * (AsyncStorage via `useBlocked`), pas notifié au backend.
+ * Menu d'actions modération sur le bento d'autrui : signaler le bento ou son
+ * compte, bloquer ou débloquer.
+ *
+ * Depuis le chantier 22, signaler ouvre l'écran « Signaler », avec un motif
+ * (D10), et le blocage s'écrit aussi en base (D9). Une feuille plutôt qu'une
+ * alerte système : avec « Signaler @pseudo », il y a quatre choix, et Android
+ * n'en affiche que trois.
  */
 function BlockReportMenu({
   pseudo,
@@ -1206,109 +1226,93 @@ function BlockReportMenu({
   const block = useBlocked((s) => s.block);
   const unblock = useBlocked((s) => s.unblock);
   const showToast = useToast((s) => s.show);
+  const [open, setOpen] = useState(false);
 
-  const onPress = () => {
-    const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
-      {
-        text: 'Signaler ce bento',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert(
-            'Signaler ce bento',
-            `Tu vas signaler @${pseudo} à l'équipe Bento Pop. Confirmes-tu ?`,
-            [
-              { text: 'Annuler', style: 'cancel' },
-              {
-                text: 'Signaler',
-                style: 'destructive',
-                onPress: async () => {
-                  try {
-                    // `targetBentoId` existait dans la table et dans le type
-                    // depuis le début, et n'était jamais renseigné : la
-                    // modération ne recevait qu'un compte. Chantier 16.
-                    await submitReport({
-                      targetKind: 'bento',
-                      targetPseudo: pseudo,
-                      targetBentoId: bentoId,
-                    });
-                    Alert.alert('Merci', 'Notre équipe va examiner ce bento sous 24h.');
-                  } catch (e) {
-                    console.warn('[page publique] signalement', e);
-                    Alert.alert('Oups', userErrorMessage('report', e));
-                  }
-                },
-              },
-            ],
-          );
+  const confirmBlock = () =>
+    // Le menu qui débloque vit sur cette page, que le fil et la recherche ne
+    // montrent plus une fois le blocage posé : la liste du profil est
+    // désormais le chemin de retour, et la phrase le dit.
+    Alert.alert(
+      'Bloquer cet utilisateur ?',
+      'Tu ne verras plus son bento dans La table ni dans la recherche. Il ne pourra plus commenter ni aimer tes bentos. Tu peux le débloquer depuis tes réglages.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Bloquer',
+          style: 'destructive',
+          onPress: () => {
+            void block({ userId, pseudo });
+            showToast(`@${pseudo} est bloqué. Débloque-le depuis tes réglages.`, {
+              variant: 'neutral',
+              durationMs: 5000,
+            });
+            // On quitte la page du compte bloqué : y rester montrerait
+            // justement le bento qu'on vient de masquer.
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)/table');
+          },
         },
-      },
-    ];
-    if (isBlocked) {
-      options.push({
-        text: `Débloquer @${pseudo}`,
-        onPress: () => {
-          void unblock({ userId, pseudo });
-          showToast(`@${pseudo} débloqué`, { variant: 'neutral' });
-        },
-      });
-    } else {
-      options.push({
-        text: `Bloquer @${pseudo}`,
-        onPress: () =>
-          // Le menu qui débloque vit sur cette page, que le fil et la recherche
-          // ne montrent plus une fois le blocage posé : la liste du profil est
-          // désormais le chemin de retour, et la phrase le dit.
-          Alert.alert(
-            'Bloquer cet utilisateur ?',
-            'Tu ne verras plus son bento dans La table ni dans la recherche. Tu peux le débloquer depuis tes réglages.',
-            [
-              { text: 'Annuler', style: 'cancel' },
-              {
-                text: 'Bloquer',
-                style: 'destructive',
-                onPress: () => {
-                  void block({ userId, pseudo });
-                  showToast(`@${pseudo} est bloqué. Débloque-le depuis tes réglages.`, {
-                    variant: 'neutral',
-                    durationMs: 5000,
-                  });
-                  // On quitte la page du compte bloqué : y rester montrerait
-                  // justement le bento qu'on vient de masquer.
-                  if (router.canGoBack()) router.back();
-                  else router.replace('/(tabs)/table');
-                },
-              },
-            ],
-          ),
-      });
-    }
-    options.push({ text: 'Annuler', style: 'cancel' });
-    Alert.alert(`Options pour @${pseudo}`, undefined, options);
-  };
+      ],
+    );
+
+  const actions: SheetAction[] = [
+    {
+      label: 'Signaler ce bento',
+      onPress: () =>
+        router.push({ pathname: '/report', params: { kind: 'bento', id: bentoId, pseudo } }),
+    },
+  ];
+  if (userId) {
+    actions.push({
+      label: `Signaler @${pseudo}`,
+      onPress: () =>
+        router.push({ pathname: '/report', params: { kind: 'account', id: userId, pseudo } }),
+    });
+  }
+  actions.push(
+    isBlocked
+      ? {
+          label: `Débloquer @${pseudo}`,
+          onPress: () => {
+            void unblock({ userId, pseudo });
+            showToast(`@${pseudo} débloqué`, { variant: 'neutral' });
+          },
+        }
+      : { label: `Bloquer @${pseudo}`, destructive: true, onPress: confirmBlock },
+  );
+  const onPress = () => setOpen(true);
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Options pour @${pseudo}`}
-      accessibilityHint="Ouvre les options de signalement et blocage"
-      // Le libellé fait 25 pt de haut : la cible tactile en fait 44.
-      hitSlop={{ top: 10, bottom: 10 }}
-      style={{ marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6 }}
-    >
-      <Text
-        numberOfLines={1}
-        allowFontScaling={false}
-        style={{
-          fontFamily: 'Bungee',
-          fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
-          letterSpacing: 1.5,
-          color: INK_MUTED,
-          textTransform: 'uppercase',
-        }}
+    <>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Options pour @${pseudo}`}
+        accessibilityHint="Ouvre les options de signalement et blocage"
+        // Le libellé fait 25 pt de haut : la cible tactile en fait 44.
+        hitSlop={{ top: 10, bottom: 10 }}
+        style={{ marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 6 }}
       >
-        Options
-      </Text>
-    </Pressable>
+        <Text
+          numberOfLines={1}
+          allowFontScaling={false}
+          style={{
+            fontFamily: 'Bungee',
+            fontSize: 10 * fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER),
+            letterSpacing: 1.5,
+            color: INK_MUTED,
+            textTransform: 'uppercase',
+          }}
+        >
+          Options
+        </Text>
+      </Pressable>
+      <ActionSheet
+        visible={open}
+        title={`Options pour @${pseudo}`}
+        actions={actions}
+        onClose={() => setOpen(false)}
+      />
+    </>
   );
 }
