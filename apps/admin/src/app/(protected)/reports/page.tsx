@@ -3,21 +3,23 @@ import { createMobileClient } from '@/lib/supabase/mobile';
 import { parseRecipients } from '@/lib/moderation/digest';
 import { createMailer } from '@/lib/moderation/mailer';
 import { purgeModeration } from '@/lib/moderation/store';
-import { ModerationClient, type CommentRow, type ReportRow } from './ReportsClient';
+import { ModerationClient, type CommentRow, type ReportRow, type WhyRow } from './ReportsClient';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * La modération, chantier 22 (§5.7) : deux onglets.
+ * La modération, chantier 22 (§5.7) : trois onglets depuis le chantier 12.
  *
  * - **Signalements**, en attente d'abord : la cible, son texte tel qu'il était
  *   au signalement, le motif et le détail, le signaleur. Masquer un
- *   commentaire, classer, bannir.
+ *   commentaire ou un pourquoi, classer, bannir.
  * - **Commentaires** : les 100 derniers, tous bentos confondus, pour les
  *   parcourir sans attendre qu'un signalement arrive.
+ * - **Pourquoi** : les 100 derniers écrits, chantier 12 (D9), à masquer ou
+ *   rétablir ; c'est aussi là que l'équipe puise sa rubrique.
  *
  * Le mail à l'équipe mène ici (D11). Ce qui a plus d'un an, signalements
- * traités et commentaires masqués, s'efface à l'ouverture (D20).
+ * traités, commentaires et pourquoi masqués, s'efface à l'ouverture (D20).
  */
 export default async function ReportsPage({
   searchParams,
@@ -25,7 +27,7 @@ export default async function ReportsPage({
   searchParams: Promise<{ onglet?: string }>;
 }) {
   const { onglet } = await searchParams;
-  const tab = onglet === 'commentaires' ? 'comments' : 'reports';
+  const tab = onglet === 'commentaires' ? 'comments' : onglet === 'pourquoi' ? 'whys' : 'reports';
 
   const mobile = createMobileClient();
   if (!mobile) {
@@ -45,7 +47,7 @@ export default async function ReportsPage({
   const { data: reports } = await mobile
     .from('reports')
     .select(
-      'id, reporter_id, target_kind, target_pseudo, target_bento_id, target_comment_id, target_user_id, reason, reason_code, details, target_text, status, created_at, reviewed_at, reviewed_by, alerted_at',
+      'id, reporter_id, target_kind, target_pseudo, target_bento_id, target_comment_id, target_why_id, target_user_id, reason, reason_code, details, target_text, status, created_at, reviewed_at, reviewed_by, alerted_at',
     )
     .order('created_at', { ascending: false })
     .limit(200);
@@ -90,6 +92,13 @@ export default async function ReportsPage({
     ? await mobile.from('bento_comments').select('id, status').in('id', commentIds)
     : { data: [] as { id: string; status: 'visible' | 'hidden' }[] };
   const commentStatus = new Map((targetComments ?? []).map((c) => [c.id, c.status]));
+  const whyIds = [
+    ...new Set((reports ?? []).map((r) => r.target_why_id).filter(Boolean)),
+  ] as string[];
+  const { data: targetWhys } = whyIds.length
+    ? await mobile.from('bento_whys').select('id, status').in('id', whyIds)
+    : { data: [] as { id: string; status: 'visible' | 'hidden' }[] };
+  const whyStatus = new Map((targetWhys ?? []).map((w) => [w.id, w.status]));
 
   const rows: ReportRow[] = (reports ?? []).map((r) => ({
     id: r.id,
@@ -109,6 +118,9 @@ export default async function ReportsPage({
     targetCommentStatus: r.target_comment_id
       ? (commentStatus.get(r.target_comment_id) ?? null)
       : null,
+    // Chantier 12 : effacé depuis avec sa case, il ne se masque plus.
+    targetWhyId: r.target_why_id,
+    targetWhyStatus: r.target_why_id ? (whyStatus.get(r.target_why_id) ?? null) : null,
     targetText: r.target_text,
     reason: r.reason,
     reasonCode: r.reason_code,
@@ -165,7 +177,64 @@ export default async function ReportsPage({
     }));
   }
 
-  // 5. Le mail à l'équipe est-il en service ? L'écran le dit quand il ne l'est pas.
+  // 5. Les 100 derniers pourquoi, pour l'onglet du même nom (chantier 12, D9).
+  //    Lus à part, sans requête embarquée : l'auteur par son bento, la case par
+  //    son intitulé, l'item par la case.
+  let whys: WhyRow[] = [];
+  if (tab === 'whys') {
+    const { data } = await mobile
+      .from('bento_whys')
+      .select('id, bento_id, category_id, body, status, hidden_reason, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(100);
+    const whyBentoIds = [...new Set((data ?? []).map((w) => w.bento_id))];
+    const categoryIds = [...new Set((data ?? []).map((w) => w.category_id))];
+    const [{ data: whyBentos }, { data: cases }, { data: links }] = await Promise.all([
+      whyBentoIds.length
+        ? mobile.from('bentos').select('id, slug, is_primary, user_id').in('id', whyBentoIds)
+        : Promise.resolve({ data: [] as { id: string; slug: string; is_primary: boolean; user_id: string }[] }),
+      categoryIds.length
+        ? mobile.from('bento_categories').select('id, prompt').in('id', categoryIds)
+        : Promise.resolve({ data: [] as { id: number; prompt: string }[] }),
+      whyBentoIds.length
+        ? mobile.from('bento_items').select('bento_id, category_id, item_id').in('bento_id', whyBentoIds)
+        : Promise.resolve({ data: [] as { bento_id: string; category_id: number; item_id: string }[] }),
+    ]);
+    const ownerIds = [...new Set((whyBentos ?? []).map((b) => b.user_id))];
+    const itemIds = [...new Set((links ?? []).map((l) => l.item_id))];
+    const [{ data: owners }, { data: items }] = await Promise.all([
+      ownerIds.length
+        ? mobile.from('users').select('id, pseudo').in('id', ownerIds)
+        : Promise.resolve({ data: [] as { id: string; pseudo: string }[] }),
+      itemIds.length
+        ? mobile.from('items').select('id, title').in('id', itemIds)
+        : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+    ]);
+    const ownerPseudo = new Map((owners ?? []).map((o) => [o.id, o.pseudo]));
+    const bentoOfWhy = new Map(
+      (whyBentos ?? []).map((b) => [
+        b.id,
+        { slug: b.slug, isPrimary: b.is_primary, ownerPseudo: ownerPseudo.get(b.user_id) ?? null },
+      ]),
+    );
+    const casePrompt = new Map((cases ?? []).map((c) => [c.id, c.prompt]));
+    const itemTitle = new Map((items ?? []).map((i) => [i.id, i.title]));
+    const itemOfCase = new Map(
+      (links ?? []).map((l) => [`${l.bento_id}:${l.category_id}`, itemTitle.get(l.item_id) ?? null]),
+    );
+    whys = (data ?? []).map((w) => ({
+      id: w.id,
+      body: w.body,
+      status: w.status,
+      hiddenReason: w.hidden_reason,
+      updatedAt: w.updated_at,
+      casePrompt: casePrompt.get(w.category_id) ?? '?',
+      itemTitle: itemOfCase.get(`${w.bento_id}:${w.category_id}`) ?? null,
+      bento: bentoOfWhy.get(w.bento_id) ?? null,
+    }));
+  }
+
+  // 6. Le mail à l'équipe est-il en service ? L'écran le dit quand il ne l'est pas.
   const mailReady =
     Boolean(createMailer()) &&
     parseRecipients(process.env.MODERATION_ALERT_TO).length > 0 &&
@@ -181,6 +250,7 @@ export default async function ReportsPage({
         pending={pending}
         handled={handled}
         comments={comments}
+        whys={whys}
         mailReady={mailReady}
       />
     </PageShell>

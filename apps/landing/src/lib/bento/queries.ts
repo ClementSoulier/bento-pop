@@ -5,7 +5,9 @@ import type { CaseMeta } from '@bento-pop/supabase-mobile/bento';
 import {
   bentoCases,
   mapBentoItems,
+  mapBentoWhys,
   type BentoSlots,
+  type BentoWhys,
   type RawBentoItemRow,
   type RawCaseRow,
 } from './map';
@@ -29,6 +31,13 @@ import {
  * choisi, les valeurs par défaut des migrations.
  */
 const UNDEFINED_COLUMN = '42703';
+
+/**
+ * `bento_whys` arrive avec la migration du chantier 12. Avant, PostgREST ne
+ * connaît pas la relation (`PGRST200`) et refuse toute la requête : la
+ * lecture se refait sans les pourquoi, et la page se rend comme avant.
+ */
+const MISSING_RELATION = 'PGRST200';
 
 /**
  * `resolve_pseudo` arrive avec la même migration du chantier 21. Avant, un
@@ -58,13 +67,20 @@ const BENTO_SELECT = `
     bento_items (
       category_id,
       bento_categories ( key ),
-      items ( id, title, subtitle, year, image_url, image_credit )
+      items ( id, title, subtitle, year, image_url, image_credit ),
+      bento_whys ( body )
     )
   )
 ` as const;
 
-/** La même, sans `avatar` : le repli d'avant la migration du chantier 21. */
-const BENTO_SELECT_BEFORE_21 = BENTO_SELECT.replace(/^\s*avatar,\n/m, '');
+/** La même, sans les pourquoi : le repli d'avant la migration du chantier 12. */
+const BENTO_SELECT_BEFORE_12 = BENTO_SELECT.replace(
+  /items \( id, title, subtitle, year, image_url, image_credit \),\n\s*bento_whys \( body \)/,
+  'items ( id, title, subtitle, year, image_url, image_credit )',
+);
+
+/** Sans `avatar` non plus : le repli d'avant la migration du chantier 21. */
+const BENTO_SELECT_BEFORE_21 = BENTO_SELECT_BEFORE_12.replace(/^\s*avatar,\n/m, '');
 
 /** Sans `searchable` non plus : le repli d'avant la migration du chantier 20. */
 const BENTO_SELECT_BEFORE_20 = BENTO_SELECT_BEFORE_21.replace(/^\s*searchable,\n/m, '');
@@ -106,6 +122,8 @@ export type PublicBento = {
   readonly cases: readonly CaseMeta[];
   /** L'édition composée, ou `null` pour un bento libre. */
   readonly edition: { readonly slug: string; readonly title: string } | null;
+  /** Les pourquoi des cases, chantier 12 (D4). Vide sur une base d'avant. */
+  readonly whys: BentoWhys;
 };
 
 /**
@@ -305,8 +323,10 @@ export async function lookupPublicBento(
       .limit(5)
       .overrideTypes<RawUserRow[], { merge: false }>();
 
-  // Chaque migration manquante retire sa colonne, la plus récente d'abord.
+  // Chaque migration manquante retire ce qu'elle apporte, la plus récente
+  // d'abord.
   let { data, error } = await read(BENTO_SELECT);
+  if (error?.code === MISSING_RELATION) ({ data, error } = await read(BENTO_SELECT_BEFORE_12));
   if (error?.code === UNDEFINED_COLUMN) ({ data, error } = await read(BENTO_SELECT_BEFORE_21));
   if (error?.code === UNDEFINED_COLUMN) ({ data, error } = await read(BENTO_SELECT_BEFORE_20));
 
@@ -377,6 +397,7 @@ export async function lookupPublicBento(
       edition: bento.editions
         ? { slug: bento.editions.slug, title: bento.editions.title }
         : null,
+      whys: mapBentoWhys(bento.bento_items ?? []),
     },
   };
 }

@@ -44,13 +44,15 @@ export function createSupabaseModerationStore(db: MobileClient): ModerationStore
 const RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 /**
- * Efface les signalements traités et les commentaires masqués de plus d'un
- * an. Appelée à l'ouverture de la modération, comme la purge du registre
- * (`purge_user_deletions`) : le projet n'a de battement que celui des push,
- * et la table ne grossit que de quelques lignes.
+ * Efface les signalements traités, les commentaires et les pourquoi masqués
+ * de plus d'un an (D20 du 22, D19 du 12). Appelée à l'ouverture de la
+ * modération, comme la purge du registre (`purge_user_deletions`) : le projet
+ * n'a de battement que celui des push, et les tables ne grossissent que de
+ * quelques lignes.
  */
 export async function purgeModeration(db: MobileClient, now = new Date()): Promise<void> {
   const before = new Date(now.getTime() - RETENTION_MS).toISOString();
   await db.from('reports').delete().neq('status', 'pending').lt('reviewed_at', before);
   await db.from('bento_comments').delete().eq('status', 'hidden').lt('hidden_at', before);
+  await db.from('bento_whys').delete().eq('status', 'hidden').lt('hidden_at', before);
 }

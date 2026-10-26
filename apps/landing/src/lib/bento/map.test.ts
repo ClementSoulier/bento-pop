@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { CATEGORY_IDS } from '@bento-pop/supabase-mobile/bento';
-import { filledCount, mapBentoItems, type RawBentoItemRow } from './map';
+import { filledCount, mapBentoItems, mapBentoWhys, type RawBentoItemRow } from './map';
 
 function itemRow(
   category: keyof typeof CATEGORY_IDS,
@@ -139,5 +139,38 @@ describe('mapBentoItems', () => {
     assert.equal(slots.film?.imageUrl, null);
     assert.equal(slots.film?.imageCredit, null);
     assert.equal(slots.film?.year, null);
+  });
+});
+
+describe('mapBentoWhys (chantier 12)', () => {
+  it('range chaque pourquoi sous la clé de sa case, objet ou tableau', () => {
+    const rows: RawBentoItemRow[] = [
+      { ...itemRow('film', { id: 'item-film' }), bento_whys: { body: 'Le premier film vu au cinéma.' } },
+      { ...itemRow('series', { id: 'item-series' }), bento_whys: [{ body: 'Pour le générique.' }] },
+      itemRow('artist', { id: 'item-artist' }),
+    ];
+    assert.deepEqual(mapBentoWhys(rows), {
+      film: 'Le premier film vu au cinéma.',
+      series: 'Pour le générique.',
+    });
+  });
+
+  it("rien d'une base d'avant sa migration, ni d'une case sans item", () => {
+    assert.deepEqual(mapBentoWhys(FULL_BENTO), {});
+    assert.deepEqual(
+      mapBentoWhys([{ category_id: CATEGORY_IDS.place, items: null, bento_whys: { body: 'Jamais lu.' } }]),
+      {},
+    );
+  });
+
+  it('un texte vide, une relation vide ou une catégorie inconnue ne font rien', () => {
+    assert.deepEqual(
+      mapBentoWhys([
+        { ...itemRow('film', { id: 'a' }), bento_whys: { body: '   ' } },
+        { ...itemRow('series', { id: 'b' }), bento_whys: [] },
+        { category_id: 99, items: itemRow('film', { id: 'c' }).items, bento_whys: { body: 'Septième case' } },
+      ]),
+      {},
+    );
   });
 });

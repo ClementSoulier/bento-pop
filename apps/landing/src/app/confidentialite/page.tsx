@@ -126,6 +126,14 @@ export default function ConfidentialitePage() {
             s&apos;appliquent alors.
           </li>
           <li>
+            <strong>Pourquoi</strong> : la phrase facultative qu&apos;un
+            utilisateur écrit pour une case de son bento, avec sa date,
+            publique sous la boîte, dans l&apos;app et sur bento-pop.com. Elle
+            s&apos;efface quand la case change d&apos;item ou se vide.
+            L&apos;équipe peut en masquer une, avec un motif que seul son
+            auteur voit.
+          </li>
+          <li>
             <strong>Commentaires</strong> : les commentaires qu&apos;un
             utilisateur écrit sous les bentos, avec leur date et son
             pseudonyme, visibles dans l&apos;app. Il peut supprimer les siens,
@@ -145,9 +153,10 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>Signalements</strong> (table <code>reports</code>) : si
-            l&apos;utilisateur signale un bento, un commentaire ou un compte,
-            le motif choisi, le détail éventuel et, pour un commentaire, une
-            copie de son texte, conservés pour la modération. Le signalement
+            l&apos;utilisateur signale un bento, un pourquoi, un commentaire ou
+            un compte, le motif choisi, le détail éventuel et, pour un pourquoi
+            ou un commentaire, une copie de son texte, conservés pour la
+            modération. Le signalement
             est lié à l&apos;identifiant du signaleur (jamais visible
             publiquement).
           </li>
@@ -212,10 +221,10 @@ export default function ConfidentialitePage() {
             compte).
           </li>
           <li>
-            <strong>Commentaires et j&apos;aime</strong> : exécution du
-            service de partage culturel (consentement, donné en écrivant ou en
-            aimant, et retiré en supprimant le commentaire, le j&apos;aime ou
-            son compte).
+            <strong>Pourquoi, commentaires et j&apos;aime</strong> : exécution
+            du service de partage culturel (consentement, donné en écrivant ou
+            en aimant, et retiré en effaçant le pourquoi, en supprimant le
+            commentaire, le j&apos;aime ou son compte).
           </li>
           <li>
             <strong>Comptes bloqués</strong> : protéger l&apos;utilisateur de
@@ -255,13 +264,14 @@ export default function ConfidentialitePage() {
             Profil.
           </li>
           <li>
-            <strong>Commentaires, j&apos;aime et comptes bloqués</strong> :
-            tant que l&apos;utilisateur ne les retire pas ou ne supprime pas
-            son compte.
+            <strong>Pourquoi, commentaires, j&apos;aime et comptes
+            bloqués</strong> : tant que l&apos;utilisateur ne les retire pas ou
+            ne supprime pas son compte ; un pourquoi, tant que sa case garde
+            son item.
           </li>
           <li>
-            <strong>Signalements</strong>, et commentaires masqués par
-            l&apos;équipe : 1 an après leur traitement, puis effacés.
+            <strong>Signalements</strong>, et pourquoi ou commentaires masqués
+            par l&apos;équipe : 1 an après leur traitement, puis effacés.
           </li>
           <li>Logs serveur : 30 jours.</li>
           <li>

@@ -192,9 +192,11 @@ type StubBento = {
   id: string;
   slug: string;
   is_primary: boolean;
+  /** Nul pour un bento libre ; le bouchon le pose s'il manque. */
+  edition_id?: number | null;
   published_at: string;
   is_featured: boolean;
-  bento_items: { category_id: number; items: StubItem | null }[];
+  bento_items: { category_id: number; items: StubItem | null; bento_whys?: { body: string } | null }[];
 };
 
 const item = (id: string, title: string, extra: Partial<StubItem> = {}): StubItem => ({
@@ -323,6 +325,33 @@ export const USERS: StubUser[] = [
     bentos: { id: bentoId(10), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
   },
   {
+    // Chantier 12 : deux cases expliquées, en objet comme PostgREST rend un
+    // un-à-un, que la page doit montrer sous la boîte.
+    pseudo: 'avec.pourquoi',
+    display_name: null,
+    bentos: {
+      id: bentoId(18),
+      slug: 'mon-bento',
+      is_primary: true,
+      published_at: YEAR,
+      is_featured: false,
+      bento_items: fullItems.map((row) =>
+        row.category_id === 1
+          ? { ...row, bento_whys: { body: 'Le premier film vu au cinéma avec mon père.' } }
+          : row.category_id === 4
+            ? { ...row, bento_whys: { body: 'Le refrain de mes vacances 🎶' } }
+            : row,
+      ),
+    },
+  },
+  {
+    // Réservé au test du repli d'avant la migration du chantier 12 : la base
+    // ne connaît pas `bento_whys`, la page doit se rendre comme avant.
+    pseudo: 'avant.douze',
+    display_name: null,
+    bentos: { id: bentoId(19), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+  },
+  {
     // Chantier 21 : un Popy choisi, que la page doit montrer à la place de
     // celui que tire son pseudo.
     pseudo: 'popy.choisi',
@@ -398,6 +427,7 @@ export function startStub(port: number): Promise<Server> {
   let failing = false;
   let before20 = false;
   let before21 = false;
+  let before12 = false;
   const visitCalls: VisitCall[] = [];
   const episodeQueries: EpisodeQuery[] = [];
 
@@ -418,6 +448,7 @@ export function startStub(port: number): Promise<Server> {
       failing = false;
       before20 = false;
       before21 = false;
+      before12 = false;
       visitCalls.length = 0;
       episodeQueries.length = 0;
       return json(res, 200, { ok: true });
@@ -432,6 +463,10 @@ export function startStub(port: number): Promise<Server> {
     }
     if (url.pathname === '/__avant-21') {
       before21 = true;
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === '/__avant-12') {
+      before12 = true;
       return json(res, 200, { ok: true });
     }
 
@@ -462,6 +497,13 @@ export function startStub(port: number): Promise<Server> {
       return json(res, 500, { message: 'stub en panne simulée' });
     }
 
+    // Avant la migration du chantier 12, PostgREST ne connaît pas la relation.
+    if (before12 && /\bbento_whys\b/.test(url.searchParams.get('select') ?? '')) {
+      return json(res, 400, {
+        code: 'PGRST200',
+        message: "Could not find a relationship between 'bento_items' and 'bento_whys' in the schema cache",
+      });
+    }
     // Avant la migration du chantier 20, PostgREST refuse la colonne inconnue.
     if (before20 && (url.searchParams.get('select') ?? '').includes('searchable')) {
       return json(res, 400, { code: '42703', message: 'column users.searchable does not exist' });
@@ -485,6 +527,20 @@ export function startStub(port: number): Promise<Server> {
         const copy: Partial<StubUser> = { ...row };
         if (!/\bsearchable\b/.test(select)) delete copy.searchable;
         if (!/\bavatar\b/.test(select)) delete copy.avatar;
+        // `edition_id` revient toujours, nul pour un bento libre, comme chez
+        // PostgREST : absent, la landing lisait chaque bento du bouchon comme
+        // une édition sans cases, et dessinait une boîte vide depuis le
+        // chantier 13, relevé au 12. Les pourquoi, eux, ne reviennent que
+        // demandés.
+        const withWhys = /\bbento_whys\b/.test(select);
+        const shape = (b: StubBento): StubBento => ({
+          ...b,
+          edition_id: b.edition_id ?? null,
+          bento_items: withWhys ? b.bento_items : b.bento_items.map(({ bento_whys: _, ...rest }) => rest),
+        });
+        if (copy.bentos) {
+          copy.bentos = Array.isArray(copy.bentos) ? copy.bentos.map(shape) : shape(copy.bentos);
+        }
         return copy;
       });
       return json(res, 200, projected);

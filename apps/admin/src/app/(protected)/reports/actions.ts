@@ -21,6 +21,15 @@ const commentIdSchema = z.object({
   commentId: z.string().uuid(),
 });
 
+const hideWhySchema = z.object({
+  whyId: z.string().uuid(),
+  reason: z.string().trim().min(1).max(120),
+});
+
+const whyIdSchema = z.object({
+  whyId: z.string().uuid(),
+});
+
 const banSchema = z.object({
   targetUserId: z.string().uuid(),
   reason: z.string().trim().min(1).max(200),
@@ -112,6 +121,66 @@ export async function restoreComment(input: { commentId: string }): Promise<Acti
     .from('bento_comments')
     .update({ status: 'visible', hidden_reason: null, hidden_at: null, hidden_by: null })
     .eq('id', parsed.data.commentId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/reports');
+  return { ok: true };
+}
+
+/**
+ * Masque un pourquoi (chantier 12, D8), comme un commentaire : son auteur le
+ * voit encore, grisé, avec le motif, et les autres ne le lisent plus, ni dans
+ * l'app ni sur le web, que la base purge aussitôt. Les signalements en
+ * attente sur ce pourquoi passent traités ensemble.
+ */
+export async function hideWhy(input: { whyId: string; reason: string }): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = hideWhySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Pourquoi ou motif invalide' };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const now = new Date().toISOString();
+  const { error } = await mobile
+    .from('bento_whys')
+    .update({
+      status: 'hidden',
+      hidden_reason: parsed.data.reason,
+      hidden_at: now,
+      hidden_by: admin.email,
+    })
+    .eq('id', parsed.data.whyId);
+  if (error) return { ok: false, error: error.message };
+
+  const { error: reportsError } = await mobile
+    .from('reports')
+    .update({ status: 'reviewed', reviewed_at: now, reviewed_by: admin.email })
+    .eq('target_why_id', parsed.data.whyId)
+    .eq('status', 'pending');
+  if (reportsError)
+    return {
+      ok: false,
+      error: `Masqué, mais les signalements restent ouverts : ${reportsError.message}`,
+    };
+
+  revalidatePath('/reports');
+  return { ok: true };
+}
+
+/** Rétablit un pourquoi masqué : le motif part avec le masquage. */
+export async function restoreWhy(input: { whyId: string }): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = whyIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Pourquoi invalide' };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const { error } = await mobile
+    .from('bento_whys')
+    .update({ status: 'visible', hidden_reason: null, hidden_at: null, hidden_by: null })
+    .eq('id', parsed.data.whyId);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath('/reports');

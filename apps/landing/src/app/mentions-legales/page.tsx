@@ -110,7 +110,8 @@ export default function MentionsLegalesPage() {
         </p>
         <p>
           <strong>Règles de la communauté</strong> : l&apos;application
-          accueille des pseudonymes, des bentos et des commentaires. Tolérance
+          accueille des pseudonymes, des bentos, le pourquoi de leurs cases et
+          des commentaires. Tolérance
           zéro pour les contenus haineux, racistes, sexistes, homophobes,
           transphobes, validistes ou discriminatoires ; le harcèlement, les
           insultes et les menaces ; les contenus illégaux, sexuels non
@@ -120,14 +121,15 @@ export default function MentionsLegalesPage() {
         </p>
         <p>
           <strong>Modération</strong> : un filtre refuse avant publication les
-          injures d&apos;une liste et les liens. Tout bento, commentaire ou
-          compte contraire à ces règles, aux droits d&apos;autrui ou à
-          l&apos;ordre public peut être signalé via le bouton{' '}
-          <em>« Signaler »</em> de l&apos;application ; notre équipe examine
-          les signalements sous 24 heures. Elle peut masquer un commentaire,
-          dont l&apos;auteur voit alors le motif, et supprimer un compte qui
-          enfreint ces règles ; s&apos;il a gardé son compte, le motif lui est
-          envoyé à son adresse. Toute décision se conteste en écrivant à{' '}
+          injures d&apos;une liste et les liens. Tout bento, pourquoi,
+          commentaire ou compte contraire à ces règles, aux droits
+          d&apos;autrui ou à l&apos;ordre public peut être signalé via le
+          bouton <em>« Signaler »</em> de l&apos;application, ou par le lien{' '}
+          <em>« Signaler ce bento »</em> de sa page sur ce site ; notre équipe
+          examine les signalements sous 24 heures. Elle peut masquer un
+          pourquoi ou un commentaire, dont l&apos;auteur voit alors le motif,
+          et supprimer un compte qui enfreint ces règles ; s&apos;il a gardé
+          son compte, le motif lui est envoyé à son adresse. Toute décision se conteste en écrivant à{' '}
           <a href="mailto:contact@bento-pop.com">contact@bento-pop.com</a>.
         </p>
         <p>

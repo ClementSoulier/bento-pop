@@ -110,7 +110,7 @@ export function BentoCallToAction({ heading, blurb }: { heading: string; blurb: 
 export function BentoReportLink({ pseudo }: { pseudo: string }) {
   const subject = encodeURIComponent(`Signalement du bento @${pseudo}`);
   const body = encodeURIComponent(
-    `Bonjour,\n\nJe signale le bento publié à l'adresse https://bento-pop.com/u/${pseudo}.\n\nMotif :\n`,
+    `Bonjour,\n\nJe signale le bento publié à l'adresse https://bento-pop.com/u/${pseudo}.\n\nSi c'est un pourquoi, la case visée :\n\nMotif :\n`,
   );
   return (
     <p className="mt-10 text-center text-[12px] text-bento-ink/60">

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { JsonLd } from '@/components/JsonLd';
 import { BentoAttributions } from '@/components/bento/BentoAttributions';
+import { BentoWhys } from '@/components/bento/BentoWhys';
 import { BentoIdentity, formatPublishedDate } from '@/components/bento/BentoIdentity';
 import {
   BentoCallToAction,
@@ -254,6 +255,7 @@ export function BentoPublishedView({
           simplement à leur juste priorité. Avant la liste des autres
           bentos, qui ont chacun les leurs : les crédits restent près de
           leurs images. */}
+      <BentoWhys cases={publicCases(bento.cases, bento.slots)} whys={bento.whys} />
       <BentoAttributions cases={publicCases(bento.cases, bento.slots)} />
       <AccountBentoList others={others} />
       <BentoReportLink pseudo={bento.pseudo} />

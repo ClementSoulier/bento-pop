@@ -57,6 +57,7 @@ export function shouldSendDigest({
 
 const TARGETS: Record<string, string> = {
   comment: 'Commentaire de',
+  why: 'Pourquoi de',
   account: 'Compte',
   bento: 'Bento de',
   pseudo: 'Pseudo',
