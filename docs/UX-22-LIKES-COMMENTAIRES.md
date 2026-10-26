@@ -642,8 +642,9 @@ Cinq lots, chacun validé par Clément avant le suivant.
 ## 9. Livraison
 
 Fait et recetté le 26 octobre 2026, en cinq lots enchaînés à la demande de
-Clément, sur `feat/ux-22-likes-commentaires`, partie de la branche du 28
-tant que la PR #98 n'est pas fusionnée. Rien n'est appliqué en production :
+Clément, sur `feat/ux-22-likes-commentaires`, en PR #99, empilée sur la #98
+du chantier 28 tant qu'elle n'est pas fusionnée. Rien n'est appliqué en
+production :
 la mise en service attend Clément (§9.6).
 
 ### 9.1 Lot 1 · La base
