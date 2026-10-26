@@ -1272,6 +1272,73 @@ dans la console, « Invalid Refresh Token » : elle n'existe pas en production.
 `xcrun simctl openurl <UDID> bentopop://account/keep` affiche « Ouvrir dans
 « Mon Bento Pop » ? » avant d'ouvrir l'écran : toucher « Ouvrir ».
 
+### Un toast ne se voit pas derrière un écran modal
+
+`ToastHost` vit sous la pile : sur iOS, un écran présenté en `modal` le
+couvre. Le merci d'un signalement, ouvert depuis les commentaires, ne se
+voyait donc pas (chantier 22). Ce qui doit se lire sur un écran modal se dit
+dans l'écran même.
+
+### Une alerte système n'a que trois boutons sur Android
+
+`Alert.alert` en affiche trois au plus sur Android et ignore les suivants,
+sans erreur. Au-delà, une feuille à soi : `ActionSheet` du chantier 22. Son
+fond touchable doit être le **frère** du panneau, pas son parent : un élément
+accessible masque ses enfants sur iOS, et `idb` ne lisait plus qu'un bouton,
+« Fermer ».
+
+### Le clavier d'Android couvre un champ posé en bas d'écran
+
+L'affichage bord à bord du SDK 57 ne redimensionne plus la fenêtre sous le
+clavier : `KeyboardAvoidingView` en `padding` **sur les deux plateformes**,
+pas seulement sur iOS. Relevé sur l'écran des commentaires, le premier de
+l'app à avoir son champ en bas.
+
+### LogBox couvre le bas de l'écran à chaque `console.warn`
+
+En développement, un avertissement ouvre un bandeau qui cache le bas de
+l'écran, là où se disent les erreurs d'un champ. Ne journaliser que
+l'inattendu : un refus du filtre ou du rythme se dit à l'écran, sans
+`console.warn`. Pour fermer un bandeau resté, toucher sa croix.
+
+### Le bouton retour d'Android ferme l'écran quand le clavier est déjà baissé
+
+Dans un script, `adb shell input keyevent 4` « pour baisser le clavier » ferme
+l'écran entier si le clavier l'est déjà, et sort de l'app au second appui.
+Relire l'écran entre deux appuis.
+
+### `window.prompt` dans le panneau navigateur
+
+Le panneau ne pilote pas les boîtes natives du navigateur. Pour un geste du
+back-office qui demande un motif, substituer `window.prompt` par
+`javascript_tool` juste avant le clic, en recette locale seulement.
+
+### Le back-office de recette depuis l'arbre de travail
+
+Tant que rien n'est commité, la copie détachée de la mémoire ne voit pas les
+changements : copier `apps/admin` par `rsync`, les fichiers de la racine, et
+lier `node_modules` et `packages`. Les mails de modération partent alors dans
+le Mailpit de la pile, par son API d'envoi (`MAIL_TRANSPORT=mailpit`), et le
+battement s'appelle à la main, `POST /api/push/tick` avec le jeton de la
+copie : rien à poser dans le coffre. Son `.env.local` : les adresses et clés
+de la pile locale, `MAIL_TRANSPORT=mailpit`, `MAILPIT_URL`, `MODERATION_FROM`,
+`MODERATION_ALERT_TO`, `ADMIN_PUBLIC_URL` et un `PUSH_WEBHOOK_TOKEN` tiré au
+hasard, rangé dans un fichier sans être affiché.
+
+### Les nombres d'un bento vivent une minute en mémoire
+
+`useSocial` garde likes et commentaires une minute. Un réglage changé ou un
+blocage posé par un autre compte ne se voit sur un téléphone qu'après cette
+minute, ou une relance ; ceux de ce téléphone sont relus aussitôt.
+
+### Deux téléphones, un compte : ne pas croire un blocage local
+
+Le blocage vit en base depuis le chantier 22, et chaque téléphone garde une
+copie. Pour vérifier qu'un geste fait sur l'un est suivi par l'autre, lire
+`account_blocks` en base **et** `bp_blocked_accounts` dans le stockage des
+deux apps (manifeste de `RCTAsyncLocalStorage_V1`), après une relance de
+chacune. C'est ce qui a montré un déblocage défait par l'autre téléphone.
+
 ## 5. Après la recette
 
 ```bash
