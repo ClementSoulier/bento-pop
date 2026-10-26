@@ -36,6 +36,7 @@
  *   11. l'export de ses données (D21) ;
  *   12. supprimer son compte emporte likes, commentaires et blocages.
  */
+import { randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 const TARGET = process.env.TARGET;
@@ -94,7 +95,9 @@ async function anonymous() {
  */
 async function kept(name) {
   const email = `c22-${name}-${tag}@recette.test`;
-  const password = `c22-${tag}-${name}-secret`;
+  // Tiré au hasard à chaque passage : un mot de passe écrit dans le source,
+  // même de recette, se fait signaler par les analyseurs de secrets.
+  const password = randomBytes(18).toString('base64url');
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   if (error || !data.user) throw new Error(`compte gardé : ${error?.message}`);
   created.add(data.user.id);
