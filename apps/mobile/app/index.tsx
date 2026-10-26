@@ -17,6 +17,7 @@ import { useSession } from '@/state/session';
  * au moment de publier. Les règles, elles, restent avant toute contribution
  * publique, ce qu'exige la Guideline 1.2 de l'App Store.
  *
+ *   - compte gardé dont la session est perdue → « Reconnecte-toi » (chantier 28) ;
  *   - profil complet → composer ;
  *   - profil sans `terms_accepted_at` → gate CGU, pour les comptes d'avant ;
  *   - pas de profil mais règles acceptées ici → composer, en brouillon ;
@@ -28,8 +29,13 @@ import { useSession } from '@/state/session';
  */
 export default function Index() {
   const profile = useSession((s) => s.profile);
+  const lostAccount = useSession((s) => s.lostAccount);
   const draftHydrated = useDraft((s) => s.hydrated);
   const termsAcceptedAt = useDraft((s) => s.termsAcceptedAt);
+
+  // Chantier 28, D6 : la session d'un compte gardé a été refusée. On le
+  // retrouve d'un code plutôt que d'ouvrir l'app sur un compte neuf.
+  if (lostAccount) return <Redirect href="/account/reconnect" />;
 
   if (profile) {
     if (!profile.terms_accepted_at) return <Redirect href="/onboarding/terms" />;

@@ -28,7 +28,9 @@ import { userErrorMessage } from '@/lib/user-error-message';
 import { useSession } from '@/state/session';
 import { useDraft } from '@/state/draft';
 import { publishFirstBento } from '@/lib/bento-actions';
-import { offerEditorialConsent } from '@/lib/push-runtime';
+import { keptEmail } from '@/lib/account';
+import { offerKeepAccount } from '@/lib/keep-offer';
+import { TextButton } from '@/components/account/AccountParts';
 
 /**
  * Le pseudo, demandé **au moment de publier**.
@@ -81,6 +83,7 @@ export default function PseudoOnboarding() {
 
   const onValidate = async () => {
     if (check.status !== 'available' || !userId) return;
+    const kept = keptEmail(useSession.getState().user) !== null;
     setSubmitting(true);
     // Chantier 18, D3 : un item attend encore, la base crée le bento marqué et
     // le publiera à la validation. Il n'est pas en ligne : pas de page
@@ -96,12 +99,17 @@ export default function PseudoOnboarding() {
         if (router.canGoBack()) router.back();
         else router.replace('/(tabs)/compose');
         showToast('Ton bento sortira dès la validation', { variant: 'success', durationMs: 3500 });
+        // Chantier 28, D4 : un bento qui attend sa validation, c'est déjà
+        // quelque chose à perdre. La feuille « Garde ton bento », une fois.
+        void offerKeepAccount({ userId, kept, thenEditorial: false });
         return;
       }
       router.replace(`/u/${pseudo}` as const);
       // Chantier 17, D20 : juste après la première publication, l'accord pour
       // les éditions. Une seule fois par téléphone, et jamais bloquant.
-      void offerEditorialConsent();
+      // Chantier 28, D11 : derrière la feuille « Garde ton bento », qui passe
+      // d'abord ; l'accord suit sa fermeture.
+      void offerKeepAccount({ userId, kept, thenEditorial: true });
     } catch (e) {
       console.warn('[publication] premier bento', e);
       Alert.alert('Oups', userErrorMessage('create-profile', e));
@@ -284,6 +292,13 @@ export default function PseudoOnboarding() {
             >
               {submitting ? 'Publication…' : 'Publier mon bento'}
             </StampButton>
+            {/* Chantier 28 : un compte gardé ailleurs se retrouve ici, avant
+                d'en publier un second. */}
+            <TextButton
+              label="J'ai déjà un compte"
+              disabled={submitting}
+              onPress={() => router.push('/account/sign-in')}
+            />
           </View>
         </View>
       </SafeAreaView>

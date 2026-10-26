@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSession } from '@/state/session';
 import { useBento } from '@/state/bento';
-import { deleteOwnAccount, editableBentoId, unpublishBento } from '@/lib/bento-actions';
+import { editableBentoId, unpublishBento } from '@/lib/bento-actions';
 import { bentoName } from '@/lib/own-bento';
 import { exportUserData } from '@/lib/data-export';
 import { extendaAccentRoom } from '@/lib/display-title';
@@ -37,7 +37,8 @@ import { useBlocked } from '@/state/blocked';
 import { userErrorMessage } from '@/lib/user-error-message';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { PrivacySettings } from '@/components/PrivacySettings';
-import { forgetReadyReminders } from '@/lib/push-runtime';
+import { deleteAccountAndRestart, signOutAccount } from '@/state/account-flow';
+import { keptEmail, maskEmail } from '@/lib/account';
 
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 const TERMS_URL = 'https://bento-pop.com/mentions-legales';
@@ -63,7 +64,9 @@ const TITLE_SIZE = 30;
  */
 export default function SettingsScreen() {
   const userId = useSession((s) => s.user?.id);
-  const resetAndReinit = useSession((s) => s.resetAndReinit);
+  // Chantier 28 : l'adresse qui garde le compte, ou `null` pour un anonyme.
+  const kept = useSession((s) => keptEmail(s.user));
+  const [signingOut, setSigningOut] = useState(false);
   const publishedAt = useBento((s) => s.publishedAt);
   // Chantier 16 : le bento courant et la liste, pour nommer ce sur quoi les
   // actions de cet écran agissent.
@@ -148,10 +151,38 @@ export default function SettingsScreen() {
     );
   };
 
+  // Chantier 28, D10 : un compte gardé se quitte, et se retrouve d'un code.
+  const confirmSignOut = () => {
+    if (!kept) return;
+    Alert.alert(
+      'Se déconnecter ?',
+      `Ton compte reste gardé : un code à ${maskEmail(kept)} suffira pour le retrouver.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Se déconnecter',
+          onPress: async () => {
+            setSigningOut(true);
+            try {
+              await signOutAccount();
+              router.replace('/');
+            } catch (e) {
+              console.warn('[réglages] déconnexion', e);
+              Alert.alert('Oups', "La déconnexion n'a pas abouti. Réessaie dans un instant.");
+              setSigningOut(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const confirmDelete = () => {
     Alert.alert(
       'Supprimer mon compte ?',
-      'Toutes tes données seront effacées définitivement : pseudo, bento, items sélectionnés. Cette action est irréversible.',
+      kept
+        ? 'Toutes tes données seront effacées définitivement : pseudo, bentos, items sélectionnés et ton adresse email. Cette action est irréversible.'
+        : 'Toutes tes données seront effacées définitivement : pseudo, bento, items sélectionnés. Cette action est irréversible.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -161,10 +192,9 @@ export default function SettingsScreen() {
             if (!userId) return;
             setDeleting(true);
             try {
-              await deleteOwnAccount(userId);
-              // Chantier 8 : ses rappels de bento prêt partent avec lui.
-              await forgetReadyReminders();
-              await resetAndReinit();
+              // Chantier 28, D8 : profil, compte d'authentification et adresse,
+              // en une transaction, puis l'app repart de zéro.
+              await deleteAccountAndRestart();
               // Le `Redirect` dans app/index.tsx renverra vers l'onboarding
               router.replace('/');
             } catch (e) {
@@ -287,6 +317,34 @@ export default function SettingsScreen() {
           <View style={{ marginTop: 24, gap: 8 }}>
             <SectionTitle>Compte</SectionTitle>
 
+            {/* Chantier 28 (D4, D10, D13) : garder son compte, le retrouver, ou
+                le quitter une fois gardé. L'adresse, masquée. */}
+            {kept ? (
+              <View style={{ marginBottom: 8, gap: 8 }}>
+                <Text
+                  allowFontScaling={false}
+                  style={{ ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 14, 20), fontWeight: '600' }}
+                >
+                  Compte gardé avec {maskEmail(kept)}
+                </Text>
+                <SettingsLink
+                  label={signingOut ? 'Déconnexion…' : 'Se déconnecter'}
+                  onPress={signingOut ? () => {} : confirmSignOut}
+                />
+              </View>
+            ) : (
+              <View style={{ marginBottom: 8, gap: 8 }}>
+                <SettingsLink label="Garder mon compte" onPress={() => router.push('/account/keep')} />
+                <Text
+                  allowFontScaling={false}
+                  style={{ ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 11, 16), color: INK_MUTED }}
+                >
+                  Pour le retrouver sur un autre téléphone, ou après une réinstallation.
+                </Text>
+                <SettingsLink label="J'ai déjà un compte" onPress={() => router.push('/account/sign-in')} />
+              </View>
+            )}
+
             {/* Neutre, et non encadré de rouge : retirer son bento se
                 rattrape d'un tap, supprimer son compte non. Les habiller
                 pareil serait fabriquer l'erreur. */}
@@ -342,7 +400,9 @@ export default function SettingsScreen() {
                 marginTop: 4,
               }}
             >
-              Efface définitivement ton pseudo, ton bento et tes choix. Cette action est irréversible.
+              {kept
+                ? 'Efface définitivement ton pseudo, tes bentos, tes choix et ton adresse. Cette action est irréversible.'
+                : 'Efface définitivement ton pseudo, ton bento et tes choix. Cette action est irréversible.'}
             </Text>
           </View>
         </ScrollView>

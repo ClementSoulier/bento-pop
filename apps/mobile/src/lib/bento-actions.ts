@@ -162,16 +162,17 @@ export async function unpublishBento(bentoId: string): Promise<void> {
 /**
  * Supprime le compte de l'utilisateur (Apple guideline 5.1.1(v)).
  *
- * DELETE public.users → cascade automatique vers `bentos` puis
- * `bento_items` (configurés ON DELETE CASCADE dans la migration initiale).
- * L'utilisateur n'a plus aucune donnée publique liée.
+ * Chantier 28, D8 : par `delete_own_account()`, qui efface en une transaction
+ * l'entrée au registre, le profil (bentos, cases et anciens pseudos en
+ * cascade) et la ligne d'`auth.users`, adresse et identités comprises.
+ * Avant, l'app supprimait la seule ligne de `public.users` et laissait le
+ * compte d'authentification ; la 1.1 et la 0.1.0 le font toujours.
  *
- * Note : `auth.users` reste orphelin (anonymous) mais sans aucune info
- * perso stockée dessus → conforme Apple. Le caller doit ensuite signOut
- * et reset les stores locaux pour repartir sur un état propre.
+ * Le caller doit ensuite se déconnecter et remettre les stores à zéro,
+ * `resetAndReinit`.
  */
-export async function deleteOwnAccount(userId: string): Promise<void> {
-  const { error } = await supabase.from('users').delete().eq('id', userId);
+export async function deleteOwnAccount(): Promise<void> {
+  const { error } = await supabase.rpc('delete_own_account');
   if (error) throw new Error(`Account deletion failed: ${error.message}`);
   // Le bento supprimé ne doit survivre ni dans le fil ni sur sa page publique
   // en cache, sur l'appareil même où on vient de le supprimer.

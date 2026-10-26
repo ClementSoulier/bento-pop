@@ -19,6 +19,7 @@ import {
 } from '@/components/bento/font-scaling';
 import { Pagination, Sticker, StampButton, YellowBg } from '@/components/primitives';
 import { displayTitleScale, extendaAccentRoom } from '@/lib/display-title';
+import { TextButton } from '@/components/account/AccountParts';
 
 /** Marge de chaque côté de l'écran. */
 const SIDE_PADDING = 24;
@@ -164,6 +165,9 @@ export default function SplashOnboarding() {
           <StampButton wide onPress={() => router.push('/onboarding/terms')}>
             Commencer
           </StampButton>
+          {/* Chantier 28 : le premier écran d'un téléphone neuf, ou d'une
+              réinstallation. Un compte gardé se retrouve d'ici. */}
+          <TextButton label="J'ai déjà un compte" onPress={() => router.push('/account/sign-in')} />
 
           <View style={{ marginTop: 16 }}>
             <Pagination total={3} active={0} />

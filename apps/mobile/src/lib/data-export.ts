@@ -2,6 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { supabase } from '@/supabase/client';
+import { keptEmail } from './account';
 
 /**
  * Export RGPD : dump l'intégralité des données de l'utilisateur en JSON
@@ -44,13 +45,19 @@ export async function exportUserData(userId: string): Promise<void> {
   // client, la fonction ne rend que ceux du compte connecté.
   const { data: pseudoHistory } = await supabase.rpc('my_pseudo_history');
 
+  // 4. L'adresse qui garde le compte, chantier 28 (D14), lue dans la session :
+  // elle vit dans `auth.users`, que le client ne lit pas autrement.
+  const { data: auth } = await supabase.auth.getSession();
+
   const payload = {
     exported_at: new Date().toISOString(),
     // 2 : la clé `bento`, scalaire, devient `bentos`, un tableau. Un lecteur
     // de l'ancien format le verrait sinon comme un export sans bento. La clé
-    // `pseudo_history`, ajoutée au chantier 21, ne change rien pour lui.
+    // `pseudo_history`, ajoutée au chantier 21, ni `account`, au chantier 28,
+    // ne changent rien pour lui.
     schema_version: 2,
     profile,
+    account: { email: keptEmail(auth.session?.user) },
     bentos: bentos ?? [],
     pseudo_history: pseudoHistory ?? [],
   };
