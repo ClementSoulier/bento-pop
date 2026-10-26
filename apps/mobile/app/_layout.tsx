@@ -171,6 +171,15 @@ export default function RootLayout() {
                 contentStyle: { backgroundColor: '#fbf3de' },
               }}
             />
+            {/* Chantier 12 (D2) : « Tes pourquoi ». */}
+            <Stack.Screen
+              name="whys/[bentoId]"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                contentStyle: { backgroundColor: '#fbf3de' },
+              }}
+            />
             {/* Chantier 28, D4 : la feuille « Garde ton bento ». */}
             <Stack.Screen
               name="account/keep-offer"

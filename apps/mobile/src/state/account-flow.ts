@@ -3,6 +3,7 @@ import { deleteOwnAccount } from '@/lib/bento-actions';
 import { forgetReadyReminders, refreshPush } from '@/lib/push-runtime';
 import { createSignInClient } from '@/supabase/client';
 import { useBlocked } from './blocked';
+import { useOwnWhys } from './own-whys';
 import { useSession } from './session';
 import { useSocial } from './social';
 
@@ -32,8 +33,10 @@ export async function signInWithCode(
   await forgetReadyReminders().catch((e) => console.warn('[compte] rappels', e));
   void refreshPush(true);
   // Chantier 22 (D9) : les cœurs lus étaient ceux de l'autre compte, et la
-  // liste des comptes bloqués suit le compte retrouvé.
+  // liste des comptes bloqués suit le compte retrouvé. Chantier 12 : ses
+  // pourquoi aussi.
   useSocial.getState().reset();
+  useOwnWhys.getState().reset();
   void useBlocked.getState().syncWithServer();
 }
 
@@ -43,6 +46,7 @@ export async function signOutAccount(): Promise<void> {
   // Chantier 22 (D9) : sa liste reste en base, et revient à la reconnexion.
   await useBlocked.getState().clear();
   useSocial.getState().reset();
+  useOwnWhys.getState().reset();
   await useSession.getState().resetAndReinit();
 }
 
@@ -53,5 +57,6 @@ export async function deleteAccountAndRestart(): Promise<void> {
   await forgetReadyReminders();
   await useBlocked.getState().clear();
   useSocial.getState().reset();
+  useOwnWhys.getState().reset();
   await useSession.getState().resetAndReinit();
 }

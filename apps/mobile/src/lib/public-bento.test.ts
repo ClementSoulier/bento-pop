@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { paletteKeyForItem } from '@bento-pop/supabase-mobile/bento';
-import { bentoRows, mapPublicBento, type PublicBentoRow } from './public-bento';
+import { bentoRows, mapPublicBento, publicWhy, type PublicBentoRow } from './public-bento';
 
 /** Six décimales : la précision d'un `timestamptz`, à reprendre telle quelle. */
 const PUBLISHED = '2026-09-08T15:49:11.227431+00:00';
@@ -187,6 +187,40 @@ describe('mapPublicBento, cases partielles', () => {
     const slots = mapPublicBento(row({}, { bento_items: links })).bento?.slots;
     assert.equal(Object.keys(slots ?? {}).length, 6);
     assert.equal(slots?.film?.title, 'Le Seigneur des anneaux');
+  });
+});
+
+describe('mapPublicBento, les pourquoi (chantier 12)', () => {
+  it('range chaque pourquoi sous la clé de sa case, objet ou tableau', () => {
+    const links: Links = [
+      { ...fullLinks[0]!, bento_whys: { id: 'w-film', body: 'Le premier film vu au cinéma.' } },
+      { ...fullLinks[1]!, bento_whys: [{ id: 'w-serie', body: 'Pour le générique.' }] },
+      ...fullLinks.slice(2),
+    ];
+    const bento = mapPublicBento(row({}, { bento_items: links })).bento;
+    assert.deepEqual(bento?.whys, {
+      film: { id: 'w-film', body: 'Le premier film vu au cinéma.' },
+      series: { id: 'w-serie', body: 'Pour le générique.' },
+    });
+  });
+
+  it('aucun pourquoi : un objet vide, la page ne change pas', () => {
+    assert.deepEqual(mapPublicBento(row()).bento?.whys, {});
+  });
+
+  it("une case dont l'item est masqué ne garde pas son pourquoi", () => {
+    const links: Links = [
+      ...fullLinks.slice(0, 5),
+      { category_id: 6, items: null, bento_whys: { id: 'w-lieu', body: 'Jamais lu.' } },
+    ];
+    assert.deepEqual(mapPublicBento(row({}, { bento_items: links })).bento?.whys, {});
+  });
+
+  it('un texte vide ou une relation vide ne font pas de ligne', () => {
+    assert.equal(publicWhy(null), null);
+    assert.equal(publicWhy(undefined), null);
+    assert.equal(publicWhy([]), null);
+    assert.equal(publicWhy({ id: 'w', body: '  ' }), null);
   });
 });
 

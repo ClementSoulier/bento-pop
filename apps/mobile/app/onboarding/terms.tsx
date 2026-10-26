@@ -104,8 +104,8 @@ export default function TermsOnboarding() {
                 CE QU'ON FAIT
               </Sticker>
               <RuleLine>
-                Tu peux <Text style={{ fontWeight: '800' }}>signaler</Text> tout bento, commentaire ou
-                compte qui te paraît hors-limites, on examine sous 24 h.
+                Tu peux <Text style={{ fontWeight: '800' }}>signaler</Text> tout bento, pourquoi,
+                commentaire ou compte qui te paraît hors-limites, on examine sous 24 h.
               </RuleLine>
               <RuleLine>
                 Tu peux <Text style={{ fontWeight: '800' }}>bloquer</Text> un·e utilisateur·rice à

@@ -35,6 +35,7 @@ const PUBLISHED: PublicBentoResult = {
     slots: {},
   cases: MAIN_CASES,
   editionTitle: null,
+  whys: {},
   },
 };
 

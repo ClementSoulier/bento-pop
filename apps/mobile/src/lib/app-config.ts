@@ -30,6 +30,11 @@ export type AppConfig = {
    * commentaires, sans nouvelle version. La base refuse aussi d'en écrire.
    */
   commentsEnabled: boolean;
+  /**
+   * Chantier 12 (D10) : éteint, l'app cache les pourquoi et leur écran. La
+   * base refuse aussi d'en écrire, et n'en rend plus aucun.
+   */
+  whysEnabled: boolean;
 };
 
 /**
@@ -54,7 +59,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     supabase
       .from('app_config')
       .select(
-        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled',
+        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled',
       )
       .eq('id', 1)
       .maybeSingle();
@@ -72,6 +77,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     androidMinVersion: r.android_min_version,
     androidLatestVersion: r.android_latest_version,
     commentsEnabled: r.comments_enabled,
+    whysEnabled: r.whys_enabled,
   };
 }
 
