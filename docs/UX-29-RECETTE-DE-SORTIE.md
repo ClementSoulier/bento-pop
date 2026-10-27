@@ -20,7 +20,8 @@
 > prêtes à recopier (§6) ; les notes de version (§7) ; la 2.0.0 dans
 > `app.json` ; une répétition de la build de release au simulateur et à
 > l'émulateur, sur une pile Supabase locale (§8). La liste se coche sur la
-> page « Mes tâches Bento Pop » (D5).
+> page « Mes tâches Bento Pop » (D5). Sur `feat/ux-29-recette-de-sortie`,
+> **PR #106**, empilée sur la #105.
 
 ---
 
@@ -798,7 +799,7 @@ laissé dans `apps/mobile`.
 ### 9.1 Fait le 27 octobre 2026
 
 Sur `feat/ux-29-recette-de-sortie`, partie de la branche de la PR #105, le
-27.
+27, et ouverte en **PR #106**, empilée sur la #105.
 
 - **La spécification** : la liste de sortie (§4) et ses parcours (§5), les
   fiches des stores (§6), les notes de version (§7).
