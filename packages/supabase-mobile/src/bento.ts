@@ -811,3 +811,30 @@ const VISITS_NUMBER = new Intl.NumberFormat('fr-FR');
 export function formatVisits(count: number): string {
   return `${VISITS_NUMBER.format(count)}\u00a0${count < 2 ? 'visite' : 'visites'}`;
 }
+
+/**
+ * \u00ab 1 abonn\u00e9 \u00bb, \u00ab 4 abonn\u00e9s \u00bb, \u00ab 1 234 abonnements \u00bb : les nombres du
+ * chantier 23 (D14), \u00e9crits comme les visites, pareil sur la landing et dans
+ * l'app.
+ */
+export function formatFollowCount(count: number, word: 'abonn\u00e9' | 'abonnement' | 'demande'): string {
+  return `${VISITS_NUMBER.format(count)}\u00a0${count < 2 ? word : `${word}s`}`;
+}
+
+/**
+ * Ce que la ligne de date ajoute apr\u00e8s la date, chantier 23 (D2, D9, D16) :
+ * le nombre d'abonn\u00e9s d\u00e8s le premier, \u00e0 d\u00e9faut celui des abonnements, puis
+ * les demandes, que la base ne rend qu'\u00e0 leur titulaire. `null` quand il n'y
+ * a rien \u00e0 dire : la ligne reste alors celle d'avant, au pixel pr\u00e8s.
+ */
+export function followSegment(
+  counts: { followers: number; following: number; requests?: number | null } | null | undefined,
+): string | null {
+  if (!counts) return null;
+  const parts: string[] = [];
+  if (counts.followers > 0) parts.push(formatFollowCount(counts.followers, 'abonn\u00e9'));
+  else if (counts.following > 0) parts.push(formatFollowCount(counts.following, 'abonnement'));
+  const requests = counts.requests ?? 0;
+  if (requests > 0) parts.push(formatFollowCount(requests, 'demande'));
+  return parts.length > 0 ? parts.join(' \u00b7 ') : null;
+}

@@ -1,5 +1,6 @@
 import { Image, PixelRatio, Platform, Text, View, useWindowDimensions } from 'react-native';
 import { CONTENT_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
+import { lineFitScale } from '@/components/bento/tile-title';
 import { extendaAccentRoom } from '@/lib/display-title';
 
 const AVATAR = 40;
@@ -8,6 +9,9 @@ const SHADOW_OFFSET = 4;
 const ROTATION = -1.5;
 const TITLE_SIZE = 16;
 const TITLE_LINE_H = 17;
+const TITLE_SPACING = 0.6;
+/** Ce que l'étiquette prend autour du titre : marges, bordures, Popy et écart. */
+const LABEL_CHROME = 8 + 16 + 2.5 * 2 + AVATAR + 10;
 
 type FeedLabelProps = {
   /** La première ligne, en Extenda : `@pseudo`, ou « Bento Pop · Émission ». */
@@ -55,11 +59,28 @@ type FeedLabelProps = {
 export function FeedLabel({ title, meta, avatar, maxWidth, titleLines = 1 }: FeedLabelProps) {
   const { fontScale } = useWindowDimensions();
   const titleType = scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, TITLE_SIZE, TITLE_LINE_H);
-  const accentRoom = extendaAccentRoom(
-    title,
-    titleType.fontSize,
-    Platform.OS === 'android' ? PixelRatio.get() : undefined,
-  );
+  const pixelRatio = Platform.OS === 'android' ? PixelRatio.get() : undefined;
+  // Un titre d'une ligne, celui de tout bento, prend la taille que l'écran
+  // mesure, plutôt que de la confier à `adjustsFontSizeToFit` : avec une
+  // hauteur de ligne posée, iOS le faisait tomber à la trace. La recette du
+  // chantier 23 l'a vu sur le premier post de « La table », à froid, trois
+  // fois sur trois, dès que le filtre s'est ajouté à l'en-tête. Ceux de deux
+  // lignes, des épisodes, gardent leur réduction par la plateforme.
+  const oneLine = titleLines === 1;
+  const titleFontSize = oneLine
+    ? titleType.fontSize *
+      lineFitScale(title, maxWidth - LABEL_CHROME, titleType.fontSize, TITLE_SPACING, pixelRatio)
+    : titleType.fontSize;
+  const accentRoom = extendaAccentRoom(title, titleFontSize, pixelRatio);
+  const titleStyle = {
+    fontFamily: 'Extenda',
+    fontSize: titleFontSize,
+    lineHeight: titleType.lineHeight,
+    letterSpacing: TITLE_SPACING,
+    textTransform: 'uppercase',
+    paddingTop: accentRoom,
+    marginTop: -accentRoom,
+  } as const;
 
   return (
     <View style={{ alignSelf: 'flex-start', maxWidth, transform: [{ rotate: `${ROTATION}deg` }] }}>
@@ -116,21 +137,20 @@ export function FeedLabel({ title, meta, avatar, maxWidth, titleLines = 1 }: Fee
               de passer sous sa largeur intrinsèque, et le titre ne rétrécit
               jamais. */}
           <View style={{ flexShrink: 1, minWidth: 0 }}>
-            <Text
-              numberOfLines={titleLines}
-              adjustsFontSizeToFit
-              allowFontScaling={false}
-              style={{
-                fontFamily: 'Extenda',
-                ...titleType,
-                letterSpacing: 0.6,
-                textTransform: 'uppercase',
-                paddingTop: accentRoom,
-                marginTop: -accentRoom,
-              }}
-            >
-              {title}
-            </Text>
+            {oneLine ? (
+              <Text allowFontScaling={false} style={titleStyle}>
+                {title}
+              </Text>
+            ) : (
+              <Text
+                numberOfLines={titleLines}
+                adjustsFontSizeToFit
+                allowFontScaling={false}
+                style={titleStyle}
+              >
+                {title}
+              </Text>
+            )}
             {meta ? (
               <Text
                 numberOfLines={1}

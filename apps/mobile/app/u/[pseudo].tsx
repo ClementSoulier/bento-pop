@@ -51,7 +51,15 @@ import { publicPageState } from '@/lib/public-page-state';
 import { shareBentoImage } from '@/lib/share-image';
 import { useIsOffline } from '@/lib/use-is-offline';
 import { useOfflineInset } from '@/lib/use-offline-inset';
-import { bentoVisitsQueryOptions, withVisits } from '@/lib/visits';
+import { bentoVisitsQueryOptions } from '@/lib/visits';
+import { followSegment, profileDateLine } from '@/lib/follows';
+import {
+  useFollowButton,
+  useFollowSummary,
+  useFollowsEnabled,
+  useViewer,
+  type FollowButtonState,
+} from '@/components/follows/use-follows';
 import { useBlocked } from '@/state/blocked';
 import { useSession } from '@/state/session';
 import { publicSupabase, supabase } from '@/supabase/client';
@@ -599,15 +607,29 @@ type Pastille = 'guest' | 'featured' | null;
  *
  * `dateLine` nul pendant le chargement : la ligne garde sa hauteur exacte, en
  * os, pour que la boîte n'ait pas à bouger quand la date arrive.
+ *
+ * Depuis le chantier 23 (D2), les nombres d'abonnés suivent la date sur la
+ * même ligne, soulignés, et la ligne entière ouvre les listes : aucune ligne
+ * de plus, la boîte du 17 Pro n'ayant que 3 pt de marge.
  */
 function ProfileHeader({
   pseudo,
   avatarKey,
   pastille,
   dateLine,
+  dateSegment = null,
+  dateAccessibilityLabel,
+  dateAccessibilityHint,
+  onDatePress,
   actionsFor,
 }: {
   pseudo: string;
+  /** Les nombres du chantier 23, après la date. `null` sans abonné ni abonnement. */
+  dateSegment?: string | null;
+  dateAccessibilityLabel?: string;
+  dateAccessibilityHint?: string;
+  /** Ouvre les listes ; absent sans nombre, la ligne restant un texte. */
+  onDatePress?: () => void;
   /**
    * Le cœur et la bulle du bento, de part et d'autre du Popy (chantier 22).
    * Absents de l'os de chargement.
@@ -634,6 +656,27 @@ function ProfileHeader({
     lineHeight: DATE_LINE_H * textScale,
     marginTop: PUBLIC_HEADER.dateMarginTop,
   } as const;
+  // Un seul texte, qui rétrécit en bloc s'il ne tient pas : le modèle de
+  // `public-layout.ts` ne compte qu'une ligne. Les nombres du 23 y sont une
+  // part soulignée, qui hérite de sa taille.
+  const dateText = (
+    <Text
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      allowFontScaling={false}
+      style={[dateStyle, { color: 'rgba(10,10,10,0.65)' }]}
+    >
+      {dateLine}
+      {dateSegment ? (
+        <>
+          {' · '}
+          <Text allowFontScaling={false} style={{ color: '#0a0a0a', textDecorationLine: 'underline' }}>
+            {dateSegment}
+          </Text>
+        </>
+      ) : null}
+    </Text>
+  );
 
   return (
     <View
@@ -702,15 +745,19 @@ function ProfileHeader({
             bento publié le 00 septembre 0000
           </Text>
         </View>
-      ) : (
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          allowFontScaling={false}
-          style={[dateStyle, { color: 'rgba(10,10,10,0.65)' }]}
+      ) : onDatePress ? (
+        <Pressable
+          onPress={onDatePress}
+          accessibilityRole="button"
+          accessibilityLabel={dateAccessibilityLabel}
+          accessibilityHint={dateAccessibilityHint}
+          // La ligne fait 16 pt de haut : la cible tactile en fait 44.
+          hitSlop={{ top: 14, bottom: 14 }}
         >
-          {dateLine}
-        </Text>
+          {dateText}
+        </Pressable>
+      ) : (
+        dateText
       )}
       {actionsFor ? (
         <HeaderActions
@@ -870,14 +917,33 @@ function FoundPage({
   // Le titre de l'édition passe devant la date : sans lui, on ne comprend
   // pas pourquoi cette boîte n'a pas les cases du bento principal. Le bento
   // principal garde sa phrase d'origine, sans virgule : la recette du
-  // chantier 13 a relevé « bento, publié le », régression du lot 5.
-  const quoi = bento.editionTitle ? `${bento.editionTitle}, publié le` : 'bento publié le';
-  // Le compteur sur la même ligne que la date, comme sur le web : le modèle de
-  // `public-layout.ts` ne compte qu'une ligne, qui rétrécit au besoin.
-  const dateLine = withVisits(
-    `${bento.displayName ? `${bento.displayName} · ` : ''}${quoi} ${formatDate(bento.publishedAt)}`,
+  // chantier 13 a relevé « bento, publié le », régression du lot 5. Les
+  // visites (8), puis les nombres du 23 (D2), sur la même ligne, comme sur le
+  // web : le modèle de `public-layout.ts` ne compte qu'une ligne.
+  const followsOn = useFollowsEnabled();
+  const { hasProfile } = useViewer();
+  const { data: summary } = useFollowSummary(bento.userId);
+  const line = profileDateLine({
+    displayName: bento.displayName,
+    editionTitle: bento.editionTitle,
+    publishedAt: bento.publishedAt,
     visits,
-  );
+    segment: followsOn ? followSegment(summary) : null,
+  });
+  const ownerId = bento.userId;
+  const openLists =
+    line.segment && ownerId
+      ? () =>
+          router.push({
+            pathname: '/follows/[userId]',
+            params: { userId: ownerId, pseudo: bento.pseudo },
+          })
+      : undefined;
+
+  // D5 : « Suivre » à la place de « Compose le tien », pour qui a un profil.
+  // Rien quand la base a coupé les abonnements, qui rend alors `null`.
+  const follow = useFollowButton(ownerId ?? '', bento.pseudo);
+  const showFollow = followsOn && !isOwn && hasProfile && ownerId !== null && summary !== null;
 
   return (
     <View style={{ flex: 1 }}>
@@ -896,7 +962,13 @@ function FoundPage({
           pseudo={bento.pseudo}
           avatarKey={bento.avatar}
           pastille={bento.isGuest ? 'guest' : bento.isFeatured ? 'featured' : null}
-          dateLine={dateLine}
+          dateLine={line.head}
+          dateSegment={line.segment}
+          dateAccessibilityLabel={line.accessibilityLabel}
+          dateAccessibilityHint={
+            isOwn ? 'Ouvre tes abonnés et tes abonnements' : 'Ouvre ses abonnés et ses abonnements'
+          }
+          onDatePress={openLists}
           actionsFor={{ bentoId: bento.id, ownerId: bento.userId }}
         />
         <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
@@ -923,7 +995,14 @@ function FoundPage({
         <AccountBentoList bentos={listed} isOwn={isOwn} />
       </ScrollView>
 
-      <CtaBar isOwn={isOwn} sharing={sharing} onShare={onShare} fontScale={fontScale} />
+      <CtaBar
+        isOwn={isOwn}
+        sharing={sharing}
+        onShare={onShare}
+        fontScale={fontScale}
+        follow={showFollow ? follow : null}
+      />
+      <ActionSheet {...follow.sheet} />
 
       {/*
         ShareImage rendue HORS de la zone visible via `translateX`, pas via
@@ -1023,11 +1102,18 @@ function CtaBar({
   sharing,
   onShare,
   fontScale,
+  follow,
 }: {
   isOwn: boolean;
   sharing: boolean;
   onShare: () => void;
   fontScale: number;
+  /**
+   * Chantier 23 (D5) : « Suivre », « Abonné » ou « Demandé » à la place de
+   * « Compose le tien », pour qui a un profil. Même bouton, même place : la
+   * barre ne bouge pas d'un point.
+   */
+  follow: FollowButtonState | null;
 }) {
   // Appliquée par l'écran, comme l'en-tête : cf. `fontScaleFor`.
   const textScale = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
@@ -1055,9 +1141,17 @@ function CtaBar({
         }}
       >
         <Pressable
-          onPress={() => router.replace('/(tabs)/compose')}
+          onPress={follow && !isOwn ? follow.onPress : () => router.replace('/(tabs)/compose')}
           accessibilityRole="button"
-          accessibilityLabel={isOwn ? 'Modifier mon bento' : 'Compose le tien'}
+          accessibilityLabel={
+            follow && !isOwn
+              ? follow.model.accessibilityLabel
+              : isOwn
+                ? 'Modifier mon bento'
+                : 'Compose le tien'
+          }
+          accessibilityHint={follow && !isOwn ? follow.model.accessibilityHint : undefined}
+          accessibilityState={follow && !isOwn ? { busy: follow.busy } : undefined}
           style={[
             {
               flex: 1,
@@ -1073,7 +1167,7 @@ function CtaBar({
           ]}
         >
           <Text numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false} style={label}>
-            {isOwn ? 'Modifier' : 'Compose le tien'}
+            {follow && !isOwn ? follow.model.label : isOwn ? 'Modifier' : 'Compose le tien'}
           </Text>
         </Pressable>
         <Pressable
@@ -1208,10 +1302,6 @@ function StateMessage({
   );
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-}
 
 /**
  * Menu d'actions modération sur le bento d'autrui : signaler le bento ou son
@@ -1245,7 +1335,7 @@ function BlockReportMenu({
     // désormais le chemin de retour, et la phrase le dit.
     Alert.alert(
       'Bloquer cet utilisateur ?',
-      'Tu ne verras plus son bento dans La table ni dans la recherche. Il ne pourra plus commenter ni aimer tes bentos. Tu peux le débloquer depuis tes réglages.',
+      'Tu ne verras plus son bento dans La table ni dans la recherche. Il ne pourra plus commenter ni aimer tes bentos, et vous ne vous suivrez plus. Tu peux le débloquer depuis tes réglages.',
       [
         { text: 'Annuler', style: 'cancel' },
         {

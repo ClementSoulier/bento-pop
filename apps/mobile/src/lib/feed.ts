@@ -325,22 +325,61 @@ export async function loadFeedPage(
     if (scope.primary !== undefined) query = query.eq('is_primary', scope.primary);
   }
 
-  if (cursor) {
-    // `.or()` du client et jamais une URL construite à la main : le `+` du
-    // décalage horaire, laissé brut, est décodé en espace et PostgREST répond
-    // `22007 invalid input syntax for type timestamp with time zone`.
-    // `supabase-js` passe par `URL.searchParams`, qui l'encode en `%2B`.
-    query = query.or(
-      `published_at.lt.${cursor.publishedAt},` +
-        `and(published_at.eq.${cursor.publishedAt},id.lt.${cursor.id})`,
-    );
-  }
+  if (cursor) query = query.or(afterCursor(cursor));
 
   const { data, error } = await query
     .order('published_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(PAGE_SIZE);
 
+  return toFeedPage(data, error);
+}
+
+/**
+ * Clé du fil des abonnements, par compte : un changement de compte (28) ne
+ * montre pas les abonnements du précédent. Sous `FEED_QUERY_KEY`, donc
+ * relue avec « La table » par les mutations qui l'invalident.
+ */
+export const followingFeedQueryKey = (userId: string | null) =>
+  [...FEED_QUERY_KEY, 'following', userId] as const;
+
+/**
+ * Une page du fil des abonnements, chantier 23 (D1, D7) : `following_bentos`
+ * rend des lignes de `bentos`, sous la règle de lecture de la table, que
+ * PostgREST complète avec la sélection du fil, trie et pagine comme « La
+ * table ». Mêmes pages, même curseur, donc un bento s'y lit pareil.
+ */
+export async function loadFollowingPage(
+  client: FeedClient,
+  cursor?: FeedCursor | null,
+): Promise<FeedPage> {
+  let query = client.rpc('following_bentos').select(FEED_SELECT);
+  if (cursor) query = query.or(afterCursor(cursor));
+
+  const { data, error } = await query
+    .order('published_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(PAGE_SIZE);
+
+  return toFeedPage(data, error);
+}
+
+/**
+ * Ce qui vient après le curseur, dans l'ordre du fil.
+ *
+ * `.or()` du client et jamais une URL construite à la main : le `+` du
+ * décalage horaire, laissé brut, est décodé en espace et PostgREST répond
+ * `22007 invalid input syntax for type timestamp with time zone`.
+ * `supabase-js` passe par `URL.searchParams`, qui l'encode en `%2B`.
+ */
+function afterCursor(cursor: FeedCursor): string {
+  return (
+    `published_at.lt.${cursor.publishedAt},` +
+    `and(published_at.eq.${cursor.publishedAt},id.lt.${cursor.id})`
+  );
+}
+
+function toFeedPage(data: unknown, error: { message: string } | null): FeedPage {
   // On lève au lieu de renvoyer une liste vide. `loadFeaturedBentos` faisait
   // `if (error || !data) return []`, ce qui rendait une panne réseau
   // indiscernable d'une base vide : l'écran affichait « pas encore de

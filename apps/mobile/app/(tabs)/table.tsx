@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  PixelRatio,
   Platform,
   Pressable,
   RefreshControl,
@@ -31,10 +32,21 @@ import {
 } from '@/components/bento/font-scaling';
 import { INK_MUTED, Sticker, YellowBg } from '@/components/primitives';
 import { EPISODES_GRACE_MS, episodesQueryOptions, type FeedEpisode } from '@/lib/episodes';
-import { FEED_QUERY_KEY, PAGE_SIZE, loadFeedPage, type FeedCursor } from '@/lib/feed';
+import {
+  FEED_QUERY_KEY,
+  PAGE_SIZE,
+  followingFeedQueryKey,
+  loadFeedPage,
+  loadFollowingPage,
+  type FeedCursor,
+} from '@/lib/feed';
 import { interleaveFeed, type FeedItem } from '@/lib/feed-merge';
+import { extendaAccentRoom } from '@/lib/display-title';
 import { LANDING_URL } from '@/lib/landing-url';
+import { SegmentPills } from '@/components/follows/SegmentPills';
+import { useFollowSummary, useFollowsEnabled, useViewer } from '@/components/follows/use-follows';
 import { useBlocked } from '@/state/blocked';
+import { useTableFilter, type TableFilter } from '@/state/table-filter';
 import { isBlockedAccount } from '@/lib/blocked-accounts';
 import { supabase } from '@/supabase/client';
 
@@ -58,6 +70,29 @@ export default function TableTab() {
   const sideInset = feedSideInset(width);
   const scale = feedScale(width);
 
+  // Chantier 23 (D1, D7) : « Tout le monde » ou « Abonnements », pour qui a
+  // un profil ; sans lui, « La table » reste celle d'avant, au pixel près.
+  const followsOn = useFollowsEnabled();
+  const { viewerId, hasProfile } = useViewer();
+  const chosen = useTableFilter((s) => s.filter);
+  const setFilter = useTableFilter((s) => s.setFilter);
+  const showFilter = followsOn && hasProfile;
+  const following = showFilter && chosen === 'following';
+
+  const everyone = useInfiniteQuery({
+    queryKey: FEED_QUERY_KEY,
+    initialPageParam: null as FeedCursor | null,
+    queryFn: ({ pageParam }) => loadFeedPage(supabase, pageParam),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !following,
+  });
+  const followed = useInfiniteQuery({
+    queryKey: followingFeedQueryKey(viewerId),
+    initialPageParam: null as FeedCursor | null,
+    queryFn: ({ pageParam }) => loadFollowingPage(supabase, pageParam),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: following,
+  });
   const {
     data,
     isLoading,
@@ -67,12 +102,10 @@ export default function TableTab() {
     hasNextPage,
     fetchNextPage,
     refetch,
-  } = useInfiniteQuery({
-    queryKey: FEED_QUERY_KEY,
-    initialPageParam: null as FeedCursor | null,
-    queryFn: ({ pageParam }) => loadFeedPage(supabase, pageParam),
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-  });
+  } = following ? followed : everyone;
+  // Vide, « Abonnements » dit si l'on ne suit personne ou si les comptes
+  // suivis n'ont rien publié.
+  const viewerSummary = useFollowSummary(following ? viewerId : null);
 
   const blocked = useBlocked((s) => s.index);
   const bentos = useMemo(
@@ -92,9 +125,11 @@ export default function TableTab() {
   const episodesQuery = useQuery(episodesQueryOptions(fetch, LANDING_URL));
   const episodes = episodesQuery.data ?? NO_EPISODES;
   const bentosLoaded = data !== undefined;
+  // Les épisodes ne sont pas un compte : « Abonnements » ne les attend pas
+  // et ne les montre pas (D7).
   const episodesWaitOver = useGrace(
     bentosLoaded,
-    episodesQuery.status !== 'pending',
+    following || episodesQuery.status !== 'pending',
     EPISODES_GRACE_MS,
   );
   const waitingForEpisodes = bentosLoaded && !episodesWaitOver;
@@ -102,8 +137,11 @@ export default function TableTab() {
   // Le fil n'est complet qu'une fois sa dernière page chargée : avant, les
   // épisodes plus anciens que le dernier bento attendent la suivante.
   const items = useMemo(
-    () => (bentosLoaded && episodesWaitOver ? interleaveFeed(bentos, episodes, !hasNextPage) : []),
-    [bentosLoaded, episodesWaitOver, bentos, episodes, hasNextPage],
+    () =>
+      bentosLoaded && episodesWaitOver
+        ? interleaveFeed(bentos, following ? NO_EPISODES : episodes, !hasNextPage)
+        : [],
+    [bentosLoaded, episodesWaitOver, bentos, episodes, hasNextPage, following],
   );
 
   const renderItem = useCallback(
@@ -149,12 +187,19 @@ export default function TableTab() {
           // par-dessus : la liste s'arrête déjà au-dessus d'elle. Il ne reste
           // à réserver que de quoi ne pas coller le pied de liste au bord.
           contentContainerStyle={{ paddingBottom: 32 }}
-          ListHeaderComponent={<Header sideInset={sideInset} />}
+          ListHeaderComponent={
+            <Header
+              sideInset={sideInset}
+              filter={showFilter ? { value: following ? 'following' : 'all', onChange: setFilter } : null}
+            />
+          }
           ListEmptyComponent={
             isLoading || waitingForEpisodes ? (
               <Loading sideInset={sideInset} scale={scale} />
             ) : isError ? (
               <ErrorState onRetry={() => void refetch()} />
+            ) : following ? (
+              <FollowingEmpty followsSomeone={(viewerSummary.data?.following ?? 0) > 0} />
             ) : (
               <EmptyState />
             )
@@ -214,8 +259,17 @@ function useGrace(armed: boolean, settled: boolean, ms: number): boolean {
  * Logo seul, puis le titre. Pas de chip « LA TABLE » : la barre d'onglets
  * indique déjà la section active, le doublon avait déjà été écarté sur
  * l'écran précédent.
+ *
+ * Sous le titre, pour qui a un profil, le filtre du chantier 23 (D1) : sans
+ * lui, l'en-tête ne bouge pas d'un point.
  */
-function Header({ sideInset }: { sideInset: number }) {
+function Header({
+  sideInset,
+  filter,
+}: {
+  sideInset: number;
+  filter: { value: TableFilter; onChange: (value: TableFilter) => void } | null;
+}) {
   const { fontScale } = useWindowDimensions();
   return (
     <View style={{ paddingBottom: 18, paddingHorizontal: sideInset }}>
@@ -242,6 +296,18 @@ function Header({ sideInset }: { sideInset: number }) {
           {'Tout le monde\nà table.'}
         </Text>
       </View>
+      {filter ? (
+        <View style={{ paddingTop: 14 }}>
+          <SegmentPills
+            value={filter.value}
+            onChange={filter.onChange}
+            options={[
+              { value: 'all', label: 'Tout le monde' },
+              { value: 'following', label: 'Abonnements' },
+            ]}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -321,6 +387,71 @@ function EmptyState() {
  * bloqué. Le message final n'apparaît qu'au-delà d'une page, sinon il
  * s'afficherait sous les deux ou trois premiers bentos d'une base neuve.
  */
+/**
+ * « Abonnements » vide (D7) : on ne suit encore personne, et « Trouver » y
+ * mène ; ou les comptes suivis n'ont encore rien publié.
+ */
+function FollowingEmpty({ followsSomeone }: { followsSomeone: boolean }) {
+  const { fontScale } = useWindowDimensions();
+  const title = followsSomeone
+    ? 'Les comptes que tu suis n’ont encore rien publié.'
+    : 'Tu ne suis encore personne.';
+  const type = scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 22, 24);
+  // Le « É » d'Extenda monte au-dessus de son ascendante : sans cette réserve,
+  // prise sur la marge, iOS le rogne. Cf. `extendaAccentRoom`.
+  const accentRoom = extendaAccentRoom(
+    title,
+    type.fontSize,
+    Platform.OS === 'android' ? PixelRatio.get() : undefined,
+  );
+  return (
+    <View style={{ alignItems: 'center', paddingTop: 48 - accentRoom, paddingHorizontal: 32 }}>
+      <Text
+        allowFontScaling={false}
+        textBreakStrategy="simple"
+        style={{
+          paddingTop: accentRoom,
+          fontFamily: 'Extenda',
+          ...type,
+          textAlign: 'center',
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+        }}
+      >
+        {title}
+      </Text>
+      {followsSomeone ? null : (
+        <Pressable
+          onPress={() => router.navigate('/(tabs)/search')}
+          accessibilityRole="button"
+          accessibilityLabel="Trouver des comptes à suivre"
+          style={{
+            marginTop: 16,
+            backgroundColor: '#0a0a0a',
+            borderRadius: 999,
+            paddingVertical: 10,
+            paddingHorizontal: 22,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
+            style={{
+              fontFamily: 'Bungee',
+              fontSize: 12,
+              letterSpacing: 1,
+              color: '#fbbf24',
+              textTransform: 'uppercase',
+            }}
+          >
+            Trouver des comptes
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 function Footer({ loadingMore, exhausted }: { loadingMore: boolean; exhausted: boolean }) {
   const { fontScale } = useWindowDimensions();
   if (loadingMore) {
