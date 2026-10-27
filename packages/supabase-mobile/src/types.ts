@@ -49,6 +49,45 @@ export type BentoWhyRow = {
   updated_at: string;
 };
 
+/** L'état d'un abonnement, chantier 23 : accepté, ou en attente de l'accord du compte suivi (D3). */
+export type FollowStatus = 'accepted' | 'pending';
+
+/**
+ * Les nombres d'un compte tels que `follow_summary` les rend, chantier 23.
+ * `requests` n'est rendu qu'à son titulaire (D9) ; `my_status` est le lien de
+ * qui lit vers ce compte, `null` s'il ne le suit pas.
+ */
+export type FollowSummaryRow = {
+  followers: number;
+  following: number;
+  requests: number | null;
+  my_status: FollowStatus | null;
+  approval: boolean;
+};
+
+/** Ce que `follow_list` liste, chantier 23 (D8). */
+export type FollowListKind = 'followers' | 'following' | 'requests';
+
+/** Une ligne de `follow_list` : le compte, l'état et la date du lien (D8). */
+export type FollowListRow = {
+  user_id: string;
+  pseudo: string;
+  display_name: string | null;
+  avatar: string | null;
+  kind: UserKind;
+  status: FollowStatus;
+  since: string;
+};
+
+/** Un abonnement dans l'export de ses données, chantier 23 (D15). */
+export type FollowExportRow = {
+  user_id: string;
+  pseudo: string | null;
+  status: FollowStatus;
+  created_at: string;
+  accepted_at: string | null;
+};
+
 /**
  * Un commentaire tel que `list_bento_comments` et `post_comment` le rendent,
  * chantier 22. `hidden_reason` n'est rendu qu'à son auteur (D8).
@@ -210,6 +249,12 @@ export type Database = {
           accept_comments: boolean;
           /** « Afficher les j'aime », allumé par défaut. Chantier 22, D14. */
           accept_likes: boolean;
+          /**
+           * « Valider mes abonnés », éteint par défaut. Allumé, chaque nouvel
+           * abonnement est une demande ; éteint, les demandes en attente sont
+           * acceptées. Chantier 23, D3 et D11.
+           */
+          follow_approval: boolean;
         };
         Insert: {
           /** Pour un membre, doit valoir `auth.uid()`. Généré pour un éditorial. */
@@ -231,6 +276,8 @@ export type Database = {
           /** Même règle, chantier 22 (D14). */
           accept_comments?: boolean;
           accept_likes?: boolean;
+          /** Même règle, chantier 23 (D3). */
+          follow_approval?: boolean;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
@@ -541,6 +588,12 @@ export type Database = {
            * n'en rend plus aucun, web compris. Chantier 12, D10.
            */
           whys_enabled: boolean;
+          /**
+           * Éteint, l'app cache le bouton, les nombres, les listes et le
+           * filtre, et la base refuse tout abonnement ; ceux qui existent
+           * restent. Chantier 23, D22.
+           */
+          follows_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -554,6 +607,7 @@ export type Database = {
           android_latest_version?: string | null;
           comments_enabled?: boolean;
           whys_enabled?: boolean;
+          follows_enabled?: boolean;
         };
         Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
         Relationships: [];
@@ -652,6 +706,36 @@ export type Database = {
         Row: { user_id: string; written_at: string };
         Insert: { user_id: string; written_at?: string };
         Update: Partial<Database['public']['Tables']['bento_why_writes']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Chantier 23 : qui suit qui, accepté ou en attente. Aucun droit des
+       * clients : l'app passe par les fonctions, les contrôles par la clé de
+       * service.
+       */
+      account_follows: {
+        Row: {
+          follower_id: string;
+          followed_id: string;
+          status: FollowStatus;
+          created_at: string;
+          accepted_at: string | null;
+        };
+        Insert: {
+          follower_id: string;
+          followed_id: string;
+          status?: FollowStatus;
+          created_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['account_follows']['Insert']>;
+        Relationships: [];
+      };
+      /** Chantier 23 (D12) : le journal du rythme, sans accès client. */
+      account_follow_writes: {
+        Row: { user_id: string; written_at: string };
+        Insert: { user_id: string; written_at?: string };
+        Update: Partial<Database['public']['Tables']['account_follow_writes']['Insert']>;
         Relationships: [];
       };
       user_deletions: {
@@ -1113,7 +1197,7 @@ export type Database = {
         Args: { p_blocked: string[] };
         Returns: Array<{ blocked_id: string; pseudo: string | null }>;
       };
-      /** Chantiers 22 (D21) et 12 (D13). */
+      /** Chantiers 22 (D21), 12 (D13) et 23 (D15). */
       my_social_export: {
         Args: Record<string, never>;
         Returns: {
@@ -1129,7 +1213,59 @@ export type Database = {
             hidden_reason: string | null;
             updated_at: string;
           }>;
+          /** Ses abonnements et ses abonnés, demandes envoyées et reçues comprises. */
+          follows: {
+            following: FollowExportRow[];
+            followers: FollowExportRow[];
+          };
         };
+      };
+      /**
+       * Chantier 23 (D3, D4, D5, D12) : suivre ou ne plus suivre. Rend
+       * l'état de l'abonnement, `null` quand on ne suit plus.
+       */
+      set_follow: {
+        Args: { p_user: string; p_on: boolean };
+        Returns: FollowStatus | null;
+      };
+      /** Chantier 23 (D3) : vrai quand une demande a été traitée. */
+      answer_follow: {
+        Args: { p_follower: string; p_accept: boolean };
+        Returns: boolean;
+      };
+      /** Chantier 23 (D8) : vrai quand un abonné, ou sa demande, a été retiré. */
+      remove_follower: {
+        Args: { p_follower: string };
+        Returns: boolean;
+      };
+      /** Chantier 23 (D2, D9, D13, D16) : aucune ligne quand l'interrupteur est éteint. */
+      follow_summary: {
+        Args: { p_user: string };
+        Returns: FollowSummaryRow[];
+      };
+      /** Chantier 23 (D8) : 50 lignes par page au plus. */
+      follow_list: {
+        Args: {
+          p_user: string;
+          p_kind: FollowListKind;
+          p_before?: string | null;
+          p_before_id?: string | null;
+          p_limit?: number;
+        };
+        Returns: FollowListRow[];
+      };
+      /** Chantier 23 (D7) : les comptes que l'on suit, acceptés. */
+      my_followed_ids: {
+        Args: Record<string, never>;
+        Returns: string[];
+      };
+      /**
+       * Chantier 23 (D1, D7) : les bentos publiés des comptes suivis, sous la
+       * règle de lecture de `bentos`. Appelée avec la sélection du fil.
+       */
+      following_bentos: {
+        Args: Record<string, never>;
+        Returns: Database['public']['Tables']['bentos']['Row'][];
       };
       /**
        * Chantier 12 (D2, D3, D5, D18) : écrit, remplace ou, vide, efface le
