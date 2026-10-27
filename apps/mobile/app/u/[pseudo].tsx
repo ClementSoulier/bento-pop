@@ -4,6 +4,7 @@ import {
   Alert,
   Image,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   type NativeScrollEvent,
@@ -47,6 +48,7 @@ import {
   withoutBlocked,
 } from '@/lib/matches';
 import { popyFor } from '@/lib/popy-avatar';
+import { busyA11y } from '@/lib/a11y-states';
 import type { PublicBento, PublicBentoRef } from '@/lib/public-bento';
 import { publicBentoQueryOptions } from '@/lib/public-bento-query';
 import { publicPageState } from '@/lib/public-page-state';
@@ -1257,7 +1259,12 @@ function CtaBar({
                 : 'Compose le tien'
           }
           accessibilityHint={follow && !isOwn ? follow.model.accessibilityHint : undefined}
-          accessibilityState={follow && !isOwn ? { busy: follow.busy } : undefined}
+          accessibilityState={
+            follow && !isOwn ? busyA11y({ busy: follow.busy }, Platform.OS).state : undefined
+          }
+          accessibilityValue={
+            follow && !isOwn ? busyA11y({ busy: follow.busy }, Platform.OS).value : undefined
+          }
           style={[
             {
               flex: 1,
@@ -1280,7 +1287,7 @@ function CtaBar({
           disabled={sharing}
           accessibilityRole="button"
           accessibilityLabel={sharing ? "Génération de l'image en cours" : 'Partager le bento'}
-          accessibilityState={{ disabled: sharing, busy: sharing }}
+          accessibilityState={busyA11y({ disabled: sharing, busy: sharing }, Platform.OS).state}
           onPress={onShare}
           style={[
             {

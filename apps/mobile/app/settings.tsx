@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSession } from '@/state/session';
 import { useBento } from '@/state/bento';
+import { busyA11y } from '@/lib/a11y-states';
 import { editableBentoId, unpublishBento } from '@/lib/bento-actions';
 import { bentoName } from '@/lib/own-bento';
 import { exportUserData } from '@/lib/data-export';
@@ -376,7 +377,9 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               accessibilityLabel={deleting ? 'Suppression en cours' : 'Supprimer mon compte'}
               accessibilityHint="Cette action est irréversible"
-              accessibilityState={{ disabled: deleting, busy: deleting }}
+              accessibilityState={
+                busyA11y({ disabled: deleting, busy: deleting }, Platform.OS).state
+              }
               style={{
                 paddingVertical: 14,
                 paddingHorizontal: 18,

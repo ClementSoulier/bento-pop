@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -23,6 +24,7 @@ import {
 import { AccountError } from '@/components/account/AccountParts';
 import { INK_MUTED, INK_PLACEHOLDER, StampButton } from '@/components/primitives';
 import { ActionSheet, type SheetAction } from '@/components/social/ActionSheet';
+import { busyA11y } from '@/lib/a11y-states';
 import { keptEmail } from '@/lib/account';
 import { isBlockedAccount } from '@/lib/blocked-accounts';
 import { popyFor } from '@/lib/popy-avatar';
@@ -310,10 +312,15 @@ export default function CommentsScreen() {
                   disabled={query.isFetchingNextPage}
                   accessibilityRole="button"
                   accessibilityLabel="Voir les commentaires précédents"
-                  accessibilityState={{
-                    disabled: query.isFetchingNextPage,
-                    busy: query.isFetchingNextPage,
-                  }}
+                  accessibilityState={
+                    busyA11y(
+                      { disabled: query.isFetchingNextPage, busy: query.isFetchingNextPage },
+                      Platform.OS,
+                    ).state
+                  }
+                  accessibilityValue={
+                    busyA11y({ busy: query.isFetchingNextPage }, Platform.OS).value
+                  }
                   style={{ alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12 }}
                 >
                   <Text
@@ -381,7 +388,10 @@ export default function CommentsScreen() {
                 disabled={busy || !canSendComment(text)}
                 accessibilityRole="button"
                 accessibilityLabel="Envoyer"
-                accessibilityState={{ disabled: busy || !canSendComment(text), busy }}
+                accessibilityState={
+                  busyA11y({ disabled: busy || !canSendComment(text), busy }, Platform.OS).state
+                }
+                accessibilityValue={busyA11y({ busy }, Platform.OS).value}
                 style={{
                   height: 44,
                   paddingHorizontal: 16,

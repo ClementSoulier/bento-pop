@@ -136,7 +136,10 @@ export default function KeepAccountScreen() {
               {error?.taken ? (
                 <TextButton label="J'ai déjà un compte" onPress={() => router.replace('/account/sign-in')} />
               ) : null}
-              <AccountText muted>Ton adresse ne sert qu'à ça. Elle n'est jamais affichée ni partagée.</AccountText>
+              <AccountText muted>
+                Ton adresse ne sert qu'à garder ton compte, et à te prévenir s'il était supprimé. Elle n'est
+                jamais affichée.
+              </AccountText>
               <View style={{ marginTop: 28 }}>
                 <StampButton wide disabled={busy || email.trim() === ''} onPress={() => void send(email)}>
                   {busy ? 'Envoi…' : 'Recevoir un code'}
