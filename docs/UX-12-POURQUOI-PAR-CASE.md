@@ -2,7 +2,7 @@
 
 > Spécification écrite le 26 octobre 2026, à partir du code de la branche du
 > chantier 22 (`feat/ux-22-likes-commentaires`, `f8bb87f`), dont le 12
-> dépend et qui n'est pas encore en PR, elle-même partie de la branche du 28
+> dépend et qui n'était pas encore en PR, elle-même partie de la branche du 28
 > (PR #98), et de lectures sur la production, en lecture seule : la base
 > mobile, projet « My Bento Pop ». Aucune écriture en production.
 >
@@ -17,8 +17,10 @@
 > contrôles contre une pile Supabase locale à part, vingt-quatre défauts
 > introduits exprès et tous attrapés ; la recette au simulateur iPhone 17 Pro
 > et iPhone SE, à l'émulateur Pixel 8, au back-office et sur le web, trois
-> défauts trouvés et corrigés en chemin (§9). **Rien n'est appliqué en
-> production** : la mise en service attend Clément, après celle du 22 (§9.6).
+> défauts trouvés et corrigés en chemin (§9). **Fusionné le soir même**
+> (PR #100) : la landing sert ses textes depuis, et la page d'un bento tient
+> sans la migration ; **rien n'est appliqué en base**, la mise en service
+> attend Clément, après celle du 22 (§9.6).
 >
 > Placé après le chantier 22, arbitré le 15 septembre 2026 : le « pourquoi »
 > reprend sa modération, le filtre, le signalement, le mail à l'équipe et le
@@ -520,9 +522,9 @@ locale :
 ## 9. Livraison
 
 Fait et recetté le 26 octobre 2026, en cinq lots enchaînés, sur
-`feat/ux-12-pourquoi-par-case`, en PR #100, empilée sur la #99 du chantier 22
-tant qu'elle n'est pas fusionnée. Rien n'est appliqué en production : la mise
-en service attend Clément (§9.6).
+`feat/ux-12-pourquoi-par-case`, en PR #100, empilée sur la #99 du chantier 22,
+toutes deux fusionnées le soir même. La landing sert ses textes depuis ; rien
+n'est appliqué en base : la mise en service attend Clément (§9.6).
 
 ### 9.1 Lot 1 · La base
 
@@ -622,15 +624,17 @@ y est redéfini et le filtre en vient.
 
 1. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
    contrôles en lecture de `scripts/check-whys.sql`.
-2. **La landing et le back-office** redéployés sur Coolify, après la fusion.
-   Aucune variable nouvelle : la purge passe par les deux secrets du coffre
-   déjà posés pour la publication.
+2. **La landing et le back-office** redéployés sur Coolify, après la fusion :
+   la landing l'a été d'elle-même, servie le 26 octobre à 19:50 UTC, son repli
+   relevé en production ; le back-office attend la migration. Aucune variable
+   nouvelle : la purge passe par les deux secrets du coffre déjà posés pour la
+   publication, relus par leur nom le 26 octobre.
 
 ---
 
 ## 10. Definition of Done
 
-État au 26 octobre 2026 : 11 sur 13, les deux derniers à la mise en service.
+État au 26 octobre 2026 : 12 sur 13, le point 12 à la mise en service.
 
 1. ✅ Écrire, remplacer et effacer le pourquoi d'une case de son bento publié,
    et d'aucun autre, vérifié à la clé anonyme : contrôles 1, recette au
@@ -649,14 +653,17 @@ y est redéfini et le filtre en vient.
 6. ✅ La section sous la boîte, dans l'app et sur le web ; la page d'un bento
    sans pourquoi identique au pixel près : recette du lot 5.
 7. ✅ Le web à jour dès l'écriture ou le masquage ; la landing tient avant la
-   migration : contrôles 11, recette du web, e2e.
+   migration : contrôles 11, recette du web, e2e, et en production depuis la
+   fusion, où `/u/keremasan` rend ses six cases, sans la section.
 8. ✅ `whys_enabled` coupe tout sans nouvelle version : contrôles 3, recette
    au SE.
 9. ✅ La 1.1 et la 0.1.0 lisent, composent et suppriment comme avant, relues
    sur `6426779` : contrôles 5 et 8.
-10. ⬜ Les règles, les mentions légales et la politique de confidentialité à
-    jour, **en production** : écrites, la landing à redéployer après la
-    fusion.
+10. ✅ Les règles, les mentions légales et la politique de confidentialité à
+    jour, **en production** : bento-pop.com sert les deux pages depuis le 26
+    octobre à 19:50 UTC, après la fusion de la PR #100, chaque phrase ajoutée
+    relevée en ligne ; les règles de l'app partent avec elle, à la sortie
+    store unique.
 11. ✅ La recette de §7.2 aux trois appareils, §9.5.
 12. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : compatible, et la CI rejouée sans échec, lint 8 sur 8,
