@@ -88,6 +88,20 @@ export type FollowExportRow = {
   accepted_at: string | null;
 };
 
+/** Les deux réseaux d'un compte, chantier 25 (D1). */
+export type SocialNetwork = 'instagram' | 'tiktok';
+
+/**
+ * Les liens d'un compte tels que `social_links` les rend, chantier 25 (D7) :
+ * à tous s'il les montre, à son titulaire toujours ; `visible` est son
+ * réglage, « Afficher mes réseaux ».
+ */
+export type SocialLinksRow = {
+  instagram: string | null;
+  tiktok: string | null;
+  visible: boolean;
+};
+
 /** Les sortes de la zone de notifications, chantier 24 (§2 de la spécification). */
 export type NotificationKind =
   | 'like'
@@ -295,6 +309,8 @@ export type Database = {
            * acceptées. Chantier 23, D3 et D11.
            */
           follow_approval: boolean;
+          /** Chantier 25 (D3, D8) : « Afficher mes réseaux », allumé par défaut. */
+          social_visible: boolean;
         };
         Insert: {
           /** Pour un membre, doit valoir `auth.uid()`. Généré pour un éditorial. */
@@ -318,6 +334,7 @@ export type Database = {
           accept_likes?: boolean;
           /** Même règle, chantier 23 (D3). */
           follow_approval?: boolean;
+          social_visible?: boolean;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
@@ -642,6 +659,11 @@ export type Database = {
            * rien de la zone. Chantier 24, D13.
            */
           notifications_enabled: boolean;
+          /**
+           * Éteint, l'app cache les champs, le réglage et les glyphes, et la
+           * base ne rend ni n'écrit plus aucun lien. Chantier 25, D9.
+           */
+          social_links_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -657,6 +679,7 @@ export type Database = {
           whys_enabled?: boolean;
           follows_enabled?: boolean;
           notifications_enabled?: boolean;
+          social_links_enabled?: boolean;
         };
         Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
         Relationships: [];
@@ -785,6 +808,13 @@ export type Database = {
         Row: { user_id: string; written_at: string };
         Insert: { user_id: string; written_at?: string };
         Update: Partial<Database['public']['Tables']['account_follow_writes']['Insert']>;
+        Relationships: [];
+      };
+      /** Chantier 25 (D7) : les pseudos Instagram et TikTok, sans accès client. */
+      account_links: {
+        Row: { user_id: string; instagram: string | null; tiktok: string | null; updated_at: string };
+        Insert: { user_id: string; instagram?: string | null; tiktok?: string | null; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['account_links']['Insert']>;
         Relationships: [];
       };
       /** Chantier 24 (D8) : la date de lecture de sa zone, sans accès client. */
@@ -1253,7 +1283,7 @@ export type Database = {
         Args: { p_blocked: string[] };
         Returns: Array<{ blocked_id: string; pseudo: string | null }>;
       };
-      /** Chantiers 22 (D21), 12 (D13), 23 (D15) et 24 (D17). */
+      /** Chantiers 22 (D21), 12 (D13), 23 (D15), 24 (D17) et 25 (D13). */
       my_social_export: {
         Args: Record<string, never>;
         Returns: {
@@ -1276,6 +1306,8 @@ export type Database = {
           };
           /** La date de lecture de sa zone, vide si elle n'a jamais été lue. */
           notifications: { seen_at: string | null };
+          /** Ses pseudos Instagram et TikTok, et son réglage. */
+          social_links: { instagram: string | null; tiktok: string | null; visible: boolean | null };
         };
       };
       /**
@@ -1339,6 +1371,19 @@ export type Database = {
       mark_notifications_seen: {
         Args: { p_until: string };
         Returns: string | null;
+      };
+      /**
+       * Chantier 25 (D4, D6) : écrit ses deux liens, normalisés et filtrés.
+       * Rend ce qui est enregistré ; rien quand deux vides effacent la ligne.
+       */
+      set_social_links: {
+        Args: { p_instagram: string | null; p_tiktok: string | null };
+        Returns: { instagram: string | null; tiktok: string | null }[];
+      };
+      /** Chantier 25 (D3, D7, D15) : aucune ligne quand ils sont masqués, sauf pour soi. */
+      social_links: {
+        Args: { p_user: string };
+        Returns: SocialLinksRow[];
       };
       /**
        * Chantier 12 (D2, D3, D5, D18) : écrit, remplace ou, vide, efface le

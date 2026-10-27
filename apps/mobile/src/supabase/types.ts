@@ -17,4 +17,6 @@ export type {
   FollowSummaryRow,
   NotificationKind,
   NotificationRow,
+  SocialLinksRow,
+  SocialNetwork,
 } from '@bento-pop/supabase-mobile/types';
