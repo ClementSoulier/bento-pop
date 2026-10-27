@@ -213,7 +213,9 @@ describe('titres des sections', () => {
       ['app/settings.tsx', ['À propos', 'Comptes bloqués', 'Compte']],
       ['src/components/NotificationSettings.tsx', ['Notifications']],
       ['src/components/PrivacySettings.tsx', ['Confidentialité']],
-      ['app/profile/edit.tsx', ['Ton Popy', 'Ton nom', 'Ton pseudo']],
+      // « Tes réseaux », du chantier 25, vient après dans le fichier : sa
+      // section est un composant à part, rendu entre le nom et le pseudo.
+      ['app/profile/edit.tsx', ['Ton Popy', 'Ton nom', 'Ton pseudo', 'Tes réseaux']],
     ];
     for (const [path, titles] of expected) {
       assert.deepEqual(sectionTitles(path), titles, path);
