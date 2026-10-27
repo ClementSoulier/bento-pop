@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { CONTENT_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
 import { PageTitle, Pagination, Sticker, StampButton, YellowBg } from '@/components/primitives';
+import { checkboxA11y } from '@/lib/a11y-states';
 import { userErrorMessage } from '@/lib/user-error-message';
 import { SHADOWS } from '@/components/primitives/shadow';
 import { supabase } from '@/supabase/client';
@@ -28,6 +29,7 @@ const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 export default function TermsOnboarding() {
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const termsA11y = checkboxA11y(accepted, Platform.OS);
   const profile = useSession((s) => s.profile);
   const userId = useSession((s) => s.user?.id);
   const refreshProfile = useSession((s) => s.refreshProfile);
@@ -78,7 +80,7 @@ export default function TermsOnboarding() {
             <PageTitle
               kicker={profile ? 'AVANT DE CONTINUER' : 'AVANT DE COMMENCER'}
               title={'Les règles\ndu jeu.'}
-              sub="Bento Pop est un espace bienveillant. Avant de publier ton premier bento, jette un œil aux règles."
+              sub="Bento Pop est un espace bienveillant, réservé aux 15 ans et plus. Avant de publier ton premier bento, jette un œil aux règles."
             />
             <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
               <Sticker rotation={-2} style={{ alignSelf: 'flex-start', marginBottom: 14 }}>
@@ -175,8 +177,9 @@ export default function TermsOnboarding() {
           <View style={{ paddingHorizontal: 20 }}>
             <Pressable
               onPress={() => setAccepted((v) => !v)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: accepted }}
+              accessibilityRole={termsA11y.role}
+              accessibilityState={termsA11y.state}
+              accessibilityValue={termsA11y.value}
               accessibilityLabel="J'accepte les conditions d'utilisation"
               style={[
                 {

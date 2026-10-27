@@ -13,7 +13,7 @@ export default function MentionsLegalesPage() {
     <LegalPage
       eyebrow="Information légale"
       title="Mentions légales"
-      updatedAt="26/10/2026"
+      updatedAt="27/10/2026"
     >
       <section>
         <h2>1. Éditeur du site et de l&apos;application</h2>
@@ -106,7 +106,8 @@ export default function MentionsLegalesPage() {
         <p>
           L&apos;application est distribuée sur l&apos;App Store (Apple) et le
           Play Store (Google). Elle est gratuite, sans achat in-app, sans
-          publicité, et conçue à des fins de divertissement culturel.
+          publicité, et conçue à des fins de divertissement culturel. Elle est
+          réservée aux personnes de 15 ans et plus.
         </p>
         <p>
           <strong>Règles de la communauté</strong> : l&apos;application

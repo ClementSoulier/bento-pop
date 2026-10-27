@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { busyA11y } from '@/lib/a11y-states';
 import { cleanTitle } from '@/lib/text';
 import { hasExactTitle } from '@/lib/exact-title';
 import { userErrorMessage } from '@/lib/user-error-message';
@@ -695,7 +696,10 @@ export default function SearchModal() {
                   disabled={submitting}
                   accessibilityRole="button"
                   accessibilityLabel={`Proposer ${query.trim()} au catalogue`}
-                  accessibilityState={{ disabled: submitting, busy: submitting }}
+                  accessibilityState={
+                    busyA11y({ disabled: submitting, busy: submitting }, Platform.OS).state
+                  }
+                  accessibilityValue={busyA11y({ busy: submitting }, Platform.OS).value}
                   style={[styles.addRow, SHADOWS.stamp]}
                 >
                   <View style={styles.addIconBubble}>

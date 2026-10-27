@@ -39,7 +39,8 @@ function files(): string[] {
   );
 }
 
-function tags(names: Set<string>): Tag[] {
+/** Les balises de ces noms, ou toutes quand `names` est nul. */
+function tags(names: Set<string> | null): Tag[] {
   const found: Tag[] = [];
   for (const path of files()) {
     const text = readFileSync(join(APP_ROOT, path), 'utf8');
@@ -47,7 +48,7 @@ function tags(names: Set<string>): Tag[] {
     const visit = (node: ts.Node) => {
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
         const tag = node.tagName.getText();
-        if (names.has(tag)) {
+        if (names === null || names.has(tag)) {
           const attributes = new Map<string, string | true>();
           for (const attribute of node.attributes.properties) {
             if (!ts.isJsxAttribute(attribute)) {
@@ -78,6 +79,37 @@ function tags(names: Set<string>): Tag[] {
 }
 
 const where = (list: Tag[]) => list.map((t) => `${t.path}, ligne ${t.line}`).join(' ; ');
+
+/**
+ * Sur iOS, React Native compose lui-même, et en anglais seulement, les mots
+ * d'une case à cocher et d'un bouton radio, et ceux des états coché, déplié ou
+ * en attente : la case des conditions s'annonçait « checkbox, unchecked » sur
+ * un iPhone en français (chantier 29, D18). Ils passent donc par
+ * `src/lib/a11y-states.ts`, qui les remplace sur iOS par des traits natifs et
+ * une valeur française. Seul l'interrupteur garde son état coché : React
+ * Native lui donne le trait natif, que VoiceOver traduit.
+ */
+describe('ce que React Native lirait en anglais sur iOS', () => {
+  const all = tags(null);
+
+  it('aucune case à cocher ni bouton radio écrits en dur', () => {
+    const literal = all.filter((t) => {
+      const role = t.attributes.get('accessibilityRole') ?? t.attributes.get('role');
+      return role === 'checkbox' || role === 'radio';
+    });
+    assert.equal(literal.length, 0, `rôle lu en anglais : ${where(literal)}`);
+  });
+
+  it('aucun état coché, déplié ou en attente écrit en dur, hors interrupteur', () => {
+    const literal = all.filter((t) => {
+      const state = t.attributes.get('accessibilityState');
+      if (typeof state !== 'string' || !state.trimStart().startsWith('{')) return false;
+      if (t.attributes.get('accessibilityRole') === 'switch') return false;
+      return /\b(checked|busy|expanded)\b/.test(state);
+    });
+    assert.equal(literal.length, 0, `état lu en anglais : ${where(literal)}`);
+  });
+});
 
 /**
  * Les deux seuls tapables qui n'annoncent rien eux-mêmes : ils reçoivent leur

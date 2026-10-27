@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -29,6 +30,7 @@ import {
   YellowBg,
   useToast,
 } from '@/components/primitives';
+import { busyA11y } from '@/lib/a11y-states';
 import { POPY_CHOICES, type Popy } from '@/lib/popy-avatar';
 import { PSEUDO_MAX, checkPseudoAvailability, type PseudoCheck } from '@/lib/pseudo';
 import {
@@ -721,7 +723,8 @@ function ActionButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled, busy }}
+      accessibilityState={busyA11y({ disabled, busy }, Platform.OS).state}
+      accessibilityValue={busyA11y({ busy }, Platform.OS).value}
       style={[
         {
           marginTop: 4,

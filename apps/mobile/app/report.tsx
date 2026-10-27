@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   AccessibilityInfo,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -18,6 +19,7 @@ import {
 } from '@/components/bento/font-scaling';
 import { AccountError } from '@/components/account/AccountParts';
 import { INK_MUTED, INK_PLACEHOLDER, StampButton } from '@/components/primitives';
+import { radioA11y } from '@/lib/a11y-states';
 import {
   REPORT_DETAILS_MAX_LENGTH,
   REPORT_REASONS,
@@ -166,6 +168,7 @@ export default function ReportScreen() {
           <View accessibilityRole="radiogroup" style={{ gap: 8 }}>
             {REPORT_REASONS.map((r) => {
               const selected = reason === r.code;
+              const choice = radioA11y(selected, Platform.OS);
               return (
                 <Pressable
                   key={r.code}
@@ -173,8 +176,8 @@ export default function ReportScreen() {
                     setReason(r.code);
                     setError(null);
                   }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
+                  accessibilityRole={choice.role}
+                  accessibilityState={choice.state}
                   accessibilityLabel={r.label}
                   style={{
                     flexDirection: 'row',

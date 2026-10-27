@@ -1,5 +1,12 @@
 # Mon Bento Pop — audit compliance Apple App Store / Google Play
 
+> **Périmé depuis le 27 octobre 2026.** Ce document décrit l'app de mai 2026,
+> sans blocage, sans commentaires, sans modération au back-office ni compte
+> récupérable. Pour la sortie 2.0.0, la classification d'âge, les fiches de
+> confidentialité et la recette font foi dans
+> [`UX-29-RECETTE-DE-SORTIE.md`](./UX-29-RECETTE-DE-SORTIE.md) §6 et §4.
+> Gardé pour l'historique.
+
 État au 11 mai 2026, après livraison du **sprint P7 compliance** (commits `07b62d9`, `db1f739`, `db6d0fe`, `182f805`, `6868783`, `a6e0c60`).
 
 **Légende** : ✅ prêt — 🟡 partiel — ❌ bloquant ou pas commencé.
