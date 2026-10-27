@@ -52,6 +52,12 @@ export type AppConfig = {
    * aucun lien.
    */
   socialLinksEnabled: boolean;
+  /**
+   * Chantier 27 (D18) : éteint, l'app cache la section « Succès » et les
+   * lignes de « Notifs ». La base n'en rend plus aucun, et continue de les
+   * poser.
+   */
+  achievementsEnabled: boolean;
 };
 
 /**
@@ -76,7 +82,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     supabase
       .from('app_config')
       .select(
-        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled, follows_enabled, notifications_enabled, social_links_enabled',
+        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled, follows_enabled, notifications_enabled, social_links_enabled, achievements_enabled',
       )
       .eq('id', 1)
       .maybeSingle();
@@ -98,6 +104,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     followsEnabled: r.follows_enabled,
     notificationsEnabled: r.notifications_enabled,
     socialLinksEnabled: r.social_links_enabled,
+    achievementsEnabled: r.achievements_enabled,
   };
 }
 

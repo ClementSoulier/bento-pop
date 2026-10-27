@@ -35,7 +35,7 @@ import {
   type NotificationAvatar,
   type NotificationTarget,
 } from '@/lib/notifications';
-import { POPY_CHOICES, popyFor } from '@/lib/popy-avatar';
+import { POPY_CHOICES, popyFor, popyOf } from '@/lib/popy-avatar';
 import { relativeDate } from '@/lib/relative-date';
 import { usePushTarget } from '@/state/push-target';
 import { useSession } from '@/state/session';
@@ -343,7 +343,12 @@ function Avatar({ avatar }: { avatar: NotificationAvatar }) {
     );
   }
 
-  const popy = avatar.kind === 'account' ? popyFor(avatar.pseudo, avatar.avatar) : TEAM_POPY;
+  const popy =
+    avatar.kind === 'account'
+      ? popyFor(avatar.pseudo, avatar.avatar)
+      : avatar.kind === 'achievement'
+        ? popyOf(avatar.popy)
+        : TEAM_POPY;
   return (
     <View style={[circle, { backgroundColor: avatar.kind === 'team' ? '#fbf3de' : popy?.accent }]}>
       {popy ? (

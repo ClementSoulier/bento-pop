@@ -80,6 +80,7 @@ import { bentoRoute } from '@/lib/bento-address';
 import { accountBentoTitle, type FeedBento } from '@/lib/feed';
 import { FeedPost } from '@/components/feed/FeedPost';
 import { WhySection } from '@/components/whys/WhySection';
+import { AchievementSection } from '@/components/achievements/AchievementSection';
 import { PencilIcon } from '@/components/TabIcons';
 import { feedBoxWidth, feedScale, feedSideInset } from '@/components/feed/layout';
 
@@ -1095,6 +1096,8 @@ function FoundPage({
           isOwn={isOwn}
           sideInset={sideInset}
         />
+        {/* Chantier 27 (D2) : ses succès, après les pourquoi ; rien sans eux. */}
+        <AchievementSection userId={bento.userId} sideInset={sideInset} />
         <AccountBentoList bentos={listed} isOwn={isOwn} />
       </ScrollView>
 

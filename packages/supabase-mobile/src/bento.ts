@@ -1,4 +1,4 @@
-import type { CategoryKey } from './types';
+import type { AchievementKey, CategoryKey } from './types';
 
 /**
  * Domaine bento partagé — constantes indépendantes de la plateforme.
@@ -800,6 +800,20 @@ export function popyKeyFor(pseudo: string, avatar: string | null | undefined): P
   return isPopyKey(avatar) ? avatar : popyKeyForPseudo(pseudo);
 }
 
+/**
+ * La couleur de chaque Popy, derrière lui quand il dit une médaille du
+ * chantier 27 ou l'auteur d'une notification : la même dans l'app et sur le
+ * web.
+ */
+export const POPY_ACCENTS: Readonly<Record<PopyKey, string>> = {
+  content: '#fbbf24',
+  intello: '#3b82a8',
+  fille: '#ff5588',
+  gene: '#8b5cf6',
+  nani: '#2ec4b6',
+  diable: '#e63946',
+};
+
 const VISITS_NUMBER = new Intl.NumberFormat('fr-FR');
 
 /**
@@ -882,4 +896,71 @@ export function isValidHandle(network: SocialNetworkName, handle: string): boole
 export function socialProfileUrl(network: SocialNetworkName, handle: string): string {
   const safe = encodeURIComponent(handle);
   return network === 'instagram' ? `https://www.instagram.com/${safe}/` : `https://www.tiktok.com/@${safe}`;
+}
+
+// ─── Chantier 27 : les succès ────────────────────────────────────────────
+
+/**
+ * Les huit succès du lancement, dans l'ordre où l'app et le web les montrent
+ * (§2 de la spécification, D4, D22) : les bentos, les items proposés, les
+ * abonnés. Les règles vivent dans la base (D5) ; ici, le nom de chaque
+ * médaille, ce qu'elle dit et son Popy (D6), pareils partout.
+ */
+export const ACHIEVEMENT_KEYS: readonly AchievementKey[] = [
+  'first_bento',
+  'three_bentos',
+  'same_item_ten',
+  'first_item',
+  'five_items',
+  'ten_items',
+  'first_follower',
+  'ten_followers',
+];
+
+export type AchievementMeta = {
+  /** Le nom de la médaille, sous son Popy. */
+  title: string;
+  /** Ce qu'elle dit, pour le lecteur d'écran (D12). */
+  description: string;
+  popy: PopyKey;
+};
+
+export const ACHIEVEMENTS: Readonly<Record<AchievementKey, AchievementMeta>> = {
+  first_bento: { title: 'Premier bento', description: 'Un bento publié', popy: 'content' },
+  three_bentos: { title: 'Trois bentos', description: 'Trois bentos publiés', popy: 'fille' },
+  same_item_ten: { title: 'Inconditionnel', description: 'Le même item dans dix bentos', popy: 'gene' },
+  first_item: { title: 'Défricheur', description: "Un item validé par l'équipe", popy: 'intello' },
+  five_items: { title: 'Éclaireur', description: 'Cinq items validés', popy: 'nani' },
+  ten_items: { title: 'Pionnier', description: 'Dix items validés', popy: 'diable' },
+  first_follower: { title: 'Premier abonné', description: 'Un premier abonné', popy: 'fille' },
+  ten_followers: { title: 'Dix abonnés', description: 'Dix abonnés', popy: 'content' },
+};
+
+/** Vrai pour une des huit clés : une clé ajoutée en base avant les clients se saute. */
+export function isAchievementKey(value: unknown): value is AchievementKey {
+  return typeof value === 'string' && (ACHIEVEMENT_KEYS as readonly string[]).includes(value);
+}
+
+export type ShownAchievement = AchievementMeta & { key: AchievementKey; unlockedAt: string };
+
+/**
+ * Les médailles d'un compte, prêtes à montrer : celles qu'on connaît, une
+ * fois chacune, dans l'ordre du catalogue (D22). Vide, la section ne s'affiche
+ * pas (D11).
+ */
+export function shownAchievements(
+  rows: readonly { key: string; unlocked_at: string }[] | null | undefined,
+): ShownAchievement[] {
+  const byKey = new Map<string, string>();
+  for (const row of rows ?? []) if (!byKey.has(row.key)) byKey.set(row.key, row.unlocked_at);
+  return ACHIEVEMENT_KEYS.flatMap((key) => {
+    const unlockedAt = byKey.get(key);
+    return unlockedAt === undefined ? [] : [{ key, unlockedAt, ...ACHIEVEMENTS[key] }];
+  });
+}
+
+/** Ce que lit le lecteur d'écran sur une médaille (D12) : « Premier bento : un bento publié ». */
+export function achievementLabel(key: AchievementKey): string {
+  const { title, description } = ACHIEVEMENTS[key];
+  return `${title} : ${description.charAt(0).toLowerCase()}${description.slice(1)}`;
 }
