@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   type NativeScrollEvent,
@@ -13,6 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -53,6 +55,14 @@ import { useIsOffline } from '@/lib/use-is-offline';
 import { useOfflineInset } from '@/lib/use-offline-inset';
 import { bentoVisitsQueryOptions } from '@/lib/visits';
 import { followSegment, profileDateLine } from '@/lib/follows';
+import { useSocialLinks, useSocialLinksEnabled } from '@/components/social-links/use-social-links';
+import {
+  shownNetworks,
+  socialLinkHint,
+  socialLinkLabel,
+  socialProfileUrl,
+  type SocialNetworkName,
+} from '@/lib/social-links';
 import {
   useFollowButton,
   useFollowSummary,
@@ -622,8 +632,14 @@ function ProfileHeader({
   dateAccessibilityHint,
   onDatePress,
   actionsFor,
+  socials = [],
 }: {
   pseudo: string;
+  /**
+   * Les réseaux du chantier 25 qu'il montre, au bout de la ligne de date (D2).
+   * Vide, la ligne ne change pas d'un pixel (D11).
+   */
+  socials?: readonly { network: SocialNetworkName; handle: string }[];
   /** Les nombres du chantier 23, après la date. `null` sans abonné ni abonnement. */
   dateSegment?: string | null;
   dateAccessibilityLabel?: string;
@@ -664,7 +680,7 @@ function ProfileHeader({
       numberOfLines={1}
       adjustsFontSizeToFit
       allowFontScaling={false}
-      style={[dateStyle, { color: 'rgba(10,10,10,0.65)' }]}
+      style={[dateStyle, { color: 'rgba(10,10,10,0.65)', flexShrink: 1 }]}
     >
       {dateLine}
       {dateSegment ? (
@@ -745,6 +761,35 @@ function ProfileHeader({
             bento publié le 00 septembre 0000
           </Text>
         </View>
+      ) : socials.length > 0 ? (
+        // Les glyphes du 25 au bout de la ligne : la date rétrécit pour leur
+        // laisser la place, la ligne ne grandit pas (D2, D20).
+        <View style={{ flexDirection: 'row', alignItems: 'center', maxWidth: '100%' }}>
+          {onDatePress ? (
+            <Pressable
+              onPress={onDatePress}
+              accessibilityRole="button"
+              accessibilityLabel={dateAccessibilityLabel}
+              accessibilityHint={dateAccessibilityHint}
+              hitSlop={{ top: 14, bottom: 14 }}
+              style={{ flexShrink: 1 }}
+            >
+              {dateText}
+            </Pressable>
+          ) : (
+            dateText
+          )}
+          {socials.map(({ network, handle }) => (
+            <SocialGlyph
+              key={network}
+              network={network}
+              handle={handle}
+              owner={pseudo}
+              size={dateStyle.lineHeight}
+              marginTop={dateStyle.marginTop}
+            />
+          ))}
+        </View>
       ) : onDatePress ? (
         <Pressable
           onPress={onDatePress}
@@ -768,6 +813,58 @@ function ProfileHeader({
         />
       ) : null}
     </View>
+  );
+}
+
+/**
+ * Un réseau du chantier 25, au bout de la ligne de date : un glyphe au trait,
+ * à l'encre, de la hauteur de la ligne (D20), qui ouvre le profil sur le
+ * réseau (D5). Le lecteur d'écran le lit en lien, réseau, compte et pseudo
+ * (D12).
+ */
+function SocialGlyph({
+  network,
+  handle,
+  owner,
+  size,
+  marginTop,
+}: {
+  network: SocialNetworkName;
+  handle: string;
+  owner: string;
+  size: number;
+  marginTop: number;
+}) {
+  const ink = '#0a0a0a';
+  return (
+    <Pressable
+      onPress={() => void Linking.openURL(socialProfileUrl(network, handle))}
+      accessibilityRole="link"
+      accessibilityLabel={socialLinkLabel(network, owner, handle)}
+      accessibilityHint={socialLinkHint(network)}
+      // Le glyphe fait la hauteur de la ligne : la cible tactile en fait 44.
+      hitSlop={{ top: 14, bottom: 14, left: 6, right: 6 }}
+      style={{ marginLeft: 8, marginTop }}
+    >
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        {network === 'instagram' ? (
+          <>
+            <Rect x="3" y="3" width="18" height="18" rx="5" stroke={ink} strokeWidth={2.2} fill="none" />
+            <Circle cx="12" cy="12" r="4.2" stroke={ink} strokeWidth={2.2} fill="none" />
+            <Circle cx="17.3" cy="6.7" r="1.3" fill={ink} />
+          </>
+        ) : (
+          <Path
+            d="M13.5 3 L13.5 15.2 C 13.5 17.6, 11.6 19.5, 9.2 19.5 C 6.8 19.5, 4.9 17.6, 4.9 15.2 C 4.9 12.8, 6.8 10.9, 9.2 10.9 M13.5 3 C 14.2 5.9, 16.4 7.9, 19.3 8.2"
+            stroke={ink}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        )}
+      </Svg>
+    </Pressable>
   );
 }
 
@@ -945,6 +1042,11 @@ function FoundPage({
   const follow = useFollowButton(ownerId ?? '', bento.pseudo);
   const showFollow = followsOn && !isOwn && hasProfile && ownerId !== null && summary !== null;
 
+  // Chantier 25 (D2, D3) : ses réseaux, s'il les montre.
+  const socialOn = useSocialLinksEnabled();
+  const { data: links } = useSocialLinks(ownerId);
+  const socials = socialOn ? shownNetworks(links ?? null) : [];
+
   return (
     <View style={{ flex: 1 }}>
       {/*
@@ -970,6 +1072,7 @@ function FoundPage({
           }
           onDatePress={openLists}
           actionsFor={{ bentoId: bento.id, ownerId: bento.userId }}
+          socials={socials}
         />
         <OtherBentos pseudo={bento.pseudo} others={others} sideInset={sideInset} />
         {/* Marge et non largeur, cf. `publicSideInset`. */}

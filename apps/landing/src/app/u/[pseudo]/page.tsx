@@ -12,6 +12,7 @@ import {
   lookupPublicBento,
   readBentoVisits,
   readFollowCounts,
+  readSocialLinks,
 } from '@/lib/bento/queries';
 import { smartAppBanner } from '@/lib/bento/stores';
 
@@ -149,10 +150,12 @@ export default async function PublicBentoPage({ params }: PageProps) {
     );
   }
 
-  // Les visites (8) et les nombres d'abonnés (23), lus ensemble.
-  const [visits, follows] = await Promise.all([
+  // Les visites (8), les nombres d'abonnés (23) et les réseaux (25), lus
+  // ensemble.
+  const [visits, follows, links] = await Promise.all([
     readBentoVisits(lookup.bento.id),
     readFollowCounts(lookup.bento.ownerId),
+    readSocialLinks(lookup.bento.ownerId),
   ]);
 
   return (
@@ -161,6 +164,7 @@ export default async function PublicBentoPage({ params }: PageProps) {
       others={lookup.others}
       visits={visits}
       follows={follows}
+      links={links}
       canonicalUrl={`${SITE_URL}${bentoPath(requested)}`}
     />
   );

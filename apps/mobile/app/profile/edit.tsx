@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { popyKeyFor } from '@bento-pop/supabase-mobile/bento';
 import {
   CONTENT_MAX_FONT_MULTIPLIER,
@@ -47,6 +47,20 @@ import {
   type ProfileWriteError,
 } from '@/lib/profile-edit';
 import { refreshPublicViews } from '@/lib/public-bento-query';
+import { useSocialLinksEnabled } from '@/components/social-links/use-social-links';
+import {
+  SOCIAL_LINKS_ROOT,
+  fetchSocialLinks,
+  setSocialLinks,
+  socialLinksKey,
+} from '@/lib/social-link-actions';
+import {
+  SOCIAL_LABELS,
+  SOCIAL_NETWORKS,
+  readHandleInput,
+  socialErrorFor,
+  type SocialNetworkName,
+} from '@/lib/social-links';
 import { useSession } from '@/state/session';
 import { supabase } from '@/supabase/client';
 
@@ -94,7 +108,8 @@ function failureReason(e: unknown): ProfileWriteError {
 /**
  * Modifier son profil, chantier 21 (D4, D5, D7) : le Popy, le nom affiché et
  * le pseudo, chacun enregistré à part par sa fonction de la base, qui en tient
- * les règles. Ouvert par le crayon de l'onglet Profil.
+ * les règles. Ouvert par le crayon de l'onglet Profil. Le chantier 25 y ajoute
+ * ses réseaux, sous le nom (D10).
  *
  * Le Popy s'enregistre au tap, comme un interrupteur des réglages : un autre
  * tap le défait. Le nom et le pseudo ont leur bouton, et le pseudo se
@@ -112,6 +127,7 @@ export default function EditProfileScreen() {
   const showToast = useToast((s) => s.show);
   const { fontScale } = useWindowDimensions();
 
+  const socialOn = useSocialLinksEnabled();
   const pseudo = profile?.pseudo ?? '';
   const [name, setName] = useState(profile?.display_name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
@@ -350,6 +366,8 @@ export default function EditProfileScreen() {
             />
           </View>
 
+          {socialOn ? <SocialSection userId={profile.id} /> : null}
+
           {/* Le pseudo, une fois tous les 30 jours au plus (D5). */}
           <View style={{ marginTop: 28, gap: 8 }}>
             <SectionTitle>Ton pseudo</SectionTitle>
@@ -426,6 +444,137 @@ export default function EditProfileScreen() {
         </ScrollView>
       </SafeAreaView>
     </YellowBg>
+  );
+}
+
+/**
+ * Ses réseaux, chantier 25 (D4, D6, D10) : un champ par réseau, son pseudo
+ * ou l'adresse de son profil, un seul bouton pour les deux. Un champ vide
+ * délie ; un refus, de l'écran ou de la base, se lit sous son champ.
+ */
+function SocialSection({ userId }: { userId: string }) {
+  const { fontScale } = useWindowDimensions();
+  const contentScale = fontScaleFor(fontScale, CONTENT_MAX_FONT_MULTIPLIER);
+  const queryClient = useQueryClient();
+  const showToast = useToast((s) => s.show);
+  const stored = useQuery({
+    queryKey: socialLinksKey(userId, userId),
+    queryFn: () => fetchSocialLinks(supabase, userId),
+  });
+  // `null` tant que la base n'a pas répondu : les champs attendent ses
+  // valeurs pour ne pas effacer un lien qu'ils n'auraient pas encore lu.
+  const [inputs, setInputs] = useState<Record<SocialNetworkName, string> | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<SocialNetworkName, string>>>({});
+  const [general, setGeneral] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (inputs === null && stored.isFetched) {
+      setInputs({ instagram: stored.data?.instagram ?? '', tiktok: stored.data?.tiktok ?? '' });
+    }
+  }, [inputs, stored.isFetched, stored.data]);
+
+  const values = inputs ?? { instagram: '', tiktok: '' };
+  const parsed = {
+    instagram: readHandleInput('instagram', values.instagram),
+    tiktok: readHandleInput('tiktok', values.tiktok),
+  };
+  const current = { instagram: stored.data?.instagram ?? null, tiktok: stored.data?.tiktok ?? null };
+  const invalid = SOCIAL_NETWORKS.some((n) => !parsed[n].ok);
+  const changed = SOCIAL_NETWORKS.some((n) => {
+    const field = parsed[n];
+    return field.ok && field.handle !== current[n];
+  });
+
+  const save = async () => {
+    if (saving || inputs === null || invalid || !changed) return;
+    const instagram = parsed.instagram.ok ? parsed.instagram.handle : null;
+    const tiktok = parsed.tiktok.ok ? parsed.tiktok.handle : null;
+    Keyboard.dismiss();
+    setSaving(true);
+    setErrors({});
+    setGeneral(null);
+    try {
+      const kept = await setSocialLinks(supabase, instagram, tiktok);
+      setInputs({ instagram: kept.instagram ?? '', tiktok: kept.tiktok ?? '' });
+      await queryClient.invalidateQueries({ queryKey: [SOCIAL_LINKS_ROOT] });
+      refreshPublicViews(queryClient);
+      showToast(kept.instagram || kept.tiktok ? 'Réseaux enregistrés' : 'Réseaux retirés', { variant: 'success' });
+    } catch (e) {
+      console.warn('[profil] réseaux', e);
+      const { network, message } = socialErrorFor(e);
+      if (network) setErrors({ [network]: message });
+      else setGeneral(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={{ marginTop: 28, gap: 8 }}>
+      <SectionTitle>Tes réseaux</SectionTitle>
+      {SOCIAL_NETWORKS.map((network) => {
+        const field = parsed[network];
+        const message = errors[network] ?? (field.ok ? null : field.message);
+        return (
+          <View key={network} style={{ gap: 6 }}>
+            <Text
+              allowFontScaling={false}
+              style={{ ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 13, 18), fontWeight: '700', color: '#0a0a0a' }}
+            >
+              {SOCIAL_LABELS[network]}
+            </Text>
+            <View style={[FIELD, SHADOWS.stamp]}>
+              <Text
+                allowFontScaling={false}
+                style={{ fontSize: 16 * contentScale, fontWeight: '700', color: INK_PLACEHOLDER }}
+              >
+                @
+              </Text>
+              <TextInput
+                value={values[network]}
+                editable={inputs !== null && !saving}
+                onChangeText={(value) => {
+                  setInputs({ ...values, [network]: value });
+                  setErrors({});
+                  setGeneral(null);
+                }}
+                placeholder="ton_pseudo"
+                placeholderTextColor={INK_PLACEHOLDER}
+                autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                keyboardType="url"
+                accessibilityLabel={`Pseudo ${SOCIAL_LABELS[network]}`}
+                accessibilityHint="Ton pseudo, ou l'adresse de ton profil. Vide, le lien est retiré."
+                returnKeyType="done"
+                onSubmitEditing={() => void save()}
+                allowFontScaling={false}
+                style={{
+                  flex: 1,
+                  fontSize: INPUT_SIZE * contentScale,
+                  height: Math.ceil(INPUT_SIZE * INPUT_LINE * contentScale),
+                  paddingVertical: 0,
+                  color: '#0a0a0a',
+                }}
+              />
+            </View>
+            {message ? <FieldLine message={{ text: message, tone: 'error' }} /> : null}
+          </View>
+        );
+      })}
+      {general ? <FieldLine message={{ text: general, tone: 'error' }} /> : null}
+      <Hint>
+        Ils s’affichent sur ta page et sur bento-pop.com. Personne ne vérifie qu’ils sont à toi :
+        ne mets que les tiens.
+      </Hint>
+      <ActionButton
+        label={saving ? 'Enregistrement…' : 'Enregistrer tes réseaux'}
+        disabled={saving || inputs === null || invalid || !changed}
+        busy={saving}
+        onPress={() => void save()}
+      />
+    </View>
   );
 }
 

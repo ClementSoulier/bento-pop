@@ -462,6 +462,32 @@ export async function readFollowCounts(
   return row ? { followers: row.followers, following: row.following } : null;
 }
 
+/** Les pseudos Instagram et TikTok d'un compte, chantier 25 (D15). */
+export type SocialLinks = { readonly instagram: string | null; readonly tiktok: string | null };
+
+/**
+ * Les liens d'un compte, lus à la clé anonyme : la base ne les rend que s'il
+ * les montre (D3). Lus à part, comme les abonnés. `null` sans lien, masqués,
+ * en panne, l'interrupteur éteint, ou avant la migration du chantier, quand
+ * PostgREST ne trouve pas la fonction : la page reste alors celle d'avant.
+ */
+export async function readSocialLinks(
+  userId: string,
+  client: MobileClient | null = createMobileAnonClient(),
+): Promise<SocialLinks | null> {
+  if (!client) return null;
+  const { data, error } = await client.rpc('social_links', { p_user: userId });
+  if (error) {
+    if (error.code !== MISSING_FUNCTION) {
+      console.warn('[bento/queries] social links failed:', error.message);
+    }
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || (!row.instagram && !row.tiktok)) return null;
+  return { instagram: row.instagram ?? null, tiktok: row.tiktok ?? null };
+}
+
 /**
  * Pseudos des bentos mis en avant par l'équipe.
  *

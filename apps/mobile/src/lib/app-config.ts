@@ -46,6 +46,12 @@ export type AppConfig = {
    * pastille. La base ne rend plus rien de la zone.
    */
   notificationsEnabled: boolean;
+  /**
+   * Chantier 25 (D9) : éteint, l'app cache les champs de « Modifier le
+   * profil », le réglage et les glyphes. La base ne rend ni n'écrit plus
+   * aucun lien.
+   */
+  socialLinksEnabled: boolean;
 };
 
 /**
@@ -70,7 +76,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     supabase
       .from('app_config')
       .select(
-        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled, follows_enabled, notifications_enabled',
+        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled, follows_enabled, notifications_enabled, social_links_enabled',
       )
       .eq('id', 1)
       .maybeSingle();
@@ -91,6 +97,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     whysEnabled: r.whys_enabled,
     followsEnabled: r.follows_enabled,
     notificationsEnabled: r.notifications_enabled,
+    socialLinksEnabled: r.social_links_enabled,
   };
 }
 

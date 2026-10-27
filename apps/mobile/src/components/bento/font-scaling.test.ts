@@ -342,8 +342,8 @@ describe('réglages et onglet Profil', () => {
    */
   it('pose la taille et la hauteur de ses champs de saisie', () => {
     const inputs = tagsNamed(parse('app/profile/edit.tsx'), 'TextInput');
-    // Le nom et le pseudo.
-    assert.equal(inputs.length, 2, `${inputs.length} champs`);
+    // Le nom, le pseudo, et le champ des réseaux du chantier 25, un par réseau.
+    assert.equal(inputs.length, 3, `${inputs.length} champs`);
     const native = inputs.filter((t) => !fixed(t));
     assert.equal(native.length, 0, `laissé à la plateforme : ${linesOf(native)}`);
     const measured = inputs.filter(

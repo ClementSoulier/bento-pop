@@ -3,16 +3,24 @@ import { View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { SectionTitle, SettingSwitch, useToast } from '@/components/primitives';
 import { useFollowsEnabled, useFollowsRefresh } from '@/components/follows/use-follows';
+import { useSocialLinksEnabled } from '@/components/social-links/use-social-links';
 import { writeFollowApproval } from '@/lib/follow-actions';
 import { BENTO_MATCHES_QUERY_ROOT } from '@/lib/matches';
 import { writeSearchable } from '@/lib/search';
 import { writeSocialSetting } from '@/lib/social-actions';
+import { SOCIAL_LINKS_ROOT, writeSocialVisible } from '@/lib/social-link-actions';
 import { writeShowVisits } from '@/lib/visits';
 import { useSession } from '@/state/session';
 import { useSocial } from '@/state/social';
 import { supabase } from '@/supabase/client';
 
-type Setting = 'show_visits' | 'searchable' | 'accept_comments' | 'accept_likes' | 'follow_approval';
+type Setting =
+  | 'show_visits'
+  | 'searchable'
+  | 'accept_comments'
+  | 'accept_likes'
+  | 'follow_approval'
+  | 'social_visible';
 
 /**
  * La section Confidentialité du profil : « Afficher mes visites » (chantier 8,
@@ -21,8 +29,8 @@ type Setting = 'show_visits' | 'searchable' | 'accept_comments' | 'accept_likes'
  * et ils se retrouvent tous ici (chantier 20, D9) : un écran à part viendra
  * quand les chantiers 22, 23 et 25 ajouteront les leurs. Le 22 y ajoute
  * « Accepter les commentaires » et « Afficher les j'aime » (D14), le 23
- * « Valider mes abonnés » (D3) : cinq interrupteurs, que la section tient
- * encore.
+ * « Valider mes abonnés » (D3), le 25 « Afficher mes réseaux » (D3) : six
+ * interrupteurs, qui referment le chantier 26 (D18 du 25).
  *
  * Rien sans profil : sans pseudo, aucun bento n'est en ligne, et il n'y a
  * rien à masquer ni à retirer de la recherche.
@@ -35,6 +43,7 @@ export function PrivacySettings() {
   const queryClient = useQueryClient();
   const followsOn = useFollowsEnabled();
   const refreshFollows = useFollowsRefresh();
+  const socialOn = useSocialLinksEnabled();
 
   if (!profile) return null;
 
@@ -57,6 +66,9 @@ export function PrivacySettings() {
         // Éteint, la base vient d'accepter les demandes : ses nombres et ses
         // listes changent.
         refreshFollows();
+      } else if (setting === 'social_visible') {
+        await writeSocialVisible(supabase, profile.id, on);
+        void queryClient.invalidateQueries({ queryKey: [SOCIAL_LINKS_ROOT] });
       } else {
         await writeSearchable(supabase, profile.id, on);
         // Les matchs en cache, valables 5 minutes, le montreraient encore sur
@@ -126,6 +138,16 @@ export function PrivacySettings() {
               ? "Les demandes t'attendent en tête de tes abonnés. L'éteindre les accepte toutes."
               : undefined
           }
+          disabled={busy}
+        />
+      ) : null}
+      {socialOn ? (
+        <SettingSwitch
+          label="Afficher mes réseaux"
+          description="Ton Instagram et ton TikTok, sur ta page et sur bento-pop.com."
+          value={profile.social_visible}
+          onChange={(on) => void toggle('social_visible', on)}
+          note={profile.social_visible ? undefined : 'Masqués : ils restent enregistrés, et toi seul les vois.'}
           disabled={busy}
         />
       ) : null}

@@ -813,28 +813,73 @@ export function formatVisits(count: number): string {
 }
 
 /**
- * \u00ab 1 abonn\u00e9 \u00bb, \u00ab 4 abonn\u00e9s \u00bb, \u00ab 1 234 abonnements \u00bb : les nombres du
- * chantier 23 (D14), \u00e9crits comme les visites, pareil sur la landing et dans
+ * « 1 abonné », « 4 abonnés », « 1 234 abonnements » : les nombres du
+ * chantier 23 (D14), écrits comme les visites, pareil sur la landing et dans
  * l'app.
  */
-export function formatFollowCount(count: number, word: 'abonn\u00e9' | 'abonnement' | 'demande'): string {
+export function formatFollowCount(count: number, word: 'abonné' | 'abonnement' | 'demande'): string {
   return `${VISITS_NUMBER.format(count)}\u00a0${count < 2 ? word : `${word}s`}`;
 }
 
 /**
- * Ce que la ligne de date ajoute apr\u00e8s la date, chantier 23 (D2, D9, D16) :
- * le nombre d'abonn\u00e9s d\u00e8s le premier, \u00e0 d\u00e9faut celui des abonnements, puis
- * les demandes, que la base ne rend qu'\u00e0 leur titulaire. `null` quand il n'y
- * a rien \u00e0 dire : la ligne reste alors celle d'avant, au pixel pr\u00e8s.
+ * Ce que la ligne de date ajoute après la date, chantier 23 (D2, D9, D16) :
+ * le nombre d'abonnés dès le premier, à défaut celui des abonnements, puis
+ * les demandes, que la base ne rend qu'à leur titulaire. `null` quand il n'y
+ * a rien à dire : la ligne reste alors celle d'avant, au pixel près.
  */
 export function followSegment(
   counts: { followers: number; following: number; requests?: number | null } | null | undefined,
 ): string | null {
   if (!counts) return null;
   const parts: string[] = [];
-  if (counts.followers > 0) parts.push(formatFollowCount(counts.followers, 'abonn\u00e9'));
+  if (counts.followers > 0) parts.push(formatFollowCount(counts.followers, 'abonné'));
   else if (counts.following > 0) parts.push(formatFollowCount(counts.following, 'abonnement'));
   const requests = counts.requests ?? 0;
   if (requests > 0) parts.push(formatFollowCount(requests, 'demande'));
-  return parts.length > 0 ? parts.join(' \u00b7 ') : null;
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+// ─── Chantier 25 : les comptes Instagram et TikTok ───────────────────────
+
+/** Les deux réseaux, dans l'ordre où l'app et le web les montrent (D2). */
+export const SOCIAL_NETWORKS = ['instagram', 'tiktok'] as const;
+export type SocialNetworkName = (typeof SOCIAL_NETWORKS)[number];
+
+export const SOCIAL_LABELS: Readonly<Record<SocialNetworkName, string>> = {
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+};
+
+/** Ce que l'on reconnaît d'une adresse de profil collée, réseau par réseau. */
+const PROFILE_URL: Readonly<Record<SocialNetworkName, RegExp>> = {
+  instagram: /^(?:https?:\/\/)?(?:www\.|m\.)?instagram\.com\/([^/?#\s]+)/i,
+  tiktok: /^(?:https?:\/\/)?(?:www\.|m\.)?tiktok\.com\/@([^/?#\s]+)/i,
+};
+
+/**
+ * Une saisie réduite à un pseudo (D4) : une adresse de profil collée donne
+ * son pseudo, les « @ » de tête et les blancs partent, tout passe en
+ * minuscules. `null` pour une saisie vide. Le format n'est pas vérifié ici,
+ * cf. `isValidHandle`.
+ */
+export function handleFromInput(network: SocialNetworkName, input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const fromUrl = PROFILE_URL[network].exec(trimmed)?.[1];
+  const handle = (fromUrl ?? trimmed).replace(/^@+/, '').toLowerCase();
+  return handle || null;
+}
+
+/** Le format de chaque réseau, celui que tient la base (§4.1 du chantier 25). */
+export function isValidHandle(network: SocialNetworkName, handle: string): boolean {
+  if (network === 'instagram') {
+    return /^[a-z0-9._]{1,30}$/.test(handle) && !/(^\.|\.$|\.\.)/.test(handle);
+  }
+  return /^[a-z0-9._]{2,24}$/.test(handle) && !/\.$/.test(handle);
+}
+
+/** L'adresse du profil sur le réseau (D5) : l'app du réseau l'ouvre si elle est là. */
+export function socialProfileUrl(network: SocialNetworkName, handle: string): string {
+  const safe = encodeURIComponent(handle);
+  return network === 'instagram' ? `https://www.instagram.com/${safe}/` : `https://www.tiktok.com/@${safe}`;
 }

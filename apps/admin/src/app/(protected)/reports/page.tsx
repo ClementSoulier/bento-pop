@@ -100,11 +100,32 @@ export default async function ReportsPage({
     : { data: [] as { id: string; status: 'visible' | 'hidden' }[] };
   const whyStatus = new Map((targetWhys ?? []).map((w) => [w.id, w.status]));
 
+  // 4. Chantier 25 : les réseaux des comptes signalés, pour les effacer
+  //    (D6). Avant la migration, la table manque : aucun lien, sans erreur.
+  const targetUserOf = (r: { target_user_id: string | null; target_pseudo: string }) =>
+    r.target_user_id ?? userIdByPseudo.get(r.target_pseudo.toLowerCase()) ?? null;
+  const linkedIds = [
+    ...new Set(
+      (reports ?? [])
+        .filter((r) => r.target_kind === 'account' || r.target_kind === 'pseudo')
+        .map(targetUserOf)
+        .filter(Boolean),
+    ),
+  ] as string[];
+  const { data: links } = linkedIds.length
+    ? await mobile.from('account_links').select('user_id, instagram, tiktok').in('user_id', linkedIds)
+    : { data: [] as { user_id: string; instagram: string | null; tiktok: string | null }[] };
+  const linksById = new Map((links ?? []).map((l) => [l.user_id, { instagram: l.instagram, tiktok: l.tiktok }]));
+
   const rows: ReportRow[] = (reports ?? []).map((r) => ({
     id: r.id,
     targetKind: r.target_kind,
     targetPseudo: r.target_pseudo,
-    targetUserId: r.target_user_id ?? userIdByPseudo.get(r.target_pseudo.toLowerCase()) ?? null,
+    targetUserId: targetUserOf(r),
+    targetLinks:
+      r.target_kind === 'account' || r.target_kind === 'pseudo'
+        ? (linksById.get(targetUserOf(r) ?? '') ?? null)
+        : null,
     targetBentoId: r.target_bento_id,
     // Nuls ensemble : un signalement d'avant le chantier 16, ou visant un
     // pseudo plutôt qu'un bento, n'a pas d'adresse à montrer.

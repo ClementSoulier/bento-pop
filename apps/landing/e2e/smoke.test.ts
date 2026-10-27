@@ -677,6 +677,47 @@ describe('les abonnés', () => {
 });
 
 /**
+ * Chantier 25 : les réseaux sous l'identité (D15), en liens d'utilisateur, et
+ * la page d'avant quand la base ne les connaît pas encore.
+ */
+describe('les réseaux', () => {
+  // Le pied de page porte les comptes de Bento Pop : on ne compte donc que
+  // les liens d'un utilisateur, les seuls en `ugc`.
+  const userLinks = (html: string) => html.match(/<a [^>]*rel="nofollow noopener noreferrer ugc"[^>]*>/g) ?? [];
+
+  it('montre les deux liens, chacun vers son réseau', async () => {
+    const links = userLinks(await (await get('/u/keremasan')).text());
+    assert.equal(links.length, 2, `${links.length} liens d'utilisateur`);
+    assert.ok(links[0]?.includes('href="https://www.instagram.com/keremasan_ig/"'), `Instagram : ${links[0]}`);
+    assert.ok(links[1]?.includes('href="https://www.tiktok.com/@keremasan.tt"'), `TikTok : ${links[1]}`);
+    assert.ok(links.every((a) => a.includes('target="_blank"')), 'un lien de réseau ouvre un nouvel onglet');
+  });
+
+  it('un seul réseau, un seul lien', async () => {
+    const links = userLinks(await (await get('/u/buyt.k')).text());
+    assert.equal(links.length, 1, `${links.length} liens d'utilisateur`);
+    assert.ok(links[0]?.includes('tiktok.com/@buytk'), `TikTok : ${links[0]}`);
+  });
+
+  it('sans lien, rien', async () => {
+    assert.equal(userLinks(await (await get('/u/invite')).text()).length, 0);
+  });
+
+  it('rend la page quand la base ne connaît pas encore la fonction (avant sa migration)', async () => {
+    await fetch(`${STUB_URL}/__avant-25`);
+    try {
+      const res = await get('/u/avant.vingtcinq');
+      assert.equal(res.status, 200);
+      const html = await res.text();
+      assert.ok(html.includes('Interstellar'), 'la page doit se rendre');
+      assert.equal(userLinks(html).length, 0, 'aucun lien avant la migration');
+    } finally {
+      await resetStub();
+    }
+  });
+});
+
+/**
  * Chantier 19 : les épisodes que l'app range dans « La table ». Le bouchon
  * rend aussi un épisode programmé et un épisode sans date, sans filtrer :
  * c'est à la route de les écarter, et elle doit aussi demander à la base le
