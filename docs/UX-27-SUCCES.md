@@ -15,9 +15,9 @@
 > migration pour les comptes existants. Même sortie store unique que tous les
 > chantiers.
 >
-> **Fait et recetté le même jour**, en cinq lots, sur `feat/ux-27-succes` :
-> DoD 7 sur 9, les deux derniers attendant la fusion et la mise en service par
-> Clément, après celle du 25, cf. §7.
+> **Fait et recetté le même jour**, en cinq lots, sur `feat/ux-27-succes`,
+> **PR #105**, empilée sur la #104 : DoD 7 sur 9, les deux derniers attendant
+> la fusion et la mise en service par Clément, après celle du 25, cf. §7.
 
 ---
 
@@ -137,9 +137,9 @@ pixel à celle du 25 ; la plus grande taille de texte, 200 %.
 ## 7. Livraison
 
 Fait et recetté le 27 octobre 2026, en cinq lots enchaînés, sur
-`feat/ux-27-succes`, partie de la branche de la PR #104, le 25. Rien n'est
-appliqué en production : la mise en service attend Clément, après celle du 25
-(§7.6).
+`feat/ux-27-succes`, partie de la branche de la PR #104, le 25, et ouverte
+en PR #105, empilée sur la #104. Rien n'est appliqué en production : la mise
+en service attend Clément, après celle du 25 (§7.6).
 
 ### 7.1 Lot 1 · La base
 
