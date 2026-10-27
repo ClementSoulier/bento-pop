@@ -4,6 +4,8 @@
 // aussi par `apps/admin`).
 export type {
   Database,
+  AchievementKey,
+  AchievementRow,
   CategoryKey,
   ExternalSource,
   ReportReason,
