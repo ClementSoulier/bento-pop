@@ -41,6 +41,11 @@ export type AppConfig = {
    * tout abonnement, et ne rend plus rien.
    */
   followsEnabled: boolean;
+  /**
+   * Chantier 24 (D13) : éteint, l'app retire l'onglet « Notifs » et sa
+   * pastille. La base ne rend plus rien de la zone.
+   */
+  notificationsEnabled: boolean;
 };
 
 /**
@@ -65,7 +70,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     supabase
       .from('app_config')
       .select(
-        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled, follows_enabled',
+        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled, follows_enabled, notifications_enabled',
       )
       .eq('id', 1)
       .maybeSingle();
@@ -85,6 +90,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     commentsEnabled: r.comments_enabled,
     whysEnabled: r.whys_enabled,
     followsEnabled: r.follows_enabled,
+    notificationsEnabled: r.notifications_enabled,
   };
 }
 

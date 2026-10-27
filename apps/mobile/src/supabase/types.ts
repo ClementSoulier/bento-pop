@@ -15,4 +15,6 @@ export type {
   FollowListRow,
   FollowStatus,
   FollowSummaryRow,
+  NotificationKind,
+  NotificationRow,
 } from '@bento-pop/supabase-mobile/types';

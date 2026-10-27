@@ -49,9 +49,9 @@ export async function exportUserData(userId: string): Promise<void> {
   // elle vit dans `auth.users`, que le client ne lit pas autrement.
   const { data: auth } = await supabase.auth.getSession();
   // 5. Ses commentaires, ses likes et ses blocages, chantier 22 (D21), ses
-  // pourquoi, chantier 12 (D13), masqués compris, et ses abonnements et ses
-  // abonnés, chantier 23 (D15), demandes comprises : la fonction ne rend que
-  // les siens.
+  // pourquoi, chantier 12 (D13), masqués compris, ses abonnements et ses
+  // abonnés, chantier 23 (D15), demandes comprises, et la date de lecture de
+  // sa zone, chantier 24 (D17) : la fonction ne rend que les siens.
   const { data: social } = await supabase.rpc('my_social_export');
 
   const payload = {
@@ -60,8 +60,8 @@ export async function exportUserData(userId: string): Promise<void> {
     // de l'ancien format le verrait sinon comme un export sans bento. La clé
     // `pseudo_history`, ajoutée au chantier 21, ni `account`, au chantier 28,
     // ni `comments`, `likes` et `blocked_accounts`, au chantier 22, ni
-    // `whys`, au chantier 12, ni `follows`, au chantier 23, ne changent rien
-    // pour lui.
+    // `whys`, au chantier 12, ni `follows`, au chantier 23, ni
+    // `notifications`, au chantier 24, ne changent rien pour lui.
     schema_version: 2,
     profile,
     account: { email: keptEmail(auth.session?.user) },
@@ -72,6 +72,7 @@ export async function exportUserData(userId: string): Promise<void> {
     blocked_accounts: social?.blocks ?? [],
     whys: social?.whys ?? [],
     follows: social?.follows ?? { following: [], followers: [] },
+    notifications: social?.notifications ?? { seen_at: null },
   };
 
   const fileName = `bento-pop-export-${(profile?.pseudo ?? 'user').toLowerCase()}-${

@@ -88,6 +88,46 @@ export type FollowExportRow = {
   accepted_at: string | null;
 };
 
+/** Les sortes de la zone de notifications, chantier 24 (§2 de la spécification). */
+export type NotificationKind =
+  | 'like'
+  | 'comment'
+  | 'follow'
+  | 'follow_request'
+  | 'followed_bento'
+  | 'item_validated'
+  | 'item_rejected'
+  | 'bento_published'
+  | 'comment_hidden'
+  | 'why_hidden';
+
+/**
+ * Une ligne de `list_notifications`, chantier 24 : un sujet et sa moitié,
+ * nouvelle ou plus tôt (D6). Les champs du sujet sont ceux de son évènement
+ * le plus récent ; `actor_pseudos` nomme les deux auteurs les plus récents,
+ * jamais pour un like (D7).
+ */
+export type NotificationRow = {
+  kind: NotificationKind;
+  group_key: string;
+  is_new: boolean;
+  latest_at: string;
+  events: number;
+  actors: number;
+  actor_pseudos: string[];
+  actor_avatar: string | null;
+  bento_id: string | null;
+  bento_slug: string | null;
+  bento_primary: boolean | null;
+  edition_title: string | null;
+  owner_pseudo: string | null;
+  item_id: string | null;
+  kept_item_id: string | null;
+  item_status: 'validated' | 'merged' | 'rejected' | null;
+  item_titles: string[];
+  detail: string | null;
+};
+
 /**
  * Un commentaire tel que `list_bento_comments` et `post_comment` le rendent,
  * chantier 22. `hidden_reason` n'est rendu qu'à son auteur (D8).
@@ -306,6 +346,8 @@ export type Database = {
           rejected_at: string | null;
           rejected_reason: string | null;
           merged_into_id: string | null;
+          /** Chantier 24 (D15) : posée à la fusion ; vide pour celles d'avant. */
+          merged_at: string | null;
           image_credit: string | null;
         };
         Insert: {
@@ -331,6 +373,7 @@ export type Database = {
           rejected_at?: string | null;
           rejected_reason?: string | null;
           merged_into_id?: string | null;
+          merged_at?: string | null;
           image_credit?: string | null;
         };
         Update: Partial<Database['public']['Tables']['items']['Insert']>;
@@ -594,6 +637,11 @@ export type Database = {
            * restent. Chantier 23, D22.
            */
           follows_enabled: boolean;
+          /**
+           * Éteint, l'app retire l'onglet « Notifs » et la base ne rend plus
+           * rien de la zone. Chantier 24, D13.
+           */
+          notifications_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -608,6 +656,7 @@ export type Database = {
           comments_enabled?: boolean;
           whys_enabled?: boolean;
           follows_enabled?: boolean;
+          notifications_enabled?: boolean;
         };
         Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
         Relationships: [];
@@ -736,6 +785,13 @@ export type Database = {
         Row: { user_id: string; written_at: string };
         Insert: { user_id: string; written_at?: string };
         Update: Partial<Database['public']['Tables']['account_follow_writes']['Insert']>;
+        Relationships: [];
+      };
+      /** Chantier 24 (D8) : la date de lecture de sa zone, sans accès client. */
+      notification_reads: {
+        Row: { user_id: string; seen_at: string };
+        Insert: { user_id: string; seen_at: string };
+        Update: Partial<Database['public']['Tables']['notification_reads']['Insert']>;
         Relationships: [];
       };
       user_deletions: {
@@ -1197,7 +1253,7 @@ export type Database = {
         Args: { p_blocked: string[] };
         Returns: Array<{ blocked_id: string; pseudo: string | null }>;
       };
-      /** Chantiers 22 (D21), 12 (D13) et 23 (D15). */
+      /** Chantiers 22 (D21), 12 (D13), 23 (D15) et 24 (D17). */
       my_social_export: {
         Args: Record<string, never>;
         Returns: {
@@ -1218,6 +1274,8 @@ export type Database = {
             following: FollowExportRow[];
             followers: FollowExportRow[];
           };
+          /** La date de lecture de sa zone, vide si elle n'a jamais été lue. */
+          notifications: { seen_at: string | null };
         };
       };
       /**
@@ -1266,6 +1324,21 @@ export type Database = {
       following_bentos: {
         Args: Record<string, never>;
         Returns: Database['public']['Tables']['bentos']['Row'][];
+      };
+      /** Chantier 24 (D8) : le nombre de lignes nouvelles de sa zone. */
+      notification_badge: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      /** Chantier 24 (D6, D22) : sa zone, regroupée, 30 lignes par page. */
+      list_notifications: {
+        Args: { p_before?: string | null; p_before_key?: string | null; p_limit?: number };
+        Returns: NotificationRow[];
+      };
+      /** Chantier 24 (D8) : rend la date posée, `null` sans profil. */
+      mark_notifications_seen: {
+        Args: { p_until: string };
+        Returns: string | null;
       };
       /**
        * Chantier 12 (D2, D3, D5, D18) : écrit, remplace ou, vide, efface le

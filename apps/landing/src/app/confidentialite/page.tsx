@@ -154,6 +154,16 @@ export default function ConfidentialitePage() {
             voit.
           </li>
           <li>
+            <strong>Notifications</strong> : l&apos;onglet « Notifs » de
+            l&apos;app montre à chacun les j&apos;aime, commentaires et abonnés
+            de ses bentos, les bentos des comptes qu&apos;il suit et les
+            décisions de l&apos;équipe sur ses contenus, des 90 derniers jours.
+            Rien n&apos;y est recopié : l&apos;onglet relit ces données à chaque
+            ouverture. Seule la date de sa dernière lecture est gardée, pour
+            savoir ce qui est nouveau. Un j&apos;aime n&apos;y dit jamais qui
+            l&apos;a donné.
+          </li>
+          <li>
             <strong>Comptes bloqués</strong> : les comptes qu&apos;un
             utilisateur bloque, rangés avec son compte pour le suivre
             d&apos;un appareil à l&apos;autre. Ni les autres ni le compte
@@ -240,6 +250,10 @@ export default function ConfidentialitePage() {
             ceux qu&apos;il ne veut plus voir ni lire (intérêt légitime).
           </li>
           <li>
+            <strong>Date de lecture des notifications</strong> : distinguer ce
+            qui est nouveau dans l&apos;onglet « Notifs » (exécution du service).
+          </li>
+          <li>
             <strong>Signalements et modération</strong> : modération des
             contenus utilisateurs (intérêt légitime, et obligations de la règle
             1.2 de l&apos;App Store et du règlement européen sur les services
@@ -278,6 +292,11 @@ export default function ConfidentialitePage() {
             ne supprime pas son compte ; un pourquoi, tant que sa case garde
             son item ; un abonnement, tant que l&apos;un des deux comptes ne
             bloque pas l&apos;autre.
+          </li>
+          <li>
+            <strong>Date de lecture des notifications</strong> : tant que
+            l&apos;utilisateur ne supprime pas son compte. L&apos;onglet ne
+            remonte pas au-delà de 90 jours.
           </li>
           <li>
             <strong>Signalements</strong>, et pourquoi ou commentaires masqués
