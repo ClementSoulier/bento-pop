@@ -167,7 +167,7 @@ back-office et sur le web :
 
 Fait et recetté le 27 octobre 2026, en cinq lots enchaînés, sur
 `feat/ux-25-comptes-instagram-tiktok`, partie de la branche de la PR #103, le
-24. Rien n'est appliqué en production : la mise en service attend Clément,
+24, et ouverte en PR #104, empilée sur la #103. Rien n'est appliqué en production : la mise en service attend Clément,
 après celle du 24 (§8.6).
 
 ### 8.1 Lot 1 · La base
