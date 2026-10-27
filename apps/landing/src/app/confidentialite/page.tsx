@@ -154,6 +154,14 @@ export default function ConfidentialitePage() {
             voit.
           </li>
           <li>
+            <strong>Réseaux sociaux</strong> : le pseudo Instagram et le
+            pseudo TikTok qu&apos;un utilisateur choisit d&apos;indiquer, tapés
+            par lui et jamais vérifiés. Aucune connexion à ces réseaux, aucune
+            photo ni aucun jeton n&apos;en est importé. Ils s&apos;affichent sur
+            sa page, dans l&apos;app et sur bento-pop.com, tant qu&apos;il ne
+            les masque pas.
+          </li>
+          <li>
             <strong>Notifications</strong> : l&apos;onglet « Notifs » de
             l&apos;app montre à chacun les j&apos;aime, commentaires et abonnés
             de ses bentos, les bentos des comptes qu&apos;il suit et les
@@ -254,6 +262,11 @@ export default function ConfidentialitePage() {
             qui est nouveau dans l&apos;onglet « Notifs » (exécution du service).
           </li>
           <li>
+            <strong>Réseaux sociaux</strong> : les montrer sur sa page
+            (consentement, donné en les indiquant, et retiré en les effaçant ou
+            en les masquant).
+          </li>
+          <li>
             <strong>Signalements et modération</strong> : modération des
             contenus utilisateurs (intérêt légitime, et obligations de la règle
             1.2 de l&apos;App Store et du règlement européen sur les services
@@ -297,6 +310,11 @@ export default function ConfidentialitePage() {
             <strong>Date de lecture des notifications</strong> : tant que
             l&apos;utilisateur ne supprime pas son compte. L&apos;onglet ne
             remonte pas au-delà de 90 jours.
+          </li>
+          <li>
+            <strong>Réseaux sociaux</strong> : tant que l&apos;utilisateur ne
+            les efface pas ou ne supprime pas son compte, ou que l&apos;équipe
+            ne les retire pas à la suite d&apos;un signalement.
           </li>
           <li>
             <strong>Signalements</strong>, et pourquoi ou commentaires masqués

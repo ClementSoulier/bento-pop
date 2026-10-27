@@ -1,12 +1,17 @@
 import Image from 'next/image';
-import { followSegment } from '@bento-pop/supabase-mobile/bento';
+import {
+  SOCIAL_LABELS,
+  SOCIAL_NETWORKS,
+  followSegment,
+  socialProfileUrl,
+} from '@bento-pop/supabase-mobile/bento';
 import { popyFor } from '@/lib/bento/popy';
 import { formatVisits } from '@/lib/bento/visits';
 
 /**
  * En-tête d'identité : avatar Popy, pseudo, nom affiché, date de
- * publication, compteur de visites, nombres d'abonnés (chantier 23, D16), et
- * le cas échéant la distinction « à la une ».
+ * publication, compteur de visites, nombres d'abonnés (chantier 23, D16),
+ * réseaux (chantier 25, D15), et le cas échéant la distinction « à la une ».
  *
  * Le pseudo porte le `<h1>` de la page. Un seul par document, et il dit
  * exactement ce que le visiteur est venu voir.
@@ -21,6 +26,7 @@ export function BentoIdentity({
   subtitle,
   visits = null,
   follows = null,
+  links = null,
 }: {
   pseudo: string;
   /** Le Popy choisi, ou `null` pour celui du pseudo. Chantier 21 (D7). */
@@ -44,9 +50,18 @@ export function BentoIdentity({
    * ou sans nombre : rien, la ligne reste celle d'avant.
    */
   follows?: { followers: number; following: number } | null;
+  /**
+   * Ses réseaux, chantier 25 (D15) : la base ne les rend que s'il les montre.
+   * `null` : rien, la page reste celle d'avant.
+   */
+  links?: { instagram: string | null; tiktok: string | null } | null;
 }) {
   const popy = popyFor(pseudo, avatar);
   const segment = followSegment(follows);
+  const networks = SOCIAL_NETWORKS.flatMap((network) => {
+    const handle = links?.[network];
+    return handle ? [{ network, handle }] : [];
+  });
 
   return (
     <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
@@ -103,6 +118,27 @@ export function BentoIdentity({
           </>
         ) : null}
       </p>
+
+      {/* Les liens d'un pseudo saisi, jamais vérifié (D6) : `nofollow` et
+          `ugc`, comme tout lien écrit par un utilisateur. */}
+      {networks.length > 0 ? (
+        <p className="mt-1 text-[14px] leading-[1.5] text-bento-ink/70">
+          {networks.map(({ network, handle }, i) => (
+            <span key={network} className="whitespace-nowrap">
+              {i > 0 ? ' · ' : null}
+              {SOCIAL_LABELS[network]}{' '}
+              <a
+                href={socialProfileUrl(network, handle)}
+                target="_blank"
+                rel="nofollow noopener noreferrer ugc"
+                className="font-semibold text-bento-ink underline decoration-2 underline-offset-2"
+              >
+                @{handle}
+              </a>
+            </span>
+          ))}
+        </p>
+      ) : null}
     </div>
   );
 }

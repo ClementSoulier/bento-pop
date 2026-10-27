@@ -47,6 +47,18 @@ const FOLLOWS: Record<string, { followers: number; following: number }> = {
   'avant.vingttrois': { followers: 5, following: 0 },
 };
 
+/**
+ * Les réseaux de chaque compte, tels que `social_links` les rend à la clé
+ * anonyme, chantier 25 : les deux pour `keremasan`, TikTok seul pour
+ * `buyt.k`, rien pour les autres, ni pour qui les masque, que la base ne rend
+ * pas.
+ */
+const LINKS: Record<string, { instagram: string | null; tiktok: string | null }> = {
+  keremasan: { instagram: 'keremasan_ig', tiktok: 'keremasan.tt' },
+  'buyt.k': { instagram: null, tiktok: 'buytk' },
+  'avant.vingtcinq': { instagram: 'avant_ig', tiktok: null },
+};
+
 /** Un appel de `record_bento_visit_web`, tel que la landing l'envoie. */
 export type VisitCall = { p_bento: string; p_fingerprint: string; p_secret: string };
 
@@ -419,6 +431,16 @@ export const USERS: StubUser[] = [
     display_name: 'En cours',
     bentos: null,
   },
+  {
+    // Réservé au test du repli d'avant la migration du chantier 25 : la base
+    // ne connaît pas `social_links`, la page doit se rendre comme avant. Ses
+    // réseaux ne se liraient qu'après. En fin de liste, et à lui seul : une
+    // page déjà rendue reste en cache, et un autre test l'aurait rendue avec
+    // ses liens.
+    pseudo: 'avant.vingtcinq',
+    display_name: null,
+    bentos: { id: bentoId(21), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+  },
 ];
 
 /**
@@ -451,6 +473,7 @@ export function startStub(port: number): Promise<Server> {
   let before21 = false;
   let before12 = false;
   let before23 = false;
+  let before25 = false;
   const visitCalls: VisitCall[] = [];
   const episodeQueries: EpisodeQuery[] = [];
 
@@ -473,6 +496,7 @@ export function startStub(port: number): Promise<Server> {
       before21 = false;
       before12 = false;
       before23 = false;
+      before25 = false;
       visitCalls.length = 0;
       episodeQueries.length = 0;
       return json(res, 200, { ok: true });
@@ -495,6 +519,10 @@ export function startStub(port: number): Promise<Server> {
     }
     if (url.pathname === '/__avant-23') {
       before23 = true;
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === '/__avant-25') {
+      before25 = true;
       return json(res, 200, { ok: true });
     }
 
@@ -620,6 +648,17 @@ export function startStub(port: number): Promise<Server> {
           if (!user) return json(res, 200, []);
           const counts = FOLLOWS[user.pseudo.toLowerCase()] ?? { followers: 0, following: 0 };
           return json(res, 200, [{ ...counts, requests: null, my_status: null, approval: false }]);
+        }
+        // Chantier 25 : une ligne par compte qui a des liens montrés, aucune
+        // sinon ; avant sa migration, PostgREST ne trouve pas la fonction.
+        if (fn === 'social_links') {
+          if (before25) {
+            return json(res, 404, { code: 'PGRST202', message: 'Could not find the function public.social_links' });
+          }
+          const asked = String((args as { p_user?: string }).p_user ?? '');
+          const user = USERS.find((_, i) => userId(i + 1) === asked);
+          const links = user ? LINKS[user.pseudo.toLowerCase()] : undefined;
+          return json(res, 200, links ? [{ ...links, visible: true }] : []);
         }
         return json(res, 404, { message: 'fonction non bouchonnée', path: url.pathname });
       });

@@ -12,7 +12,7 @@ import { PublicBentoGrid } from '@/components/bento/PublicBentoGrid';
 import { VisitBeacon } from '@/components/bento/VisitBeacon';
 import { bentoPath } from '@/lib/bento/metadata';
 import { otherBentoTitle } from '@/lib/bento/others';
-import type { FollowCounts, OtherBento, PublicBento } from '@/lib/bento/queries';
+import type { FollowCounts, OtherBento, PublicBento, SocialLinks } from '@/lib/bento/queries';
 import { mainBentoCases, publicCases } from './cases';
 
 /**
@@ -171,6 +171,7 @@ export function BentoPublishedView({
   others,
   visits,
   follows = null,
+  links = null,
   canonicalUrl,
 }: {
   bento: PublicBento;
@@ -182,6 +183,8 @@ export function BentoPublishedView({
   visits: number | null;
   /** Les nombres d'abonnés, de même ; `null` avant la migration. Chantier 23 (D16). */
   follows?: FollowCounts | null;
+  /** Ses réseaux, de même ; `null` sans lien ou avant la migration. Chantier 25 (D15). */
+  links?: SocialLinks | null;
   canonicalUrl: string;
 }) {
   return (
@@ -239,6 +242,7 @@ export function BentoPublishedView({
             isGuest={bento.isGuest}
             visits={visits}
             follows={follows}
+            links={links}
           />
           <OtherBentos others={others} />
           <VisitBeacon bentoId={bento.id} />

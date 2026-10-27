@@ -35,6 +35,11 @@ const banSchema = z.object({
   reason: z.string().trim().min(1).max(200),
 });
 
+const clearLinksSchema = z.object({
+  targetUserId: z.string().uuid(),
+  reportId: z.string().uuid(),
+});
+
 export type ActionResult = { ok: true } | { ok: false; error: string };
 export type BanResult = { ok: true; noticeSent: boolean } | { ok: false; error: string };
 
@@ -103,6 +108,39 @@ export async function hideComment(input: {
       ok: false,
       error: `Masqué, mais les signalements restent ouverts : ${reportsError.message}`,
     };
+
+  revalidatePath('/reports');
+  return { ok: true };
+}
+
+/**
+ * Efface les réseaux d'un compte signalé, chantier 25 (D6) : un pseudo
+ * Instagram ou TikTok qui n'est pas le sien, ou injurieux, puisque rien ne
+ * les vérifie. Le compte reste ; ce signalement passe traité.
+ */
+export async function clearSocialLinks(input: {
+  targetUserId: string;
+  reportId: string;
+}): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = clearLinksSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Compte ou signalement invalide' };
+
+  const mobile = createMobileClient();
+  if (!mobile) return { ok: false, error: 'Supabase mobile non configuré' };
+
+  const { error } = await mobile.from('account_links').delete().eq('user_id', parsed.data.targetUserId);
+  if (error) return { ok: false, error: error.message };
+
+  const now = new Date().toISOString();
+  const { error: reportError } = await mobile
+    .from('reports')
+    .update({ status: 'reviewed', reviewed_at: now, reviewed_by: admin.email })
+    .eq('id', parsed.data.reportId)
+    .eq('status', 'pending');
+  if (reportError) {
+    return { ok: false, error: `Effacés, mais le signalement reste ouvert : ${reportError.message}` };
+  }
 
   revalidatePath('/reports');
   return { ok: true };

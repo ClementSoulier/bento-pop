@@ -4,13 +4,23 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { publicBentoUrl } from '@/lib/bento-url';
 import { reasonLabel } from '@/lib/moderation/digest';
-import { banUser, dismissReport, hideComment, hideWhy, restoreComment, restoreWhy } from './actions';
+import {
+  banUser,
+  clearSocialLinks,
+  dismissReport,
+  hideComment,
+  hideWhy,
+  restoreComment,
+  restoreWhy,
+} from './actions';
 
 export type ReportRow = {
   id: string;
   targetKind: 'bento' | 'pseudo' | 'comment' | 'account' | 'why';
   targetPseudo: string;
   targetUserId: string | null;
+  /** Chantier 25 : les réseaux du compte signalé, s'il en a. */
+  targetLinks: { instagram: string | null; tiktok: string | null } | null;
   targetBentoId: string | null;
   /** Adresse du bento signalé, résolue depuis `targetBentoId`. Chantier 16. */
   targetBentoSlug: string | null;
@@ -252,6 +262,21 @@ function PendingRow({
     }
   };
 
+  const hasLinks = Boolean(report.targetLinks?.instagram || report.targetLinks?.tiktok);
+  const onClearLinks = () => {
+    if (!report.targetUserId) return;
+    if (!window.confirm(`Effacer l'Instagram et le TikTok de @${report.targetPseudo} ? Son compte reste.`)) return;
+    startTransition(async () => {
+      const res = await clearSocialLinks({ targetUserId: report.targetUserId!, reportId: report.id });
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setError(null);
+      setNotice(`Les réseaux de @${report.targetPseudo} sont effacés, et le signalement traité.`);
+    });
+  };
+
   const onBan = () => {
     if (!report.targetUserId) {
       setError(
@@ -311,6 +336,13 @@ function PendingRow({
             ) : null}
           </blockquote>
         ) : null}
+        {hasLinks ? (
+          <p className="mt-1 text-[12px]">
+            {report.targetLinks?.instagram ? `Instagram @${report.targetLinks.instagram}` : null}
+            {report.targetLinks?.instagram && report.targetLinks?.tiktok ? ' · ' : null}
+            {report.targetLinks?.tiktok ? `TikTok @${report.targetLinks.tiktok}` : null}
+          </p>
+        ) : null}
         {report.details ? (
           <p className="mt-1 text-[12px]">« {report.details} »</p>
         ) : report.reason ? (
@@ -354,6 +386,16 @@ function PendingRow({
             className={`${buttonStrong} bg-bento-yellow`}
           >
             {report.targetKind === 'why' ? 'Masquer le pourquoi' : 'Masquer le commentaire'}
+          </button>
+        ) : null}
+        {hasLinks && report.targetUserId ? (
+          <button
+            type="button"
+            onClick={onClearLinks}
+            disabled={pending}
+            className={`${buttonStrong} bg-bento-yellow`}
+          >
+            Effacer ses réseaux
           </button>
         ) : null}
         <button
