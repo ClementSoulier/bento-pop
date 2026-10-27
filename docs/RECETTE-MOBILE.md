@@ -606,6 +606,17 @@ idb ui tap --udid "$SIM" "$X" "$Y"      # et SANS 2>/dev/null
 **Règle : jamais de `2>/dev/null` sur `idb`.** Ses erreurs d'usage sont le seul
 signal qu'un tap n'est pas parti.
 
+### Un toucher par libellé atteint aussi les lignes sous le pli, et les manque
+
+`idb ui describe-all` rend aussi les lignes d'une liste qui sont sous le pli,
+avec un cadre hors de l'écran : toucher le centre de ce cadre ne touche rien,
+ou la barre d'onglets. À la recette du 24, trois lignes de la zone de
+notifications « ne menaient nulle part » : elles étaient sous la barre. Faire
+défiler d'abord, `idb ui swipe --udid <UDID> 200 640 200 200 --duration 0.4`,
+puis toucher. Et une fenêtre modale, comme les commentaires, se ferme par
+« Fermer », pas par « Retour » : un script qui ne cherche que « Retour » y
+reste.
+
 ### Un bandeau LogBox couvre le bas de l'écran, boutons compris
 
 Déjà noté pour la barre d'onglets ; il vaut pour **tout** ce qui touche le bas.
@@ -664,6 +675,15 @@ rollback;
 
 **Règle : toute migration qui ajoute une colonne `not null` à une table écrite
 par le client se teste avec cette insertion-là**, avant d'être appliquée.
+
+### Deux requêtes dans un même `psql -c` : une seule transaction
+
+`psql -c "insert …; select …"` envoie les deux requêtes d'un coup, que Postgres
+exécute dans une même transaction implicite : si la seconde échoue, la
+première est annulée, sans autre message que l'erreur de la seconde. À la
+recette du 24, un like posé ainsi a disparu, la seconde requête visant une
+colonne qui n'existait pas. Une requête par `-c`, ou `returning` pour voir ce
+qui a été écrit.
 
 ### Metro dit les cycles d'imports, et personne ne lit Metro
 
@@ -1131,6 +1151,12 @@ captures avant et après et en faire la différence, avec `PIL` :
 en coordonnées. Au chantier 7, sur 27 bentos et trois appareils, seules les
 cases de titre prévues par le calcul ont bougé.
 
+Mesurer d'abord le bruit : deux captures du **même** code diffèrent déjà de
+quelques centaines de pixels, ceux des animations du logo et des cases (200
+au 17 Pro, chantier 24). Comparer la zone en jeu, et non l'écran entier : la
+barre d'onglets du 24, interrupteur éteint, différait de 0 pixel sur 305 118
+de celle du 23, l'écran entier de 131, tous dans les cases animées.
+
 ### Un test qui échoue une fois sur dix
 
 Le reproduire sous charge plutôt que de relancer jusqu'au vert :
@@ -1171,6 +1197,14 @@ la place manque, sa place étant mesurée par `onLayout`.
 
 Le symptôme se reconnaît à ceci qu'un balayage ne bouge rien : capturer, balayer,
 recapturer, faire la différence. Identique, le contenu ne défile pas.
+
+### Une pastille en position absolue n'a que la largeur que son parent lui laisse
+
+Yoga donne à un enfant en position absolue, sans largeur posée, la largeur de
+son parent moins ses décalages. La pastille du chantier 24, à `left: 12` dans
+une icône de 22 pt, n'avait que 10 pt pour grandir : `minWidth: 19` la tenait
+à 19, et « 9+ » perdait son « + », au 17 Pro comme au Pixel 8. Elle prend
+désormais une largeur posée, mesurée sur son texte par `bungeeTextWidth`.
 
 ### `adjustsFontSizeToFit` avec une hauteur de ligne posée
 
