@@ -20,8 +20,10 @@
 > prêtes à recopier (§6) ; les notes de version (§7) ; la 2.0.0 dans
 > `app.json` ; une répétition de la build de release au simulateur et à
 > l'émulateur, sur une pile Supabase locale (§8). La liste se coche sur la
-> page « Mes tâches Bento Pop » (D5). Sur `feat/ux-29-recette-de-sortie`,
-> **PR #106**, empilée sur la #105.
+> page « Mes tâches Bento Pop » (D5). Le même jour, les deux suivis de code
+> que la préparation a trouvés : VoiceOver en français (D18), et les textes
+> légaux justes, l'âge de 15 ans compris (D14, D23). Sur
+> `feat/ux-29-recette-de-sortie`, **PR #106**, empilée sur la #105.
 
 ---
 
@@ -415,7 +417,7 @@ Un seul point, le plus long : chaque écran neuf écouté, écouteurs mis.
     (27) « Premier bento : un bento publié » ;
     (28) non écrit, les rôles n'ont été relus qu'à l'arbre ;
     (1) « chaque case annoncée avec sa catégorie et son titre ».
-  - **Constaté le 27 octobre (D18) : sur iOS, VoiceOver lit en anglais les mots que React Native compose, « checkbox, unchecked », « radio button », « busy », même sur un iPhone en français. À corriger avant la build de production, cf. §8 et §9.2 ; la recette à la voix vérifie le correctif.**
+  - **Corrigé le 27 octobre (D18) : sur iOS, VoiceOver lisait en anglais les mots que React Native compose, « checkbox, unchecked », « radio button », « busy », même sur un iPhone en français. Relu sur une build Release corrigée, la case des conditions s'annonce « non coché » sur un bouton, cf. §8 ; la voix elle-même reste à entendre ici.**
   - Sources : RM:148-149, RM:1183-1188, RM:1211-1214, RM:1231-1235, RM:1328-1330, RM:1353, RM:1354-1355 ; UX-01:538 ; UX-02:394-406, UX-02:790-791 ; UX-03:437-449, UX-03:1054-1055 ; UX-11:306-309, UX-11:412, UX-11:528-550, UX-11:679-684 ; UX-12:607-609, UX-12:617-618, UX-12:716-717 ; UX-19:213-215, UX-19:609-613, UX-19:646-649, UX-19:710 ; UX-20:445-447, UX-20:459-463, UX-20:584 ; UX-21:765-769, UX-21:859-862 ; UX-22:289-290, UX-22:600-601, UX-22:731-732 ; UX-23:475-476, UX-23:558 ; UX-24:116, UX-24:357-358, UX-24:438 ; UX-25:57-59, UX-25:241, UX-25:307 ; UX-27:72-73, UX-27:225 ; UX-28:599-601 ; REC:995-997 ; ROLES:108-110, ROLES:517
 
 ### Passe G · Après la mise en ligne et le plancher de version
@@ -654,7 +656,10 @@ Pour commenter, il faut un bento publié et un compte gardé : onglet Profil, «
 
 Les deux stores comparent les fiches à la politique publiée. Relevé le
 27 octobre dans `apps/landing/src/app/confidentialite/page.tsx` et
-`apps/landing/src/app/suppression-compte/page.tsx`.
+`apps/landing/src/app/suppression-compte/page.tsx`, **et corrigé le même
+jour** (§9.1) : ce qui suit est le relevé d'avant la correction. Les
+attributions des mentions légales à TMDb, MusicBrainz, OpenStreetMap et
+Wikidata sont gardées : une partie du catalogue en vient.
 
 **Ce qui est faux aujourd'hui**
 
@@ -772,8 +777,10 @@ d'accessibilité et l'Info.plist de la build, antérieurs à elle :
   confidentialité écrase celle du bundle des chaînes, et son fichier
   français est vide de toute façon, les traductions n'existant que dans un
   format interne à Meta. `CFBundleAllowMixedLocalizations`, essayé et
-  relu sur la build, n'y change rien : retiré. Neuf endroits de l'app sont
-  touchés, D18.
+  relu sur la build, n'y change rien : retiré. **Corrigé le même jour**
+  (D18, §9.1) : relu sur une nouvelle build Release, au simulateur en
+  français, la case s'annonce « non coché » puis « coché », sur un bouton ;
+  les motifs de signalement n'ont plus de valeur anglaise.
 - **Une phrase d'autorisation Face ID, en anglais, sans aucun usage**, posée
   par le plugin d'`expo-secure-store`. Retirée par `faceIDPermission: false`,
   vérifié sur l'Info.plist régénéré, D24.
@@ -813,26 +820,29 @@ Sur `feat/ux-29-recette-de-sortie`, partie de la branche de la PR #105, le
 - **Relevé en chemin, hors du 29** : la purge de nuit du chantier 8, passée
   chaque nuit depuis le 24 octobre, sans échec ; noté dans sa spécification
   et dans la roadmap.
+- **Le français de VoiceOver** (D18) : `src/lib/a11y-states.ts`, testé sous
+  `node:test`, remplace sur iOS les rôles et états que React Native lirait en
+  anglais par des traits natifs et des valeurs françaises, et les garde sur
+  Android. Dix endroits, un de plus que le relevé : le garde-fou ajouté à
+  `src/components/accessibilite.test.ts` a trouvé « Voir les commentaires
+  précédents », dont l'état tenait sur trois lignes. Deux défauts introduits
+  exprès, un rôle radio et un état en attente écrits en dur, l'ont chacun
+  fait tomber.
+- **Les textes légaux** (D14, D23) : la politique de confidentialité, la
+  page de suppression et les mentions légales disent ce que le code fait,
+  d'après le §6.6, l'âge de 15 ans compris ; l'écran des règles le dit
+  aussi, et « Garder mon compte » ne promet plus que l'adresse n'est jamais
+  partagée. Les durées viennent de la page des tarifs de Supabase : sur le
+  plan gratuit, les journaux sont gardés 1 jour, et la base n'a aucune
+  sauvegarde automatique.
 
 ### 9.2 Ce qui attend
 
-**Deux suivis de code, avant la build de production** :
-
-- **Le français de VoiceOver** (D18) : à la place des rôles et des états que
-  React Native compose en anglais, des valeurs d'accessibilité françaises
-  portées par l'app, sur iOS seulement, TalkBack les disant déjà en
-  français. Neuf endroits : la case des conditions
-  (`app/onboarding/terms.tsx`), les motifs de signalement
-  (`app/report.tsx`), et six boutons en attente (`app/settings.tsx`,
-  `app/comments/[bentoId].tsx`, `app/search-modal.tsx`, `app/u/[pseudo].tsx`
-  deux fois, `app/profile/edit.tsx`).
-- **Les textes légaux** (D14) : la politique de confidentialité, la page de
-  suppression, les sources des mentions légales et la phrase de « Garder mon
-  compte », d'après le §6.6, avec l'âge minimum de 15 ans (D23).
-
-Puis, dans l'ordre du §3 : les mises en service, le 5b du 17 (D2), la
+Plus aucun code n'est attendu avant la sortie, sauf ce que la recette
+trouverait. Dans l'ordre du §3 : les mises en service, le 5b du 17 (D2), la
 répétition refaite, la build de production, la recette, les fiches et la
-soumission.
+soumission. Les textes légaux corrigés partent en ligne à la fusion, la
+landing se redéployant d'elle-même : à relire par Clément avant.
 
 ---
 
@@ -851,9 +861,9 @@ soumission.
 | 9 | Les fiches saisies dans les deux consoles | ⬜ |
 | 10 | Les deux stores servent la 2.0.0 | ⬜ |
 | 11 | `app_config` : la dernière version à 2.0.0 le jour même, le plancher relevé une fois les deux stores à jour | ⬜ |
-| 12 | VoiceOver ne lit plus aucun mot anglais de React Native (D18) | ⬜ |
+| 12 | VoiceOver ne lit plus aucun mot anglais de React Native (D18) | ✅ le 27 octobre, relu au simulateur ; la voix à la recette (11-a) |
 | 13 | L'âge minimum fixé (D23) | ✅ le 27 octobre, 15 ans |
-| 14 | Les textes légaux justes, l'âge minimum compris (D14) | ⬜ |
+| 14 | Les textes légaux justes, l'âge minimum compris (D14) | ✅ le 27 octobre, à relire par Clément avant la fusion |
 
 ---
 
@@ -874,11 +884,11 @@ soumission.
 | **D11** | Les notes de version ne promettent que ce que la 2.0.0 montre dans ses premiers jours | Le bento de la semaine attend le plancher de version, relevé quelques jours après la mise en ligne |
 | **D12** | Le plancher de version se relève seulement quand les deux stores servent la 2.0.0, puis la première édition se compose | D8 du 13, inchangée : un compte à deux bentos casse sa page publique dans les versions publiées |
 | **D13** | Les fiches de confidentialité suivent l'inventaire du §6, tiré des migrations et du code | Ce que la base garde fait foi, pas ce que l'app affiche |
-| **D14** | La politique de confidentialité de la landing est complétée avant la soumission de ce qu'elle tait encore (§6.6) | Les deux stores la comparent aux fiches |
+| **D14** | La politique de confidentialité de la landing est complétée avant la soumission de ce qu'elle tait encore (§6.6) | Les deux stores la comparent aux fiches. Fait le 27 octobre, avec la page de suppression, les mentions légales et deux phrases de l'app (§9.1) |
 | **D15** | La recette en deux temps : avant la soumission, tout sauf ce qui demande une édition, un bento secondaire ou une mise à jour à distance en production ; ces points-là après le plancher, sur la 2.0.0 en ligne (passe G) | La production les interdit avant le plancher (D8 du 13, et le 16 pour un second bento) ; leurs écrans sont recettés au simulateur et à l'émulateur, et un défaut s'y corrigerait par une mise à jour à distance |
 | **D16** | La recette écrit en production avec deux comptes, celui de Clément et un compte de recette, supprimé à la fin avec tout ce qu'il a écrit | Seule la production porte les vrais services, APNs, FCM et Resend ; un compte de recette borne ce que voient les autres, comme l'exception de `RECETTE-MOBILE.md` §1 |
 | **D17** | L'haptique attendue est celle du code : un impact léger au toucher, « succès » à la case enregistrée, « erreur » sur un échec | Le 3 et le 11 divergeaient ; `src/lib/haptics.ts` fait foi |
-| **D18** | VoiceOver ne doit lire aucun mot anglais : les rôles et états que React Native compose en anglais sont remplacés par des valeurs françaises portées par l'app, sur iOS, avant la build de production | Constaté le 27 octobre sur la build de release, simulateur en français. React Native n'a aucune traduction utilisable sur iOS (§8) ; neuf endroits, un suivi de code (§9.2) |
+| **D18** | VoiceOver ne doit lire aucun mot anglais : les rôles et états que React Native compose en anglais sont remplacés par des traits natifs et des valeurs françaises portées par l'app, sur iOS ; Android garde ceux de React Native | Constaté le 27 octobre sur la build de release, simulateur en français : React Native n'a aucune traduction utilisable sur iOS (§8). Corrigé le même jour par `src/lib/a11y-states.ts`, dix endroits, et gardé par `accessibilite.test.ts` (§9.1) |
 | **D19** | 12-b et 12-c sont acceptés | 12-b est l'ellipse prévue par `tile-title.ts`, sous le plancher de taille, TalkBack lisant le titre entier ; 12-c, le comportement d'Android pour toute l'app, déjà décrit |
 | **D20** | 13-a se constate sur un vrai SE seulement si une case Créateur masquée existe en production ; 13-c est remplacé par les comparaisons au pixel du simulateur | L'intitulé ne paraît que sur une case vide ; la build « d'avant » de 13-c n'existe sur aucun store |
 | **D21** | Deux messageries suffisent : iMessage et WhatsApp | Les plus utilisées ; les spécifications en demandaient deux, trois ou six |
