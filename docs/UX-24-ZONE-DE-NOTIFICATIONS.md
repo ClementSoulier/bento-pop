@@ -285,7 +285,7 @@ Au simulateur iPhone 17 Pro et iPhone SE, à l'émulateur Pixel 8 :
 
 Fait et recetté le 27 octobre 2026, en cinq lots enchaînés, sur
 `feat/ux-24-zone-de-notifications`, partie de la branche de la PR #102, le
-23, elle-même sur la #101. Rien n'est appliqué en production : la mise en
+23, elle-même sur la #101, et ouverte en PR #103, empilée sur la #102. Rien n'est appliqué en production : la mise en
 service attend Clément, après celles du 22, du 12 et du 23 (§9.6).
 
 ### 9.1 Lot 1 · La base
