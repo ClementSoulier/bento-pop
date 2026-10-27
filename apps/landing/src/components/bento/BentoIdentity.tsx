@@ -1,11 +1,12 @@
 import Image from 'next/image';
+import { followSegment } from '@bento-pop/supabase-mobile/bento';
 import { popyFor } from '@/lib/bento/popy';
 import { formatVisits } from '@/lib/bento/visits';
 
 /**
  * En-tête d'identité : avatar Popy, pseudo, nom affiché, date de
- * publication, compteur de visites, et le cas échéant la distinction « à la
- * une ».
+ * publication, compteur de visites, nombres d'abonnés (chantier 23, D16), et
+ * le cas échéant la distinction « à la une ».
  *
  * Le pseudo porte le `<h1>` de la page. Un seul par document, et il dit
  * exactement ce que le visiteur est venu voir.
@@ -19,6 +20,7 @@ export function BentoIdentity({
   isGuest = false,
   subtitle,
   visits = null,
+  follows = null,
 }: {
   pseudo: string;
   /** Le Popy choisi, ou `null` pour celui du pseudo. Chantier 21 (D7). */
@@ -36,8 +38,15 @@ export function BentoIdentity({
    * pas en ligne.
    */
   visits?: number | null;
+  /**
+   * Les abonnés et les abonnements, chantier 23 (D16) : le nombre d'abonnés
+   * dès le premier, à défaut celui des abonnements, comme dans l'app. `null`
+   * ou sans nombre : rien, la ligne reste celle d'avant.
+   */
+  follows?: { followers: number; following: number } | null;
 }) {
   const popy = popyFor(pseudo, avatar);
+  const segment = followSegment(follows);
 
   return (
     <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
@@ -85,6 +94,12 @@ export function BentoIdentity({
           <>
             {displayName || subtitle || publishedAt ? ' · ' : null}
             <span className="whitespace-nowrap">{formatVisits(visits)}</span>
+          </>
+        ) : null}
+        {segment ? (
+          <>
+            {displayName || subtitle || publishedAt || visits !== null ? ' · ' : null}
+            <span className="whitespace-nowrap">{segment}</span>
           </>
         ) : null}
       </p>

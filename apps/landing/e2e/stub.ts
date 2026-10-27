@@ -33,6 +33,20 @@ const VISITS: Record<string, number | null> = {
 };
 const visitsOf = (id: string | undefined) => (id && id in VISITS ? VISITS[id]! : 3);
 
+/** L'identifiant du n-ième compte du jeu de données, comme en base. Chantier 23. */
+export const userId = (n: number) => `00000000-0000-4000-9000-${String(n).padStart(12, '0')}`;
+
+/**
+ * Les nombres de chaque compte, tels que `follow_summary` les rend à la clé
+ * anonyme, chantier 23 : des abonnés pour `keremasan`, seulement des
+ * abonnements pour `buyt.k`, rien pour les autres.
+ */
+const FOLLOWS: Record<string, { followers: number; following: number }> = {
+  keremasan: { followers: 4, following: 2 },
+  'buyt.k': { followers: 0, following: 3 },
+  'avant.vingttrois': { followers: 5, following: 0 },
+};
+
 /** Un appel de `record_bento_visit_web`, tel que la landing l'envoie. */
 export type VisitCall = { p_bento: string; p_fingerprint: string; p_secret: string };
 
@@ -352,6 +366,14 @@ export const USERS: StubUser[] = [
     bentos: { id: bentoId(19), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
   },
   {
+    // Réservé au test du repli d'avant la migration du chantier 23 : la base
+    // ne connaît pas `follow_summary`, la page doit se rendre comme avant.
+    // Ses abonnés ne se liraient qu'après.
+    pseudo: 'avant.vingttrois',
+    display_name: null,
+    bentos: { id: bentoId(20), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+  },
+  {
     // Chantier 21 : un Popy choisi, que la page doit montrer à la place de
     // celui que tire son pseudo.
     pseudo: 'popy.choisi',
@@ -428,6 +450,7 @@ export function startStub(port: number): Promise<Server> {
   let before20 = false;
   let before21 = false;
   let before12 = false;
+  let before23 = false;
   const visitCalls: VisitCall[] = [];
   const episodeQueries: EpisodeQuery[] = [];
 
@@ -449,6 +472,7 @@ export function startStub(port: number): Promise<Server> {
       before20 = false;
       before21 = false;
       before12 = false;
+      before23 = false;
       visitCalls.length = 0;
       episodeQueries.length = 0;
       return json(res, 200, { ok: true });
@@ -467,6 +491,10 @@ export function startStub(port: number): Promise<Server> {
     }
     if (url.pathname === '/__avant-12') {
       before12 = true;
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === '/__avant-23') {
+      before23 = true;
       return json(res, 200, { ok: true });
     }
 
@@ -524,7 +552,8 @@ export function startStub(port: number): Promise<Server> {
       // PostgREST : sans ça, un repli qui perd `searchable` passerait inaperçu.
       const select = url.searchParams.get('select') ?? '';
       const projected = rows.map((row) => {
-        const copy: Partial<StubUser> = { ...row };
+        // `id` existe depuis toujours : il revient comme les colonnes d'origine.
+        const copy: Partial<StubUser> & { id: string } = { id: userId(USERS.indexOf(row) + 1), ...row };
         if (!/\bsearchable\b/.test(select)) delete copy.searchable;
         if (!/\bavatar\b/.test(select)) delete copy.avatar;
         // `edition_id` revient toujours, nul pour un bento libre, comme chez
@@ -579,6 +608,18 @@ export function startStub(port: number): Promise<Server> {
         if (fn === 'record_bento_visit_web') {
           visitCalls.push(args as VisitCall);
           return json(res, 200, visitsOf(args.p_bento));
+        }
+        // Chantier 23 : une ligne par compte connu, aucune pour un autre ;
+        // avant sa migration, PostgREST ne trouve pas la fonction.
+        if (fn === 'follow_summary') {
+          if (before23) {
+            return json(res, 404, { code: 'PGRST202', message: 'Could not find the function public.follow_summary' });
+          }
+          const asked = String((args as { p_user?: string }).p_user ?? '');
+          const user = USERS.find((_, i) => userId(i + 1) === asked);
+          if (!user) return json(res, 200, []);
+          const counts = FOLLOWS[user.pseudo.toLowerCase()] ?? { followers: 0, following: 0 };
+          return json(res, 200, [{ ...counts, requests: null, my_status: null, approval: false }]);
         }
         return json(res, 404, { message: 'fonction non bouchonnée', path: url.pathname });
       });

@@ -14,7 +14,7 @@ export default function ConfidentialitePage() {
     <LegalPage
       eyebrow="Données personnelles"
       title="Politique de confidentialité"
-      updatedAt="26/10/2026"
+      updatedAt="27/10/2026"
     >
       <section>
         <h2>1. Responsable du traitement</h2>
@@ -146,6 +146,14 @@ export default function ConfidentialitePage() {
             non.
           </li>
           <li>
+            <strong>Abonnements</strong> : les comptes qu&apos;un utilisateur
+            suit et ceux qui le suivent, avec leur date, et les demandes en
+            attente quand il valide ses abonnés. Les listes et leurs nombres
+            sont publics dans l&apos;app, et le nombre d&apos;abonnés se lit
+            aussi sur bento-pop.com. Seul le compte qui reçoit une demande la
+            voit.
+          </li>
+          <li>
             <strong>Comptes bloqués</strong> : les comptes qu&apos;un
             utilisateur bloque, rangés avec son compte pour le suivre
             d&apos;un appareil à l&apos;autre. Ni les autres ni le compte
@@ -221,10 +229,11 @@ export default function ConfidentialitePage() {
             compte).
           </li>
           <li>
-            <strong>Pourquoi, commentaires et j&apos;aime</strong> : exécution
-            du service de partage culturel (consentement, donné en écrivant ou
-            en aimant, et retiré en effaçant le pourquoi, en supprimant le
-            commentaire, le j&apos;aime ou son compte).
+            <strong>Pourquoi, commentaires, j&apos;aime et abonnements</strong> :
+            exécution du service de partage culturel (consentement, donné en
+            écrivant, en aimant ou en suivant, et retiré en effaçant le
+            pourquoi, en supprimant le commentaire, le j&apos;aime ou son
+            compte, ou en ne suivant plus).
           </li>
           <li>
             <strong>Comptes bloqués</strong> : protéger l&apos;utilisateur de
@@ -264,10 +273,11 @@ export default function ConfidentialitePage() {
             Profil.
           </li>
           <li>
-            <strong>Pourquoi, commentaires, j&apos;aime et comptes
+            <strong>Pourquoi, commentaires, j&apos;aime, abonnements et comptes
             bloqués</strong> : tant que l&apos;utilisateur ne les retire pas ou
             ne supprime pas son compte ; un pourquoi, tant que sa case garde
-            son item.
+            son item ; un abonnement, tant que l&apos;un des deux comptes ne
+            bloque pas l&apos;autre.
           </li>
           <li>
             <strong>Signalements</strong>, et pourquoi ou commentaires masqués

@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { BentoPublishedView } from '@/components/bento/BentoPublicView';
 import { bentoDescription, bentoPath, bentoRobots, bentoTitle } from '@/lib/bento/metadata';
 import { canonicalPseudo, needsCanonicalRedirect } from '@/lib/bento/pseudo';
-import { lookupPublicBento, readBentoVisits } from '@/lib/bento/queries';
+import { lookupPublicBento, readBentoVisits, readFollowCounts } from '@/lib/bento/queries';
 import { smartAppBanner } from '@/lib/bento/stores';
 
 /**
@@ -90,11 +90,18 @@ export default async function NamedBentoPage({ params }: PageProps) {
   // pareil ici : dans les deux cas l'adresse demandée ne désigne rien.
   if (lookup.kind !== 'published') notFound();
 
+  // Les visites (8) et les nombres d'abonnés (23), lus ensemble.
+  const [visits, follows] = await Promise.all([
+    readBentoVisits(lookup.bento.id),
+    readFollowCounts(lookup.bento.ownerId),
+  ]);
+
   return (
     <BentoPublishedView
       bento={lookup.bento}
       others={lookup.others}
-      visits={await readBentoVisits(lookup.bento.id)}
+      visits={visits}
+      follows={follows}
       canonicalUrl={`${SITE_URL}${bentoPath(requested, lookup.bento.isPrimary ? null : slug)}`}
     />
   );

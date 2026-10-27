@@ -640,6 +640,43 @@ describe('le pourquoi par case', () => {
 });
 
 /**
+ * Chantier 23 (D16) : les nombres d'abonnés dans la ligne de date, comme dans
+ * l'app, sans demande, ni liste, ni bouton. L'espace insécable avant le mot
+ * ne vient que d'eux.
+ */
+describe('les abonnés', () => {
+  it("dit le nombre d'abonnés, et lui seul", async () => {
+    const html = await (await get('/u/keremasan')).text();
+    assert.ok(html.includes('4 abonnés'), 'nombre absent');
+    assert.ok(!html.includes('2 abonnements'), "les abonnements ne viennent qu'à défaut d'abonné");
+    assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1, 'il faut exactement un <h1>');
+  });
+
+  it("à défaut d'abonné, celui des abonnements", async () => {
+    assert.ok((await (await get('/u/buyt.k')).text()).includes('3 abonnements'));
+  });
+
+  it("sans abonné ni abonnement, la ligne d'avant", async () => {
+    const html = await (await get('/u/invite')).text();
+    assert.ok(!html.includes(' abonné'));
+    assert.ok(!html.includes(' abonnement'));
+  });
+
+  it('rend la page quand la base ne connaît pas encore la fonction (avant sa migration)', async () => {
+    await fetch(`${STUB_URL}/__avant-23`);
+    try {
+      const res = await get('/u/avant.vingttrois');
+      assert.equal(res.status, 200);
+      const html = await res.text();
+      assert.ok(html.includes('Interstellar'));
+      assert.ok(!html.includes(' abonné'));
+    } finally {
+      await resetStub();
+    }
+  });
+});
+
+/**
  * Chantier 19 : les épisodes que l'app range dans « La table ». Le bouchon
  * rend aussi un épisode programmé et un épisode sans date, sans filtrer :
  * c'est à la route de les écarter, et elle doit aussi demander à la base le

@@ -42,11 +42,19 @@ const MISSING_RELATION = 'PGRST200';
 /**
  * `resolve_pseudo` arrive avec la même migration du chantier 21. Avant, un
  * ancien pseudo n'existe pas, et PostgREST ne trouve pas la fonction
- * (`PGRST202`) : la page dit « introuvable », comme aujourd'hui.
+ * (`PGRST202`) : la page dit « introuvable », comme aujourd'hui. De même
+ * pour `follow_summary`, du chantier 23 : la ligne de date reste sans
+ * nombre.
  */
+const MISSING_FUNCTION = 'PGRST202';
 
-/** Colonnes lues, en une seule requête. */
+/**
+ * Colonnes lues, en une seule requête. `id` sert aux nombres d'abonnés du
+ * chantier 23, lus à part : la colonne existe depuis toujours, aucun repli
+ * ne la retire.
+ */
 const BENTO_SELECT = `
+  id,
   pseudo,
   display_name,
   kind,
@@ -88,6 +96,8 @@ const BENTO_SELECT_BEFORE_20 = BENTO_SELECT_BEFORE_21.replace(/^\s*searchable,\n
 export type PublicBento = {
   /** L'identifiant du bento, que compte l'image de visite. Chantier 8. */
   readonly id: string;
+  /** Le compte, dont la page lit les nombres d'abonnés. Chantier 23 (D16). */
+  readonly ownerId: string;
   /** Casse canonique, telle que stockée en base. */
   readonly pseudo: string;
   /** Adresse du bento : `/u/<pseudo>/<slug>`. Chantier 16. */
@@ -182,6 +192,7 @@ type RawBentoRow = {
 };
 
 type RawUserRow = {
+  readonly id: string;
   readonly pseudo: string;
   readonly display_name: string | null;
   readonly kind: string;
@@ -377,6 +388,7 @@ export async function lookupPublicBento(
     })),
     bento: {
       id: bento.id,
+      ownerId: user.id,
       pseudo: user.pseudo,
       slug: bento.slug,
       isPrimary: bento.is_primary,
@@ -422,6 +434,32 @@ export async function readBentoVisits(
     return null;
   }
   return typeof data === 'number' ? data : null;
+}
+
+/** Les nombres d'abonnés que montre la page web, chantier 23 (D16). */
+export type FollowCounts = { readonly followers: number; readonly following: number };
+
+/**
+ * Les abonnés et les abonnements d'un compte, lus à la clé anonyme : ni
+ * demandes ni lien de qui lit, que la base ne rend qu'à une session. Lus à
+ * part, comme les visites. `null` en panne, l'interrupteur éteint, ou avant la
+ * migration du chantier, quand PostgREST ne trouve pas la fonction : la ligne
+ * de date reste alors celle d'avant.
+ */
+export async function readFollowCounts(
+  userId: string,
+  client: MobileClient | null = createMobileAnonClient(),
+): Promise<FollowCounts | null> {
+  if (!client) return null;
+  const { data, error } = await client.rpc('follow_summary', { p_user: userId });
+  if (error) {
+    if (error.code !== MISSING_FUNCTION) {
+      console.warn('[bento/queries] follow counts failed:', error.message);
+    }
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? { followers: row.followers, following: row.following } : null;
 }
 
 /**
