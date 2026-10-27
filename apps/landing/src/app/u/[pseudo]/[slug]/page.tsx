@@ -8,6 +8,7 @@ import {
   lookupPublicBento,
   readBentoVisits,
   readFollowCounts,
+  readAchievements,
   readSocialLinks,
 } from '@/lib/bento/queries';
 import { smartAppBanner } from '@/lib/bento/stores';
@@ -95,12 +96,13 @@ export default async function NamedBentoPage({ params }: PageProps) {
   // pareil ici : dans les deux cas l'adresse demandée ne désigne rien.
   if (lookup.kind !== 'published') notFound();
 
-  // Les visites (8), les nombres d'abonnés (23) et les réseaux (25), lus
-  // ensemble.
-  const [visits, follows, links] = await Promise.all([
+  // Les visites (8), les nombres d'abonnés (23), les réseaux (25) et les
+  // succès (27), lus ensemble.
+  const [visits, follows, links, achievements] = await Promise.all([
     readBentoVisits(lookup.bento.id),
     readFollowCounts(lookup.bento.ownerId),
     readSocialLinks(lookup.bento.ownerId),
+    readAchievements(lookup.bento.ownerId),
   ]);
 
   return (
@@ -110,6 +112,7 @@ export default async function NamedBentoPage({ params }: PageProps) {
       visits={visits}
       follows={follows}
       links={links}
+      achievements={achievements}
       canonicalUrl={`${SITE_URL}${bentoPath(requested, lookup.bento.isPrimary ? null : slug)}`}
     />
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SheetAction } from '@/components/social/ActionSheet';
 import { useToast } from '@/components/primitives';
+import { ACHIEVEMENTS_QUERY_ROOT } from '@/lib/achievement-actions';
 import { followingFeedQueryKey } from '@/lib/feed';
 import {
   FOLLOW_LIST_ROOT,
@@ -63,6 +64,8 @@ export function useFollowsRefresh(): () => void {
   return () => {
     void queryClient.invalidateQueries({ queryKey: [FOLLOW_SUMMARY_ROOT] });
     void queryClient.invalidateQueries({ queryKey: [FOLLOW_LIST_ROOT] });
+    // Un abonné accepté pose un succès (chantier 27, D10).
+    void queryClient.invalidateQueries({ queryKey: [ACHIEVEMENTS_QUERY_ROOT] });
     void queryClient.invalidateQueries({ queryKey: followingFeedQueryKey(viewerId) });
   };
 }

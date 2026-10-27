@@ -102,6 +102,26 @@ export type SocialLinksRow = {
   visible: boolean;
 };
 
+/** Les huit succès du lancement, chantier 27 (§2 de la spécification, D4). */
+export type AchievementKey =
+  | 'first_bento'
+  | 'three_bentos'
+  | 'same_item_ten'
+  | 'first_item'
+  | 'five_items'
+  | 'ten_items'
+  | 'first_follower'
+  | 'ten_followers';
+
+/**
+ * Un succès tel que `account_achievements_of` le rend, chantier 27 (D2) :
+ * daté de l'évènement qui l'a fait gagner (D9).
+ */
+export type AchievementRow = {
+  key: AchievementKey;
+  unlocked_at: string;
+};
+
 /** Les sortes de la zone de notifications, chantier 24 (§2 de la spécification). */
 export type NotificationKind =
   | 'like'
@@ -113,7 +133,9 @@ export type NotificationKind =
   | 'item_rejected'
   | 'bento_published'
   | 'comment_hidden'
-  | 'why_hidden';
+  | 'why_hidden'
+  /** Chantier 27 (D14) : un succès gagné, sa clé dans `detail`. */
+  | 'achievement';
 
 /**
  * Une ligne de `list_notifications`, chantier 24 : un sujet et sa moitié,
@@ -664,6 +686,11 @@ export type Database = {
            * base ne rend ni n'écrit plus aucun lien. Chantier 25, D9.
            */
           social_links_enabled: boolean;
+          /**
+           * Éteint, l'app et le web cachent les succès et la base n'en rend
+           * plus aucun ; ils continuent de se poser. Chantier 27, D18.
+           */
+          achievements_enabled: boolean;
           updated_at: string;
         };
         Insert: {
@@ -680,6 +707,7 @@ export type Database = {
           follows_enabled?: boolean;
           notifications_enabled?: boolean;
           social_links_enabled?: boolean;
+          achievements_enabled?: boolean;
         };
         Update: Partial<Database['public']['Tables']['app_config']['Insert']>;
         Relationships: [];
@@ -815,6 +843,16 @@ export type Database = {
         Row: { user_id: string; instagram: string | null; tiktok: string | null; updated_at: string };
         Insert: { user_id: string; instagram?: string | null; tiktok?: string | null; updated_at?: string };
         Update: Partial<Database['public']['Tables']['account_links']['Insert']>;
+        Relationships: [];
+      };
+      /**
+       * Chantier 27 (D3, D8) : les succès gagnés, acquis pour toujours, sans
+       * accès client. Seuls les déclencheurs de la base y écrivent.
+       */
+      account_achievements: {
+        Row: { user_id: string; key: AchievementKey; unlocked_at: string };
+        Insert: { user_id: string; key: AchievementKey; unlocked_at: string };
+        Update: Partial<Database['public']['Tables']['account_achievements']['Insert']>;
         Relationships: [];
       };
       /** Chantier 24 (D8) : la date de lecture de sa zone, sans accès client. */
@@ -1283,7 +1321,7 @@ export type Database = {
         Args: { p_blocked: string[] };
         Returns: Array<{ blocked_id: string; pseudo: string | null }>;
       };
-      /** Chantiers 22 (D21), 12 (D13), 23 (D15), 24 (D17) et 25 (D13). */
+      /** Chantiers 22 (D21), 12 (D13), 23 (D15), 24 (D17), 25 (D13) et 27 (D17). */
       my_social_export: {
         Args: Record<string, never>;
         Returns: {
@@ -1308,6 +1346,8 @@ export type Database = {
           notifications: { seen_at: string | null };
           /** Ses pseudos Instagram et TikTok, et son réglage. */
           social_links: { instagram: string | null; tiktok: string | null; visible: boolean | null };
+          /** Ses succès, du plus ancien au plus récent. */
+          achievements: AchievementRow[];
         };
       };
       /**
@@ -1384,6 +1424,14 @@ export type Database = {
       social_links: {
         Args: { p_user: string };
         Returns: SocialLinksRow[];
+      };
+      /**
+       * Chantier 27 (D2, D13) : les succès d'un compte, du plus ancien au
+       * plus récent ; aucune ligne quand l'interrupteur est éteint.
+       */
+      account_achievements_of: {
+        Args: { p_user: string };
+        Returns: AchievementRow[];
       };
       /**
        * Chantier 12 (D2, D3, D5, D18) : écrit, remplace ou, vide, efface le

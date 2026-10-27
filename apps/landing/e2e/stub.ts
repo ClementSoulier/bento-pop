@@ -59,6 +59,26 @@ const LINKS: Record<string, { instagram: string | null; tiktok: string | null }>
   'avant.vingtcinq': { instagram: 'avant_ig', tiktok: null },
 };
 
+/**
+ * Les succès de chaque compte, tels que `account_achievements_of` les rend à
+ * la clé anonyme, chantier 27 : trois pour `keremasan`, dans le désordre pour
+ * que la page les range, avec une clé que cette version ne connaît pas ; deux
+ * pour `troisbentos` ; rien pour les autres.
+ */
+const ACHIEVEMENTS: Record<string, { key: string; unlocked_at: string }[]> = {
+  keremasan: [
+    { key: 'first_item', unlocked_at: '2026-04-01T10:00:00.000Z' },
+    { key: 'five_items', unlocked_at: '2026-05-01T10:00:00.000Z' },
+    { key: 'first_bento', unlocked_at: '2026-06-01T10:00:00.000Z' },
+    { key: 'first_like', unlocked_at: '2026-06-02T10:00:00.000Z' },
+  ],
+  troisbentos: [
+    { key: 'first_bento', unlocked_at: '2026-02-01T10:00:00.000Z' },
+    { key: 'three_bentos', unlocked_at: '2026-09-01T10:00:00.000Z' },
+  ],
+  'avant.vingtsept': [{ key: 'first_bento', unlocked_at: '2026-01-01T10:00:00.000Z' }],
+};
+
 /** Un appel de `record_bento_visit_web`, tel que la landing l'envoie. */
 export type VisitCall = { p_bento: string; p_fingerprint: string; p_secret: string };
 
@@ -441,6 +461,15 @@ export const USERS: StubUser[] = [
     display_name: null,
     bentos: { id: bentoId(21), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
   },
+  {
+    // Réservé au test du repli d'avant la migration du chantier 27 : la base
+    // ne connaît pas `account_achievements_of`, la page doit se rendre comme
+    // avant. En fin de liste et à lui seul, pour la raison de
+    // `avant.vingtcinq`.
+    pseudo: 'avant.vingtsept',
+    display_name: null,
+    bentos: { id: bentoId(22), slug: 'mon-bento', is_primary: true, published_at: YEAR, is_featured: false, bento_items: fullItems },
+  },
 ];
 
 /**
@@ -474,6 +503,7 @@ export function startStub(port: number): Promise<Server> {
   let before12 = false;
   let before23 = false;
   let before25 = false;
+  let before27 = false;
   const visitCalls: VisitCall[] = [];
   const episodeQueries: EpisodeQuery[] = [];
 
@@ -497,6 +527,7 @@ export function startStub(port: number): Promise<Server> {
       before12 = false;
       before23 = false;
       before25 = false;
+      before27 = false;
       visitCalls.length = 0;
       episodeQueries.length = 0;
       return json(res, 200, { ok: true });
@@ -523,6 +554,10 @@ export function startStub(port: number): Promise<Server> {
     }
     if (url.pathname === '/__avant-25') {
       before25 = true;
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === '/__avant-27') {
+      before27 = true;
       return json(res, 200, { ok: true });
     }
 
@@ -659,6 +694,19 @@ export function startStub(port: number): Promise<Server> {
           const user = USERS.find((_, i) => userId(i + 1) === asked);
           const links = user ? LINKS[user.pseudo.toLowerCase()] : undefined;
           return json(res, 200, links ? [{ ...links, visible: true }] : []);
+        }
+        // Chantier 27 : les succès d'un compte, aucun pour un autre ; avant
+        // sa migration, PostgREST ne trouve pas la fonction.
+        if (fn === 'account_achievements_of') {
+          if (before27) {
+            return json(res, 404, {
+              code: 'PGRST202',
+              message: 'Could not find the function public.account_achievements_of',
+            });
+          }
+          const asked = String((args as { p_user?: string }).p_user ?? '');
+          const user = USERS.find((_, i) => userId(i + 1) === asked);
+          return json(res, 200, (user && ACHIEVEMENTS[user.pseudo.toLowerCase()]) ?? []);
         }
         return json(res, 404, { message: 'fonction non bouchonnée', path: url.pathname });
       });

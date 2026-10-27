@@ -1728,6 +1728,20 @@ largeur de la plus longue ligne, plus 2 % et un point de marge pour les écarts
 de rendu. Une seule implémentation pour l'app, la page web et l'aperçu de lien :
 `fitLabel`, dans le package partagé.
 
+### Un mot plus large que sa colonne se coupe au milieu, sur iOS
+
+Sur iOS, un mot plus large que la boîte de son texte ne rétrécit pas et ne
+passe pas entier à la ligne : il se coupe entre deux lettres. Au chantier 27,
+« Inconditionnel », le nom d'une médaille, sortait « Inconditionn » puis
+« el » au SE, dans une colonne de 84 pt, quand il tenait au 17 Pro, à 93 pt.
+La grille partait d'une largeur estimée, 81 pt ; mesuré au pixel sur la
+capture du 17 Pro, le mot en faisait 88.
+
+> **La largeur minimale d'une colonne vient du plus long mot qu'elle porte,
+> mesuré à l'écran, pas estimé.** Puis un test parcourt toutes les largeurs,
+> du SE au plus large, texte agrandi compris : `medalGrid`, dans
+> `src/lib/achievements.ts`.
+
 ### Prouver qu'un rendu web n'a pas bougé
 
 Pour montrer qu'un changement laisse le bento principal intact sur la page

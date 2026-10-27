@@ -1,4 +1,6 @@
+import type { PopyKey } from '@bento-pop/supabase-mobile/bento';
 import type { NotificationKind, NotificationRow } from '@/supabase/types';
+import { ACHIEVEMENTS, isAchievementKey } from './achievements';
 import { bentoRoute } from './bento-address';
 import type { PushTarget } from './push';
 import { relativeDate } from './relative-date';
@@ -28,7 +30,9 @@ export type NotificationAvatar =
   /** Un like ne dit jamais qui (D7) : un cœur. */
   | { kind: 'like' }
   /** Une décision de l'équipe (D2) : le Popy de Bento Pop. */
-  | { kind: 'team' };
+  | { kind: 'team' }
+  /** Un succès du chantier 27 (D14) : le Popy de sa médaille. */
+  | { kind: 'achievement'; popy: PopyKey };
 
 export type NotificationTarget =
   | { kind: 'page'; href: `/u/${string}` }
@@ -150,6 +154,11 @@ export function notificationParts(row: NotificationRow, viewer: NotificationView
       const reason = row.detail ? ` : ${row.detail}` : '';
       return [plain(`L'équipe a masqué ton pourquoi${title ? ` sur ${quoted(title)}` : ''}${reason}`)];
     }
+    case 'achievement': {
+      // Une clé ajoutée en base avant cette version se lit sans son nom.
+      const key = isAchievementKey(row.detail) ? row.detail : null;
+      return [plain(key ? `Succès débloqué : ${ACHIEVEMENTS[key].title}` : 'Nouveau succès débloqué')];
+    }
   }
 }
 
@@ -164,6 +173,8 @@ function avatarOf(row: NotificationRow): NotificationAvatar {
       const pseudo = row.kind === 'followed_bento' ? (row.owner_pseudo ?? row.actor_pseudos[0]) : row.actor_pseudos[0];
       return pseudo ? { kind: 'account', pseudo, avatar: row.actor_avatar } : { kind: 'team' };
     }
+    case 'achievement':
+      return isAchievementKey(row.detail) ? { kind: 'achievement', popy: ACHIEVEMENTS[row.detail].popy } : { kind: 'team' };
     default:
       return { kind: 'team' };
   }
@@ -200,6 +211,9 @@ export function notificationTarget(row: NotificationRow, viewer: NotificationVie
       return row.bento_id && row.owner_pseudo
         ? { kind: 'whys', bentoId: row.bento_id, pseudo: row.owner_pseudo, slug: row.bento_primary ? null : row.bento_slug }
         : null;
+    // D14 : sa page, où la médaille l'attend.
+    case 'achievement':
+      return { kind: 'page', href: `/u/${viewer.pseudo}` };
   }
 }
 
