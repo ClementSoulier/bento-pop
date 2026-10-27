@@ -76,9 +76,9 @@ export default function ConfidentialitePage() {
         <ul>
           <li>
             <strong>Identifiant anonyme</strong> : un UUID généré automatiquement
-            au premier lancement, persisté dans le stockage sécurisé de
-            l&apos;appareil. Sert de clé pour relier l&apos;utilisateur à son
-            bento. Aucune information personnelle (nom réel, téléphone)
+            au premier lancement, gardé avec la session dans le stockage de
+            l&apos;app, sur l&apos;appareil. Sert de clé pour relier
+            l&apos;utilisateur à son bento. Aucune information personnelle (nom réel, téléphone)
             n&apos;y est associée, ni d&apos;adresse email, sauf si
             l&apos;utilisateur choisit de garder son compte (ci-dessous).
           </li>
@@ -86,25 +86,40 @@ export default function ConfidentialitePage() {
             <strong>Adresse email</strong> (facultative) : si
             l&apos;utilisateur choisit de <em>« garder son compte »</em>,
             l&apos;adresse qu&apos;il saisit, rattachée à son identifiant
-            après la saisie d&apos;un code reçu à cette adresse. Elle sert
-            uniquement à retrouver son compte sur un autre appareil ou après
-            une réinstallation, par un nouveau code. Elle n&apos;est jamais
-            affichée publiquement, ni partagée, ni utilisée pour lui écrire
-            autre chose que ces codes.
+            après la saisie d&apos;un code reçu à cette adresse. Elle sert à
+            retrouver son compte sur un autre appareil ou après une
+            réinstallation, par un nouveau code, et, si l&apos;équipe supprime
+            le compte pour non-respect des règles, à lui en donner le motif.
+            Elle n&apos;est jamais affichée publiquement, ni utilisée pour lui
+            écrire autre chose. Resend, qui envoie ces mails, la reçoit (§5).
           </li>
           <li>
-            <strong>Pseudonyme</strong> : choisi par l&apos;utilisateur à
-            l&apos;onboarding (3 à 20 caractères alphanumériques). Visible
-            publiquement sur le bento partagé.
+            <strong>Pseudonyme</strong> : choisi par l&apos;utilisateur à la
+            publication de son premier bento (3 à 20 caractères). Visible
+            publiquement sur sa page et ses bentos. Il peut en changer une
+            fois tous les 30 jours : ses anciens pseudos restent réservés à
+            son compte, et leurs liens mènent au nouveau, jusqu&apos;à la
+            suppression du compte.
           </li>
           <li>
             <strong>Nom d&apos;affichage</strong> (facultatif) : si renseigné par
             l&apos;utilisateur.
           </li>
           <li>
+            <strong>Popy</strong> : l&apos;illustration de son profil, choisie
+            parmi six, jamais une photo. Visible publiquement.
+          </li>
+          <li>
             <strong>Composition du bento</strong> : les films, séries, artistes,
             chansons, créateurs et lieux que l&apos;utilisateur a choisis dans
             son bento, ainsi que la date de publication. Visible publiquement.
+          </li>
+          <li>
+            <strong>Items proposés</strong> : le titre qu&apos;un utilisateur
+            propose d&apos;ajouter au catalogue, avec sa date, la décision de
+            l&apos;équipe et, en cas de refus, son motif. Visible de lui seul
+            jusqu&apos;à sa validation ; validé, l&apos;item entre au catalogue
+            de tous.
           </li>
           <li>
             <strong>Compteur de visites</strong> : quand la page du bento
@@ -186,6 +201,36 @@ export default function ConfidentialitePage() {
             bloqué ne le voient.
           </li>
           <li>
+            <strong>Notifications push</strong> (facultatives) : si
+            l&apos;utilisateur les autorise, le jeton de notification de son
+            appareil, sa plateforme, ses deux réglages, « Mes items » et « Les
+            éditions », et la date de sa dernière ouverture, pour le prévenir
+            quand l&apos;équipe décide de ses items, quand son bento est
+            publié et, s&apos;il l&apos;a accepté, quand une édition sort. Le
+            jeton passe par Expo, puis par Apple ou Google, qui livrent la
+            notification (§5).
+          </li>
+          <li>
+            <strong>Rappel de publication</strong> : une notification
+            qu&apos;un utilisateur accepte pour un bento prêt, programmée sur
+            son appareil, qu&apos;elle ne quitte pas.
+          </li>
+          <li>
+            <strong>Données techniques de l&apos;app</strong> : à chaque
+            lancement d&apos;un compte qui a un pseudo, la date, la plateforme
+            (iOS ou Android) et la version de l&apos;app, que seule
+            l&apos;équipe lit, au back-office. Pour ses mises à jour,
+            l&apos;app transmet aussi à Expo un identifiant d&apos;installation
+            aléatoire, sa plateforme et sa version, sans lien avec le compte.
+          </li>
+          <li>
+            <strong>Sur l&apos;appareil</strong> : la session, le brouillon
+            d&apos;un bento avant sa publication, la liste des comptes bloqués
+            et les réponses aux questions de l&apos;app restent dans le
+            stockage de l&apos;app, jusqu&apos;à la déconnexion, la suppression
+            du compte ou la désinstallation.
+          </li>
+          <li>
             <strong>Signalements</strong> (table <code>reports</code>) : si
             l&apos;utilisateur signale un bento, un pourquoi, un commentaire ou
             un compte, le motif choisi, le détail éventuel et, pour un pourquoi
@@ -196,7 +241,7 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>Logs Supabase</strong> : adresses IP et user-agent des
-            requêtes API, conservés ~7 jours par Supabase à des fins de sécurité
+            requêtes API, conservés 1 jour par Supabase à des fins de sécurité
             et diagnostic.
           </li>
         </ul>
@@ -206,25 +251,21 @@ export default function ConfidentialitePage() {
           collecte une adresse email que si l&apos;utilisateur choisit de
           garder son compte.
           Aucun SDK de tracking tiers (Google Analytics, Meta SDK, Firebase
-          Analytics…) n&apos;est intégré.
+          Analytics…) n&apos;est intégré. Sur Android, les notifications push
+          sont livrées par Firebase Cloud Messaging, de Google, sans aucune
+          mesure d&apos;audience.
         </p>
 
-        <h3>2.3 Sources de données externes</h3>
+        <h3>2.3 Catalogue et images</h3>
         <p>
-          Lorsque l&apos;utilisateur recherche un film, une série, un artiste,
-          un lieu ou un créateur de contenu, l&apos;app interroge en temps réel
-          les APIs publiques de&nbsp;:
-        </p>
-        <ul>
-          <li><strong>The Movie Database (TMDb)</strong> pour les films et séries</li>
-          <li><strong>MusicBrainz</strong> pour les artistes et chansons</li>
-          <li><strong>OpenStreetMap (Nominatim)</strong> pour les lieux de voyage</li>
-          <li><strong>Wikidata</strong> pour les créateurs de contenu</li>
-        </ul>
-        <p>
-          Ces APIs reçoivent uniquement le terme recherché et l&apos;adresse IP
-          publique de l&apos;utilisateur (logs standards), conformément à leurs
-          propres politiques.
+          L&apos;app cherche les films, séries, artistes, chansons, créateurs
+          et lieux dans le catalogue de Bento Pop, tenu par l&apos;équipe et
+          complété par les propositions des utilisateurs : aucune recherche ne
+          part vers un service tiers, et les termes recherchés ne sont pas
+          conservés. Les images du catalogue se chargent depuis le stockage de
+          Bento Pop ou depuis leurs hébergeurs, dont The Movie Database (TMDb)
+          pour les affiches, qui voient alors l&apos;adresse IP de
+          l&apos;appareil.
         </p>
       </section>
 
@@ -251,8 +292,8 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Pseudonyme + composition de bento</strong> : exécution du
             service de partage culturel (consentement, recueilli à
-            l&apos;onboarding et révocable à tout moment via la suppression de
-            compte).
+            l&apos;acceptation des règles, avant la première publication, et
+            révocable à tout moment via la suppression de compte).
           </li>
           <li>
             <strong>Pourquoi, commentaires, j&apos;aime et abonnements</strong> :
@@ -264,6 +305,30 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Comptes bloqués</strong> : protéger l&apos;utilisateur de
             ceux qu&apos;il ne veut plus voir ni lire (intérêt légitime).
+          </li>
+          <li>
+            <strong>Notifications push</strong> : prévenir l&apos;utilisateur
+            de ce qui le concerne (consentement, donné en autorisant les
+            notifications, et retiré dans les réglages de l&apos;app ou du
+            téléphone).
+          </li>
+          <li>
+            <strong>Items proposés</strong> : compléter le catalogue
+            (exécution du service).
+          </li>
+          <li>
+            <strong>Anciens pseudos</strong> : garder les liens déjà partagés
+            et empêcher un autre compte de prendre un ancien pseudo (intérêt
+            légitime).
+          </li>
+          <li>
+            <strong>Données techniques de l&apos;app</strong> : suivre les
+            versions en usage et répondre aux demandes d&apos;aide (intérêt
+            légitime).
+          </li>
+          <li>
+            <strong>Registre des suppressions</strong> : pouvoir prouver
+            qu&apos;une suppression a eu lieu (intérêt légitime).
           </li>
           <li>
             <strong>Date de lecture des notifications</strong> : distinguer ce
@@ -306,10 +371,10 @@ export default function ConfidentialitePage() {
             <strong>Données utilisateur app mobile</strong> (pseudo, bento,
             composition, adresse email d&apos;un compte gardé) : conservées
             tant que l&apos;utilisateur n&apos;a pas supprimé son compte depuis
-            l&apos;app. Suppression définitive
-            immédiate (cascade sur l&apos;ensemble des données liées) sur
-            demande via le bouton <em>« Supprimer mon compte »</em> de la tab
-            Profil.
+            l&apos;app. Sur demande par <em>« Supprimer mon compte »</em>, dans
+            les réglages de l&apos;onglet Profil, le compte et toutes ses
+            données sont supprimés immédiatement, sauf ce que les lignes
+            suivantes gardent plus longtemps.
           </li>
           <li>
             <strong>Pourquoi, commentaires, j&apos;aime, abonnements et comptes
@@ -334,15 +399,39 @@ export default function ConfidentialitePage() {
             fait gagner disparaît.
           </li>
           <li>
+            <strong>Jeton de notification</strong> : tant que l&apos;appareil
+            s&apos;en sert ; muet depuis 60 jours, il ne reçoit plus rien.
+            Accusés d&apos;envoi des notifications : 30 jours.
+          </li>
+          <li>
+            <strong>Données techniques de l&apos;app</strong> et{' '}
+            <strong>anciens pseudos</strong> : tant que le compte existe.
+          </li>
+          <li>
+            <strong>Items proposés</strong> : tant qu&apos;ils sont au
+            catalogue. Quand un compte est supprimé, ses propositions y
+            restent, sans auteur.
+          </li>
+          <li>
+            <strong>Registre des suppressions</strong> : l&apos;identifiant
+            d&apos;un compte supprimé, la date et le motif, sans pseudo ni nom,
+            12 mois.
+          </li>
+          <li>
             <strong>Signalements</strong>, et pourquoi ou commentaires masqués
             par l&apos;équipe : 1 an après leur traitement, puis effacés.
+            Ceux qui visent un compte gardent son pseudo et une copie du texte
+            signalé jusque-là, même s&apos;il est supprimé entre-temps.
           </li>
           <li>Logs serveur : 30 jours.</li>
           <li>
             Journaux d&apos;envoi chez Resend, codes de connexion et mails de
             modération : 30 jours.
           </li>
-          <li>Logs Supabase API : 7 jours.</li>
+          <li>
+            Logs Supabase de l&apos;app : 1 jour. Sa base n&apos;a pas de
+            sauvegarde automatique.
+          </li>
           <li>
             Empreintes hachées des visiteurs d&apos;un bento, et leur sel :
             effacés la nuit suivant la visite. Nombres de visites : tant que
@@ -377,11 +466,23 @@ export default function ConfidentialitePage() {
             européenne, prévues par son accord de traitement des données.
           </li>
           <li>
+            <strong>650 Industries, Inc.</strong> (Expo, Palo Alto,
+            États-Unis) : relais des notifications push, qui reçoit le jeton de
+            l&apos;appareil, le titre et le texte de la notification, et
+            service des mises à jour de l&apos;app, qui reçoit un identifiant
+            d&apos;installation, la plateforme et la version. Le transfert hors
+            de l&apos;Union européenne est encadré par son accord de traitement
+            des données.
+          </li>
+          <li>
             <strong>Apple Inc.</strong> et <strong>Google LLC</strong> — pour
             les utilisateurs ayant téléchargé l&apos;app via App Store ou
             Play Store, ces plateformes reçoivent les données techniques liées
             à l&apos;installation (identifiants techniques de leurs propres
-            services, gérés selon leurs CGU respectives).
+            services, gérés selon leurs CGU respectives). Pour les
+            notifications push, Apple (APNs) et Google (Firebase Cloud
+            Messaging) reçoivent le jeton de l&apos;appareil et le contenu de
+            la notification, qu&apos;ils livrent.
           </li>
         </ul>
         <p>
@@ -408,10 +509,12 @@ export default function ConfidentialitePage() {
         </ul>
         <p>
           <strong>Pour les utilisateurs de l&apos;app mobile</strong> : le droit
-          à l&apos;effacement est directement accessible depuis la tab Profil
-          → <em>« Supprimer mon compte »</em>. La suppression est immédiate et
-          définitive (cascade automatique sur toutes les données liées :
-          pseudo, bento, composition).
+          à l&apos;effacement s&apos;exerce depuis les réglages de l&apos;onglet
+          Profil, <em>« Supprimer mon compte »</em>, ou par la page{' '}
+          <a href="/suppression-compte">Supprimer mon compte</a> de ce site. La
+          suppression est immédiate et définitive, hors ce que garde le §4. Le
+          droit à la portabilité aussi : <em>« Exporter mes données »</em>, dans
+          les mêmes réglages, remet un fichier de ses données.
         </p>
         <p>
           Pour exercer les autres droits, contactez-nous à{' '}
@@ -441,6 +544,18 @@ export default function ConfidentialitePage() {
           Vous pouvez gérer ces cookies tiers via les paramètres de votre
           navigateur, ou refuser le chargement de ces lecteurs en activant un
           bloqueur (par ex. uBlock Origin).
+        </p>
+      </section>
+
+      <section>
+        <h2>8. Âge minimum</h2>
+        <p>
+          L&apos;application est réservée aux personnes de 15 ans et plus,
+          l&apos;âge auquel la loi Informatique et Libertés permet de consentir
+          seul au traitement de ses données. Si vous apprenez qu&apos;un compte
+          appartient à une personne plus jeune, écrivez à{' '}
+          <a href="mailto:contact@bento-pop.com">contact@bento-pop.com</a> : il
+          sera supprimé.
         </p>
       </section>
     </LegalPage>

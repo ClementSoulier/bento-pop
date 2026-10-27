@@ -14,7 +14,7 @@ export default function SuppressionComptePage() {
     <LegalPage
       eyebrow="Compte utilisateur"
       title={'Supprimer\nmon compte.'}
-      updatedAt="26/10/2026"
+      updatedAt="27/10/2026"
     >
       <section>
         <h2>1. Depuis l’app mobile (recommandé)</h2>
@@ -81,6 +81,13 @@ export default function SuppressionComptePage() {
             (films, séries, artistes, etc.).
           </li>
           <li>
+            Tout ce que tu as écrit ou fait dans l’app : tes pourquoi, tes
+            commentaires, tes j’aime, tes abonnements et tes abonnés, tes
+            réseaux, tes succès, tes blocages, tes anciens pseudos, tes
+            appareils de notification et les données techniques de tes
+            lancements.
+          </li>
+          <li>
             L’URL publique <code>bento-pop.com/u/&lt;pseudo&gt;</code> renvoie
             une page « introuvable » immédiatement après suppression.
           </li>
@@ -88,7 +95,10 @@ export default function SuppressionComptePage() {
         <p>
           Les <strong>signalements</strong> que tu aurais envoyés sur d’autres
           bentos sont conservés à des fins de modération, mais le lien vers ton
-          identité est rompu (anonymisation immédiate).
+          identité est rompu (anonymisation immédiate). Ceux qui visent ton
+          compte gardent ton pseudo et une copie du texte signalé jusqu’à un
+          an après leur traitement. Les items que tu as proposés restent au
+          catalogue, sans auteur.
         </p>
       </section>
 
@@ -104,9 +114,13 @@ export default function SuppressionComptePage() {
             maximum, anonymisés au-delà.
           </li>
           <li>
-            <strong>Sauvegardes chiffrées</strong> de la base de données : 30
-            jours glissants, après quoi les données supprimées sortent
-            définitivement du système.
+            <strong>Journaux de la base de l’app</strong> : 1 jour. Elle
+            n’a pas de sauvegarde automatique : rien d’autre n’y survit à la
+            suppression que ce que dit cette page.
+          </li>
+          <li>
+            <strong>Registre des suppressions</strong> : l’identifiant de ton
+            compte supprimé, la date et le motif, sans pseudo ni nom, 12 mois.
           </li>
           <li>
             <strong>Journaux d’envoi des codes</strong> chez Resend, si tu
@@ -117,7 +131,8 @@ export default function SuppressionComptePage() {
           Mon Bento Pop ne collecte aucune donnée commerciale (téléphone,
           moyen de paiement) : l’app est intégralement gratuite. Une adresse
           email n’est collectée que si tu choisis de garder ton compte, pour
-          t’envoyer les codes qui le retrouvent, et elle part avec lui.
+          t’envoyer les codes qui le retrouvent et, si l’équipe le supprimait,
+          son motif ; elle part avec lui.
         </p>
       </section>
 
