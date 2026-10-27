@@ -871,8 +871,10 @@ chantier 29.
   la variable. Une visite contrôlée sur le bento de Clément :
   `X-Bento-Visit: recorded`, en base une visite web, une clé de 32 octets
   et le sel du jour, et « 1 visite » sur la page une fois régénérée.
-- **Reste**, en lecture seule le 24 octobre : la purge de 3 h 40 a tourné,
-  et les clés et le sel du 23 ont disparu.
+- **Relevé le 27 octobre**, en lecture seule : la purge a tourné chaque nuit
+  depuis le 24, sans échec, à 3 h 40 UTC, soit 5 h 40 à Paris puis 4 h 40
+  après le changement d'heure du 25. Seuls la clé et le sel du jour restent ;
+  les nombres des jours passés sont gardés, dont la visite contrôlée du 23.
 
 ---
 
@@ -915,7 +917,7 @@ l'application de la migration ; le point 13 par la CI rejouée en local.
 | 3 | Fait | Le bento en tête de La table, le compteur inchangé (lot 5, geste 1) ; D14 : La table n'appelle rien |
 | 4 | Fait | La page de l'app et la page web, « 3 visites », « 2 visites » ; le profil, « En ligne · publié il y a 8 min · 3 visites » ; « 0 visite » sur un bento neuf, dans l'app et sur le web (lots 3 et 5) |
 | 5 | Fait | Le chiffre disparaît dans l'app d'un visiteur, sur le web, et `bento_visit_count` rend nul en `anon` ; le profil du propriétaire le garde (lot 5, geste 5). La page web se revalide au changement (lot 1, écart 2) |
-| 6 | Fait | Des empreintes de 32 octets, aucun texte en clair dans les trois tables ; la purge simulée efface clés et sel, garde les nombres ; `visits-purge` programmée (lot 5, geste 9). La purge réelle se relève le lendemain de la mise en service (§9) |
+| 6 | Fait | Des empreintes de 32 octets, aucun texte en clair dans les trois tables ; la purge simulée efface clés et sel, garde les nombres ; `visits-purge` programmée (lot 5, geste 9). La purge réelle relevée le 27 octobre, passée chaque nuit depuis le 24 (§9) |
 | 7 | Fait | « Secret refusé. », `42501`, par l'API avec la clé anonyme, sans secret ou avec un faux (lot 5, geste 9) ; `check-privileges.ts` et `check-visits.sql`, contrôle 7d (lot 1) |
 | 8 | Fait | Les trois portes, une question par bento, sur iOS et Android ; la date au 24 octobre à 18 h dans le journal de SpringBoard et dans `dumpsys alarm`, de 18 h à 19 h sur Android (lots 4 et 5) ; `nextReminderDate`, testée, nuit, soir et changements d'heure |
 | 9 | Fait | Publier par le composer comme par l'écran du pseudo, vider une case : le rappel tombe ; un bento dépublié ne propose rien (lot 5, geste 8). La suppression du compte aussi (lot 4) |

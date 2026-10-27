@@ -171,12 +171,19 @@ Le mode d'emploi de la recette et ses pièges sont dans
 
 Tout est en place et vérifié sur la configuration résolue : `expo-updates` en
 dépendance, `updates.url` renseignée, canal `production` mappé sur la branche
-`production`, et `runtimeVersion` en politique `appVersion`. **Aucune mise à
-jour n'a encore été publiée.**
+`production`, et `runtimeVersion` en politique `appVersion`. **Une seule mise
+à jour publiée**, le 13 septembre 2026, pour la runtime `0.2.0`, orpheline
+depuis le passage en 1.2.0 (cf. la roadmap). Aucune ne doit viser la runtime
+`2.0.0` avant la sortie store (chantier 29, D22).
 
 ```bash
-npx eas-cli update --branch production --message "…"
+npx eas-cli update --branch production --environment production --message "…"
 ```
+
+**`--environment production` est indispensable** : c'est lui qui verse dans
+le code publié les variables d'EAS, dont l'adresse de Supabase. Sans lui, et
+sans ces variables dans l'environnement de la machine, l'app mise à jour la
+perdrait.
 
 ### 6.1 Ce que ça permet, et ce que ça ne permet pas
 
