@@ -18,6 +18,8 @@
  *
  * Aucun import de `react-native` : testé sous `node:test`.
  */
+import { bungeeTextWidth } from '@bento-pop/supabase-mobile/bento';
+
 export const TAB_BAR_BASE_HEIGHT = 84;
 
 /**
@@ -31,4 +33,37 @@ export const TAB_BAR_BASE_INSET = { ios: 34, android: 24 } as const;
 export function tabBarHeight(insetBottom: number, baseInset: number): number {
   const inset = Number.isFinite(insetBottom) ? insetBottom : 0;
   return TAB_BAR_BASE_HEIGHT + Math.max(0, inset - baseInset);
+}
+
+/** Ce que le libellé laisse de chaque côté de son onglet, en points. */
+export const TAB_LABEL_INSET = 4;
+
+/**
+ * Facteur à appliquer à la police d'un libellé d'onglet pour qu'il tienne sur
+ * sa ligne : 1 s'il y tient déjà, ce qui est le cas des cinq libellés à la
+ * taille par défaut, sur 72 dp au moins (§1.1 du chantier 24).
+ *
+ * Mesuré par la table de Bungee plutôt que confié à `adjustsFontSizeToFit`,
+ * qui, avec une hauteur de ligne posée, a fait tomber deux textes à la trace
+ * sur iOS à la recette du 23 (D21). L'espacement des lettres ne suit pas la
+ * police : il est mis à part. Sur Android, `pixelRatio` arrondit comme
+ * `lineFitScale` : React Native y dessine la police au pixel supérieur, et la
+ * réduction s'arrête donc sur un pixel entier.
+ */
+export function tabLabelScale(
+  label: string,
+  tabWidth: number,
+  fontSize: number,
+  letterSpacing: number,
+  pixelRatio?: number,
+): number {
+  const room = tabWidth - TAB_LABEL_INSET * 2;
+  if (room <= 0 || fontSize <= 0) return 1;
+  const spacing = letterSpacing * [...label].length;
+  const glyphs = (bungeeTextWidth(label, fontSize, letterSpacing) - spacing) / fontSize;
+  const rendered = pixelRatio === undefined ? fontSize : Math.ceil(fontSize * pixelRatio) / pixelRatio;
+  if (glyphs * rendered + spacing <= room) return 1;
+  const fit = (room - spacing) / glyphs;
+  const snapped = pixelRatio === undefined ? fit : (Math.floor(fit * pixelRatio) - 0.01) / pixelRatio;
+  return Math.max(0, snapped) / fontSize;
 }

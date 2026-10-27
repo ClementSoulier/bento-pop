@@ -81,6 +81,26 @@ export function ProfileIcon({ size = 22, color = '#0a0a0a', active = false }: Ic
   );
 }
 
+/** Cloche, onglet NOTIFS : chantier 24 (D5). */
+export function BellIcon({ size = 22, color = '#0a0a0a', active = false }: IconProps) {
+  const fill = active ? color : 'transparent';
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path
+          d="M6 17 L6 11 C 6 7.2, 8.6 4.5, 12 4.5 C 15.4 4.5, 18 7.2, 18 11 L18 17 L19.5 18.5 L4.5 18.5 Z"
+          stroke={color}
+          strokeWidth={STROKE}
+          strokeLinejoin="round"
+          fill={fill}
+        />
+        <Path d="M10 21 C 10.6 21.8, 13.4 21.8, 14 21" stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
+        <Path d="M12 2.5 L12 4.5" stroke={color} strokeWidth={STROKE} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
 /**
  * Crayon, hors de la tab bar : la pastille « Modifier le profil » de l'onglet
  * Profil (chantier 21). Même trait que les icônes des onglets.
