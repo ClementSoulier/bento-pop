@@ -1,7 +1,7 @@
 import { createMobileAnonClient, type MobileClient } from '@/lib/supabase/mobile';
 import { compareOthers } from './others';
 import { isValidPseudo } from './pseudo';
-import type { CaseMeta } from '@bento-pop/supabase-mobile/bento';
+import { shownAchievements, type CaseMeta, type ShownAchievement } from '@bento-pop/supabase-mobile/bento';
 import {
   bentoCases,
   mapBentoItems,
@@ -486,6 +486,28 @@ export async function readSocialLinks(
   const row = Array.isArray(data) ? data[0] : data;
   if (!row || (!row.instagram && !row.tiktok)) return null;
   return { instagram: row.instagram ?? null, tiktok: row.tiktok ?? null };
+}
+
+/**
+ * Les succès d'un compte, chantier 27 (D13), lus à la clé anonyme et prêts à
+ * montrer, dans l'ordre du catalogue. Lus à part, comme les réseaux. Vides
+ * sans succès, en panne, l'interrupteur éteint, ou avant la migration du
+ * chantier, quand PostgREST ne trouve pas la fonction : la page reste alors
+ * celle d'avant.
+ */
+export async function readAchievements(
+  userId: string,
+  client: MobileClient | null = createMobileAnonClient(),
+): Promise<ShownAchievement[]> {
+  if (!client) return [];
+  const { data, error } = await client.rpc('account_achievements_of', { p_user: userId });
+  if (error) {
+    if (error.code !== MISSING_FUNCTION) {
+      console.warn('[bento/queries] achievements failed:', error.message);
+    }
+    return [];
+  }
+  return shownAchievements(Array.isArray(data) ? data : []);
 }
 
 /**

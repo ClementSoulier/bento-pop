@@ -718,6 +718,54 @@ describe('les réseaux', () => {
 });
 
 /**
+ * Chantier 27 : les succès sous la page d'un compte et d'un bento (D13), dans
+ * l'ordre du catalogue (D22), lus d'un bloc par le lecteur d'écran (D12), et
+ * la page d'avant quand la base ne les connaît pas encore.
+ */
+describe('les succès', () => {
+  /** La section des succès, ou `null` quand la page n'en a pas. */
+  const section = (html: string) => /<section aria-labelledby="bento-succes"[\s\S]*?<\/section>/.exec(html)?.[0] ?? null;
+  /** Ce que le lecteur d'écran lit de chaque médaille. */
+  const labels = (html: string) =>
+    [...html.matchAll(/<span class="sr-only">([^<]*)<\/span>/g)].map((m) => (m[1] ?? '').replace(/&#x27;/g, "'"));
+
+  it('montre ses médailles dans l\'ordre du catalogue, sans la clé inconnue', async () => {
+    const html = section(await (await get('/u/keremasan')).text());
+    assert.ok(html, 'la section doit être là');
+    assert.deepEqual(labels(html), [
+      'Premier bento : un bento publié',
+      "Défricheur : un item validé par l'équipe",
+      'Éclaireur : cinq items validés',
+    ]);
+    assert.equal((html.match(/<li/g) ?? []).length, 3);
+    assert.ok(html.includes('>Premier bento</span>'), 'le nom se lit sous le Popy');
+  });
+
+  it('sur la page d\'un bento aussi (D13)', async () => {
+    const html = section(await (await get('/u/troisbentos/hebdo-recent')).text());
+    assert.ok(html, 'la section doit être là');
+    assert.deepEqual(labels(html), ['Premier bento : un bento publié', 'Trois bentos : trois bentos publiés']);
+  });
+
+  it('sans succès, rien', async () => {
+    assert.equal(section(await (await get('/u/buyt.k')).text()), null);
+  });
+
+  it('rend la page quand la base ne connaît pas encore la fonction (avant sa migration)', async () => {
+    await fetch(`${STUB_URL}/__avant-27`);
+    try {
+      const res = await get('/u/avant.vingtsept');
+      assert.equal(res.status, 200);
+      const html = await res.text();
+      assert.ok(html.includes('Interstellar'), 'la page doit se rendre');
+      assert.equal(section(html), null, 'aucun succès avant la migration');
+    } finally {
+      await resetStub();
+    }
+  });
+});
+
+/**
  * Chantier 19 : les épisodes que l'app range dans « La table ». Le bouchon
  * rend aussi un épisode programmé et un épisode sans date, sans filtrer :
  * c'est à la route de les écarter, et elle doit aussi demander à la base le

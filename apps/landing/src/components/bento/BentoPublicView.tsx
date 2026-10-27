@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { JsonLd } from '@/components/JsonLd';
+import { BentoAchievements } from '@/components/bento/BentoAchievements';
 import { BentoAttributions } from '@/components/bento/BentoAttributions';
 import { BentoWhys } from '@/components/bento/BentoWhys';
 import { BentoIdentity, formatPublishedDate } from '@/components/bento/BentoIdentity';
@@ -13,6 +14,7 @@ import { VisitBeacon } from '@/components/bento/VisitBeacon';
 import { bentoPath } from '@/lib/bento/metadata';
 import { otherBentoTitle } from '@/lib/bento/others';
 import type { FollowCounts, OtherBento, PublicBento, SocialLinks } from '@/lib/bento/queries';
+import type { ShownAchievement } from '@bento-pop/supabase-mobile/bento';
 import { mainBentoCases, publicCases } from './cases';
 
 /**
@@ -172,6 +174,7 @@ export function BentoPublishedView({
   visits,
   follows = null,
   links = null,
+  achievements = [],
   canonicalUrl,
 }: {
   bento: PublicBento;
@@ -185,6 +188,8 @@ export function BentoPublishedView({
   follows?: FollowCounts | null;
   /** Ses réseaux, de même ; `null` sans lien ou avant la migration. Chantier 25 (D15). */
   links?: SocialLinks | null;
+  /** Ses succès, de même ; vides sans succès ou avant la migration. Chantier 27 (D13). */
+  achievements?: readonly ShownAchievement[];
   canonicalUrl: string;
 }) {
   return (
@@ -265,6 +270,7 @@ export function BentoPublishedView({
           leurs images. */}
       <BentoWhys cases={publicCases(bento.cases, bento.slots)} whys={bento.whys} />
       <BentoAttributions cases={publicCases(bento.cases, bento.slots)} />
+      <BentoAchievements achievements={achievements} />
       <AccountBentoList others={others} />
       <BentoReportLink pseudo={bento.pseudo} />
     </BentoPageShell>

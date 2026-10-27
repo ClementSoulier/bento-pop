@@ -32,3 +32,8 @@ const POPY_IMAGES: Readonly<Record<PopyKey, StaticImageData>> = {
 export function popyFor(pseudo: string, avatar: string | null | undefined): StaticImageData {
   return POPY_IMAGES[popyKeyFor(pseudo, avatar)];
 }
+
+/** Le Popy d'une clé : celui d'une médaille du chantier 27. */
+export function popyImage(key: PopyKey): StaticImageData {
+  return POPY_IMAGES[key];
+}

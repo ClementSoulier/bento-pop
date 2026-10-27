@@ -162,10 +162,18 @@ export default function ConfidentialitePage() {
             les masque pas.
           </li>
           <li>
+            <strong>Succès</strong> : les médailles qu&apos;un compte gagne
+            par ce qu&apos;il fait dans l&apos;app (publier ses bentos, voir
+            ses propositions d&apos;items validées par l&apos;équipe, avoir des
+            abonnés), avec leur date, déduites par la base de ces données. Elles
+            s&apos;affichent sur sa page, dans l&apos;app et sur bento-pop.com.
+          </li>
+          <li>
             <strong>Notifications</strong> : l&apos;onglet « Notifs » de
             l&apos;app montre à chacun les j&apos;aime, commentaires et abonnés
-            de ses bentos, les bentos des comptes qu&apos;il suit et les
-            décisions de l&apos;équipe sur ses contenus, des 90 derniers jours.
+            de ses bentos, les bentos des comptes qu&apos;il suit, les
+            décisions de l&apos;équipe sur ses contenus et ses succès, des 90
+            derniers jours.
             Rien n&apos;y est recopié : l&apos;onglet relit ces données à chaque
             ouverture. Seule la date de sa dernière lecture est gardée, pour
             savoir ce qui est nouveau. Un j&apos;aime n&apos;y dit jamais qui
@@ -267,6 +275,10 @@ export default function ConfidentialitePage() {
             en les masquant).
           </li>
           <li>
+            <strong>Succès</strong> : saluer sur sa page ce qu&apos;un compte
+            fait dans l&apos;app (exécution du service).
+          </li>
+          <li>
             <strong>Signalements et modération</strong> : modération des
             contenus utilisateurs (intérêt légitime, et obligations de la règle
             1.2 de l&apos;App Store et du règlement européen sur les services
@@ -315,6 +327,11 @@ export default function ConfidentialitePage() {
             <strong>Réseaux sociaux</strong> : tant que l&apos;utilisateur ne
             les efface pas ou ne supprime pas son compte, ou que l&apos;équipe
             ne les retire pas à la suite d&apos;un signalement.
+          </li>
+          <li>
+            <strong>Succès</strong> : tant que l&apos;utilisateur ne supprime
+            pas son compte. Un succès gagné le reste, même quand ce qui l&apos;a
+            fait gagner disparaît.
           </li>
           <li>
             <strong>Signalements</strong>, et pourquoi ou commentaires masqués
