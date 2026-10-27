@@ -10,4 +10,9 @@ export type {
   ReportTargetKind,
   BentoCommentRow,
   BentoWhyRow,
+  FollowExportRow,
+  FollowListKind,
+  FollowListRow,
+  FollowStatus,
+  FollowSummaryRow,
 } from '@bento-pop/supabase-mobile/types';

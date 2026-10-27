@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { SectionTitle, SettingSwitch, useToast } from '@/components/primitives';
+import { useFollowsEnabled, useFollowsRefresh } from '@/components/follows/use-follows';
+import { writeFollowApproval } from '@/lib/follow-actions';
 import { BENTO_MATCHES_QUERY_ROOT } from '@/lib/matches';
 import { writeSearchable } from '@/lib/search';
 import { writeSocialSetting } from '@/lib/social-actions';
@@ -10,7 +12,7 @@ import { useSession } from '@/state/session';
 import { useSocial } from '@/state/social';
 import { supabase } from '@/supabase/client';
 
-type Setting = 'show_visits' | 'searchable' | 'accept_comments' | 'accept_likes';
+type Setting = 'show_visits' | 'searchable' | 'accept_comments' | 'accept_likes' | 'follow_approval';
 
 /**
  * La section Confidentialité du profil : « Afficher mes visites » (chantier 8,
@@ -18,7 +20,9 @@ type Setting = 'show_visits' | 'searchable' | 'accept_comments' | 'accept_likes'
  * 15 septembre, chaque réglage de confidentialité part avec sa fonctionnalité,
  * et ils se retrouvent tous ici (chantier 20, D9) : un écran à part viendra
  * quand les chantiers 22, 23 et 25 ajouteront les leurs. Le 22 y ajoute
- * « Accepter les commentaires » et « Afficher les j'aime » (D14).
+ * « Accepter les commentaires » et « Afficher les j'aime » (D14), le 23
+ * « Valider mes abonnés » (D3) : cinq interrupteurs, que la section tient
+ * encore.
  *
  * Rien sans profil : sans pseudo, aucun bento n'est en ligne, et il n'y a
  * rien à masquer ni à retirer de la recherche.
@@ -29,6 +33,8 @@ export function PrivacySettings() {
   const [busy, setBusy] = useState(false);
   const showToast = useToast((s) => s.show);
   const queryClient = useQueryClient();
+  const followsOn = useFollowsEnabled();
+  const refreshFollows = useFollowsRefresh();
 
   if (!profile) return null;
 
@@ -46,6 +52,11 @@ export function PrivacySettings() {
         // Les nombres lus montrent encore l'ancien réglage : relus tout de
         // suite, les barres gardant leur place.
         void useSocial.getState().refreshAll();
+      } else if (setting === 'follow_approval') {
+        await writeFollowApproval(supabase, profile.id, on);
+        // Éteint, la base vient d'accepter les demandes : ses nombres et ses
+        // listes changent.
+        refreshFollows();
       } else {
         await writeSearchable(supabase, profile.id, on);
         // Les matchs en cache, valables 5 minutes, le montreraient encore sur
@@ -104,6 +115,20 @@ export function PrivacySettings() {
         note={profile.accept_likes ? undefined : 'Masqués : personne ne peut aimer tes bentos.'}
         disabled={busy}
       />
+      {followsOn ? (
+        <SettingSwitch
+          label="Valider mes abonnés"
+          description="Chaque nouvel abonné attend ton accord."
+          value={profile.follow_approval}
+          onChange={(on) => void toggle('follow_approval', on)}
+          note={
+            profile.follow_approval
+              ? "Les demandes t'attendent en tête de tes abonnés. L'éteindre les accepte toutes."
+              : undefined
+          }
+          disabled={busy}
+        />
+      ) : null}
     </View>
   );
 }

@@ -215,7 +215,9 @@ describe('page publique, textes de l’écran', () => {
     const unscaled = texts.filter((t) => !/\b(?:scaledType|fontScaleFor)\(/.test(t.styleSource));
     // Le chevron du retour et le glyphe de la pastille d'invité ou de coup de
     // cœur : des glyphes dans des cibles à taille fixe, pas des textes à lire.
-    assert.equal(unscaled.length, 2, `sans la police système : ${linesOf(unscaled)}`);
+    // Et la part soulignée de la ligne de date, chantier 23 : un texte dans le
+    // texte de la date, dont il hérite la taille, appliquée par l'écran.
+    assert.equal(unscaled.length, 3, `sans la police système : ${linesOf(unscaled)}`);
   });
 
   it('ne laisse jamais la plateforme agrandir une hauteur de ligne', () => {

@@ -381,6 +381,43 @@ node -e "const b=require('fs').readFileSync('/tmp/b.js','utf8');
 Et en cas de doute, `npx expo start --clear`, ou un build `--configuration
 Release` (iOS) qui embarque le bundle et ne dépend plus de Metro.
 
+**Les écrans chargés à la demande restent périmés, même quand le bundle
+entier est juste.** Recette du chantier 23 : `curl …index.bundle?…&lazy=false`
+rendait le dernier code, et l'app, relancée à froid, montrait encore l'ancien
+écran de `app/follows/[userId].tsx`, qu'expo-router charge à part. Deux
+corrections ne tournaient pas. Seul un Metro relancé par `--clear` a servi le
+bon : le relancer ainsi après chaque lot de modifications, avant toute
+recette à froid. La preuve qu'un écran est à jour se lit dans l'écran
+lui-même, un libellé qui vient de changer, pas dans le bundle.
+
+### `console.log` n'arrive plus dans le journal de Metro
+
+Depuis React Native 0.76, les journaux de l'app vont aux outils de
+développement, et ni le terminal de Metro ni `log show` du simulateur ne les
+montrent. Pour lire une mesure pendant une recette, la poser le temps du
+diagnostic dans un `accessibilityLabel`, que `idb ui describe-all` rend, puis
+la retirer : au chantier 23, `room=245.7 size=17.00` a dit en une capture ce
+que trois `console.log` n'avaient pas montré.
+
+### Changer le port de Metro d'une app déjà lancée : `defaults write`, pas le fichier
+
+Réécrire `RCT_jsLocation` dans le fichier
+`Library/Preferences/com.bentopop.mobile.plist` d'une app qui a déjà tourné ne
+change rien : `cfprefsd` garde l'ancienne valeur, et l'app relancée charge le
+Metro d'avant, sans un mot. Au chantier 23, le premier A/B a ainsi comparé le
+code du 23 à lui-même, « identique au pixel ». Passer par le démon, et par un
+argument de lancement, qui l'emporte pour ce lancement :
+
+```bash
+xcrun simctl --set <dossier> spawn <UDID> defaults write com.bentopop.mobile RCT_jsLocation -string 127.0.0.1:8093
+xcrun simctl --set <dossier> launch <UDID> com.bentopop.mobile -RCT_jsLocation 127.0.0.1:8093
+```
+
+**Prouver ensuite quel code tourne**, sur un écran que les deux versions
+rendent différemment (le filtre de « La table », une ligne de date), et par
+le nombre de modules de « iOS Bundled » dans le journal du bon Metro : 2 280
+pour le code d'avant le 23, 2 286 pour le 23.
+
 ### Mesurer les captures, ne pas les regarder
 
 Une marge, un écart, une largeur : ça se mesure au pixel, ça ne s'estime pas à
@@ -1142,6 +1179,17 @@ explicite rétrécit jusqu'à la trace : le moteur fait tenir la police dans la
 hauteur de ligne, et non l'inverse. Vu au chantier 11 sur le pseudo du composer,
 réduit à quelques pixels. Ne le poser que là où le texte peut vraiment déborder,
 jamais avec une hauteur de ligne posée.
+
+**Il frappe aussi la première ligne d'une liste**, et ce qu'un écran voisin
+déplace. Au chantier 23, le pseudo de la première ligne de l'écran des
+abonnés tombait à la trace, à froid, trois fois sur trois, les suivantes à
+leur taille ; et l'étiquette du premier post de « La table », que le chantier
+ne touchait pas, dès que le filtre « Abonnements » s'est ajouté à l'en-tête.
+Sur le code d'avant, la même étiquette tenait. Le remède des deux : ne plus
+confier la taille à la plateforme, mais la calculer, `lineFitScale`, sur la
+largeur mesurée de la colonne (`onLayout`) ou connue de la boîte
+(`FeedLabel`). Un défaut de ce genre se cherche en comparant au code d'avant,
+cf. « Changer le port de Metro d'une app déjà lancée ».
 
 ### Un accent qui manque en haut d'un titre Extenda : rogné, pas absent
 

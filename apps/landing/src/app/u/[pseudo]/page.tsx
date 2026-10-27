@@ -7,7 +7,12 @@ import {
 } from '@/components/bento/BentoPublicView';
 import { bentoDescription, bentoPath, bentoRobots, bentoTitle } from '@/lib/bento/metadata';
 import { canonicalPseudo, needsCanonicalRedirect } from '@/lib/bento/pseudo';
-import { listFeaturedPseudos, lookupPublicBento, readBentoVisits } from '@/lib/bento/queries';
+import {
+  listFeaturedPseudos,
+  lookupPublicBento,
+  readBentoVisits,
+  readFollowCounts,
+} from '@/lib/bento/queries';
 import { smartAppBanner } from '@/lib/bento/stores';
 
 /**
@@ -144,11 +149,18 @@ export default async function PublicBentoPage({ params }: PageProps) {
     );
   }
 
+  // Les visites (8) et les nombres d'abonnés (23), lus ensemble.
+  const [visits, follows] = await Promise.all([
+    readBentoVisits(lookup.bento.id),
+    readFollowCounts(lookup.bento.ownerId),
+  ]);
+
   return (
     <BentoPublishedView
       bento={lookup.bento}
       others={lookup.others}
-      visits={await readBentoVisits(lookup.bento.id)}
+      visits={visits}
+      follows={follows}
       canonicalUrl={`${SITE_URL}${bentoPath(requested)}`}
     />
   );

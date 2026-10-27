@@ -35,6 +35,12 @@ export type AppConfig = {
    * base refuse aussi d'en écrire, et n'en rend plus aucun.
    */
   whysEnabled: boolean;
+  /**
+   * Chantier 23 (D22) : éteint, l'app cache le bouton « Suivre », les
+   * nombres, les listes et le filtre « Abonnements ». La base refuse aussi
+   * tout abonnement, et ne rend plus rien.
+   */
+  followsEnabled: boolean;
 };
 
 /**
@@ -59,7 +65,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     supabase
       .from('app_config')
       .select(
-        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled',
+        'maintenance_mode, maintenance_title, maintenance_message, ios_min_version, ios_latest_version, android_min_version, android_latest_version, comments_enabled, whys_enabled, follows_enabled',
       )
       .eq('id', 1)
       .maybeSingle();
@@ -78,6 +84,7 @@ export async function fetchAppConfig(): Promise<AppConfig | null> {
     androidLatestVersion: r.android_latest_version,
     commentsEnabled: r.comments_enabled,
     whysEnabled: r.whys_enabled,
+    followsEnabled: r.follows_enabled,
   };
 }
 
