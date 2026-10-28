@@ -20,8 +20,9 @@
 > introduits exprès et tous attrapés ; la recette au simulateur iPhone 17 Pro
 > et iPhone SE et à l'émulateur Pixel 8, deux défauts trouvés et corrigés en
 > chemin, dont une régression de « La table » que le filtre provoquait (§9).
-> **Rien n'est appliqué en production** : la mise en service attend Clément,
-> après celles du 22 et du 12 (§9.6).
+> **Fusionné le 27 octobre au soir** (PR #102) : la landing le sert depuis.
+> **Mis en service le 28 octobre par Clément**, après le 22 et le 12 : la
+> migration, appliquée puis contrôlée en lecture (§9.6).
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 23, et chantier 26
 > pour son réglage ; [le chantier 21](./UX-21-PROFIL.md) pour la page du
@@ -390,8 +391,9 @@ Au simulateur iPhone 17 Pro et iPhone SE, à l'émulateur Pixel 8 :
 
 Fait et recetté le 27 octobre 2026, en cinq lots enchaînés, sur
 `feat/ux-23-suivre-un-compte`, partie de la branche de la PR #101,
-documentation seule, et ouverte en PR #102, empilée sur la #101. Rien n'est appliqué en production : la mise en service
-attend Clément, après celles du 22 et du 12 (§9.6).
+documentation seule, et ouverte en PR #102, empilée sur la #101, toutes deux
+fusionnées le 27 octobre au soir. La mise en service s'est faite le
+28 octobre, migration comprise (§9.6).
 
 ### 9.1 Lot 1 · La base
 
@@ -479,12 +481,15 @@ chantier 29.
 
 Après celles du 22 et du 12, dont les migrations doivent précéder celle-ci :
 son déclencheur porte sur `account_blocks`, et son export reprend les
-pourquoi.
+pourquoi. **Faite par Clément le 28 octobre 2026.**
 
-1. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
-   contrôles en lecture de `scripts/check-follows.sql`.
-2. **La landing**, redéployée d'elle-même à la fusion ; le back-office n'a
-   rien de neuf.
+1. ✅ **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
+   contrôles en lecture de `scripts/check-follows.sql`. Jouée le 28 octobre au
+   matin, après celles du 22 et du 12 ; contrôles tous passés, et chaque
+   fonction et commentaire identique au fichier ; un visiteur lit les nombres
+   des 66 comptes, tous à zéro, sans erreur.
+2. ✅ **La landing**, redéployée d'elle-même à la fusion, servie le 27 octobre
+   à 20:00 UTC ; le back-office n'a rien de neuf.
 3. Aucune variable, aucun service : 0 €.
 
 ### 9.7 La CI, rejouée en local
@@ -499,8 +504,8 @@ la recette, sans échec.
 
 ## 10. Definition of Done
 
-État au 27 octobre 2026 : 11 sur 13, les deux derniers à la fusion et à la
-mise en service.
+État au 28 octobre 2026 : 13 sur 13, les deux derniers remplis par la fusion
+et la mise en service.
 
 1. ✅ Suivre et ne plus suivre en un tap depuis la page d'un compte, sans que
    la boîte perde un point ; jamais soi-même : contrôles 1, recette aux trois
@@ -523,12 +528,13 @@ mise en service.
    leur suppression d'un profil, contrôles 9.
 10. ✅ Le web montre le nombre, et s'affiche comme avant sans la migration :
     l'e2e de la landing.
-11. ⬜ La politique de confidentialité à jour, **en production** : écrite, la
-    landing à redéployer après la fusion.
+11. ✅ La politique de confidentialité à jour, **en production** : servie par
+    bento-pop.com depuis le 27 octobre à 20:00 UTC, après la fusion, ses
+    abonnements relevés en ligne le 28 octobre.
 12. ✅ La recette de §7.2 aux trois appareils, §9.5.
-13. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
+13. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : compatible, et la CI rejouée sans échec (§9.7) ;
-    l'application attend la mise en service.
+    appliquée le 28 octobre, ses contrôles tous passés (§9.6).
 
 ---
 

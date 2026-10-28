@@ -543,8 +543,8 @@ relue par l'équipe jusqu'à 50 validés.
 > relire, il n'apparaît plus qu'avec leur nombre.
 >
 > **Reste à faire en production**, par l'équipe après redéploiement du
-> back-office : importer les quatre listes, puis relire jusqu'à 50 validés par
-> type (critère 5).
+> back-office, fait le 17 septembre : importer les quatre listes, puis relire
+> jusqu'à 50 validés par type (critère 5).
 
 ### Lot 3 · Recette et mesures
 
@@ -597,6 +597,8 @@ versions d'un coup, et le back-office part sur Coolify.
 
 État au 15 septembre 2026, au soir : sept critères sur neuf. Les deux qui
 restent sont des gestes de l'équipe dans le back-office, une fois redéployé.
+Il l'est depuis le 17 septembre, et l'import n'a pas changé depuis : relevé
+le 28 octobre, plus rien ne les attend.
 
 - [x] Les versions publiées passent `check-privileges.ts` sans échec (après
       chaque lot, sur une base remise à zéro)

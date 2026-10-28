@@ -15,9 +15,10 @@
 > les chantiers.
 >
 > **Fait et recetté le même jour**, en cinq lots, sur
-> `feat/ux-25-comptes-instagram-tiktok` : DoD 8 sur 10, les deux derniers
-> attendant la fusion et la mise en service par Clément, après celle du 24,
-> cf. §8.
+> `feat/ux-25-comptes-instagram-tiktok`. **Fusionné le 27 octobre au soir**
+> (PR #104), **mis en service le 28 octobre par Clément**, après le 24 : la
+> migration, appliquée puis contrôlée en lecture, et le back-office
+> redéployé. DoD 10 sur 10, cf. §8.
 
 ---
 
@@ -167,8 +168,9 @@ back-office et sur le web :
 
 Fait et recetté le 27 octobre 2026, en cinq lots enchaînés, sur
 `feat/ux-25-comptes-instagram-tiktok`, partie de la branche de la PR #103, le
-24, et ouverte en PR #104, empilée sur la #103. Rien n'est appliqué en production : la mise en service attend Clément,
-après celle du 24 (§8.6).
+24, et ouverte en PR #104, empilée sur la #103, toutes fusionnées le
+27 octobre au soir. La mise en service s'est faite le 28 octobre, migration
+comprise (§8.6).
 
 ### 8.1 Lot 1 · La base
 
@@ -244,12 +246,16 @@ simulateurs.
 
 ### 8.6 La mise en service, par Clément
 
-Après celle du 24, dont elle redéfinit l'export.
+Après celle du 24, dont elle redéfinit l'export. **Faite par Clément le
+28 octobre 2026.**
 
-1. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
-   contrôles en lecture de `scripts/check-social-links.sql`.
-2. **La landing**, redéployée d'elle-même à la fusion ; **le back-office**,
-   redéployé sur Coolify, pour « Effacer ses réseaux ».
+1. ✅ **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
+   contrôles en lecture de `scripts/check-social-links.sql`. Jouée le
+   28 octobre au matin, après celle du 24 ; contrôles tous passés, et chaque
+   fonction et commentaire identique au fichier.
+2. ✅ **La landing**, redéployée d'elle-même à la fusion, servie le 27 octobre
+   à 20:00 UTC ; **le back-office**, redéployé sur Coolify, pour « Effacer ses
+   réseaux », sert depuis le 28 octobre une build d'après la dernière fusion.
 3. Aucune variable, aucun service : 0 €.
 
 ### 8.7 La CI, rejouée en local
@@ -264,8 +270,8 @@ finale.
 
 ## 9. Definition of Done
 
-État au 27 octobre 2026 : 8 sur 10, les deux derniers à la fusion et à la
-mise en service.
+État au 28 octobre 2026 : 10 sur 10, les deux derniers remplis par la fusion
+et la mise en service.
 
 1. ✅ Relier son Instagram et son TikTok en quelques taps, pseudo ou adresse
    collée ; délier en vidant le champ : contrôles 1 et 4, recette au 17 Pro.
@@ -281,11 +287,12 @@ mise en service.
    l'e2e de la landing.
 7. ✅ La 1.1 et la 0.1.0 lisent et écrivent comme avant : contrôles 9.
 8. ✅ Le chantier 26 refermé : ses six réglages dans Confidentialité.
-9. ⬜ La politique de confidentialité à jour, **en production** : écrite, la
-   landing à redéployer après la fusion.
-10. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
+9. ✅ La politique de confidentialité à jour, **en production** : servie par
+   bento-pop.com depuis le 27 octobre à 20:00 UTC, après la fusion, Instagram
+   et TikTok relevés en ligne le 28 octobre.
+10. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : compatible, et la CI rejouée sans échec (§8.7) ;
-    l'application attend la mise en service.
+    appliquée le 28 octobre, ses contrôles tous passés (§8.6).
 
 ---
 

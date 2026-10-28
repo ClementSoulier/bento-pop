@@ -23,13 +23,15 @@
 > page « Mes tâches Bento Pop » (D5). Le même jour, les deux suivis de code
 > que la préparation a trouvés : VoiceOver en français (D18), et les textes
 > légaux justes, l'âge de 15 ans compris (D14, D23). Sur
-> `feat/ux-29-recette-de-sortie`, **PR #106**, empilée sur la #105.
+> `feat/ux-29-recette-de-sortie`, **PR #106**, fusionnée le 27 octobre au
+> soir avec les PR #101 à #105 ; l'étape 1 de l'ordre de sortie faite le
+> 28 octobre : tout est en service (§3).
 
 ---
 
 ## 1. Où en est la sortie
 
-Relevé le 27 octobre 2026.
+Relevé le 27 octobre 2026 ; la base et le back-office, le 28.
 
 | Quoi | État |
 |---|---|
@@ -37,7 +39,8 @@ Relevé le 27 octobre 2026.
 | Play Store | **0.1.0**, relevé le 17 septembre |
 | `app.json` | **2.0.0** (D1), au lieu de la 1.3.0 |
 | Builds jamais publiées | la 1.2.0 et la 1.3.0, construites en septembre, sur TestFlight et le canal interne |
-| Base de production | les migrations des chantiers jusqu'au 21, et celle du 28 ; celles du 22, du 12, du 23, du 24, du 25 et du 27 attendent leur mise en service |
+| Base de production | toutes les migrations des chantiers ; celles du 22, du 12, du 23, du 24, du 25 et du 27 appliquées le 28 octobre, chacune contrôlée en lecture |
+| Back-office et landing | le code de toutes les fusions ; le domaine `moderation.bento-pop.com` posé chez Resend le 28 octobre |
 | Notifications push | le battement du 17 en service depuis le 26 septembre, sans destinataire ; le 5b attend la clé APNs et le compte FCM |
 
 **Vingt-trois chantiers touchent l'app** depuis la 1.1 : les 2, 3, 5, 6, 7, 8,
@@ -69,7 +72,7 @@ la mise à jour à distance active au lancement, cf.
 
 | # | Étape | Qui | Fait quand |
 |---|---|---|---|
-| 1 | Les fusions et les mises en service des 22, 12, 23, 24, 25 et 27, le back-office redéployé | Clément ; l'agent passe les contrôles en lecture seule | chaque `scripts/check-*.sql` rend l'attendu |
+| 1 | Les fusions et les mises en service des 22, 12, 23, 24, 25 et 27, le back-office redéployé | Clément ; l'agent passe les contrôles en lecture seule | chaque `scripts/check-*.sql` rend l'attendu : ✅ le 28 octobre, tous |
 | 2 | Le lot 5b du 17 : la clé APNs et le compte FCM dans EAS, `google-services.json` dans l'app, la recette de bout en bout en local | Clément pour les clés et le fichier, l'agent pour le reste | une notification reçue et tapée au simulateur et à l'émulateur |
 | 3 | La répétition de la build de release (§8), refaite après le 5b | l'agent | elle démarre, se branche, publie et lit sans défaut bloquant |
 | 4 | La build de production 2.0.0 : `pnpm release` depuis `apps/mobile` | Clément | elle arrive sur TestFlight et sur le canal interne de Play |
@@ -77,7 +80,7 @@ la mise à jour à distance active au lancement, cf.
 | 6 | Les fiches des stores du §6, les notes de version du §7 | Clément, dans les deux consoles | chaque fiche enregistrée |
 | 7 | La soumission : l'App Store en revue, Play du canal interne à la production | Clément | les deux stores servent la 2.0.0, à 100 % (D3) |
 | 8 | Le jour même : `ios_latest_version` et `android_latest_version` à `2.0.0` | Clément, au back-office | le bandeau de mise à jour s'affiche dans la 1.1 |
-| 9 | Après : le plancher de version (D8 du 13), la première édition, une vraie mise à jour à distance (lot B) | Clément, l'agent pour la mise à jour | cf. §4, passe H |
+| 9 | Après : le plancher de version (D8 du 13), la première édition, une vraie mise à jour à distance (lot B) | Clément, l'agent pour la mise à jour | cf. §4, passe G |
 
 **Une correction trouvée à l'étape 5** repart de l'étape 3 : correctif,
 répétition, nouvelle build. Le numéro de build suit tout seul
@@ -111,13 +114,15 @@ chantier NN ; REC, `RECETTE-MOBILE.md` ; MAJ, `MISES-A-JOUR-APP.md` ; DEP,
   production tait.
 - **P2 · Les migrations en production** : celles des 22, 12, 23, 24, 25 et
   27, dans cet ordre, chacune suivie du redéploiement qu'elle appelle.
+  Rempli le 28 octobre : toutes appliquées et contrôlées, le back-office à
+  jour.
 - **P3 · Écrire en production**, avec les comptes de P6 seulement.
 - **P4 · Le 5b du 17** : la clé APNs et le compte de service FCM dans EAS,
   `google-services.json` dans l'app et une build Android neuve ;
   `EXPO_ACCESS_TOKEN` posé sur le back-office.
 - **P5 · Resend** : `auth.bento-pop.com` en service depuis le 26 octobre,
-  `moderation.bento-pop.com` à la mise en service du 22 ; 100 mails par jour
-  pour tout le compte, codes et modération ensemble.
+  `moderation.bento-pop.com` depuis le 28, à la mise en service du 22 ; 100
+  mails par jour pour tout le compte, codes et modération ensemble.
 - **P6 · Deux comptes de recette** (D16) : celui de Clément et un compte de
   recette gardé par une adresse de l'équipe, supprimé à la fin avec tout ce
   qu'il a écrit. Les signalements de recette se classent sans suite au
@@ -806,7 +811,7 @@ laissé dans `apps/mobile`.
 ### 9.1 Fait le 27 octobre 2026
 
 Sur `feat/ux-29-recette-de-sortie`, partie de la branche de la PR #105, le
-27, et ouverte en **PR #106**, empilée sur la #105.
+27, et ouverte en **PR #106**, empilée sur la #105, fusionnée le soir même.
 
 - **La spécification** : la liste de sortie (§4) et ses parcours (§5), les
   fiches des stores (§6), les notes de version (§7).
@@ -839,10 +844,11 @@ Sur `feat/ux-29-recette-de-sortie`, partie de la branche de la PR #105, le
 ### 9.2 Ce qui attend
 
 Plus aucun code n'est attendu avant la sortie, sauf ce que la recette
-trouverait. Dans l'ordre du §3 : les mises en service, le 5b du 17 (D2), la
-répétition refaite, la build de production, la recette, les fiches et la
-soumission. Les textes légaux corrigés partent en ligne à la fusion, la
-landing se redéployant d'elle-même : à relire par Clément avant.
+trouverait. Dans l'ordre du §3 : le 5b du 17 (D2), la répétition refaite,
+la build de production, la recette, les fiches et la soumission. Les mises
+en service sont faites depuis le 28 octobre, et les textes légaux corrigés
+sont en ligne depuis la fusion, servis par bento-pop.com le 27 octobre à
+20:00 UTC.
 
 ---
 
@@ -863,7 +869,7 @@ landing se redéployant d'elle-même : à relire par Clément avant.
 | 11 | `app_config` : la dernière version à 2.0.0 le jour même, le plancher relevé une fois les deux stores à jour | ⬜ |
 | 12 | VoiceOver ne lit plus aucun mot anglais de React Native (D18) | ✅ le 27 octobre, relu au simulateur ; la voix à la recette (11-a) |
 | 13 | L'âge minimum fixé (D23) | ✅ le 27 octobre, 15 ans |
-| 14 | Les textes légaux justes, l'âge minimum compris (D14) | ✅ le 27 octobre, à relire par Clément avant la fusion |
+| 14 | Les textes légaux justes, l'âge minimum compris (D14) | ✅ le 27 octobre, en ligne depuis la fusion, le soir même |
 
 ---
 

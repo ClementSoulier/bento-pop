@@ -17,9 +17,10 @@
 > Même sortie store unique que tous les chantiers.
 >
 > **Fait et recetté le même jour**, en cinq lots, sur
-> `feat/ux-24-zone-de-notifications` : DoD 11 sur 13, les deux derniers
-> attendant la fusion et la mise en service par Clément, après celles du 22,
-> du 12 et du 23, cf. §9.
+> `feat/ux-24-zone-de-notifications`. **Fusionné le 27 octobre au soir**
+> (PR #103), **mis en service le 28 octobre par Clément**, après le 22, le 12
+> et le 23 : la migration, appliquée puis contrôlée en lecture. DoD 13 sur
+> 13, cf. §9.
 
 ---
 
@@ -285,8 +286,9 @@ Au simulateur iPhone 17 Pro et iPhone SE, à l'émulateur Pixel 8 :
 
 Fait et recetté le 27 octobre 2026, en cinq lots enchaînés, sur
 `feat/ux-24-zone-de-notifications`, partie de la branche de la PR #102, le
-23, elle-même sur la #101, et ouverte en PR #103, empilée sur la #102. Rien n'est appliqué en production : la mise en
-service attend Clément, après celles du 22, du 12 et du 23 (§9.6).
+23, elle-même sur la #101, et ouverte en PR #103, empilée sur la #102,
+toutes fusionnées le 27 octobre au soir. La mise en service s'est faite le
+28 octobre, migration comprise (§9.6).
 
 ### 9.1 Lot 1 · La base
 
@@ -360,12 +362,16 @@ chantier 29.
 ### 9.6 La mise en service, par Clément
 
 Après celles du 22, du 12 et du 23, dont les migrations doivent précéder
-celle-ci : elle lit les abonnements du 23 et redéfinit son export.
+celle-ci : elle lit les abonnements du 23 et redéfinit son export. **Faite
+par Clément le 28 octobre 2026.**
 
-1. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
-   contrôles en lecture de `scripts/check-notifications.sql`.
-2. **La landing**, redéployée d'elle-même à la fusion ; le back-office n'a
-   rien de neuf.
+1. ✅ **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
+   contrôles en lecture de `scripts/check-notifications.sql`. Jouée le
+   28 octobre au matin, après celle du 23 ; contrôles tous passés, le
+   déclencheur des items gardant ses droits, et chaque fonction et
+   commentaire identique au fichier.
+2. ✅ **La landing**, redéployée d'elle-même à la fusion, servie le 27 octobre
+   à 20:00 UTC ; le back-office n'a rien de neuf.
 3. Aucune variable, aucun service : 0 €.
 
 ### 9.7 La CI, rejouée en local
@@ -380,8 +386,8 @@ correction, celle du titre d'un item fusionné, sans échec.
 
 ## 10. Definition of Done
 
-État au 27 octobre 2026 : 11 sur 13, les deux derniers à la fusion et à la
-mise en service.
+État au 28 octobre 2026 : 13 sur 13, les deux derniers remplis par la fusion
+et la mise en service.
 
 1. ✅ Chaque like, commentaire, abonné, demande et nouveau bento d'un compte
    suivi apparaît dans la zone, regroupé : contrôles 2 à 5, recette aux trois
@@ -404,11 +410,12 @@ mise en service.
 10. ✅ La 1.1 et la 0.1.0 lisent et écrivent comme avant : contrôles 12.
 11. ✅ Les cinq libellés entiers à toutes les tailles, sur les trois
     appareils : la plus grande au SE, 200 % au Pixel 8, et `tabLabelScale`.
-12. ⬜ La politique de confidentialité à jour, **en production** : écrite, la
-    landing à redéployer après la fusion.
-13. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
+12. ✅ La politique de confidentialité à jour, **en production** : servie par
+    bento-pop.com depuis le 27 octobre à 20:00 UTC, après la fusion, sa zone
+    de notifications relevée en ligne le 28 octobre.
+13. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : compatible, et la CI rejouée sans échec (§9.7) ;
-    l'application attend la mise en service.
+    appliquée le 28 octobre, ses contrôles tous passés (§9.6).
 
 ---
 
