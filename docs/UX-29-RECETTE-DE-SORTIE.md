@@ -80,7 +80,7 @@ la mise à jour à distance active au lancement, cf.
 | 6 | Les fiches des stores du §6, les notes de version du §7 | Clément, dans les deux consoles | chaque fiche enregistrée |
 | 7 | La soumission : l'App Store en revue, Play du canal interne à la production | Clément | les deux stores servent la 2.0.0, à 100 % (D3) |
 | 8 | Le jour même : `ios_latest_version` et `android_latest_version` à `2.0.0` | Clément, au back-office | le bandeau de mise à jour s'affiche dans la 1.1 |
-| 9 | Après : le plancher de version (D8 du 13), la première édition, une vraie mise à jour à distance (lot B) | Clément, l'agent pour la mise à jour | cf. §4, passe H |
+| 9 | Après : le plancher de version (D8 du 13), la première édition, une vraie mise à jour à distance (lot B) | Clément, l'agent pour la mise à jour | cf. §4, passe G |
 
 **Une correction trouvée à l'étape 5** repart de l'étape 3 : correctif,
 répétition, nouvelle build. Le numéro de build suit tout seul
