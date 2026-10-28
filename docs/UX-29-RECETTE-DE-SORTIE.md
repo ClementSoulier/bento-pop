@@ -26,6 +26,11 @@
 > `feat/ux-29-recette-de-sortie`, **PR #106**, fusionnée le 27 octobre au
 > soir avec les PR #101 à #105 ; l'étape 1 de l'ordre de sortie faite le
 > 28 octobre : tout est en service (§3).
+>
+> **Le 28 octobre, la sortie attend aussi la refonte visuelle** (D25),
+> dessinée le même jour dans Claude Design et devenue les chantiers 30 à 34
+> de la roadmap : une étape de plus au §3, entre le 5b et la répétition. Le
+> dossier du design est dans [`docs/design-v2/`](./design-v2/LISEZMOI.md).
 
 ---
 
@@ -42,11 +47,13 @@ Relevé le 27 octobre 2026 ; la base et le back-office, le 28.
 | Base de production | toutes les migrations des chantiers ; celles du 22, du 12, du 23, du 24, du 25 et du 27 appliquées le 28 octobre, chacune contrôlée en lecture |
 | Back-office et landing | le code de toutes les fusions ; le domaine `moderation.bento-pop.com` posé chez Resend le 28 octobre |
 | Notifications push | le battement du 17 en service depuis le 26 septembre, sans destinataire ; le 5b fait et recetté le 28 octobre (PR #108), la clé APNs et le compte FCM posés le même jour |
+| Refonte visuelle | ajoutée le 28 octobre : les chantiers 30 à 34, avant la sortie (D25) ; le design versé dans `docs/design-v2/` |
 
 **Vingt-trois chantiers touchent l'app** depuis la 1.1 : les 2, 3, 5, 6, 7, 8,
 9, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27 et 28. Le 4 est
 absorbé par les 2 et 3, le 10 par le 21, le 26 par les 20, 22, 23 et 25 ; le
-1 est sur le web et le 14 au back-office.
+1 est sur le web et le 14 au back-office. S'y ajoutent, depuis le 28
+octobre, les cinq de la refonte visuelle, les 30 à 34 (D25).
 
 ---
 
@@ -74,15 +81,16 @@ la mise à jour à distance active au lancement, cf.
 |---|---|---|---|
 | 1 | Les fusions et les mises en service des 22, 12, 23, 24, 25 et 27, le back-office redéployé | Clément ; l'agent passe les contrôles en lecture seule | chaque `scripts/check-*.sql` rend l'attendu : ✅ le 28 octobre, tous |
 | 2 | Le lot 5b du 17 : la clé APNs et le compte FCM dans EAS, `google-services.json` dans l'app, la recette de bout en bout en local | Clément pour les clés et le fichier, l'agent pour le reste | une notification reçue et tapée au simulateur et à l'émulateur : ✅ le 28 octobre, PR #108 |
-| 3 | La répétition de la build de release (§8), refaite après le 5b | l'agent | elle démarre, se branche, publie et lit sans défaut bloquant |
-| 4 | La build de production 2.0.0 : `pnpm release` depuis `apps/mobile` | Clément | elle arrive sur TestFlight et sur le canal interne de Play |
-| 5 | La recette de sortie : la liste du §4 et les parcours du §5, sur un iPhone et un Android | Clément, l'agent lisant la base et les journaux sans rien écrire | la liste est vide |
-| 6 | Les fiches des stores du §6, les notes de version du §7 | Clément, dans les deux consoles | chaque fiche enregistrée |
-| 7 | La soumission : l'App Store en revue, Play du canal interne à la production | Clément | les deux stores servent la 2.0.0, à 100 % (D3) |
-| 8 | Le jour même : `ios_latest_version` et `android_latest_version` à `2.0.0` | Clément, au back-office | le bandeau de mise à jour s'affiche dans la 1.1 |
-| 9 | Après : le plancher de version (D8 du 13), la première édition, une vraie mise à jour à distance (lot B) | Clément, l'agent pour la mise à jour | cf. §4, passe G |
+| 3 | La refonte visuelle, chantiers 30 à 34 de la roadmap (D25) | l'agent ; Clément pour les arbitrages de chaque chantier et ses fusions | chaque écran identique à sa maquette de `docs/design-v2/`, au simulateur et à l'émulateur |
+| 4 | La répétition de la build de release (§8), refaite après le 5b et la refonte | l'agent | elle démarre, se branche, publie et lit sans défaut bloquant |
+| 5 | La build de production 2.0.0 : `pnpm release` depuis `apps/mobile` | Clément | elle arrive sur TestFlight et sur le canal interne de Play |
+| 6 | La recette de sortie : la liste du §4 et les parcours du §5, sur un iPhone et un Android | Clément, l'agent lisant la base et les journaux sans rien écrire | la liste est vide |
+| 7 | Les fiches des stores du §6, les notes de version du §7 | Clément, dans les deux consoles | chaque fiche enregistrée |
+| 8 | La soumission : l'App Store en revue, Play du canal interne à la production | Clément | les deux stores servent la 2.0.0, à 100 % (D3) |
+| 9 | Le jour même : `ios_latest_version` et `android_latest_version` à `2.0.0` | Clément, au back-office | le bandeau de mise à jour s'affiche dans la 1.1 |
+| 10 | Après : le plancher de version (D8 du 13), la première édition, une vraie mise à jour à distance (lot B) | Clément, l'agent pour la mise à jour | cf. §4, passe G |
 
-**Une correction trouvée à l'étape 5** repart de l'étape 3 : correctif,
+**Une correction trouvée à l'étape 6** repart de l'étape 4 : correctif,
 répétition, nouvelle build. Le numéro de build suit tout seul
 (`autoIncrement`), la version reste 2.0.0.
 
@@ -134,6 +142,13 @@ chantier NN ; REC, `RECETTE-MOBILE.md` ; MAJ, `MISES-A-JOUR-APP.md` ; DEP,
   back-office.
 
 **Avant la soumission, tout sauf la passe G** (D15).
+
+**La refonte visuelle (D25)** change l'apparence de presque chaque écran :
+les points qui tiennent à l'apparence se relisent après elle, comme 13-a,
+dont la puce devient « CRÉA » et le titre passe en Fredoka SemiCondensed.
+Chacun des chantiers 30 à 34 verse ici sa part à sa livraison, comme les
+autres : au moins le mouvement réduit, les boîtes de dialogue qui gardent
+le focus de VoiceOver et le nouvel ordre des onglets lu à voix haute.
 
 ### Passe A · Avant d'installer, puis au premier lancement
 
@@ -479,7 +494,7 @@ Ce qui demande une édition, un bento secondaire ou une mise à jour à distance
 
 ### Hors appareil
 
-- **22-c · Les fiches des stores, à la soumission.** Couverts par le §6 de cette spécification, à saisir dans les deux consoles à la soumission (§3, étape 6). Sources : RM:323-324, RM:1332-1334, RM:1336-1338 ; UX-22:107-110, UX-22:757-758, UX-22:848-849 ; UX-28:494-495, UX-28:637-639
+- **22-c · Les fiches des stores, à la soumission.** Couverts par le §6 de cette spécification, à saisir dans les deux consoles à la soumission (§3, étape 7). Sources : RM:323-324, RM:1332-1334, RM:1336-1338 ; UX-22:107-110, UX-22:757-758, UX-22:848-849 ; UX-28:494-495, UX-28:637-639
 
 ---
 
@@ -524,6 +539,9 @@ deux téléphones, d'après son « fait quand » ou sa définition de terminé.
 Ce que les deux consoles demandent pour la 2.0.0, rempli d'après le code et
 les migrations de la branche. **Rien n'y est saisi par l'agent** : Clément
 recopie les réponses dans App Store Connect et dans la Play Console.
+
+**Les captures des stores** se prennent dans l'app refaite (D25), qui porte
+aussi la nouvelle icône d'app : celles de la 1.1 ne montrent plus l'app.
 
 ### 6.1 Apple : la classification d'âge (D7)
 
@@ -803,8 +821,9 @@ téléphone, l'environnement de production d'APNs et de FCM, la signature des
 stores, le démarrage en mode avion, le réseau mobile, la vérification de
 mise à jour sur le canal `production`, que seule EAS pose.
 
-**À refaire après le 5b**, la build Android changeant avec
-`google-services.json` (§3, étape 3), par
+**À refaire après le 5b et la refonte visuelle**, la build Android changeant
+avec `google-services.json`, et toute l'app avec la refonte (§3, étape 4),
+par
 `apps/mobile/scripts/release-locale.sh ios|android [dossier de la pile]`.
 Le script refuse toute cible qui n'est pas une pile locale, et tout `.env`
 laissé dans `apps/mobile`.
@@ -848,9 +867,10 @@ Sur `feat/ux-29-recette-de-sortie`, partie de la branche de la PR #105, le
 
 ### 9.2 Ce qui attend
 
-Plus aucun code n'est attendu avant la sortie, sauf ce que la recette
-trouverait. Dans l'ordre du §3 : le 5b du 17 (D2), la répétition refaite,
-la build de production, la recette, les fiches et la soumission. Les mises
+Le code attendu avant la sortie : la refonte visuelle, chantiers 30 à 34
+(D25), et ce que la recette trouverait. Dans l'ordre du §3 : le 5b du 17
+(D2), fait le 28 octobre, la refonte, la répétition refaite, la build de
+production, la recette, les fiches et la soumission. Les mises
 en service sont faites depuis le 28 octobre, et les textes légaux corrigés
 sont en ligne depuis la fusion, servis par bento-pop.com le 27 octobre à
 20:00 UTC.
@@ -866,7 +886,7 @@ sont en ligne depuis la fusion, servis par bento-pop.com le 27 octobre à
 | 3 | Les notes de version, dans les limites des deux stores | ✅ le 27 octobre |
 | 4 | La 2.0.0 dans `app.json` | ✅ le 27 octobre |
 | 5 | Une répétition en release sans défaut, sur iOS et Android | ✅ le 27 octobre |
-| 6 | Le 5b du 17 fait et recetté, la répétition refaite | 🟡 le 5b le 28 octobre (PR #108) ; la répétition ⬜ |
+| 6 | Le 5b du 17 fait et recetté, la répétition refaite | 🟡 le 5b le 28 octobre (PR #108) ; la répétition ⬜, après la refonte (15) |
 | 7 | La build de production 2.0.0 sur TestFlight et le canal interne | ⬜ |
 | 8 | La liste vide, sur un iPhone et un Android | ⬜ |
 | 9 | Les fiches saisies dans les deux consoles | ⬜ |
@@ -875,6 +895,7 @@ sont en ligne depuis la fusion, servis par bento-pop.com le 27 octobre à
 | 12 | VoiceOver ne lit plus aucun mot anglais de React Native (D18) | ✅ le 27 octobre, relu au simulateur ; la voix à la recette (11-a) |
 | 13 | L'âge minimum fixé (D23) | ✅ le 27 octobre, 15 ans |
 | 14 | Les textes légaux justes, l'âge minimum compris (D14) | ✅ le 27 octobre, en ligne depuis la fusion, le soir même |
+| 15 | La refonte visuelle faite et recettée, chantiers 30 à 34 (D25) | ⬜ ajoutée le 28 octobre |
 
 ---
 
@@ -906,3 +927,4 @@ sont en ligne depuis la fusion, servis par bento-pop.com le 27 octobre à
 | **D22** | La mise à jour au lancement (lot B) s'éprouve après la mise en ligne, par une mise à jour sans changement visible, publiée avec `--environment production` | Aucune mise à jour ne doit viser la runtime 2.0.0 avant la sortie ; sans `--environment`, et sans les variables dans l'environnement de la machine, le code publié perdrait l'adresse de Supabase. Corrigé dans `DEPLOIEMENT-MOBILE.md` §6, qui l'omettait |
 | **D23** | L'âge minimum de l'app est de **15 ans**, écrit dans les règles, la politique et les mentions légales, sans contrôle d'âge | Rendue par Clément en QCM le 27 octobre, l'option recommandée. Aucun texte n'en fixait ; Apple et Play classeront l'app 13+ ; la politique fonde le pseudo et le bento sur le consentement, et la loi Informatique et Libertés fixe à 15 ans l'âge d'un consentement seul. Ce n'est pas un avis juridique |
 | **D24** | La phrase d'autorisation Face ID est retirée de l'Info.plist | Posée en anglais par le plugin d'`expo-secure-store`, que l'app n'importe plus, sans aucun usage ; `faceIDPermission: false` la supprime, vérifié sur l'Info.plist régénéré |
+| **D25** | La sortie attend aussi la refonte visuelle, chantiers 30 à 34 de la roadmap | Rendue par Clément en QCM le 28 octobre, l'option recommandée (D1 de la refonte) : les écrans refaits ne passent qu'une fois par la recette sur deux vrais téléphones, et les captures des stores se prennent dans l'app refaite, avec sa nouvelle icône. La répétition se refait après elle ; le thème sombre attend après la sortie (D3 de la refonte) |
