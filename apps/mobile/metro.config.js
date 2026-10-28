@@ -10,7 +10,6 @@
 // JS thread au boot. La résolution stricte via `nodeModulesPaths` évite
 // ça (recommandation officielle du guide monorepo Expo).
 const { getDefaultConfig } = require('expo/metro-config');
-const { withNativeWind } = require('nativewind/metro');
 const path = require('node:path');
 
 const projectRoot = __dirname;
@@ -31,6 +30,4 @@ config.resolver.nodeModulesPaths = [
 // 3. Désactive le hoisting « intelligent » — on veut une résolution stricte.
 config.resolver.disableHierarchicalLookup = true;
 
-module.exports = withNativeWind(config, {
-  input: './src/styles/global.css',
-});
+module.exports = config;

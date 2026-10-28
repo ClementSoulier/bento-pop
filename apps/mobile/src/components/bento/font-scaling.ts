@@ -52,6 +52,27 @@ export const CONTROL_MAX_FONT_MULTIPLIER = 1.2;
  */
 export const TITLE_MAX_FONT_MULTIPLIER = 1.2;
 
+/*
+ * Les plafonds du design system v2 (chantier 30, D1 et D8,
+ * `docs/UX-30-SOCLE-DESIGN-SYSTEM.md` §4.3), que seuls ses textes emploient,
+ * par `src/design/type.ts`. Les écrans actuels gardent les quatre plafonds
+ * ci-dessus jusqu'à ce que leur chantier les refasse, du 31 au 34, et les
+ * recette à 200 %.
+ */
+
+/** Lecture : le texte courant et les titres, jusqu'à 200 % ; ils passent à la ligne. */
+export const READING_MAX_FONT_MULTIPLIER = 2;
+
+/** Action : les libellés de boutons, jusqu'à 200 % ; le bouton passe à la ligne dès 130 %. */
+export const ACTION_MAX_FONT_MULTIPLIER = 2;
+
+/**
+ * Fixe : les titres de cases, les titres en Extenda et les libellés d'onglets,
+ * posés dans une hauteur qu'ils ne décident pas. Le design arrête les cases à
+ * 130 % ; la règle vaut pour les deux autres, pour la même raison.
+ */
+export const FIXED_MAX_FONT_MULTIPLIER = 1.3;
+
 /**
  * Facteur de police qu'un texte applique lui-même : la taille système,
  * plafonnée.
@@ -109,6 +130,8 @@ export const NATURAL_LINE_EM = {
   Bungee: 1.32,
   /** `hhea` 974 / −236 / 0. */
   Fredoka: 1.21,
+  /** `hhea` 974 / −236 / 0, comme Fredoka : les titres de cases du design system v2. */
+  FredokaSemiCondensed: 1.21,
 } as const;
 
 /**

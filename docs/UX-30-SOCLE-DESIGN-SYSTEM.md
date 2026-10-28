@@ -332,21 +332,56 @@ build de développement et une pile Supabase locale :
 | 4 | Listes et saisie, calques et retours (23 composants) | idem ; `Dialog` garde le focus |
 | 5 | La recette complète (§9), la roadmap et la part du 29 | la DoD |
 
+### 10.1 Lot 1 · fait le 28 octobre 2026
+
+- **Les tokens** : `scripts/design-tokens.ts` (`pnpm design:tokens`) écrit
+  `src/design/tokens.ts`, 57 couleurs sémantiques par thème, 48 primitives,
+  22 styles de texte, les mesures et les ombres ; `tokens.test.ts` le compare
+  au caractère près à ce que le dossier donne. Une couleur retouchée à la main
+  le fait tomber, essayé. Prettier l'ignore, comme les types générés de
+  Supabase.
+- **Le thème** : `ThemeProvider` monté à la racine, `useTheme()` ; le clair
+  seul.
+- **Les contrastes** (D16) : les 37 couples que nomment les notes d'usage, 30
+  de texte et 7 de contours, de focus et de coche, plus les teintes du
+  garde-manger, tous au-dessus du seuil dans les deux thèmes. Le plus bas :
+  `text-tertiary` sur `bg-sunken`, 4,67:1 en clair.
+- **Les polices** : Fredoka SemiCondensed Bold et sa licence OFL dans
+  `apps/mobile/assets/fonts/`, chargée par `useFonts` ; sa hauteur de ligne
+  naturelle est celle de Fredoka, 1,21 em (`hhea` 974 / −236 / 0).
+- **La taille de texte** : `type.ts` range les 22 styles en trois catégories,
+  avec les plafonds `READING_`, `ACTION_` et `FIXED_MAX_FONT_MULTIPLIER` (2,
+  2 et 1,3) posés dans `font-scaling.ts` ; `Text` les applique lui-même.
+  `font-scaling.test.ts` reconnaît le texte du système et vérifie qu'il est le
+  seul de `src/design/`.
+- **NativeWind retiré** : Babel, Metro, le CSS global, la configuration de
+  Tailwind, ses déclarations et trois dépendances ; 21 modules de moins dans
+  le bundle iOS. Il avait coûté au chantier 11 un bouton inerte : sous son
+  runtime, le style d'un `Pressable` écrit en fonction n'était pas appliqué.
+  Aucun ne restait dans l'app, et cette forme remarche.
+- **Les écrans de référence identiques** (D5) : neuf écrans, relancés à froid,
+  capturés avant et après, au simulateur iPhone 17 Pro et à l'émulateur
+  Pixel 8. Seize sur dix-huit identiques au pixel, hors bruit mesuré à l'avance
+  (une photo de case, le clavier de la feuille de recherche) ; les deux autres
+  ne diffèrent que par des données, « 2 visites » devenu « 3 visites » sur la
+  page d'un compte que chaque série ouvre, et « il y a 5 h » devenu
+  « il y a 6 h ».
+
 ## 11. Definition of Done
 
 | # | Point | État |
 | --- | --- | --- |
-| 1 | `tokens.ts` généré depuis `tokens.json`, gardé par un test | ⬜ |
-| 2 | `useTheme()` : le clair actif, le sombre présent et éteint | ⬜ |
-| 3 | Les contrastes AA des couples nommés, dans les deux thèmes, prouvés par un test | ⬜ |
-| 4 | Fredoka SemiCondensed chargée ; une famille par graisse | ⬜ |
-| 5 | `Text` et ses trois plafonds (D1, D8) | ⬜ |
+| 1 | `tokens.ts` généré depuis `tokens.json`, gardé par un test | ✅ lot 1 |
+| 2 | `useTheme()` : le clair actif, le sombre présent et éteint | ✅ lot 1 |
+| 3 | Les contrastes AA des couples nommés, dans les deux thèmes, prouvés par un test | ✅ lot 1 |
+| 4 | Fredoka SemiCondensed chargée ; une famille par graisse | ✅ lot 1 |
+| 5 | `Text` et ses trois plafonds (D1, D8) | ✅ lot 1 ; à 200 % au catalogue, lot 3 |
 | 6 | Les 72 icônes générées, et `Icon` | ⬜ |
 | 7 | Les ombres franches identiques sur iOS et Android | ⬜ |
 | 8 | Le mouvement et sa variante réduite ; les cinq retours haptiques | ⬜ |
 | 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | ⬜ |
 | 10 | Les tests de règles verts sur `src/design/` | ⬜ |
-| 11 | NativeWind retiré, les écrans de référence identiques au pixel | ⬜ |
+| 11 | NativeWind retiré, les écrans de référence identiques au pixel | ✅ lot 1 |
 | 12 | La CI rejouée en local, verte | ⬜ |
 
 ## 12. Décisions

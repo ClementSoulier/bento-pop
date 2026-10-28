@@ -8,3 +8,5 @@ pnpm-lock.yaml
 **/database.types.ts
 # Le dossier remis par Claude Design, gardé tel quel (refonte du 28/10/2026)
 docs/design-v2
+# Générés depuis ce dossier, comparés au caractère près par leurs tests (chantier 30)
+apps/mobile/src/design/tokens.ts

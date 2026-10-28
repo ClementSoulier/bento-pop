@@ -516,7 +516,9 @@ function appTexts(): AppText[] {
       !path.includes('node_modules') &&
       !/\.test\.tsx$/.test(path),
   );
-  const names = new Set(['Text', 'TextInput', 'Animated.Text']);
+  // `NativeText` : le `Text` de React Native, sous le nom que lui donne le
+  // `Text` du design system v2, `src/design/Text.tsx` (chantier 30).
+  const names = new Set(['Text', 'TextInput', 'Animated.Text', 'NativeText']);
   /**
    * Composants qui rendent leurs enfants dans un texte à eux, plafonné : un
    * `<Text>` passé en enfant y est imbriqué à l'exécution.
@@ -563,6 +565,13 @@ function appTexts(): AppText[] {
 const where = (texts: AppText[]) => texts.map((t) => `${t.path}, ligne ${t.line}`).join(' ; ');
 
 /**
+ * Un texte du design system v2 : son `variant` lui donne son plafond, que son
+ * composant applique lui-même (chantier 30, D8). Le `Text` de React Native n'a
+ * pas de `variant`.
+ */
+const systemText = (t: AppText) => t.tag === 'Text' && t.attributes.has('variant');
+
+/**
  * Le chantier 11 étend à toute l'app la règle de la page publique et des cases.
  * Sans elle, 87 des 128 textes de l'app suivaient la police sans plafond, et
  * l'accueil d'un iPhone 17 Pro poussait son bouton hors de l'écran dès la plus
@@ -576,8 +585,24 @@ describe('toute l’app', () => {
   });
 
   it('plafonne chaque texte, ou lui applique la police lui-même', () => {
-    const uncapped = texts.filter((t) => !fixed(t) && !t.attributes.has('maxFontSizeMultiplier'));
+    const uncapped = texts.filter(
+      (t) => !fixed(t) && !systemText(t) && !t.attributes.has('maxFontSizeMultiplier'),
+    );
     assert.equal(uncapped.length, 0, `sans plafond : ${where(uncapped)}`);
+  });
+
+  /**
+   * Le design system v2 n'a qu'un texte, `src/design/Text.tsx`, qui fige la
+   * police de la plateforme et applique celle de son style : aucun autre de ses
+   * fichiers ne rend le `Text` de React Native.
+   */
+  it('fait passer chaque texte du design system v2 par son `Text`', () => {
+    const own = texts.filter((t) => t.path.startsWith('src/design/'));
+    assert.deepEqual(
+      own.map((t) => `${t.path} ${t.tag}`),
+      ['src/design/Text.tsx NativeText'],
+    );
+    assert.ok(own.every(fixed), where(own));
   });
 
   it('prend ses plafonds dans `font-scaling.ts`, jamais en nombres recopiés', () => {
