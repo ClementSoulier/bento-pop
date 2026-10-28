@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "485317380129",
+    "project_id": "bento-pop-4cbcb",
+    "storage_bucket": "bento-pop-4cbcb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:485317380129:android:eaf4725fe73768fce43b60",
+        "android_client_info": {
+          "package_name": "com.bentopop.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5iOU3oKPQ1lIWYk-GBOZ6VJ15CC9kpO0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

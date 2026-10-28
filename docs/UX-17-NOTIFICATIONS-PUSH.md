@@ -15,7 +15,8 @@
 >
 > **Deux préalables qui ne m'appartiennent pas** : une clé APNs et un compte
 > de service FCM. Ils prennent du délai administratif, et rien ne se teste
-> sans eux. Cf. §8, lot 0.
+> sans eux. Cf. §8, lot 0. **Posés le 28 octobre 2026**, sans aucun délai en
+> vrai : une clé APNs existait déjà, cf. §6.4.
 >
 > Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md) chantier 17, et
 > [le chantier 13](./UX-13-BENTO-HEBDOMADAIRE.md), avec qui il partage sa
@@ -92,6 +93,15 @@
 > - **Fusionné le 23 septembre 2026 (PR #80), en service le 26** : le
 >   back-office redéployé reçoit le battement toutes les 5 minutes, en 202, et
 >   le note. Sans destinataire jusqu'à la sortie store (D11). Reste le lot 5b.
+> - **Lot 5b fait et recetté le 28 octobre 2026**, le jour où la clé APNs et
+>   le compte FCM ont été posés : un item validé, refusé, une édition sortie
+>   arrivent au simulateur iOS et à l'émulateur Android en moins de 4
+>   secondes, et un tap ouvre le bon écran. Deux défauts trouvés et corrigés,
+>   D29 et D30 : au simulateur, le jeton partait déclaré à la production
+>   d'APNs, qui le refusait ; et le composer ne relisait ses cases ni au retour
+>   au premier plan, ni à l'arrivée d'une notification, ni à son tap, une case
+>   validée y restant « en attente » sous la notification qui la disait en
+>   ligne. Ce qui demande un vrai téléphone reste au chantier 29.
 
 ---
 
@@ -598,6 +608,26 @@ Android en émulateur exige les services Google Play.~~ **Corrigé le 17
 septembre 2026** : avec eux, le simulateur iOS et les émulateurs Android de ce
 Mac reçoivent les notifications, cf. §4.5.
 
+**Posés le 28 octobre 2026**, en une demi-heure, sans délai administratif :
+
+- **La clé APNs existait déjà** : `Z4LZ69V5YA`, « Expo Push Notifications
+  Key », créée par EAS le 2 mai 2026 pour l'équipe `762U6Z9AV4`, valable pour
+  toutes les apps de l'équipe, au bac à sable comme en production. Elle est
+  attribuée à `com.bentopop.mobile` dans les identifiants EAS, par
+  `eas credentials` **sans connexion Apple** : Apple refusait celle de l'outil
+  (`-20209`), alors que le compte de Clément marchait partout ailleurs. Le
+  même jour, Push est coché sur l'identifiant d'app `com.bentopop.mobile`, qui
+  ne l'avait pas : ses profils d'approvisionnement sont donc à refaire à la
+  build 2.0.0, qui en a besoin de toute façon.
+- **Le projet Firebase « Bento Pop »**, `bento-pop-4cbcb`, sur le compte
+  Google de Liventure, forfait gratuit Spark, sans Google Analytics ni
+  Gemini. L'app Android `com.bentopop.mobile` y est enregistrée.
+- **La clé du compte de service** `firebase-adminsdk-fbsvc@bento-pop-4cbcb`
+  est dans les identifiants EAS, pour FCM V1, déposée par Clément et jamais
+  lue par l'agent.
+- **`google-services.json`** est dans `apps/mobile`, déclaré par
+  `expo.android.googleServicesFile` (D27).
+
 ### 6.5 Garde-fous
 
 - Le déclencheur n'envoie **que** si l'item a un `submitted_by`. ~~Et jamais à
@@ -719,6 +749,8 @@ La clé APNs et le compte de service FCM, téléversés dans EAS, et le fichier
 `google-services.json` dans l'app Android. **Rien ne se reçoit sans eux, même
 au simulateur**, et Android n'obtient pas de jeton sans le fichier. Ils ne bloquent pas le lot 1, mais la
 recette des lots 2 à 5. À lancer dès maintenant, le délai est administratif.
+
+**Fait le 28 octobre 2026**, cf. §6.4.
 
 ### Lot 1 · La base : jetons, tickets, déclencheur
 
@@ -1130,6 +1162,63 @@ la roadmap, la DoD.
 - **Reste** : `EXPO_ACCESS_TOKEN`, qui attend l'utilisateur robot d'Expo
   (D17) ; puis le lot 5b.
 
+**5b fait et recetté le 28 octobre 2026**, la clé APNs et le compte FCM
+posés le matin même (§6.4), sur la branche `feat/ux-17-lot-5b`, PR #108 :
+
+- `google-services.json` dans `apps/mobile`, `googleServicesFile` dans
+  `app.json` (D27) ; des builds de développement neuves, l'iOS avec
+  `aps-environment` au simulateur, l'Android avec les ressources Firebase du
+  projet `bento-pop-4cbcb`, toutes deux branchées sur la pile locale, cible
+  relue avant chaque lancement.
+- La chaîne entière en local : la base rejouée depuis les migrations de
+  `main` (40 sur 40, `check-push.sql` 35 sur 35), le back-office en
+  développement sans aucune variable de production, les secrets de coffre
+  locaux, le vrai service d'Expo, APNs au bac à sable, FCM. Une proposition
+  se valide par la même écriture que le back-office (`catalogue/actions.ts`).
+  La production n'a rien reçu.
+
+| # | Geste | Constaté |
+| --- | --- | --- |
+| 1 | Simulateur, compte neuf : proposer « Le Pont Neuf » dans la case Lieu | « On te prévient quand « Le Pont Neuf » est validé ? », puis la boîte du système ; « Autoriser » : un vrai jeton Expo en base, « Mes items » allumé, « Les éditions » éteint |
+| 2 | Le valider | `pg_net` 202, Expo accepte, rien n'arrive : l'accusé dit `BadDeviceToken`. Défaut, D29 |
+| 3 | D29 corrigé, proposer « Ponyo » et le valider, composer à l'écran | La bannière « Proposition validée » en 1,8 s, accusé `ok` ; la case dit « Ponyo » sans pastille dès l'arrivée (D30) |
+| 4 | Émulateur, compte neuf : proposer « Le Bon Marche » | La phrase sur Android, puis la boîte du système ; « Allow » : un vrai jeton, que FCM délivre grâce à `google-services.json` |
+| 5 | Le valider | Dans le volet en 3,3 s, canal `items` : « « Le Bon Marche » est au catalogue : ta case est en ligne. » |
+| 6 | Toucher la notification, composer ouvert | Le composer, mais la case reste « en attente », même au retour au premier plan ; seule une relance la relit. Défaut, D30 |
+| 7 | Refuser « Le Parrain » avec une raison | Dans le volet en 3,3 s : « Proposition non retenue », la raison entière dessous |
+| 8 | Toucher la notification | La recherche de la case Film (D22), la case vidée |
+| 9 | Couper « Mes items » dans les réglages, faire valider une proposition | Écrit en base ; le back-office répond `no-recipient`, aucun ticket, rien dans le volet en 90 s |
+| 10 | « Les éditions » allumé sur l'émulateur seulement, une édition sortie il y a 3 h, battement | L'émulateur, « Mes items » coupé, la reçoit en 1,2 s, canal `editions` ; le simulateur, éditions éteintes, rien ; les éditions sorties il y a 24 h et plus ne s'annoncent pas |
+| 11 | Toucher l'annonce | Le composer ; sans profil, pas d'édition à rejoindre (D21) |
+| 12 | Simulateur, onglet Profil : valider « The Office », toucher la bannière | Le composer, la case Série déjà relue, sans pastille |
+| 13 | Désinstaller l'app de l'émulateur à 15:36 UTC, sortir une autre édition | Envoi accepté par Expo ; l'accusé dit `DeviceNotRegistered` une minute plus tard ; le battement programmé de 15:55 le relit, 15 minutes après l'envoi, et révoque l'appareil |
+| 14 | L'accusé `BadDeviceToken` du geste 2, relu par le battement | Noté `DeveloperError`, l'appareil gardé : seul `DeviceNotRegistered` révoque |
+| 15 | Simulateur : compléter le bento et le publier | Le pseudo, la feuille « Garde ton bento » (chantier 28), puis la phrase de l'accord éditorial (D20) ; « Oui » allume « Les éditions » en base |
+
+**Deux défauts trouvés par cette recette, et corrigés**, chacun avec une
+décision, §11 :
+
+- **D29, le simulateur iOS ne recevait rien.** `expo-notifications` lit
+  l'environnement d'APNs dans le profil d'approvisionnement embarqué ; un
+  simulateur n'en a pas, et son jeton partait déclaré en production, où APNs
+  le refuse. `apnsSandboxOverride` (`push.ts`, 5 tests) le déclare au bac à
+  sable en build de développement sans profil seulement ; une build de
+  production garde le choix d'`expo-notifications`.
+- **D30, une case validée restait « en attente »** sous la notification qui
+  la disait en ligne, composer à l'écran : il ne relisait ses cases qu'au
+  démarrage et au retour sur l'onglet. Il les relit désormais au retour au
+  premier plan, à l'arrivée d'une notification de modération
+  (`onItemModeratedReceived`) et avant de suivre un tap.
+
+**Ce que le lot 4 n'avait pas vu**, vu au 5b : le tap et la phrase sur
+Android (gestes 4, 8 et 11), la phrase de l'accord après une publication
+(geste 15). D28 avec un profil reste couvert par ses tests.
+
+**Pas vérifié, ou au chantier 29** : le vrai téléphone en build de
+production, donc l'environnement de production d'APNs ; l'écran verrouillé ;
+une désinstallation réelle sur iOS, le bac à sable d'APNs ne disant pas de sitôt
+qu'un jeton est mort ; le pouls d'une case après un tap, vu mais pas mesuré.
+
 ---
 
 ## 9. Livraison
@@ -1178,16 +1267,21 @@ faits, le tap fait sur iOS, les points 1 à 3 à la recette de bout en bout du
 lot 5b, qui attend la clé APNs et le compte FCM. Ce qui demande un vrai
 téléphone est versé au chantier 29.
 
+**Point par point au 28 octobre 2026, au lot 5b** : les 12 points faits, au
+simulateur iOS et à l'émulateur Android. Le vrai téléphone en build de
+production, l'écran verrouillé et une désinstallation réelle sur iOS restent
+au chantier 29.
+
 | # | État | Preuve, ou ce qui manque |
 | --- | --- | --- |
-| 1 | Au 5b, puis au 29 | La chaîne est prouvée jusqu'au vrai service d'Expo : une validation en base arrive à Expo, qui répond dans la seconde (lot 3, gestes 3 et 7). La réception au simulateur et à l'émulateur attend le lot 0 ; sur un vrai téléphone, en build de production, le chantier 29 |
-| 2 | Au 5b | Le texte : « un refus donne sa raison quand elle existe » et « un refus sans raison propose d'en choisir un autre » (`content.test.ts`) ; le parcours : « un refus porte sa raison » (`pipeline.test.ts`) ; un refus traverse l'image Docker du back-office (lot 3, geste 7). La réception attend le lot 0 |
-| 3 | Au 5b | Le choix : « ceux qui l'ont accepté, quel que soit leur compte » (`recipients.test.ts`), « à ceux qui l'ont accepté, avec sa durée de vie, une seule fois » et « personne n'a accepté : l'édition est marquée, rien ne part » (`pipeline.test.ts`) ; le passage de 05:00 UTC l'annonce à l'appareil qui l'avait acceptée (lot 3, geste 4). La réception attend le lot 0 |
-| 4 | Fait sur iOS, Android au 5b | Au simulateur, par `xcrun simctl push` : le composer s'ouvre une seule fois, depuis un autre onglet, en arrière-plan, modale ouverte ou à froid ; un refus ouvre la recherche de sa case, une édition fait pulser son « + titre » (lot 4, gestes 6 à 8). Sur Android, le tap attend un vrai jeton, donc le lot 0 ; l'écran verrouillé, le chantier 29 |
-| 5 | Fait | Les deux interrupteurs sont écrits en base et relus à la réouverture (lot 4, geste 1) ; un appareil qui a coupé « Mes items » n'est plus destinataire (`recipients.test.ts`, et une mutation attrapée au lot 3). Constater que plus rien n'arrive : au 5b |
+| 1 | Fait au 5b, puis au 29 | La chaîne est prouvée jusqu'au vrai service d'Expo : une validation en base arrive à Expo, qui répond dans la seconde (lot 3, gestes 3 et 7). **Au 5b, la réception** : 1,8 s au simulateur iOS, 3,3 s à l'émulateur Android (gestes 3 et 5). Sur un vrai téléphone, en build de production, le chantier 29 |
+| 2 | Fait au 5b | Le texte : « un refus donne sa raison quand elle existe » et « un refus sans raison propose d'en choisir un autre » (`content.test.ts`) ; le parcours : « un refus porte sa raison » (`pipeline.test.ts`) ; un refus traverse l'image Docker du back-office (lot 3, geste 7). **Au 5b**, la raison entière arrive dans le volet d'Android en 3,3 s (geste 7) |
+| 3 | Fait au 5b | Le choix : « ceux qui l'ont accepté, quel que soit leur compte » (`recipients.test.ts`), « à ceux qui l'ont accepté, avec sa durée de vie, une seule fois » et « personne n'a accepté : l'édition est marquée, rien ne part » (`pipeline.test.ts`) ; le passage de 05:00 UTC l'annonce à l'appareil qui l'avait acceptée (lot 3, geste 4). **Au 5b**, l'appareil qui l'a acceptée la reçoit en 1,2 s, l'autre rien (geste 10) |
+| 4 | Fait | Au simulateur, par `xcrun simctl push` : le composer s'ouvre une seule fois, depuis un autre onglet, en arrière-plan, modale ouverte ou à froid ; un refus ouvre la recherche de sa case, une édition fait pulser son « + titre » (lot 4, gestes 6 à 8). **Au 5b, sur de vraies notifications** : à l'émulateur, un refus ouvre la recherche de sa case et une annonce le composer ; au simulateur, une validation touchée depuis le profil ouvre le composer, sa case déjà relue (gestes 8, 11 et 12). L'écran verrouillé, le chantier 29 |
+| 5 | Fait | Les deux interrupteurs sont écrits en base et relus à la réouverture (lot 4, geste 1) ; un appareil qui a coupé « Mes items » n'est plus destinataire (`recipients.test.ts`, et une mutation attrapée au lot 3). **Au 5b**, plus rien n'arrive en 90 s, le back-office répondant `no-recipient`, et « Les éditions » continue (gestes 9 et 10) |
 | 6 | Fait | Au simulateur et à l'émulateur, refuser ne bloque rien et plus rien ne se redemande (lot 2, gestes 7 et 10) ; le profil renvoie alors aux réglages du téléphone (lot 4, geste 3) |
-| 7 | Fait | Avec le vrai service d'Expo, un ticket `DeviceNotRegistered` révoque l'appareil dans la seconde (lot 3, gestes 3 et 4) ; un accusé se relit entre 15 minutes et 24 heures et révoque de même (`pipeline.test.ts`, `tickets.test.ts`). Une désinstallation réelle : au 5b, ou au 29 si Expo tarde |
-| 8 | Fait | 35 contrôles sur 35, repassés à la fin du 5a |
+| 7 | Fait | Avec le vrai service d'Expo, un ticket `DeviceNotRegistered` révoque l'appareil dans la seconde (lot 3, gestes 3 et 4) ; un accusé se relit entre 15 minutes et 24 heures et révoque de même (`pipeline.test.ts`, `tickets.test.ts`). **Au 5b, une désinstallation réelle** sur Android : l'accusé dit `DeviceNotRegistered` une minute après, le battement révoque l'appareil 19 minutes après la désinstallation (geste 13). Sur iOS, au 29 |
+| 8 | Fait | 35 contrôles sur 35, repassés à la fin du 5a, et au 5b sur une base rejouée depuis les migrations de `main` |
 | 9 | Fait | La carte du tableau de bord : battement, dernier envoi réussi, dernière erreur, « En marche » ou « En panne » (lot 3, gestes 5 et 6 ; `health.test.ts`). En production, elle dit « En marche » depuis la mise en service du 26 septembre |
 | 10 | Fait | L'éditorial est éteint par défaut (lot 1, D6) ; l'accord se demande après une publication ou à la première édition rejointe, et seul « Oui » l'allume (lot 4, geste 9, D20) ; « Les éditions » se coupe dans le profil (lot 4, geste 1) ; l'accord éditorial ne compte pas pour un item (`recipients.test.ts`) |
 | 11 | Fait | Lots 1 et 2 le 17 septembre, lot 3 le 23 septembre, chacun avec sa preuve de compatibilité avant, et les lectures des versions publiées rejouées après |
@@ -1227,6 +1321,8 @@ téléphone est versé au chantier 29.
 | **D26** | La PR du chantier se fusionne avant le lot 0 ; la recette de bout en bout suit à son arrivée, avec une petite PR si besoin | Choisi le 23 septembre 2026. Les quatre lots faits cessent d'attendre un délai administratif, la chaîne tourne en production sans destinataire (D11), et aucune version publique n'est touchée d'ici la sortie unique. Remplace, pour ce chantier, la recette avant la fusion de §4.5 et §7.3 |
 | **D27** | `google-services.json` entre dans le dépôt | Choisi le 23 septembre 2026. Firebase le présente comme une configuration et non comme un secret, sa clé étant restreinte au paquet ; les builds locales et EAS le lisent au même endroit |
 | **D28** | Le composer vide la case d'un item refusé, pour un compte avec profil comme pour un brouillon | Choisi le 23 septembre 2026, au lot 5a. La RLS laisse l'auteur lire sa proposition quel que soit son statut, et rien ne retire la case au refus : l'auteur voyait l'item refusé comme accepté, sans pastille, et pouvait publier avec, quand tout autre lecteur voyait une case vide. Mesuré sur la base locale, puis en production en lecture seule : 2 cases réelles, dans des bentos non publiés. Défaut antérieur au chantier, la 1.1 l'a aussi, et la notification de refus le rend visible. Côté app, sans migration : il vaut pour la prochaine version |
+| **D29** | Au simulateur iOS, le jeton se déclare au bac à sable d'APNs : build de développement, sans profil d'approvisionnement embarqué (`apnsSandboxOverride`) | Choisi le 28 octobre 2026, au lot 5b. `expo-notifications` lit l'environnement d'APNs dans le profil embarqué ; un simulateur n'en a pas, et son jeton, qui ne vaut qu'au bac à sable, partait déclaré en production : APNs répondait `BadDeviceToken`, rien n'arrivait. Une build de production garde le choix d'`expo-notifications`, et un profil présent décide seul. `expo-application` devient une dépendance directe de l'app : il était déjà compilé dans les deux builds, par `expo-notifications`, donc sans nouvelle build native |
+| **D30** | Le composer relit ses cases au retour au premier plan, à l'arrivée d'une notification de modération et avant de suivre un tap | Choisi le 28 octobre 2026, au lot 5b. Il ne les relisait qu'au démarrage et au retour sur l'onglet : une case validée restait « en attente » sous la notification qui la disait en ligne, même touchée, même l'app revenue au premier plan, jusqu'à la relance. D25 couvrait la relance seulement. Le prix : une lecture du profil et du bento à chaque retour au premier plan, composer affiché |
 
 ---
 

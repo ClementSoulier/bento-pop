@@ -165,6 +165,28 @@ export async function refreshPushRegistration(
   };
 }
 
+// ─── Lot 5b : le simulateur iOS, au bac à sable d'APNs ───────────────────
+
+/**
+ * Déclarer le jeton au bac à sable d'APNs, plutôt qu'à sa production ?
+ *
+ * `expo-notifications` le déduit du profil d'approvisionnement embarqué. Un
+ * simulateur n'en a pas : son jeton, qui ne vaut qu'au bac à sable, partait
+ * déclaré en production, et APNs le refusait (`BadDeviceToken`). Mesuré à la
+ * recette du lot 5b, le 28 octobre 2026. Seulement en build de
+ * développement : une build de production sans profil lisible garde le choix
+ * d'`expo-notifications`. Un profil présent décide seul, comme avant.
+ */
+export function apnsSandboxOverride(input: {
+  platform: PushPlatform;
+  /** `__DEV__` : une build de développement. */
+  dev: boolean;
+  /** L'environnement d'APNs du profil embarqué, `null` sans profil, `undefined` s'il ne se lit pas. */
+  profileEnvironment: string | null | undefined;
+}): boolean {
+  return input.platform === 'ios' && input.dev && input.profileEnvironment === null;
+}
+
 // ─── Lot 4 : ce qu'ouvre une notification ────────────────────────────────
 
 /**
