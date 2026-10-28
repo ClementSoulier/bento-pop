@@ -18,9 +18,10 @@
 > introduits exprès et tous attrapés ; la recette au simulateur iPhone 17 Pro
 > et iPhone SE, à l'émulateur Pixel 8, au back-office et sur le web, trois
 > défauts trouvés et corrigés en chemin (§9). **Fusionné le soir même**
-> (PR #100) : la landing sert ses textes depuis, et la page d'un bento tient
-> sans la migration ; **rien n'est appliqué en base**, la mise en service
-> attend Clément, après celle du 22 (§9.6).
+> (PR #100) : la landing sert ses textes depuis, et la page d'un bento a tenu
+> sans la migration. **Mis en service le 28 octobre par Clément**, après le
+> 22 : la migration, appliquée puis contrôlée en lecture, et le back-office
+> redéployé (§9.6).
 >
 > Placé après le chantier 22, arbitré le 15 septembre 2026 : le « pourquoi »
 > reprend sa modération, le filtre, le signalement, le mail à l'équipe et le
@@ -523,8 +524,8 @@ locale :
 
 Fait et recetté le 26 octobre 2026, en cinq lots enchaînés, sur
 `feat/ux-12-pourquoi-par-case`, en PR #100, empilée sur la #99 du chantier 22,
-toutes deux fusionnées le soir même. La landing sert ses textes depuis ; rien
-n'est appliqué en base : la mise en service attend Clément (§9.6).
+toutes deux fusionnées le soir même. La landing sert ses textes depuis ; la
+mise en service s'est faite le 28 octobre, migration comprise (§9.6).
 
 ### 9.1 Lot 1 · La base
 
@@ -620,21 +621,27 @@ sans recompiler.
 ### 9.6 La mise en service, par Clément
 
 Après celle du 22, dont la migration doit précéder celle-ci : `submit_report`
-y est redéfini et le filtre en vient.
+y est redéfini et le filtre en vient. **Faite par Clément le 28 octobre
+2026.**
 
-1. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
-   contrôles en lecture de `scripts/check-whys.sql`.
-2. **La landing et le back-office** redéployés sur Coolify, après la fusion :
+1. ✅ **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
+   contrôles en lecture de `scripts/check-whys.sql`. Jouée le 28 octobre au
+   matin, juste après celle du 22 ; contrôles tous passés, et chaque fonction
+   et commentaire identique au fichier ; un visiteur lit la table sans erreur,
+   et les 168 cases publiées peuvent porter un pourquoi public.
+2. ✅ **La landing et le back-office** redéployés sur Coolify, après la fusion :
    la landing l'a été d'elle-même, servie le 26 octobre à 19:50 UTC, son repli
-   relevé en production ; le back-office attend la migration. Aucune variable
-   nouvelle : la purge passe par les deux secrets du coffre déjà posés pour la
-   publication, relus par leur nom le 26 octobre.
+   relevé en production ; le back-office sert, relevé le 28 octobre, une
+   build d'après la dernière fusion. Aucune variable nouvelle : la purge passe
+   par les deux secrets du coffre déjà posés pour la publication, relus par
+   leur nom le 26 octobre.
 
 ---
 
 ## 10. Definition of Done
 
-État au 26 octobre 2026 : 12 sur 13, le point 12 à la mise en service.
+État au 28 octobre 2026 : 13 sur 13, le point 12 rempli par la mise en
+service.
 
 1. ✅ Écrire, remplacer et effacer le pourquoi d'une case de son bento publié,
    et d'aucun autre, vérifié à la clé anonyme : contrôles 1, recette au
@@ -665,10 +672,10 @@ y est redéfini et le filtre en vient.
     relevée en ligne ; les règles de l'app partent avec elle, à la sortie
     store unique.
 11. ✅ La recette de §7.2 aux trois appareils, §9.5.
-12. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
+12. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : compatible, et la CI rejouée sans échec, lint 8 sur 8,
     typage 8 sur 8, tests 962, 251 et 202, builds 3 sur 3, e2e 53 sur 53 ;
-    l'application attend la mise en service.
+    appliquée le 28 octobre, ses contrôles tous passés (§9.6).
 13. ✅ Aucun service payant.
 
 ---

@@ -22,8 +22,10 @@
 > reproduit puis corrigé ; la recette au simulateur iPhone 17 Pro et iPhone SE
 > et à l'émulateur Pixel 8, sept défauts trouvés et corrigés en chemin, dont
 > un déblocage qu'un autre téléphone défaisait (§9). **Fusionné le soir même**
-> (PR #99) : la landing sert ses pages depuis ; **rien n'est appliqué en
-> base**, la mise en service attend Clément, §9.6.
+> (PR #99) : la landing sert ses pages depuis. **Mis en service le 28 octobre
+> par Clément** : le domaine de modération chez Resend, les variables du
+> back-office, la migration, appliquée puis contrôlée en lecture, et le
+> back-office redéployé, §9.6.
 >
 > Deuxième des quatre fondations de la roadmap produit du 15 septembre, la
 > modération côté serveur, placée après le chantier 28, qui exige un compte
@@ -645,8 +647,8 @@ Cinq lots, chacun validé par Clément avant le suivant.
 Fait et recetté le 26 octobre 2026, en cinq lots enchaînés à la demande de
 Clément, sur `feat/ux-22-likes-commentaires`, en PR #99, empilée sur la #98
 du chantier 28, toutes deux fusionnées le soir même. La landing sert ses
-pages depuis ; rien n'est appliqué en base : la mise en service attend
-Clément (§9.6).
+pages depuis ; la mise en service s'est faite le 28 octobre, migration
+comprise (§9.6).
 
 ### 9.1 Lot 1 · La base
 
@@ -738,30 +740,43 @@ Clément (§9.6).
 ### 9.6 La mise en service, par Clément
 
 Dans cet ordre, chaque étape guidée pas à pas ; l'agent ne voit ni ne saisit
-aucune clé.
+aucune clé. **Les quatre premières faites par Clément le 28 octobre 2026.**
 
-1. **Resend**, sur le plan gratuit : le domaine d'envoi
+1. ✅ **Resend**, sur le plan gratuit : le domaine d'envoi
    `moderation.bento-pop.com`, ses enregistrements DNS chez l'hébergeur de
    `bento-pop.com` jusqu'à « Verified » ; une clé d'envoi limitée à ce
-   domaine, propre au back-office (D12).
-2. **Coolify, le back-office, variables runtime** : `RESEND_API_KEY`, la clé,
+   domaine, propre au back-office (D12). Les DNS publics le confirment, relus
+   le 28 octobre : la clé DKIM de Resend sur
+   `resend._domainkey.moderation.bento-pop.com`, le retour et le SPF sur
+   `send.moderation.bento-pop.com`.
+2. ✅ **Coolify, le back-office, variables runtime** : `RESEND_API_KEY`, la clé,
    posée par Clément ; `MODERATION_FROM`,
    `Bento Pop <moderation@moderation.bento-pop.com>` ; `MODERATION_ALERT_TO`,
    les adresses de l'équipe ; `ADMIN_PUBLIC_URL`, `https://admin.bento-pop.com`.
-3. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
-   contrôles en lecture de `scripts/check-social.sql`.
-4. **La landing et le back-office** redéployés sur Coolify, après la fusion :
+   Elles ne se lisent pas de l'extérieur : l'écran Modération les dit en
+   service en n'affichant pas son bandeau, et le premier signalement les
+   prouvera par son mail, au plus tard à la recette du chantier 29.
+3. ✅ **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
+   contrôles en lecture de `scripts/check-social.sql`. Jouée le 28 octobre à
+   05:33 UTC, depuis un bloc où les cinq caractères invisibles de
+   `normalize_for_filter` s'écrivent en code,
+   `U&'[\00AD\200B-\200D\2060\FEFF]'`, pour survivre au copier-coller : même
+   effet que le fichier, prouvé en base. Contrôles tous passés, et chaque
+   fonction et commentaire identique au bloc, accents compris.
+4. ✅ **La landing et le back-office** redéployés sur Coolify, après la fusion :
    la landing l'a été d'elle-même, servie le 26 octobre à 19:50 UTC ; le
-   back-office attend la migration, et celle du 12, dont il porte aussi le
-   code.
-5. **Les fiches des stores**, à la sortie store unique : le contenu des
+   back-office sert, relevé le 28 octobre sans session, une build du
+   27 octobre à 19:53 UTC, après la dernière fusion, dont la feuille de style
+   porte les classes de l'écran Modération.
+5. ⬜ **Les fiches des stores**, à la sortie store unique : le contenu des
    utilisateurs et la classification d'âge. Versées au chantier 29.
 
 ---
 
 ## 10. Definition of Done
 
-État au 26 octobre 2026 : 13 sur 14, le point 13 à la mise en service.
+État au 28 octobre 2026 : 14 sur 14, le point 13 rempli par la mise en
+service.
 
 1. ✅ Aimer et ne plus aimer, depuis le fil et la page ; un cœur par compte
    et par bento ; jamais le sien ; vérifié en base : contrôles 1 de
@@ -792,9 +807,9 @@ aucune clé.
     production** : servies par bento-pop.com depuis le 26 octobre à 19:50 UTC,
     après la fusion de la PR #99, chaque phrase ajoutée relevée en ligne.
 12. ✅ La recette de §7.2 aux trois appareils, §9.3 et §9.5.
-13. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
+13. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
     rejouée en local : compatible, et la CI rejouée sans échec (§9.5) ;
-    l'application attend la mise en service.
+    appliquée le 28 octobre, ses contrôles tous passés (§9.6).
 14. ✅ Aucun service payant : le plan gratuit de Resend, et 24 mails d'alerte
     par jour au plus, tenu par `digest.ts` et ses tests.
 

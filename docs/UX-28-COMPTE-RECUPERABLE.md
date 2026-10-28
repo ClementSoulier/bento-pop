@@ -25,8 +25,8 @@
 > Clément** : Resend et son domaine `auth.bento-pop.com`, l'authentification
 > de « My Bento Pop », et la migration, appliquée puis contrôlée en lecture
 > (§9.6). **Fusionné le soir même** (PR #98) : la landing sert ses pages
-> depuis, et le back-office sera redéployé après les migrations du 22 et du
-> 12, dont il porte aussi le code.
+> depuis, et le back-office son badge « Gardé » depuis le 28 octobre, une
+> fois jouées les migrations du 22 et du 12, dont il porte aussi le code.
 >
 > Première des quatre fondations de la roadmap produit du 15 septembre, placée
 > avant le chantier 22. Cf. [la roadmap](./MON-BENTO-POP-UX-ROADMAP.md)
@@ -507,8 +507,8 @@ Cinq lots, chacun validé par Clément avant le suivant.
 Fait le 26 octobre 2026, en cinq lots enchaînés à la demande de Clément, sur
 `feat/ux-28-compte-recuperable`, PR #98, fusionnée le soir même. Mis en
 service le même jour par Clément, migration comprise (§9.6) ; la landing sert
-ses pages depuis la fusion, et le back-office attend les migrations du 22 et
-du 12.
+ses pages depuis la fusion, et le back-office depuis le 28 octobre, une fois
+jouées les migrations du 22 et du 12.
 
 ### 9.1 Lot 1 · La base et l'authentification locale
 
@@ -604,7 +604,7 @@ du 12.
 
 Dans cet ordre, chaque étape guidée pas à pas ; l'agent ne voit ni ne saisit
 aucune clé, aucun mot de passe. **Les trois premières faites par Clément le
-26 octobre 2026.**
+26 octobre 2026, la quatrième le 28 octobre.**
 
 1. ✅ **Resend** : un compte sur le plan gratuit ; le domaine d'envoi
    `auth.bento-pop.com` ; ses enregistrements DNS posés chez l'hébergeur de
@@ -631,9 +631,12 @@ aucune clé, aucun mot de passe. **Les trois premières faites par Clément le
    28 publiés et 20 entrées au registre des suppressions, inchangés ; la
    règle `users_delete_own`, par laquelle la 1.1 et la 0.1.0 suppriment, en
    place. Aucune donnée touchée.
-4. ⬜ **Le back-office** redéployé sur Coolify, après les migrations du 22 et
-   du 12, dont il porte aussi le code. La landing l'a été d'elle-même à la
-   fusion, servie le 26 octobre à 19:50 UTC : le point 10 de la DoD.
+4. ✅ **Le back-office** redéployé sur Coolify, en service le 28 octobre, une
+   fois jouées les migrations du 22 et du 12, dont il porte aussi le code :
+   relevé sans session, il sert une build du 27 octobre à 19:53 UTC, après la
+   dernière fusion, dont la feuille de style porte les classes de leurs
+   écrans. La landing l'a été d'elle-même à la fusion, servie le 26 octobre à
+   19:50 UTC : le point 10 de la DoD.
 5. ⬜ **Les fiches de confidentialité** de l'App Store et de Google Play, à la
    sortie store unique : l'adresse email, liée à l'identité, pour le
    fonctionnement de l'app. Versées à la liste du chantier 29.

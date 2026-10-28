@@ -15,9 +15,11 @@
 > migration pour les comptes existants. Même sortie store unique que tous les
 > chantiers.
 >
-> **Fait et recetté le même jour**, en cinq lots, sur `feat/ux-27-succes`,
-> **PR #105**, empilée sur la #104 : DoD 7 sur 9, les deux derniers attendant
-> la fusion et la mise en service par Clément, après celle du 25, cf. §7.
+> **Fait et recetté le même jour**, en cinq lots, sur `feat/ux-27-succes`.
+> **Fusionné le 27 octobre au soir** (PR #105), **mis en service le
+> 28 octobre par Clément**, après le 25 : la migration, appliquée puis
+> contrôlée en lecture, et ses 75 succès rattrapés, que le web affiche. DoD
+> 9 sur 9, cf. §7.
 
 ---
 
@@ -138,8 +140,8 @@ pixel à celle du 25 ; la plus grande taille de texte, 200 %.
 
 Fait et recetté le 27 octobre 2026, en cinq lots enchaînés, sur
 `feat/ux-27-succes`, partie de la branche de la PR #104, le 25, et ouverte
-en PR #105, empilée sur la #104. Rien n'est appliqué en production : la mise
-en service attend Clément, après celle du 25 (§7.6).
+en PR #105, empilée sur la #104, toutes fusionnées le 27 octobre au soir. La
+mise en service s'est faite le 28 octobre, migration comprise (§7.6).
 
 ### 7.1 Lot 1 · La base
 
@@ -229,14 +231,21 @@ service, par `check-achievements.sql`.
 ### 7.6 La mise en service, par Clément
 
 Après celle du 25, dont elle redéfinit l'export, elle-même après celle du 24,
-dont elle redéfinit la zone.
+dont elle redéfinit la zone. **Faite par Clément le 28 octobre 2026.**
 
-1. **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
+1. ✅ **La migration**, dans l'éditeur SQL de « My Bento Pop », puis les
    contrôles en lecture de `scripts/check-achievements.sql` : le rattrapage
    égal à ce que les données méritent, autour de 28, 25, 18 et 2 au 27
-   octobre.
-2. **La landing**, redéployée d'elle-même à la fusion. Rien au back-office
-   (D20).
+   octobre. Jouée le 28 octobre au matin, la dernière des six ; contrôles
+   tous passés, et chaque fonction et commentaire identique au fichier. Le
+   rattrapage : 75 succès, 28 « Premier bento », 27 « Défricheur »,
+   18 « Éclaireur » et 2 « Pionnier », égal succès par succès à ce que les
+   données méritent, aux dates des données ; aucun profil éditorial, aucune
+   date future.
+2. ✅ **La landing**, redéployée d'elle-même à la fusion, servie le 27 octobre
+   à 20:00 UTC : les pages des comptes affichent leurs succès depuis le
+   rattrapage, relevé le 28 octobre sur trois d'entre elles. Rien au
+   back-office (D20).
 3. Aucune variable, aucun service : 0 €.
 
 ### 7.7 La CI, rejouée en local
@@ -253,8 +262,8 @@ contrôles de la base passent sur la migration finale.
 
 ## 8. Definition of Done
 
-État au 27 octobre 2026 : 7 sur 9, les deux derniers à la fusion et à la
-mise en service.
+État au 28 octobre 2026 : 9 sur 9, les deux derniers remplis par la fusion
+et la mise en service.
 
 1. ✅ Un succès se débloque au geste qui le mérite, daté de lui : contrôles 2
    à 4, recette au 17 Pro, publié depuis l'app.
@@ -262,18 +271,20 @@ mise en service.
    s'annonce dans « Notifs » : recette aux trois appareils et sur le web, e2e
    de la landing.
 3. ✅ Les comptes existants reçoivent ceux qu'ils méritaient déjà : contrôles
-   6 et le rattrapage répété (§7.1) ; en production, à la mise en service.
+   6 et le rattrapage répété (§7.1) ; en production, 75 succès le 28 octobre,
+   égaux à ce que les données méritent (§7.6).
 4. ✅ Un succès gagné reste acquis : contrôles 5.
 5. ✅ Personne ne pose un succès par l'API ; aucun geste n'échoue à cause
    d'un succès : contrôles 1 et la pose en panne (§7.1).
 6. ✅ Une page sans succès ne change pas d'un pixel : l'A/B (§7.5).
 7. ✅ La 1.1 et la 0.1.0 lisent et publient comme avant : contrôles 12, et
    leurs publications passent par les mêmes déclencheurs.
-8. ⬜ La politique de confidentialité à jour, **en production** : écrite, la
-   landing à redéployer après la fusion.
-9. ⬜ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
+8. ✅ La politique de confidentialité à jour, **en production** : servie par
+   bento-pop.com depuis le 27 octobre à 20:00 UTC, après la fusion, ses
+   succès relevés en ligne le 28 octobre.
+9. ✅ La migration prouvée compatible, **appliquée et contrôlée** ; la CI
    rejouée en local sans échec : compatible, et la CI rejouée sans échec
-   (§7.7) ; l'application attend la mise en service.
+   (§7.7) ; appliquée le 28 octobre, ses contrôles tous passés (§7.6).
 
 ---
 
