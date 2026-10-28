@@ -6,3 +6,5 @@ build
 out
 pnpm-lock.yaml
 **/database.types.ts
+# Le dossier remis par Claude Design, gardé tel quel (refonte du 28/10/2026)
+docs/design-v2
