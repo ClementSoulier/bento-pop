@@ -94,7 +94,7 @@ function shadow(value: string): { x: number; y: number; color: string } {
 }
 
 /** Une valeur en TypeScript, au style du dépôt : guillemets simples, clés nues quand elles le peuvent. */
-function literal(value: unknown): string {
+export function literal(value: unknown): string {
   if (typeof value === 'string') return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
   if (typeof value === 'number') return String(value);
   if (value !== null && typeof value === 'object') {
@@ -104,7 +104,7 @@ function literal(value: unknown): string {
   throw new Error(`Valeur inattendue : ${String(value)}`);
 }
 
-function key(name: string): string {
+export function key(name: string): string {
   return /^(?:[A-Za-z_$][\w$]*|\d+)$/.test(name) ? name : literal(name);
 }
 

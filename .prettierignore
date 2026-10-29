@@ -10,3 +10,4 @@ pnpm-lock.yaml
 docs/design-v2
 # Générés depuis ce dossier, comparés au caractère près par leurs tests (chantier 30)
 apps/mobile/src/design/tokens.ts
+apps/mobile/src/design/icons.ts

@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test $(find src -name '*.test.ts' | sort)",
     "design:tokens": "tsx scripts/design-tokens.ts",
+    "design:icons": "tsx scripts/design-icons.ts",
     "clean": "rm -rf .expo .turbo node_modules/.cache"
   },
   "dependencies": {

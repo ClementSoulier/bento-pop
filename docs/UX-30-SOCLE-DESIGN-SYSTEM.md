@@ -119,7 +119,8 @@ Relevé le 28 octobre 2026 sur `76bc053`, dans les 65 fichiers `.tsx` de
   après, sur les écrans de référence (§9).
 - Le système vit dans **`apps/mobile/src/design/`** : `tokens.ts` et
   `icons.ts` générés, `theme.tsx`, `type.ts`, `Text.tsx`, `Icon.tsx`,
-  `shadow.ts`, `motion.ts`, et un dossier par composant.
+  `PopShadow.tsx`, `motion.ts` et `useMotion.ts`, et un dossier par
+  composant.
   `src/components/primitives/` (`StampButton`, `Toast`, `YellowBg`,
   `Sticker`…) et Bungee restent tant qu'un écran les emploie ; le chantier
   qui refait le dernier les retire (D13).
@@ -130,7 +131,7 @@ Relevé le 28 octobre 2026 sur `76bc053`, dans les 65 fichiers `.tsx` de
 
 ### 4.1 Les tokens et le thème (D4, D6, D16)
 
-- `apps/mobile/scripts/design-tokens.mjs` lit
+- `apps/mobile/scripts/design-tokens.ts` lit
   `docs/design-v2/design-system/tokens.json` et écrit
   `src/design/tokens.ts` : les deux palettes résolues (chaque sémantique
   remplacée par sa valeur claire ou sombre), les 22 styles de texte en
@@ -195,39 +196,54 @@ Trois catégories, chacune avec son plafond, posées dans
 
 ### 4.4 Les icônes (D3)
 
-- `apps/mobile/scripts/design-icons.mjs` lit les 72 icônes de
-  `docs/design-v2/design-system/icones/`, en bold et en fill, et écrit
-  `src/design/icons.ts` : le nom Phosphor et ses deux tracés, 52 Ko. La
-  graisse regular, que le design n'emploie pas, n'y entre pas.
-- `<Icon name="heart" weight="fill" size={24} color={…} />` dessine le
-  tracé dans un `Svg` de 256 de côté. Décorative par défaut, cachée aux
-  lecteurs d'écran ; c'est le bouton qui la porte qui a un libellé
-  (`IconButton label`).
+- `apps/mobile/scripts/design-icons.ts` (`pnpm design:icons`) lit les 72
+  icônes de `docs/design-v2/design-system/icones/`, en bold et en fill, et
+  écrit `src/design/icons.ts` : le nom Phosphor et ses deux tracés, 57 Ko. La
+  graisse regular, que le design n'emploie pas, n'y entre pas ; un SVG qui
+  ne serait pas un seul tracé de 256 en `currentColor` est refusé.
+- `<Icon name="heart" weight="fill" size={24} color="like" />` dessine le
+  tracé dans un `Svg` de 256 de côté, à `size-icon` (24) par défaut.
+  Décorative par défaut, cachée aux lecteurs d'écran ; c'est le bouton qui la
+  porte qui a un libellé (`IconButton label`). Avec `label`, que le design
+  prévoit quand l'icône porte seule un sens, elle devient une image nommée.
 - Une icône de plus : son SVG Phosphor ajouté au dossier, le script
-  relancé. Un test vérifie qu'`icons.ts` est à jour et que chaque nom
-  employé dans `src/design/` existe.
+  relancé. Un test vérifie qu'`icons.ts` est à jour ; un nom inconnu est
+  arrêté au typage, `Icon` n'acceptant qu'un `IconName`.
 
 ### 4.5 Les ombres (D9)
 
-- Les ombres franches passent par **`boxShadow`** (`3px 3px 0 0 <encre>`),
-  que React Native dessine sur iOS comme sur Android en nouvelle
-  architecture : le même dessin sur les deux plateformes, sans le flou
-  d'`elevation`. À mesurer au lot 2 sur l'émulateur, au pixel, et à
-  vérifier sur les versions d'Android que l'app accepte ; à défaut, un
-  calque décalé derrière l'objet, comme le design le propose.
+- Les ombres franches passent par **un calque décalé derrière l'objet**,
+  `PopShadow`, comme le dossier le demande (`LISEZMOI.md`) : un calque de la
+  couleur de l'ombre et de la forme de l'objet, placé par la mise en page, qui
+  déborde de son décalage sans prendre de place. L'objet est son enfant
+  unique, opaque.
+- `boxShadow`, prévu d'abord, est écarté au lot 2 (D9) : React Native 0.86 ne
+  le dessine sur Android qu'à partir de la 9 (API 28,
+  `MIN_OUTSET_BOX_SHADOW_SDK_VERSION`), quand l'app accepte la 7 (API 24, le
+  `minSdk` de React Native). Le calque se dessine partout pareil, et le
+  bouton principal s'enfoncera dans son ombre en glissant sa face sur le
+  calque (lot 3).
 - `stampShadow` reste aux écrans actuels, jusqu'à leur chantier.
 
 ### 4.6 Le mouvement et l'haptique (D10, D11)
 
-- `src/design/motion.ts` porte les quatre durées et les trois courbes
-  (`Easing.bezier` de Reanimated), et `useMotion()`, qui lit le réglage du
-  système (`useReducedMotion` de Reanimated) et rend les variantes réduites :
-  les apparitions en fondus de 120 ms, ni dandinement, ni confettis, ni
-  rebond.
-- `src/lib/haptics.ts` reçoit les cinq retours du design : `selection`,
-  `impact('medium')`, `success`, `warning`, `error`. Les écrans les adoptent
-  avec leur chantier ; la D17 du 29, qui décrit l'haptique actuelle, se met
-  à jour à chacun.
+- `src/design/motion.ts` porte les quatre durées et les trois courbes du
+  dossier, et `motionFor()`, le mouvement réduit ou non : réduit, les
+  changements d'état qui déplacent sont immédiats, les apparitions et les
+  départs deviennent des fondus de 120 ms, ni dandinement, ni confettis, ni
+  pulsation, ni rebond, et le `Spinner` ralentit au tiers ; les couleurs et
+  les opacités gardent leur durée. Sans `react-native`, il se teste sous
+  `node:test`.
+- `useMotion()` (`useMotion.ts`) suit le réglage du système **en direct**, par
+  `AccessibilityInfo`, une seule écoute pour l'app : `useReducedMotion` de
+  Reanimated ne le lit qu'au lancement. `timingConfig()` donne la
+  configuration de `withTiming` d'une animation du système, les courbes en
+  `Easing.bezier`, et dit à Reanimated de ne pas réappliquer le réglage.
+- `src/lib/haptics.ts` reçoit les cinq retours du design :
+  `selectionFeedback` (sélection légère), `likeFeedback` (impact moyen),
+  `successFeedback`, `warningFeedback`, `errorFeedback`. Les écrans les
+  adoptent avec leur chantier ; la D17 du 29, qui décrit l'haptique actuelle,
+  se met à jour à chacun.
 
 ## 5. Les 39 composants (D2)
 
@@ -274,7 +290,9 @@ sur les tokens et le `Text` du système. Chacun a un rôle, un libellé et un
   que les écrans restent identiques au pixel (D5).
 - Une page par famille ; chaque composant dans les états de son aperçu
   (variantes, désactivé, chargement, erreur), sous le nom de son
-  `apercu.png`.
+  `apercu.png`. La première, posée au lot 2, montre les fondations : les 72
+  icônes dans leurs deux graisses, les trois ombres, le mouvement et
+  l'haptique.
 - Les chantiers 31 à 34 y ajoutent les leurs et s'en servent pour leurs
   recettes.
 
@@ -297,7 +315,8 @@ Sous `node:test`, comme les tests existants :
 - les plafonds par catégorie, et `scaledType` à 100, 130 et 200 % ;
 - les règles de `accessibilite.test.ts` et de `font-scaling.test.ts`,
   étendues à `src/design/` ;
-- les variantes réduites du mouvement ;
+- les durées et les courbes du mouvement, comparées à celles de
+  `bundle.css`, et ses variantes réduites ;
 - tous les tests actuels, inchangés : aucun écran ne bouge.
 
 ## 9. Recette
@@ -367,6 +386,44 @@ build de développement et une pile Supabase locale :
   page d'un compte que chaque série ouvre, et « il y a 5 h » devenu
   « il y a 6 h ».
 
+### 10.2 Lot 2 · fait le 29 octobre 2026
+
+- **Les icônes** : `scripts/design-icons.ts` (`pnpm design:icons`) écrit
+  `src/design/icons.ts`, les 72 icônes en bold et en fill, 57 Ko ;
+  `icons.test.ts` le compare au caractère près aux SVG du dossier. `Icon` les
+  dessine dans un carré de 256, décorative par défaut, nommée avec `label`.
+- **Comparées à leurs SVG** : les 144 dessins capturés au simulateur
+  iPhone 17 Pro et à l'émulateur Pixel 8, chacun recadré par son cadre
+  d'accessibilité, comparés à l'original rendu par Chrome : IoU moyen 0,989
+  sur les deux appareils, et chaque dessin plus proche de son SVG que de celui
+  de toute autre icône, même pour les paires voisines (`info` et
+  `warning-circle`, `user-plus` et `user-minus`). Les plus bas, de 0,89 à
+  0,93, sont des bords droits posés à un demi-pixel, que le seuil fait
+  basculer : l'écart moyen de couverture reste sous 2 % pour les 144. Sans
+  `label`, l'icône n'est pas un élément d'accessibilité : absente de l'arbre
+  d'iOS, ni focalisable ni retenue parmi les vues utiles sur Android.
+- **Les ombres** (D9) : `PopShadow`, un calque décalé. Mesurées au pixel, une
+  bande d'encre exacte de 6, 9 et 15 pixels à l'iPhone (2, 3 et 5 points), de
+  5, 8 et 13 au Pixel 8 (2,625 pixels par point, arrondis par la mise en
+  page), à droite comme dessous, sans aucun pixel intermédiaire au bord :
+  aucun flou. Avec un contour d'encre de 2, le seul pixel intermédiaire, sur
+  Android, est le bord intérieur du contour (5,25 pixels), pas l'ombre.
+- **Le mouvement** (D10) : `motion.ts` et `useMotion()`. Le réglage suit en
+  direct sur les deux appareils, dans les deux sens, l'app restée ouverte
+  (« Réduire les animations » sur iOS, « Supprimer les animations » sur
+  Android). Filmée au Pixel, l'apparition d'une case de 168 pixels passe par
+  122, 136 et 172 avant de se poser, de translucide à opaque : le pop et son
+  rebond ; réduite, la case garde ses 168 pixels et ne fait que passer de
+  translucide à opaque.
+- **L'haptique** (D11) : les cinq retours, appelés depuis le catalogue sans
+  erreur. Ni le simulateur ni l'émulateur n'ont de moteur : ils se sentiront
+  à la recette sur appareil (29).
+- **Le catalogue** (D12) : `app/dev/catalogue.tsx`, ouvert par
+  `bentopop://dev/catalogue`, sa page des fondations. Son renvoi à l'accueil
+  en production n'est pas encore éprouvé, faute de build de production.
+- **Les écrans actuels ne changent pas** (D5) : le lot ajoute des fichiers et
+  cinq fonctions à `haptics.ts`, sans toucher au code d'un écran.
+
 ## 11. Definition of Done
 
 | # | Point | État |
@@ -376,9 +433,9 @@ build de développement et une pile Supabase locale :
 | 3 | Les contrastes AA des couples nommés, dans les deux thèmes, prouvés par un test | ✅ lot 1 |
 | 4 | Fredoka SemiCondensed chargée ; une famille par graisse | ✅ lot 1 |
 | 5 | `Text` et ses trois plafonds (D1, D8) | ✅ lot 1 ; à 200 % au catalogue, lot 3 |
-| 6 | Les 72 icônes générées, et `Icon` | ⬜ |
-| 7 | Les ombres franches identiques sur iOS et Android | ⬜ |
-| 8 | Le mouvement et sa variante réduite ; les cinq retours haptiques | ⬜ |
+| 6 | Les 72 icônes générées, et `Icon` | ✅ lot 2 |
+| 7 | Les ombres franches identiques sur iOS et Android | ✅ lot 2 |
+| 8 | Le mouvement et sa variante réduite ; les cinq retours haptiques | ✅ lot 2 ; l'haptique ressentie à la recette sur appareil (29) |
 | 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | ⬜ |
 | 10 | Les tests de règles verts sur `src/design/` | ⬜ |
 | 11 | NativeWind retiré, les écrans de référence identiques au pixel | ✅ lot 1 |
@@ -396,8 +453,8 @@ build de développement et une pile Supabase locale :
 | **D6** | `tokens.ts` est généré depuis `tokens.json`, jamais écrit à la main ; `packages/brand` ne bouge pas | Le dossier fait foi, et un test arrête toute dérive. La landing, le back-office et le quiz emploient les tokens de `packages/brand` |
 | **D7** | Fredoka SemiCondensed entre dans `apps/mobile/assets/fonts/`, chargée au lancement ; une famille par graisse | Aucune build native ; Android ne choisit pas une graisse dans une famille chargée à la main |
 | **D8** | Trois catégories de texte : lecture et action jusqu'à 200 %, fixe à 130 % ; le mécanisme du chantier 7 garde la main | Les cases, les titres en Extenda et la barre d'onglets ont une hauteur qu'ils ne décident pas ; React Native 0.86 ne plafonne pas `lineHeight` sur Android |
-| **D9** | Les ombres franches par `boxShadow`, un calque décalé en repli | Le design exclut le flou, qu'`elevation` impose sur Android |
-| **D10** | Le mouvement lit le réglage du système, par Reanimated | Rien ne le lisait ; le design le demande |
+| **D9** | Les ombres franches par **un calque décalé derrière l'objet** (`PopShadow`) ; `boxShadow`, prévu d'abord, écarté au lot 2 | Le design exclut le flou, qu'`elevation` impose sur Android. React Native 0.86 ne dessine `boxShadow` sur Android qu'à partir de l'API 28, quand l'app accepte l'API 24 ; le calque, que le dossier propose, se dessine partout pareil, mesuré au pixel |
+| **D10** | Le mouvement suit le réglage du système **en direct**, par `AccessibilityInfo` ; ses animations passent par Reanimated | Rien ne le lisait ; le design le demande. `useReducedMotion` de Reanimated ne le lit qu'au lancement |
 | **D11** | Les cinq retours haptiques du design entrent dans `haptics.ts` ; les écrans les adoptent avec leur chantier | Changer l'haptique des écrans actuels se sentirait ; la D17 du 29 suivra |
 | **D12** | Un catalogue réservé au développement, ouvert par un lien profond | Comparer chaque composant à son aperçu sans toucher aux écrans ; rien n'en sort en production |
 | **D13** | Bungee et les primitives actuelles restent jusqu'au chantier qui refait leur dernier écran, qui les retire | Les retirer au 30 casserait les écrans pas encore refaits |
@@ -413,3 +470,5 @@ build de développement et une pile Supabase locale :
 - **Les types du 15** (jeux vidéo, livres, plats, activités) n'ont pas de
   couleur dans le design : à trancher au 32, avant qu'ils entrent dans un
   bento.
+- **Le catalogue en production** : son renvoi à l'accueil, à éprouver sur une
+  build de production, au lot 5.
