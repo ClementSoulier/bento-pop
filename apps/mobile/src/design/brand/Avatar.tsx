@@ -1,7 +1,8 @@
-import { Image, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
 import type { PaletteToken } from '../tokens';
-import { popyImage, type Mood } from './popy-images';
+import type { Mood } from './popy-images';
+import { PopyImage } from './PopyImage';
 
 /** Les teintes du garde-manger où un compte pose sa Popy. */
 export type PantryColor =
@@ -43,9 +44,11 @@ export type AvatarProps = {
 
 /**
  * La Popy d'un compte, sur sa teinte, cerclée d'encre (chantier 30, famille
- * de la marque) : 2 de contour, 1,5 aux tailles `xs` et `sm`. L'image fait
- * 86 % de l'avatar, un peu basse, et le cercle la coupe, comme dans le design ;
+ * de la marque) : 2 de contour, 1,5 aux tailles `xs` et `sm`. Le dessin fait
+ * 86 % de l'avatar, un peu bas, et le cercle le coupe, comme dans le design ;
  * ses mesures sont celles de l'avatar entier, non de l'intérieur du contour.
+ * Le `diable`, qui touche ses bords, le remplit tout entier, comme dans le
+ * design.
  */
 export function Avatar({
   mood = 'content',
@@ -82,11 +85,11 @@ export function Avatar({
         style,
       ]}
     >
-      <Image
-        source={popyImage(mood)}
-        resizeMode="contain"
-        style={{ width: side * 0.86, height: side * 0.86, marginTop: side * 0.06 }}
-      />
+      {mood === 'diable' ? (
+        <PopyImage mood={mood} size={side} />
+      ) : (
+        <PopyImage mood={mood} size={side * 0.86} style={{ marginTop: side * 0.06 }} />
+      )}
     </View>
   );
 }

@@ -3,7 +3,7 @@ import { Icon } from '../Icon';
 import type { IconName } from '../icons';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { WRAP_FONT_SCALE } from '../type';
+import { reachesWrapScale } from '../type';
 
 export type ChipProps = {
   label: string;
@@ -89,7 +89,7 @@ export function Chip({
         variant={suggestion ? 'subhead' : 'label-m'}
         weight={suggestion ? 500 : undefined}
         color={fg}
-        numberOfLines={fontScale >= WRAP_FONT_SCALE ? undefined : 1}
+        numberOfLines={reachesWrapScale(fontScale) ? undefined : 1}
         style={{ flexShrink: 1 }}
       >
         {label}

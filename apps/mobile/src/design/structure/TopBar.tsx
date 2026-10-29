@@ -6,7 +6,7 @@ import { Icon } from '../Icon';
 import type { IconName } from '../icons';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { WRAP_FONT_SCALE } from '../type';
+import { reachesWrapScale } from '../type';
 
 /** Une action de droite : un bouton-icône, une pilule texte, ou un lien texte. */
 export type TopBarAction =
@@ -62,7 +62,7 @@ export function TopBar({
   const { fontScale } = useWindowDimensions();
   // Dès 130 %, les actions du grand titre passent dessous : à côté, elles lui
   // laissaient si peu de place qu'Android coupait « neuf » en deux à 200 %.
-  const stacked = fontScale >= WRAP_FONT_SCALE && actions.length > 0;
+  const stacked = reachesWrapScale(fontScale) && actions.length > 0;
   const lead = onBack ? (
     <IconButton icon="caret-left" label={backLabel} onPress={onBack} />
   ) : onClose ? (
@@ -174,7 +174,7 @@ export function TopBar({
         <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 44 }}>{lead}</View>
         <Text
           variant="label-l"
-          numberOfLines={fontScale >= WRAP_FONT_SCALE ? undefined : 1}
+          numberOfLines={reachesWrapScale(fontScale) ? undefined : 1}
           accessibilityRole="header"
           style={{ flex: 1, textAlign: 'center' }}
         >

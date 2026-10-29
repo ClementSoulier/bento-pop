@@ -40,6 +40,15 @@ export const CATEGORY_MAX_FONT_MULTIPLIER: Record<TextCategory, number> = {
 export const WRAP_FONT_SCALE = 1.3;
 
 /**
+ * Le texte du système atteint-il 130 % ? Android donne sa taille en flottant
+ * simple : son 1,3 arrive en 1,2999999523, qu'une comparaison exacte laissait
+ * sous le seuil, relevé au Pixel 8 au lot 4. On compare au centième.
+ */
+export function reachesWrapScale(fontScale: number): boolean {
+  return Math.round(fontScale * 100) >= Math.round(WRAP_FONT_SCALE * 100);
+}
+
+/**
  * La police de chaque rôle, une famille par graisse : Android ne choisit pas
  * une graisse dans une famille chargée à la main (D7). `undefined` : la police
  * du système, qui prend sa graisse.

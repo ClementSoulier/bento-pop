@@ -1,6 +1,6 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
-import { popyImage } from './popy-images';
+import { PopyImage } from './PopyImage';
 
 export type AppIconProps = {
   /** En points, 40 par défaut. */
@@ -30,11 +30,7 @@ export function AppIcon({ size = 40 }: AppIconProps) {
         justifyContent: 'center',
       }}
     >
-      <Image
-        source={popyImage('content')}
-        resizeMode="contain"
-        style={{ width: size * 0.84, height: size * 0.84, marginTop: size * 0.06 }}
-      />
+      <PopyImage mood="content" size={size * 0.84} style={{ marginTop: size * 0.06 }} />
       <View
         pointerEvents="none"
         style={[

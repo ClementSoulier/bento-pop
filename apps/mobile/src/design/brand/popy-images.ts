@@ -7,6 +7,7 @@ import intelloEnerve from '@bento-pop/brand/assets/mascot/popy-intello-enerve.pn
 import intello from '@bento-pop/brand/assets/mascot/popy-intello.png';
 import malade from '@bento-pop/brand/assets/mascot/popy-malade.png';
 import nani from '@bento-pop/brand/assets/mascot/popy-nani.png';
+import { POPY_CROPS, type PopyCrop, type PopyFile } from './popy-crops';
 
 /**
  * Les humeurs de Popy (chantier 30), sous les noms du design et de ses
@@ -27,20 +28,37 @@ export type Mood =
   | 'malade'
   | 'diable';
 
-const IMAGES: Record<Mood, number> = {
+const FILES: Record<Mood, PopyFile> = {
+  content: 'content',
+  bisou: 'fille',
+  fille: 'fille',
+  intello: 'intello',
+  gene: 'gene',
+  surpris: 'nani',
+  nani: 'nani',
+  enerve: 'enerve',
+  'intello-enerve': 'intello-enerve',
+  malade: 'malade',
+  diable: 'diable',
+};
+
+const SOURCES: Record<PopyFile, number> = {
   content,
-  bisou: fille,
-  fille,
-  intello,
-  gene,
-  surpris: nani,
-  nani,
-  enerve,
-  'intello-enerve': intelloEnerve,
-  malade,
   diable,
+  enerve,
+  fille,
+  gene,
+  'intello-enerve': intelloEnerve,
+  intello,
+  malade,
+  nani,
 };
 
 export function popyImage(mood: Mood): number {
-  return IMAGES[mood];
+  return SOURCES[FILES[mood]];
+}
+
+/** Le carré du dessin dans l'original, cf. `popy-crops.ts`. */
+export function popyCrop(mood: Mood): PopyCrop {
+  return POPY_CROPS[FILES[mood]];
 }

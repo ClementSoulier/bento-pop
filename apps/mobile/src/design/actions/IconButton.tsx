@@ -4,6 +4,7 @@ import { Icon, type IconWeight } from '../Icon';
 import type { IconName } from '../icons';
 import { Badge } from '../overlays/Badge';
 import { useTheme } from '../theme';
+import type { ColorToken } from '../tokens';
 import { usePress } from './usePress';
 
 export type IconButtonProps = {
@@ -20,6 +21,10 @@ export type IconButtonProps = {
   /** Un bouton bascule : son icône passe en `fill`, et il se dit sélectionné. */
   active?: boolean;
   disabled?: boolean;
+  /** L'icône d'un bouton moyen dans un cadre de 36 : l'effacement d'une recherche. */
+  iconSize?: number;
+  /** `text-primary` par défaut ; `text-tertiary` pour l'effacement d'une recherche. */
+  color?: ColorToken;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -38,6 +43,8 @@ export function IconButton({
   badge,
   active,
   disabled,
+  iconSize,
+  color = 'text-primary',
   style,
 }: IconButtonProps) {
   const { colors, palette, border } = useTheme();
@@ -75,11 +82,9 @@ export function IconButton({
         ) : null}
         <Icon
           name={icon}
-          size={size === 'sm' ? 20 : 24}
+          size={iconSize ?? (size === 'sm' ? 20 : 24)}
           weight={active ? 'fill' : weight}
-          color={
-            disabled ? 'text-tertiary' : variant === 'media' ? 'text-on-media' : 'text-primary'
-          }
+          color={disabled ? 'text-tertiary' : variant === 'media' ? 'text-on-media' : color}
         />
         {badge !== undefined ? (
           <Badge count={badge} style={{ position: 'absolute', top: 2, right: 0 }} />

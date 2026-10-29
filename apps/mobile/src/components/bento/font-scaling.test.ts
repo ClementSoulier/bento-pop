@@ -600,15 +600,30 @@ describe('toute l’app', () => {
    * police de la plateforme et applique celle de son style : aucun autre de ses
    * fichiers ne rend le `Text` de React Native. Ses composants (lot 3) écrivent
    * `<Text variant>`, et ce `Text` est le sien, jamais celui de React Native.
+   *
+   * Ses trois champs (lot 4) rendent un `TextInput`, figé lui aussi. Les deux
+   * qu'on lit prennent la police de `body-l` à la taille du système, par
+   * `fieldFont` ; celui du code est transparent, sous les cases qui montrent
+   * les chiffres.
    */
   it('fait passer chaque texte du design system v2 par son `Text`', () => {
     const own = texts.filter((t) => t.path.startsWith('src/design/'));
     const native = own.filter((t) => !systemText(t));
     assert.deepEqual(
-      native.map((t) => `${t.path} ${t.tag}`),
+      native.filter((t) => t.tag !== 'TextInput').map((t) => `${t.path} ${t.tag}`),
       ['src/design/Text.tsx NativeText'],
     );
     assert.ok(native.every(fixed), where(native));
+    const fields = native.filter((t) => t.tag === 'TextInput').map((t) => t.path);
+    assert.deepEqual(fields, [
+      'src/design/inputs/CodeField.tsx',
+      'src/design/inputs/SearchField.tsx',
+      'src/design/inputs/TextField.tsx',
+    ]);
+    for (const path of fields.filter((p) => !p.endsWith('CodeField.tsx'))) {
+      const source = readFileSync(join(APP_ROOT, path), 'utf8');
+      assert.match(source, /= fieldFont\(fontScale\);/, path);
+    }
     const users = [...new Set(own.filter(systemText).map((t) => t.path))];
     assert.ok(users.length >= 8, `${users.length} composants`);
     for (const path of users) {

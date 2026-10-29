@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { type } from './tokens';
-import { categoryOf, textStyle, type TextVariant } from './type';
+import { categoryOf, reachesWrapScale, textStyle, type TextVariant } from './type';
 
 const VARIANTS = Object.keys(type) as TextVariant[];
 
@@ -94,5 +94,13 @@ describe('styles de texte du design system v2', () => {
     const upper = VARIANTS.filter((v) => textStyle(v, 1).textTransform === 'uppercase');
     assert.equal(upper.length, 8);
     assert.ok(upper.includes('eyebrow'));
+  });
+
+  it('passent à la ligne dès 130 %, y compris le 1,3 en flottant simple d’Android', () => {
+    assert.equal(reachesWrapScale(Math.fround(1.3)), true);
+    assert.equal(reachesWrapScale(1.3), true);
+    assert.equal(reachesWrapScale(1.353), true);
+    assert.equal(reachesWrapScale(1.235), false);
+    assert.equal(reachesWrapScale(1), false);
   });
 });

@@ -12,7 +12,7 @@
 > transverses**, ceux du bento et du social venant avec leurs écrans ;
 > **les 72 icônes du dossier**, dans un composant maison ; un thème lu par
 > **`useTheme()`**, NativeWind retiré. D5 à D16 sont pris par la
-> spécification, D17 à D19 au lot 3.
+> spécification, D17 à D19 au lot 3, D20 à D23 au lot 4.
 >
 > **Le socle ne se voit pas** (D5) : à la fin du 30, chaque écran de l'app
 > est identique au pixel à ce qu'il était. Il pose ce que les chantiers 31
@@ -119,9 +119,10 @@ Relevé le 28 octobre 2026 sur `76bc053`, dans les 65 fichiers `.tsx` de
   après, sur les écrans de référence (§9).
 - Le système vit dans **`apps/mobile/src/design/`** : `tokens.ts` et
   `icons.ts` générés, `theme.tsx`, `type.ts`, `Text.tsx`, `Icon.tsx`,
-  `PopShadow.tsx`, `motion.ts` et `useMotion.ts` ; les composants rangés par
-  famille, comme les pages du catalogue : `structure/`, `actions/`, `brand/`,
-  et `overlays/` pour les calques et les retours.
+  `PopShadow.tsx`, `motion.ts`, `useMotion.ts` et `useAnnouncement.ts` ; les
+  composants rangés par famille, comme les pages du catalogue :
+  `structure/`, `actions/`, `brand/`, `inputs/` pour les listes et la
+  saisie, et `overlays/` pour les calques et les retours.
   `src/components/primitives/` (`StampButton`, `Toast`, `YellowBg`,
   `Sticker`…) et Bungee restent tant qu'un écran les emploie ; le chantier
   qui refait le dernier les retire (D13).
@@ -275,7 +276,10 @@ sur les tokens et le `Text` du système. Chacun a un rôle, un libellé et un
 - **`Toast`** : en bas, annoncé poliment, 4 s, 6 s avec une action, effacé
   au toucher ; branché seulement au 31.
 - **`Confetti`** : 600 ms, une fois par événement, rien avec le mouvement
-  réduit.
+  réduit (D20).
+- **Les feuilles et `Dialog`** se posent dans une `Modal`, qui couvre la
+  barre d'onglets et garde le focus ; `Toast` et `InAppNotice` se posent
+  dans leur parent (D22).
 - **`Avatar`** et **`Popy`** emploient les Popys de
   `packages/brand/assets/mascot/`, dont l'original de `popy-diable.png`
   (1000 × 1000), et non la découpe provisoire du dossier (D15).
@@ -296,7 +300,10 @@ sur les tokens et le `Text` du système. Chacun a un rôle, un libellé et un
   l'haptique. Au lot 3, `bentopop://dev/catalogue` mène aux pages
   `fondations`, `structure`, `actions` et `marque` ; `?only=Button` n'y montre
   qu'un composant, en haut, pour le capturer d'un seul écran. Le garde-fou
-  de la production est dans `app/dev/_layout.tsx`.
+  de la production est dans `app/dev/_layout.tsx`. Le lot 4 y ajoute
+  `saisie` et `calques`, dans l'ordre du README. Les calques s'y posent dans
+  le cadre de leur aperçu, sans `Modal` (`inline`, aux marges d'écran du
+  design, 62 et 34), et un bouton sous chacun l'ouvre pour de vrai.
 - Les chantiers 31 à 34 y ajoutent les leurs et s'en servent pour leurs
   recettes.
 
@@ -453,6 +460,56 @@ build de développement et une pile Supabase locale :
   Le petit bouton tertiaire n'est pas souligné, comme dans l'aperçu de
   `SectionHeader` (D19). Le `diable` est l'original de `packages/brand` (D15).
   `TabBar` n'est branchée sur la navigation qu'au 31.
+- **Deux écarts manqués**, relevés au lot 4 : `Popy`, `Avatar` et `AppIcon`
+  dessinaient Popy à 81 à 90 % de son aperçu, les originaux de
+  `packages/brand` gardant des marges transparentes que les découpes du
+  dossier n'ont pas (D21) ; et au Pixel, à 130 % tout juste, boutons, puces,
+  onglets et grand titre restaient comme à 100 %, Android donnant 1,3 en
+  1,2999999523. Corrigés au lot 4.
+
+### 10.4 Lot 4 · fait le 29 octobre 2026
+
+- **Les 21 composants** des deux dernières familles : `List`, `ListRow`,
+  `Switch`, `Checkbox`, `RadioRow`, `TextField`, `SearchField`, `CodeField`,
+  `Rule` dans `inputs/` ; `Sheet`, `SheetFooter`, `AskSheet`, `ActionSheet`,
+  `Dialog`, `Toast`, `Banner`, `InAppNotice`, `EmptyState`, `PromptCard`,
+  `Confetti`, `Skeleton` dans `overlays/`, avec `Badge` et `Spinner` du
+  lot 3. Avec eux `useAnnouncement`, qui dit au lecteur d'écran l'erreur
+  d'un champ, un toast, une notification ; `reachesWrapScale`, le seuil de
+  130 % comparé au centième ; `IconButton` prend une taille d'icône et une
+  couleur, pour l'effacement d'une recherche. Le catalogue gagne les pages
+  `saisie` et `calques`.
+- **Identiques à leurs aperçus**, à 100 %, au simulateur iPhone 17 Pro et à
+  l'émulateur Pixel 8 : 33 cadres d'accessibilité sur 33 aux mesures du CSS
+  (lignes de 52, interrupteurs de 52 sur 32, champs de 50 dans un cadre de
+  53, recherche de 42 dans 46, code de 370 sur 60, options de 56, boutons de
+  dialogue de 296 sur 44, pastille de 14). Les écarts voulus : la puce de
+  catégorie et la ligne de proposition de l'aperçu de `Sheet`, qui arrivent
+  au 32 ; les chiffres du code et le titre de `Dialog` en `title-2` (D17) ;
+  les confettis de l'aperçu d'`AskSheet`, saisis en pleine chute.
+- **Ouverts pour de vrai**, sur les deux appareils : chaque feuille et la
+  boîte de dialogue dans sa `Modal` (D22), dont l'arbre d'accessibilité ne
+  garde plus qu'elle. La feuille se ferme à la croix, au voile, à la poignée
+  tirée et au retour d'Android ; la boîte de dialogue à un bouton ou au
+  retour, jamais au voile ; une option du menu le ferme avant d'agir ; le
+  toast part de lui-même au bout de 6 s, la notification au glissé vers le
+  haut. Au Pixel, le clavier soulève la feuille, son pied posé sur lui.
+- **Le mouvement réduit**, filmé au Pixel : la feuille monte de sa hauteur
+  en temps normal, et paraît sinon d'un coup à sa place, translucide puis
+  opaque ; les confettis tombent puis s'effacent, ou ne paraissent dans
+  aucune image ; le squelette pulse, ou reste fixe.
+- **Les rôles**, lus par un compagnon `idb` neuf à chaque relevé (le sien
+  garde le rôle des vues recyclées) : la case à cocher se dit bouton
+  « coché » ou « non coché », le choix unique bouton sélectionné, la ligne à
+  interrupteur interrupteur avec sa description en indication, l'attente
+  « en cours », chaque champ son libellé, son aide et son erreur.
+- **Cinq défauts trouvés et corrigés** : Popy trop petite depuis le lot 3
+  (D21) ; au Pixel, le champ caché du code montrait le code sur la première
+  case, Android lisant `transparent` comme une couleur absente ; la poignée
+  d'une feuille et la notification ne recevaient jamais le glissé, React
+  Native 0.86 ne le proposant qu'à qui a pris le toucher au contact ; le pied
+  d'une feuille se faisait rogner quand la place manquait ; le seuil de
+  130 %, manqué au Pixel.
 - **À 130 et 200 %**, sur les deux appareils (iPhone en plus grande taille
   standard puis au-delà de 200 %, Pixel à 1,3 puis 2,0) : boutons et puces
   passent à la ligne, onglets, cases, titres d'affiche et pastilles s'arrêtent
@@ -475,10 +532,10 @@ build de développement et une pile Supabase locale :
 | 6 | Les 72 icônes générées, et `Icon` | ✅ lot 2 |
 | 7 | Les ombres franches identiques sur iOS et Android | ✅ lot 2 |
 | 8 | Le mouvement et sa variante réduite ; les cinq retours haptiques | ✅ lot 2 ; l'haptique ressentie à la recette sur appareil (29) |
-| 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | 🟡 18 : 16 au lot 3 (avec `Icon`), plus `Badge` et `Spinner` ; les 21 autres au lot 4 |
-| 10 | Les tests de règles verts sur `src/design/` | 🟡 verts au lot 3, à tenir au lot 4 |
+| 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | ✅ lot 4 : les 39, les écarts voulus aux §10.3 et 10.4 ; Popy et le seuil de 130 % du Pixel corrigés au lot 4 |
+| 10 | Les tests de règles verts sur `src/design/` | ✅ lot 4, la règle des textes étendue aux trois champs |
 | 11 | NativeWind retiré, les écrans de référence identiques au pixel | ✅ lot 1 |
-| 12 | La CI rejouée en local, verte | ⬜ |
+| 12 | La CI rejouée en local, verte | 🟡 verte à chaque lot, du 1 au 4 ; à rejouer sur la tête du lot 5 |
 
 ## 12. Décisions
 
@@ -500,9 +557,13 @@ build de développement et une pile Supabase locale :
 | **D14** | Les aperçus se comparent en tolérant l'écart de métrique de la police du système | Ils sont rendus avec Inter ; l'app emploie SF Pro et Roboto |
 | **D15** | `Avatar` et `Popy` emploient les Popys de `packages/brand`, dont l'original de `popy-diable` | Le dossier n'en a qu'une découpe provisoire de 256 px |
 | **D16** | Le contraste des couples nommés se prouve par un test, dans les deux thèmes | Le design l'annonce ; le test le garde quand un token change |
-| **D17** | Une taille que le CSS du dossier écrit hors des 22 styles prend le style le plus proche : onglets 16/20 et puces 14 en `label-m`, compte d'onglet et autocollant en `label-s`, sur-titre de `TopBar` 13/18 en `label-s`, pastille en `tab-label` 700 | Prise au lot 3. Le README du design range tout texte dans ses 22 styles ; un style de plus écrirait une taille hors du système, que `Text` ne plafonnerait pas |
+| **D17** | Une taille que le CSS du dossier écrit hors des 22 styles prend le style le plus proche : onglets 16/20 et puces 14 en `label-m`, compte d'onglet et autocollant en `label-s`, sur-titre de `TopBar` 13/18 en `label-s`, pastille en `tab-label` 700. Au lot 4 : texte saisi 17/22 et options d'`ActionSheet` en `body-l` (17/24 ; le champ garde sa hauteur de 53, ses marges passant de 14 à 13), case à cocher, invite et sous-titre de feuille 15/21 en `subhead`, sur-titre de feuille 13/18 en `label-s`, bannière 14/20 en `subhead`, chiffres du code 26/26 et titre de `Dialog` 20/26 en `title-2` | Prise au lot 3, étendue au lot 4. Le README du design range tout texte dans ses 22 styles ; un style de plus écrirait une taille hors du système, que `Text` ne plafonnerait pas. À égalité de taille, la hauteur de ligne départage, comme au lot 3 ; pour le titre de `Dialog`, à égalité des deux, le rang d'un titre de feuille |
 | **D18** | Dès 130 %, ce qui serait coupé passe à la ligne ou défile : libellés de puces et titre en ligne à la ligne, `Tabs` à la largeur de leurs libellés et défilants, actions du grand titre sous lui | Prise au lot 3, après trois coupures relevées à 200 %. Le design le demande des boutons ; les autres composants n'en disaient rien |
 | **D19** | Quand le CSS du dossier et son aperçu divergent, l'aperçu fait foi | Prise au lot 3 : le CSS souligne le petit bouton tertiaire, mais son `overflow: hidden` coupe le trait, et aucun aperçu ne le montre |
+| **D20** | Les confettis suivent leurs trajectoires du dossier, leurs durées de chute de 2 à 2,9 s ramenées à 600 ms écarts gardés (500 à 725 ms), puis s'effacent en 120 ms | Prise au lot 4. Le README et le token `celebrate` donnent 600 ms aux confettis ; le CSS du canevas les fait tomber 2,4 s en moyenne et les laisse à l'écran, ce qu'une app ne peut garder sur ses boutons |
+| **D21** | Popy se dessine depuis les originaux de `packages/brand` cadrés comme les découpes du dossier : un carré de la plus grande dimension du dessin, centré sur lui (`popy-crops.ts`, recalculé par un test depuis les PNG) | Prise au lot 4, après un écart manqué au lot 3 : sans ce cadrage, `Popy`, `Avatar` et `AppIcon` dessinaient Popy à 81 à 90 % de leurs aperçus. Refaites ainsi, les découpes coïncident au pixel avec celles du dossier (IoU 1,000), sauf le `diable` (D15) |
+| **D22** | Les feuilles et `Dialog` se posent dans une `Modal` ; `Toast` et `InAppNotice` dans leur parent, la racine de l'app au 31 ; au catalogue, tous dans le cadre de leur aperçu (`inline`) | Prise au lot 4. La `Modal` couvre la barre d'onglets, que le design veut sous le voile, se ferme au retour d'Android, et garde le focus : dans les arbres d'accessibilité des deux appareils, il ne reste qu'elle. Un toast ou une notification ne prennent pas le focus |
+| **D23** | Aucun composant ne joue d'haptique : le succès des confettis, l'avertissement d'une confirmation destructive, la sélection d'un interrupteur reviennent à l'écran | Prise au lot 4, dans la ligne de D11 et des composants du lot 3, qui n'en jouent pas. L'écran sait si l'événement en mérite un ; le catalogue, lui, n'en joue aucun |
 
 ## 13. Suivis
 
@@ -514,3 +575,7 @@ build de développement et une pile Supabase locale :
   bento.
 - **Le catalogue en production** : son renvoi à l'accueil, à éprouver sur une
   build de production, au lot 5.
+- **Le clavier à l'écran de l'iPhone** sous une feuille : le simulateur tient
+  un clavier matériel, seul le Pixel l'a montré au lot 4 ; à la recette (§9).
+- **`Tag` et `ProposeRow`**, que l'aperçu de `Sheet` pose dans sa feuille,
+  arrivent au 32 ; `Sheet` reçoit déjà la puce par `eyebrowLeading`.

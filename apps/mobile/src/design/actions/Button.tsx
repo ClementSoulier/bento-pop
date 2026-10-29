@@ -14,7 +14,7 @@ import { Spinner } from '../overlays/Spinner';
 import { PopShadow } from '../PopShadow';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { WRAP_FONT_SCALE } from '../type';
+import { reachesWrapScale } from '../type';
 import { usePress } from './usePress';
 
 export type ButtonVariant =
@@ -87,7 +87,7 @@ export function Button({
   const blocked = Boolean(disabled || loading);
   const dimmed = Boolean(disabled && !loading);
   const tertiary = variant === 'tertiary' || variant === 'tertiary-danger';
-  const wraps = label.length > WRAP_LENGTH || fontScale >= WRAP_FONT_SCALE;
+  const wraps = label.length > WRAP_LENGTH || reachesWrapScale(fontScale);
 
   const looks: Record<ButtonVariant, { bg: string; fg: string; pressedBg?: string }> = {
     primary: { bg: colors.accent, fg: colors['on-accent'], pressedBg: colors['accent-pressed'] },

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { WRAP_FONT_SCALE } from '../type';
+import { reachesWrapScale } from '../type';
 
 export type TabsItem = { label: string; count?: number };
 
@@ -33,7 +33,7 @@ export type TabsProps = {
 export function Tabs({ items, value = 0, onChange, fill, border = true }: TabsProps) {
   const { colors, border: borders } = useTheme();
   const { fontScale } = useWindowDimensions();
-  const scrolls = fontScale >= WRAP_FONT_SCALE;
+  const scrolls = reachesWrapScale(fontScale);
   const list = items.map((item) => (typeof item === 'string' ? { label: item } : item));
   const frame: ViewStyle = {
     backgroundColor: colors['bg-app'],

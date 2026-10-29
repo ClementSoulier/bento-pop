@@ -7,7 +7,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { timingConfig, useMotion } from '../useMotion';
-import { popyImage, type Mood } from './popy-images';
+import type { Mood } from './popy-images';
+import { PopyImage } from './PopyImage';
 
 export type PopyProps = {
   mood?: Mood;
@@ -55,11 +56,11 @@ export function Popy({ mood = 'content', size = 120, tilt = 0, wiggle, alt }: Po
         importantForAccessibility: 'no-hide-descendants' as const,
       };
   return (
-    <Animated.Image
+    <Animated.View
       {...accessibility}
-      source={popyImage(mood)}
-      resizeMode="contain"
       style={[{ width: size, height: size, transformOrigin: '50% 80%' }, rotation]}
-    />
+    >
+      <PopyImage mood={mood} size={size} />
+    </Animated.View>
   );
 }

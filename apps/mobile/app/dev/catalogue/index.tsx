@@ -16,6 +16,17 @@ const PAGES: { href: Href; title: string; detail: string }[] = [
   },
   { href: '/dev/catalogue/actions', title: 'Actions', detail: 'Button, IconButton, Chip' },
   {
+    href: '/dev/catalogue/saisie',
+    title: 'Listes et saisie',
+    detail: 'List, ListRow, Switch, Checkbox, RadioRow, TextField, SearchField, CodeField, Rule',
+  },
+  {
+    href: '/dev/catalogue/calques',
+    title: 'Calques et retours',
+    detail:
+      'Sheet, SheetFooter, AskSheet, ActionSheet, Dialog, Toast, Banner, InAppNotice, EmptyState, PromptCard, Confetti, Skeleton, Spinner, Badge',
+  },
+  {
     href: '/dev/catalogue/marque',
     title: 'Marque',
     detail: 'Popy, Avatar, Logo, AppIcon, Sticker, Display',
@@ -25,8 +36,7 @@ const PAGES: { href: Href; title: string; detail: string }[] = [
 /**
  * Le catalogue du design system v2 (chantier 30, D12), ouvert par
  * `bentopop://dev/catalogue` : une page par famille, comme le dossier de la
- * refonte. Les listes, la saisie, les calques et les retours y entrent au
- * lot 4.
+ * refonte, dans l'ordre de son README.
  */
 export default function Catalogue() {
   const { colors, space, border } = useTheme();
