@@ -67,19 +67,28 @@ export type DesignTextStyle = {
   textTransform?: 'uppercase';
 };
 
+/** Une graisse que le design donne à un style le temps d'un état : l'onglet courant, un compteur. */
+export type TextWeight = 400 | 500 | 600 | 700;
+
 /**
  * Le style d'un texte du système à la taille `fontScale` du système, plafonnée
  * selon sa catégorie : taille, hauteur de ligne et approche grandissent du même
- * facteur, cf. `scaledType`.
+ * facteur, cf. `scaledType`. `weight` remplace la graisse du style, jamais sa
+ * taille.
  */
-export function textStyle(variant: TextVariant, fontScale: number): DesignTextStyle {
+export function textStyle(
+  variant: TextVariant,
+  fontScale: number,
+  weight?: TextWeight,
+): DesignTextStyle {
   const style: (typeof TYPE)[TextVariant] = TYPE[variant];
   const cap = CATEGORY_MAX_FONT_MULTIPLIER[categoryOf(variant)];
   const { fontSize, lineHeight } = scaledType(fontScale, cap, style.fontSize, style.lineHeight);
   const result: DesignTextStyle = { fontSize, lineHeight };
-  const fontFamily = fontFamilyOf(style.family, style.fontWeight);
+  const fontWeight = weight ?? style.fontWeight;
+  const fontFamily = fontFamilyOf(style.family, fontWeight);
   if (fontFamily) result.fontFamily = fontFamily;
-  else result.fontWeight = String(style.fontWeight) as DesignTextStyle['fontWeight'];
+  else result.fontWeight = String(fontWeight) as DesignTextStyle['fontWeight'];
   if ('letterSpacing' in style) {
     result.letterSpacing =
       Math.round(style.letterSpacing * (fontSize / style.fontSize) * 100) / 100;

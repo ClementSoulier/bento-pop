@@ -14,6 +14,8 @@ export type IconProps = {
   size?: number;
   /** Un token de couleur, `text-primary` par défaut. */
   color?: ColorToken;
+  /** Une couleur déjà résolue, celle du libellé d'un bouton, à la place de `color`. */
+  tint?: string;
   /** Seulement quand l'icône porte seule un sens : elle devient une image ainsi nommée. */
   label?: string;
 };
@@ -26,7 +28,14 @@ export type IconProps = {
  * d'écran : c'est le bouton qui la porte qui se nomme. La taille ne suit pas
  * celle du texte.
  */
-export function Icon({ name, weight = 'bold', size, color = 'text-primary', label }: IconProps) {
+export function Icon({
+  name,
+  weight = 'bold',
+  size,
+  color = 'text-primary',
+  tint,
+  label,
+}: IconProps) {
   const { colors, size: sizes } = useTheme();
   const side = size ?? sizes.icon;
   const accessibility = label
@@ -38,7 +47,7 @@ export function Icon({ name, weight = 'bold', size, color = 'text-primary', labe
       };
   return (
     <Svg width={side} height={side} viewBox="0 0 256 256" {...accessibility}>
-      <Path d={icons[name][weight]} fill={colors[color]} />
+      <Path d={icons[name][weight]} fill={tint ?? colors[color]} />
     </Svg>
   );
 }

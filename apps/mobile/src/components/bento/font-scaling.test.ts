@@ -349,7 +349,11 @@ describe('réglages et onglet Profil', () => {
     const measured = inputs.filter(
       (t) => !/\bheight:/.test(t.styleSource) || !/\bfontScaleFor\(/.test(t.styleSource),
     );
-    assert.equal(measured.length, 0, `hauteur ou taille laissée à la mesure : ${linesOf(measured)}`);
+    assert.equal(
+      measured.length,
+      0,
+      `hauteur ou taille laissée à la mesure : ${linesOf(measured)}`,
+    );
   });
 
   for (const [path, glyphs] of FILES) {
@@ -594,15 +598,24 @@ describe('toute l’app', () => {
   /**
    * Le design system v2 n'a qu'un texte, `src/design/Text.tsx`, qui fige la
    * police de la plateforme et applique celle de son style : aucun autre de ses
-   * fichiers ne rend le `Text` de React Native.
+   * fichiers ne rend le `Text` de React Native. Ses composants (lot 3) écrivent
+   * `<Text variant>`, et ce `Text` est le sien, jamais celui de React Native.
    */
   it('fait passer chaque texte du design system v2 par son `Text`', () => {
     const own = texts.filter((t) => t.path.startsWith('src/design/'));
+    const native = own.filter((t) => !systemText(t));
     assert.deepEqual(
-      own.map((t) => `${t.path} ${t.tag}`),
+      native.map((t) => `${t.path} ${t.tag}`),
       ['src/design/Text.tsx NativeText'],
     );
-    assert.ok(own.every(fixed), where(own));
+    assert.ok(native.every(fixed), where(native));
+    const users = [...new Set(own.filter(systemText).map((t) => t.path))];
+    assert.ok(users.length >= 8, `${users.length} composants`);
+    for (const path of users) {
+      const source = readFileSync(join(APP_ROOT, path), 'utf8');
+      assert.match(source, /import \{ Text \} from '\.\.\/Text';/, path);
+      assert.doesNotMatch(source, /import \{[^}]*\bText\b[^}]*\} from 'react-native'/, path);
+    }
   });
 
   it('prend ses plafonds dans `font-scaling.ts`, jamais en nombres recopiés', () => {

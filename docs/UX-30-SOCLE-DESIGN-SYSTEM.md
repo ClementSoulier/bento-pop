@@ -12,7 +12,7 @@
 > transverses**, ceux du bento et du social venant avec leurs écrans ;
 > **les 72 icônes du dossier**, dans un composant maison ; un thème lu par
 > **`useTheme()`**, NativeWind retiré. D5 à D16 sont pris par la
-> spécification.
+> spécification, D17 à D19 au lot 3.
 >
 > **Le socle ne se voit pas** (D5) : à la fin du 30, chaque écran de l'app
 > est identique au pixel à ce qu'il était. Il pose ce que les chantiers 31
@@ -119,8 +119,9 @@ Relevé le 28 octobre 2026 sur `76bc053`, dans les 65 fichiers `.tsx` de
   après, sur les écrans de référence (§9).
 - Le système vit dans **`apps/mobile/src/design/`** : `tokens.ts` et
   `icons.ts` générés, `theme.tsx`, `type.ts`, `Text.tsx`, `Icon.tsx`,
-  `PopShadow.tsx`, `motion.ts` et `useMotion.ts`, et un dossier par
-  composant.
+  `PopShadow.tsx`, `motion.ts` et `useMotion.ts` ; les composants rangés par
+  famille, comme les pages du catalogue : `structure/`, `actions/`, `brand/`,
+  et `overlays/` pour les calques et les retours.
   `src/components/primitives/` (`StampButton`, `Toast`, `YellowBg`,
   `Sticker`…) et Bungee restent tant qu'un écran les emploie ; le chantier
   qui refait le dernier les retire (D13).
@@ -292,7 +293,10 @@ sur les tokens et le `Text` du système. Chacun a un rôle, un libellé et un
   (variantes, désactivé, chargement, erreur), sous le nom de son
   `apercu.png`. La première, posée au lot 2, montre les fondations : les 72
   icônes dans leurs deux graisses, les trois ombres, le mouvement et
-  l'haptique.
+  l'haptique. Au lot 3, `bentopop://dev/catalogue` mène aux pages
+  `fondations`, `structure`, `actions` et `marque` ; `?only=Button` n'y montre
+  qu'un composant, en haut, pour le capturer d'un seul écran. Le garde-fou
+  de la production est dans `app/dev/_layout.tsx`.
 - Les chantiers 31 à 34 y ajoutent les leurs et s'en servent pour leurs
   recettes.
 
@@ -348,7 +352,7 @@ build de développement et une pile Supabase locale :
 | 1 | Les tokens et `useTheme`, les polices, `Text` et ses plafonds ; NativeWind retiré | tests verts ; les écrans de référence identiques au pixel |
 | 2 | Les icônes, les ombres, le mouvement, l'haptique | `Icon` dessine les 72 ; l'ombre franche mesurée sur l'émulateur |
 | 3 | Structure, actions et marque (16 composants), et le catalogue | chaque composant identique à son aperçu, à 100, 130 et 200 % |
-| 4 | Listes et saisie, calques et retours (23 composants) | idem ; `Dialog` garde le focus |
+| 4 | Listes et saisie, calques et retours (23 composants, dont `Badge` et `Spinner`, faits au lot 3) | idem ; `Dialog` garde le focus |
 | 5 | La recette complète (§9), la roadmap et la part du 29 | la DoD |
 
 ### 10.1 Lot 1 · fait le 28 octobre 2026
@@ -424,6 +428,41 @@ build de développement et une pile Supabase locale :
 - **Les écrans actuels ne changent pas** (D5) : le lot ajoute des fichiers et
   cinq fonctions à `haptics.ts`, sans toucher au code d'un écran.
 
+### 10.3 Lot 3 · fait le 29 octobre 2026
+
+- **Les 15 composants** de la structure, des actions et de la marque, `Icon`
+  étant du lot 2 : `Screen`, `TopBar`, `TabBar`, `Tabs`, `Steps`,
+  `SectionHeader` ; `Button`, `IconButton`, `Chip` ; `Popy`, `Avatar`, `Logo`,
+  `AppIcon`, `Sticker`, `Display`. Avec eux `BrandGround`, le jaune à pois des
+  moments de marque, et deux composants de la famille des calques dont ils
+  ont besoin, `Badge` et `Spinner`. `Text` prend une graisse d'état
+  (`weight`), et `ThemeProvider` un thème par sous-arbre, pour le sombre du
+  catalogue.
+- **Identiques à leurs aperçus**, à 100 %, au simulateur iPhone 17 Pro et à
+  l'émulateur Pixel 8 : chaque composant capturé seul et posé à côté de son
+  `apercu.png`, un point de l'app pour un pixel de l'aperçu. Mesures : 26
+  cadres d'accessibilité sur 27 aux dimensions du design (boutons de 52, 44 et
+  32, boutons-icônes de 44, puces de 36 et 40, onglets de 56 et 44, logo de
+  30 sur 130) ; le 27e, un onglet réparti de 198 au lieu de 199, tient au
+  filet du cadre du catalogue. Chaque bouton est à 2 points au plus de la
+  largeur de son aperçu, chaque suggestion à 1 : même Fredoka, mêmes marges.
+- **Les écarts voulus** : les tailles que le CSS du dossier écrit hors des 22
+  styles prennent le plus proche (D17) ; les puces de filtre en sont 6 à 10
+  points plus larges. `Display` cerne sa fin de copies d'encre décalées,
+  React Native ne traçant pas le contour d'un texte, et la passe à la ligne.
+  Le petit bouton tertiaire n'est pas souligné, comme dans l'aperçu de
+  `SectionHeader` (D19). Le `diable` est l'original de `packages/brand` (D15).
+  `TabBar` n'est branchée sur la navigation qu'au 31.
+- **À 130 et 200 %**, sur les deux appareils (iPhone en plus grande taille
+  standard puis au-delà de 200 %, Pixel à 1,3 puis 2,0) : boutons et puces
+  passent à la ligne, onglets, cases, titres d'affiche et pastilles s'arrêtent
+  à 130 %. Trois défauts trouvés et corrigés (D18) : les `Tabs` coupaient
+  « Abonnements » en son milieu, une longue suggestion finissait en points de
+  suspension, et sur Android le grand titre serré contre sa pilule coupait
+  « neuf » en deux.
+- Aucun avertissement de React Native dans la console de l'app, relue par son
+  débogueur après les trois pages.
+
 ## 11. Definition of Done
 
 | # | Point | État |
@@ -436,8 +475,8 @@ build de développement et une pile Supabase locale :
 | 6 | Les 72 icônes générées, et `Icon` | ✅ lot 2 |
 | 7 | Les ombres franches identiques sur iOS et Android | ✅ lot 2 |
 | 8 | Le mouvement et sa variante réduite ; les cinq retours haptiques | ✅ lot 2 ; l'haptique ressentie à la recette sur appareil (29) |
-| 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | ⬜ |
-| 10 | Les tests de règles verts sur `src/design/` | ⬜ |
+| 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | 🟡 18 : 16 au lot 3 (avec `Icon`), plus `Badge` et `Spinner` ; les 21 autres au lot 4 |
+| 10 | Les tests de règles verts sur `src/design/` | 🟡 verts au lot 3, à tenir au lot 4 |
 | 11 | NativeWind retiré, les écrans de référence identiques au pixel | ✅ lot 1 |
 | 12 | La CI rejouée en local, verte | ⬜ |
 
@@ -461,6 +500,9 @@ build de développement et une pile Supabase locale :
 | **D14** | Les aperçus se comparent en tolérant l'écart de métrique de la police du système | Ils sont rendus avec Inter ; l'app emploie SF Pro et Roboto |
 | **D15** | `Avatar` et `Popy` emploient les Popys de `packages/brand`, dont l'original de `popy-diable` | Le dossier n'en a qu'une découpe provisoire de 256 px |
 | **D16** | Le contraste des couples nommés se prouve par un test, dans les deux thèmes | Le design l'annonce ; le test le garde quand un token change |
+| **D17** | Une taille que le CSS du dossier écrit hors des 22 styles prend le style le plus proche : onglets 16/20 et puces 14 en `label-m`, compte d'onglet et autocollant en `label-s`, sur-titre de `TopBar` 13/18 en `label-s`, pastille en `tab-label` 700 | Prise au lot 3. Le README du design range tout texte dans ses 22 styles ; un style de plus écrirait une taille hors du système, que `Text` ne plafonnerait pas |
+| **D18** | Dès 130 %, ce qui serait coupé passe à la ligne ou défile : libellés de puces et titre en ligne à la ligne, `Tabs` à la largeur de leurs libellés et défilants, actions du grand titre sous lui | Prise au lot 3, après trois coupures relevées à 200 %. Le design le demande des boutons ; les autres composants n'en disaient rien |
+| **D19** | Quand le CSS du dossier et son aperçu divergent, l'aperçu fait foi | Prise au lot 3 : le CSS souligne le petit bouton tertiaire, mais son `overflow: hidden` coupe le trait, et aucun aperçu ne le montre |
 
 ## 13. Suivis
 

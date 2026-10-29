@@ -69,6 +69,19 @@ describe('styles de texte du design system v2', () => {
     assert.equal(textStyle('title-1', 1).fontWeight, undefined);
   });
 
+  it('changent de graisse le temps d’un état, jamais de taille', () => {
+    // L'onglet courant : le libellé des onglets passe de 500 à 600.
+    assert.equal(textStyle('tab-label', 1, 600).fontFamily, 'Fredoka-SemiBold');
+    assert.equal(textStyle('tab-label', 1, 700).fontFamily, 'Fredoka-Bold');
+    assert.deepEqual(
+      { ...textStyle('tab-label', 1.3, 600), fontFamily: undefined },
+      { ...textStyle('tab-label', 1.3), fontFamily: undefined },
+    );
+    // La police du système prend la graisse elle-même.
+    assert.equal(textStyle('caption', 1, 600).fontWeight, '600');
+    assert.equal(textStyle('caption', 1, 600).fontFamily, undefined);
+  });
+
   it('ne nomment que des polices que l’app charge', () => {
     const fonts = readFileSync(join(__dirname, '..', 'lib', 'fonts.ts'), 'utf8');
     const families = new Set(VARIANTS.map((v) => textStyle(v, 1).fontFamily).filter(Boolean));

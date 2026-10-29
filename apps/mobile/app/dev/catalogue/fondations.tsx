@@ -1,4 +1,3 @@
-import { Redirect } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -23,16 +22,11 @@ import {
 } from '@/lib/haptics';
 
 /**
- * Le catalogue du design system v2 (chantier 30, D12), réservé au
- * développement et ouvert par `bentopop://dev/catalogue` : aucun écran n'y
- * mène, et une build de production renvoie à l'accueil.
- *
- * Lot 2 : les fondations, à savoir les 72 icônes dans leurs deux graisses, les
- * trois ombres, le mouvement et l'haptique. Les composants y entrent aux lots
- * 3 et 4.
+ * Le catalogue du design system v2 (chantier 30, D12), page des fondations,
+ * `bentopop://dev/catalogue/fondations` : les 72 icônes dans leurs deux
+ * graisses, les trois ombres, le mouvement et l'haptique (lot 2).
  */
-export default function Catalogue() {
-  if (!__DEV__) return <Redirect href="/" />;
+export default function Fondations() {
   return <Foundations />;
 }
 

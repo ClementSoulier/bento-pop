@@ -5,13 +5,15 @@ import {
 } from 'react-native';
 import { useTheme } from './theme';
 import type { ColorToken } from './tokens';
-import { textStyle, type TextVariant } from './type';
+import { textStyle, type TextVariant, type TextWeight } from './type';
 
 export type TextProps = NativeTextProps & {
   /** Un des 22 styles du design, `body` par défaut. */
   variant?: TextVariant;
   /** Un token de couleur, `text-primary` par défaut. */
   color?: ColorToken;
+  /** La graisse d'un état (l'onglet courant passe à 600) ; la taille reste celle du style. */
+  weight?: TextWeight;
 };
 
 /**
@@ -24,14 +26,20 @@ export type TextProps = NativeTextProps & {
  * pas `lineHeight` sur Android. `allowFontScaling` est donc posé après les
  * props, pour que l'appelant ne puisse pas le rendre à la plateforme.
  */
-export function Text({ variant = 'body', color = 'text-primary', style, ...props }: TextProps) {
+export function Text({
+  variant = 'body',
+  color = 'text-primary',
+  weight,
+  style,
+  ...props
+}: TextProps) {
   const { fontScale } = useWindowDimensions();
   const { colors } = useTheme();
   return (
     <NativeText
       {...props}
       allowFontScaling={false}
-      style={[textStyle(variant, fontScale), { color: colors[color] }, style]}
+      style={[textStyle(variant, fontScale, weight), { color: colors[color] }, style]}
     />
   );
 }

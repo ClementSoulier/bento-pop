@@ -36,8 +36,19 @@ export const THEMES: Record<Scheme, Theme> = {
 
 const ThemeContext = createContext<Theme>(THEMES.light);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  return <ThemeContext.Provider value={THEMES.light}>{children}</ThemeContext.Provider>;
+/**
+ * Le thème d'un sous-arbre, le clair par défaut. La racine de l'app ne passe
+ * rien ; `Screen theme="dark"` ne sert qu'au catalogue, tant que le sombre
+ * n'est pas décliné.
+ */
+export function ThemeProvider({
+  scheme = 'light',
+  children,
+}: {
+  scheme?: Scheme;
+  children: ReactNode;
+}) {
+  return <ThemeContext.Provider value={THEMES[scheme]}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): Theme {
