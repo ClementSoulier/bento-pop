@@ -1,0 +1,27 @@
+<!-- @dsCard group="Actions" height=326 -->
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Button</title>
+<style>
+  body { margin: 0; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-text); }
+  .stage { padding: 20px; }
+</style></head>
+<body>
+<div id="root" class="stage mbp-root"></div>
+<script>
+var M = window.MonBentoPop, h = React.createElement;
+var TMDB='Affiche : The Movie Database (TMDb)';
+var THEO=[{title:'Ponyo'},{title:'The Office'},{title:'Hans Zimmer',subtitle:'compositeur de films',art:'studio',credit:'Photo : ColliderVideo'},{title:'How To Train Your Dragon',subtitle:'John Powell',art:'sunset',credit:'Photo : DreamWorks'},{title:'Squeezie',subtitle:'vidéaste web français',art:'neon',credit:'Photo : Zack Nani'},{title:'Le Pont Neuf'}];
+var LEA=[{title:'Inception',subtitle:'2010',art:'city',credit:TMDB},{title:'Breaking Bad',subtitle:'2008',art:'meadow',credit:TMDB},{title:'Lady Gaga',subtitle:'chanteuse américaine',art:'stage',credit:'Photo : Agustina Arán'},{title:'Billie Jean',subtitle:'Thriller, Michael Jackson',art:'neon'},{title:'Squeezie',subtitle:'vidéaste web français',art:'studio'},{title:'Paris',subtitle:'France',art:'dusk'}];
+function box(w,hh,kids,theme){return h('div',{'data-theme':theme,style:{position:'relative',width:w,height:hh,overflow:'hidden',background:'var(--bg-app)',color:'var(--text-primary)',borderRadius:16,boxShadow:'inset 0 0 0 1px var(--border-subtle)',flex:'none'}},kids);}
+function col(gap,kids,st){return h('div',{style:Object.assign({display:'flex',flexDirection:'column',gap:gap},st||{})},kids);}
+function row(gap,kids,st){return h('div',{style:Object.assign({display:'flex',flexWrap:'wrap',alignItems:'center',gap:gap},st||{})},kids);}
+
+ReactDOM.createRoot(document.getElementById('root')).render(col(14,[
+ row(12,[h(M.Button,{key:1},'Publier mon bento'),h(M.Button,{key:2,variant:'secondary',icon:'squares-four',size:'md'},'Modifier'),h(M.Button,{key:3,variant:'secondary',icon:'check',size:'md'},'Abonné')]),
+ row(12,[h(M.Button,{key:1,variant:'danger',size:'md'},'Supprimer'),h(M.Button,{key:2,variant:'tertiary',size:'md'},'Plus tard'),h(M.Button,{key:3,variant:'tertiary-danger',size:'md'},'Le supprimer et continuer')]),
+ row(12,[h(M.Button,{key:1,size:'sm'},'Accepter'),h(M.Button,{key:2,size:'sm',variant:'secondary'},'Refuser'),h(M.Button,{key:3,loading:true,size:'md'},'Connexion…'),h(M.Button,{key:4,disabled:true,size:'md'},'Recevoir un code')]),
+ h('div',{key:'b',className:'mbp-brand-ground',style:{padding:16,borderRadius:16,width:360}},h(M.Button,{variant:'on-brand',block:true},'Commencer'))]));
+</script>
+</body>
+</html>
