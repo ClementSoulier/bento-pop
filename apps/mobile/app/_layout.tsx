@@ -1,4 +1,3 @@
-import '../src/styles/global.css';
 import { startDraft } from '@/state/draft-mirror';
 import { Stack, router, usePathname, useRootNavigationState } from 'expo-router';
 import { useFonts } from 'expo-font';
@@ -24,10 +23,12 @@ import { runStartupUpdateWithExpo } from '@/lib/ota-runtime';
 import type { OtaPhase } from '@/lib/ota';
 import { startPushRegistration, startPushResponses } from '@/lib/push-runtime';
 import { AccountResponder } from '@/components/account/AccountResponder';
+import { ThemeProvider } from '@/design';
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
- * providers (React Query, gesture handler, safe area), puis délègue au Stack.
+ * providers (React Query, gesture handler, safe area, thème du design system
+ * v2), puis délègue au Stack.
  */
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(FONTS);
@@ -138,68 +139,70 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: '#fbbf24' },
-            }}
-          >
-            <Stack.Screen
-              name="search-modal"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                contentStyle: { backgroundColor: '#fbf3de' },
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <StatusBar style="dark" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: '#fbbf24' },
               }}
-            />
-            {/* Chantier 22 : les commentaires d'un bento, et « Signaler ». */}
-            <Stack.Screen
-              name="comments/[bentoId]"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                contentStyle: { backgroundColor: '#fbf3de' },
-              }}
-            />
-            <Stack.Screen
-              name="report"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                contentStyle: { backgroundColor: '#fbf3de' },
-              }}
-            />
-            {/* Chantier 12 (D2) : « Tes pourquoi ». */}
-            <Stack.Screen
-              name="whys/[bentoId]"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                contentStyle: { backgroundColor: '#fbf3de' },
-              }}
-            />
-            {/* Chantier 28, D4 : la feuille « Garde ton bento ». */}
-            <Stack.Screen
-              name="account/keep-offer"
-              options={{
-                presentation: 'formSheet',
-                sheetAllowedDetents: 'fitToContents',
-                sheetGrabberVisible: true,
-                // Android dessine sinon la feuille à angles droits ; iOS garde
-                // les siens.
-                sheetCornerRadius: Platform.OS === 'android' ? 28 : undefined,
-                contentStyle: { backgroundColor: '#fbf3de' },
-              }}
-            />
-          </Stack>
-          <PushResponder />
-          <AccountResponder />
-          <UpdateBanner />
-          <OfflineBanner />
-          <ToastHost />
-        </QueryClientProvider>
+            >
+              <Stack.Screen
+                name="search-modal"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                  contentStyle: { backgroundColor: '#fbf3de' },
+                }}
+              />
+              {/* Chantier 22 : les commentaires d'un bento, et « Signaler ». */}
+              <Stack.Screen
+                name="comments/[bentoId]"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                  contentStyle: { backgroundColor: '#fbf3de' },
+                }}
+              />
+              <Stack.Screen
+                name="report"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                  contentStyle: { backgroundColor: '#fbf3de' },
+                }}
+              />
+              {/* Chantier 12 (D2) : « Tes pourquoi ». */}
+              <Stack.Screen
+                name="whys/[bentoId]"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                  contentStyle: { backgroundColor: '#fbf3de' },
+                }}
+              />
+              {/* Chantier 28, D4 : la feuille « Garde ton bento ». */}
+              <Stack.Screen
+                name="account/keep-offer"
+                options={{
+                  presentation: 'formSheet',
+                  sheetAllowedDetents: 'fitToContents',
+                  sheetGrabberVisible: true,
+                  // Android dessine sinon la feuille à angles droits ; iOS garde
+                  // les siens.
+                  sheetCornerRadius: Platform.OS === 'android' ? 28 : undefined,
+                  contentStyle: { backgroundColor: '#fbf3de' },
+                }}
+              />
+            </Stack>
+            <PushResponder />
+            <AccountResponder />
+            <UpdateBanner />
+            <OfflineBanner />
+            <ToastHost />
+          </QueryClientProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -88,6 +88,11 @@ const where = (list: Tag[]) => list.map((t) => `${t.path}, ligne ${t.line}`).joi
  * `src/lib/a11y-states.ts`, qui les remplace sur iOS par des traits natifs et
  * une valeur française. Seul l'interrupteur garde son état coché : React
  * Native lui donne le trait natif, que VoiceOver traduit.
+ *
+ * Les actions aussi : la nouvelle architecture fait de chaque action déclarée
+ * une action de VoiceOver, nommée par son libellé, à défaut par son nom.
+ * La notification du design system proposait ainsi « activate » (chantier 30,
+ * lot 5).
  */
 describe('ce que React Native lirait en anglais sur iOS', () => {
   const all = tags(null);
@@ -108,6 +113,15 @@ describe('ce que React Native lirait en anglais sur iOS', () => {
       return /\b(checked|busy|expanded)\b/.test(state);
     });
     assert.equal(literal.length, 0, `état lu en anglais : ${where(literal)}`);
+  });
+
+  it('chaque action d’accessibilité porte un libellé', () => {
+    const unlabelled = all.filter((t) => {
+      const actions = t.attributes.get('accessibilityActions');
+      if (typeof actions !== 'string') return false;
+      return (actions.match(/\{[^{}]*\}/g) ?? []).some((entry) => !/\blabel\s*:/.test(entry));
+    });
+    assert.equal(unlabelled.length, 0, `action nommée en anglais : ${where(unlabelled)}`);
   });
 });
 
