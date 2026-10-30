@@ -49,6 +49,16 @@ export function reachesWrapScale(fontScale: number): boolean {
 }
 
 /**
+ * La part de sa taille que garde une affiche dont le mot le plus long, mesuré
+ * à la taille du style, ne tiendrait pas dans sa largeur (D24) : juste assez
+ * pour qu'il tienne, au millième en dessous, jamais plus que sa taille.
+ */
+export function displayFit(width: number, widest: number): number {
+  if (width <= 0 || widest <= width) return 1;
+  return Math.floor(((width - 1) / widest) * 1000) / 1000;
+}
+
+/**
  * La police de chaque rôle, une famille par graisse : Android ne choisit pas
  * une graisse dans une famille chargée à la main (D7). `undefined` : la police
  * du système, qui prend sa graisse.

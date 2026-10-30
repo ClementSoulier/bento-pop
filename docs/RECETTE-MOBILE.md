@@ -748,6 +748,19 @@ clavier **avant** toute frappe via `idb`. Pour saisir du texte sans perdre le
 clavier logiciel, taper les touches une par une avec `idb ui tap` sur les
 coordonnées du clavier.
 
+Le redémarrage ne suffit pas toujours : au lot 5 du chantier 30, un iPhone SE
+démarré le matin, sans aucune frappe, n'affichait toujours pas son clavier.
+Remède sûr : débrancher le clavier matériel comme le fait le menu de
+Simulator.app, que ce soit pour un appareil du jeu par défaut ou d'un jeu à
+part, puis le rebrancher après la capture.
+
+```bash
+cd apps/mobile
+xcrun swift scripts/clavier-simulateur.swift <UDID> 0 [jeu d'appareils]
+# toucher le champ par idb ui tap, sans rien taper ; capturer
+xcrun swift scripts/clavier-simulateur.swift <UDID> 1 [jeu d'appareils]
+```
+
 ### Installer une build déjà compilée sur un second simulateur
 
 Inutile de recompiler pour comparer deux tailles d'écran. Le `.app` vit dans

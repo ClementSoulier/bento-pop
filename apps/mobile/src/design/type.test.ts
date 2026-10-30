@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { type } from './tokens';
-import { categoryOf, reachesWrapScale, textStyle, type TextVariant } from './type';
+import { categoryOf, displayFit, reachesWrapScale, textStyle, type TextVariant } from './type';
 
 const VARIANTS = Object.keys(type) as TextVariant[];
 
@@ -102,5 +102,15 @@ describe('styles de texte du design system v2', () => {
     assert.equal(reachesWrapScale(1.353), true);
     assert.equal(reachesWrapScale(1.235), false);
     assert.equal(reachesWrapScale(1), false);
+  });
+
+  it('rapetissent une affiche juste assez pour que son plus long mot tienne', () => {
+    assert.equal(displayFit(322, 305), 1);
+    assert.equal(displayFit(0, 305), 1);
+    // « COMPOSE » à 130 % dans l'affiche d'un iPhone SE : 305 pour 295.
+    const fit = displayFit(295, 305);
+    assert.ok(fit < 1);
+    assert.ok(305 * fit <= 294);
+    assert.ok(305 * (fit + 0.002) > 294);
   });
 });

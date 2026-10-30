@@ -1,7 +1,8 @@
-import { View } from 'react-native';
+import { useState } from 'react';
+import { useWindowDimensions, View } from 'react-native';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import type { TextVariant } from '../type';
+import { displayFit, textStyle, type TextVariant } from '../type';
 
 export type DisplayProps = {
   /** Quatre mots au plus, mis en capitales. */
@@ -34,17 +35,52 @@ const LAYERS: [number, number][] = [
  * trace pas le contour d'un texte : le cerne est fait de copies d'encre
  * décalées autour de la lettre, cachées aux lecteurs d'écran, et la fin part
  * à la ligne au lieu de suivre le texte sur la même ligne.
+ *
+ * Un mot ne se coupe jamais (D24) : à 130 % sur un iPhone SE, « COMPOSE » ne
+ * tenait plus dans sa largeur et passait à la ligne en deux morceaux. Une
+ * copie invisible mesure chaque mot à la taille du style ; si le plus long
+ * dépasse, toute l'affiche rapetisse juste assez.
  */
 export function Display({ text, size = 'xl', outline, align = 'left' }: DisplayProps) {
   const { palette } = useTheme();
+  const { fontScale } = useWindowDimensions();
+  const [width, setWidth] = useState(0);
+  const [widest, setWidest] = useState(0);
   const variant: TextVariant = `display-${size}`;
+  const fit = displayFit(width, widest);
+  const base = textStyle(variant, fontScale);
+  const fitted =
+    fit < 1
+      ? {
+          fontSize: base.fontSize * fit,
+          lineHeight: base.lineHeight * fit,
+          letterSpacing: (base.letterSpacing ?? 0) * fit,
+        }
+      : null;
+  const words = [text, outline ?? ''].join(' ').trim().split(/\s+/);
   return (
     <View
       accessible
       accessibilityRole="header"
       accessibilityLabel={outline ? `${text} ${outline}` : text}
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
     >
-      <Text variant={variant} style={{ textAlign: align }}>
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ position: 'absolute', top: 0, left: 0, width: 2000, opacity: 0 }}
+      >
+        <Text
+          variant={variant}
+          onTextLayout={(event) =>
+            setWidest(Math.max(0, ...event.nativeEvent.lines.map((line) => line.width)))
+          }
+        >
+          {words.join('\n')}
+        </Text>
+      </View>
+      <Text variant={variant} style={[{ textAlign: align }, fitted]}>
         {text}
       </Text>
       {outline ? (
@@ -53,20 +89,26 @@ export function Display({ text, size = 'xl', outline, align = 'left' }: DisplayP
             <Text
               key={`${x}:${y}`}
               variant={variant}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                transform: [{ translateX: x }, { translateY: y }],
-                color: palette['nori-900'],
-                textAlign: align,
-              }}
+              style={[
+                {
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  transform: [{ translateX: x }, { translateY: y }],
+                  color: palette['nori-900'],
+                  textAlign: align,
+                },
+                fitted,
+              ]}
             >
               {outline}
             </Text>
           ))}
-          <Text variant={variant} style={{ color: palette['rice-100'], textAlign: align }}>
+          <Text
+            variant={variant}
+            style={[{ color: palette['rice-100'], textAlign: align }, fitted]}
+          >
             {outline}
           </Text>
         </View>

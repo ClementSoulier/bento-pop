@@ -655,10 +655,16 @@ describe('toute l’app', () => {
    * dans la modale de recherche, dont la hauteur vivait dans une feuille de
    * style, que la règle ne lisait pas. À la taille 2,0 d'Android, leurs lignes
    * s'écartaient.
+   *
+   * Le `Text` du design system v2 fige la police de la plateforme après ses
+   * props : une hauteur de ligne qu'on lui passe n'est jamais agrandie, comme
+   * celle de l'affiche que `Display` rapetisse (chantier 30, lot 5).
    */
   it('ne laisse jamais la plateforme agrandir une hauteur de ligne, feuilles de style comprises', () => {
     const wrong = lineHeightsLeftToPlatform(
-      texts.map((t) => ({ ...t, styleSource: fullStyleSource(t, moduleDeclarations(t.path)) })),
+      texts
+        .filter((t) => !systemText(t))
+        .map((t) => ({ ...t, styleSource: fullStyleSource(t, moduleDeclarations(t.path)) })),
     );
     assert.equal(wrong.length, 0, `hauteur de ligne laissée à la plateforme : ${where(wrong)}`);
   });

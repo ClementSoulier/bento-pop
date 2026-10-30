@@ -144,7 +144,9 @@ export default function Calques() {
           />
         </Specimen>
         <Specimen name="ActionSheet" bleed>
-          <Frame height={340}>
+          {/* L'aperçu montre « Annuler » coupé au bord de son cadre de 340 ;
+              la marge du bas de la feuille l'y cachait tout entier. */}
+          <Frame height={400}>
             <ActionSheet
               inline
               visible

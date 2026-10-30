@@ -12,7 +12,7 @@
 > transverses**, ceux du bento et du social venant avec leurs écrans ;
 > **les 72 icônes du dossier**, dans un composant maison ; un thème lu par
 > **`useTheme()`**, NativeWind retiré. D5 à D16 sont pris par la
-> spécification, D17 à D19 au lot 3, D20 à D23 au lot 4.
+> spécification, D17 à D19 au lot 3, D20 à D23 au lot 4, D24 au lot 5.
 >
 > **Le socle ne se voit pas** (D5) : à la fin du 30, chaque écran de l'app
 > est identique au pixel à ce qu'il était. Il pose ce que les chantiers 31
@@ -277,6 +277,8 @@ sur les tokens et le `Text` du système. Chacun a un rôle, un libellé et un
   au toucher ; branché seulement au 31.
 - **`Confetti`** : 600 ms, une fois par événement, rien avec le mouvement
   réduit (D20).
+- **`Display`** ne coupe jamais un mot : quand le plus long dépasse sa
+  largeur, toute l'affiche rapetisse juste assez (D24).
 - **Les feuilles et `Dialog`** se posent dans une `Modal`, qui couvre la
   barre d'onglets et garde le focus ; `Toast` et `InAppNotice` se posent
   dans leur parent (D22).
@@ -291,7 +293,8 @@ sur les tokens et le `Text` du système. Chacun a un rôle, un libellé et un
 
 - Une route `app/dev/catalogue.tsx`, ouverte par le lien profond
   `bentopop://dev/catalogue`, seulement en développement (`__DEV__`) : en
-  build de production, elle renvoie à l'accueil. Aucun écran n'y mène, pour
+  build de production, elle renvoie à l'accueil, éprouvé au lot 5 sur des
+  builds Release locales. Aucun écran n'y mène, pour
   que les écrans restent identiques au pixel (D5).
 - Une page par famille ; chaque composant dans les états de son aperçu
   (variantes, désactivé, chargement, erreur), sous le nom de son
@@ -431,7 +434,8 @@ build de développement et une pile Supabase locale :
   à la recette sur appareil (29).
 - **Le catalogue** (D12) : `app/dev/catalogue.tsx`, ouvert par
   `bentopop://dev/catalogue`, sa page des fondations. Son renvoi à l'accueil
-  en production n'est pas encore éprouvé, faute de build de production.
+  en production n'est pas encore éprouvé, faute de build de production ; il
+  l'est au lot 5.
 - **Les écrans actuels ne changent pas** (D5) : le lot ajoute des fichiers et
   cinq fonctions à `haptics.ts`, sans toucher au code d'un écran.
 
@@ -520,6 +524,73 @@ build de développement et une pile Supabase locale :
 - Aucun avertissement de React Native dans la console de l'app, relue par son
   débogueur après les trois pages.
 
+### 10.5 Lot 5 · fait le 30 octobre 2026
+
+La recette complète du §9, aux trois appareils qu'elle nomme : le simulateur
+iPhone 17 Pro, le simulateur iPhone SE, que les lots 3 et 4 n'avaient pas
+couvert, et l'émulateur Pixel 8.
+
+- **Le socle ne se voit toujours pas** (D5) : les neuf écrans de référence,
+  aux trois appareils, capturés sur la base d'avant le 30 (`76bc053`, la tête
+  de la PR #109, copiée hors du dépôt avec ses dépendances, NativeWind compris)
+  puis sur la tête du lot 4, Metro servant tour à tour l'une et l'autre, chaque
+  app relancée à froid. Deux séries de la tête mesurent ce qui bouge seul. Les
+  27 écrans sont identiques au pixel, hors ce bruit : le curseur qui clignote
+  dans la recherche, une touche du clavier d'Android, le compteur de visites
+  d'une page. Deux écarts venaient de la première série de la base elle-même,
+  l'avatar et le dégradé d'une publication au Pixel, deux pixels d'un niveau au
+  profil de l'iPhone : une seconde série les donne identiques à la tête, à
+  2 pixels près. Les corrections du lot 5 ne touchent que des composants
+  qu'aucun écran ne rend, le catalogue et des tests : la preuve vaut pour sa
+  tête, seule la racine de l'app important le design system, pour son
+  `ThemeProvider`.
+- **L'iPhone SE**, 375 points de large : les 38 composants à texte capturés
+  seuls à 100 %, à la plus grande taille standard (135 %) et au-delà de 200 %.
+  Deux mots coupés en deux, corrigés :
+  - `Display` coupait « COMPOSE » dès 130 %, son mot le plus long ne tenant
+    plus dans 295 points ; l'affiche rapetisse désormais juste assez pour
+    qu'il tienne, 4 % au SE, rien à 100 % ni sur un écran plus large (D24) ;
+  - `InAppNotice` coupait « Proposition » au-delà de 200 %, à côté de
+    l'heure ; l'heure passe sous le titre dès 130 % (D18).
+
+  Et un oubli du lot 4, au catalogue seulement : le cadre d'`ActionSheet`
+  cachait « Annuler » sous la marge du bas de la feuille, que l'aperçu montre
+  coupé à son bord ; le cadre passe de 340 à 400 points. Ce qui défile au-delà
+  de 200 % est voulu (D18) : les puces et les onglets.
+- **Les lecteurs d'écran, en français** : les arbres d'accessibilité des 38
+  composants relus aux deux plateformes. Sur iOS, un seul mot anglais :
+  l'action `activate` de la notification, que la nouvelle architecture de
+  React Native offre telle quelle à VoiceOver ; libellée « Ouvrir ». Une règle
+  de `accessibilite.test.ts` exige désormais un libellé à chaque action, et la
+  faisait tomber avant la correction. Sur Android, tout est en français : le
+  « busy » que montre l'émulateur, réglé en anglais, devient « opération en
+  cours » quand l'app passe en français, React Native embarquant ses
+  traductions pour Android.
+- **Le clavier à l'écran de l'iPhone sous une feuille**, suivi du lot 4 : le
+  clavier matériel du simulateur débranché par CoreSimulator
+  (`apps/mobile/scripts/clavier-simulateur.swift`, cf. `RECETTE-MOBILE.md`),
+  la feuille « Tes pourquoi » ouverte pour de vrai à l'iPhone SE, son champ
+  touché : la feuille monte avec le clavier, son pied « Enregistrer » posé sur
+  lui, le champ visible.
+- **Le catalogue en production** (D12), suivi du lot 2 : une build Release
+  d'iOS pour le simulateur et un APK release d'Android, construits sur ce Mac
+  comme EAS le ferait, branchés sur la pile locale et jamais sur la production
+  (la cible compilée ne porte que `127.0.0.1:54391`). Depuis les réglages,
+  ouverts par leur lien, `bentopop://dev/catalogue` et ses pages ramènent à
+  l'accueil, à l'iPhone SE comme au Pixel 8 ; aucune erreur JavaScript au
+  journal d'Android.
+- **La part du 29** : deux points de plus à sa liste de sortie, 30-a (le
+  catalogue fermé en production) et 30-b (le mouvement réduit suivi en direct,
+  sur un écran refait) ; les cinq retours du design versés à 3-a ; la boîte de
+  dialogue, la feuille, la notification et le toast à 11-a, à la voix.
+- **La console** : aucun avertissement des composants. Au Pixel, animations du
+  système coupées, LogBox montre celui de Reanimated, réservé au
+  développement, et deux fois sur une trentaine de lancements une erreur
+  d'expo-router, née à sa racine, pas reproduite ensuite (§13).
+- **La CI rejouée en local** sur l'arbre du lot 5, sans cache : verte, lint
+  et typage 8 sur 8, tests (mobile 1 127, landing 202, back-office 251),
+  builds 3 sur 3, e2e 65 sur 65.
+
 ## 11. Definition of Done
 
 | # | Point | État |
@@ -532,10 +603,10 @@ build de développement et une pile Supabase locale :
 | 6 | Les 72 icônes générées, et `Icon` | ✅ lot 2 |
 | 7 | Les ombres franches identiques sur iOS et Android | ✅ lot 2 |
 | 8 | Le mouvement et sa variante réduite ; les cinq retours haptiques | ✅ lot 2 ; l'haptique ressentie à la recette sur appareil (29) |
-| 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | ✅ lot 4 : les 39, les écarts voulus aux §10.3 et 10.4 ; Popy et le seuil de 130 % du Pixel corrigés au lot 4 |
-| 10 | Les tests de règles verts sur `src/design/` | ✅ lot 4, la règle des textes étendue aux trois champs |
-| 11 | NativeWind retiré, les écrans de référence identiques au pixel | ✅ lot 1 |
-| 12 | La CI rejouée en local, verte | 🟡 verte à chaque lot, du 1 au 4 ; à rejouer sur la tête du lot 5 |
+| 9 | Les 39 composants identiques à leur aperçu au simulateur et à l'émulateur, à 100, 130 et 200 % | ✅ lot 4 : les 39, les écarts voulus aux §10.3 et 10.4 ; Popy et le seuil de 130 % du Pixel corrigés au lot 4 ; à l'iPhone SE au lot 5, deux mots coupés corrigés (D24, D18) |
+| 10 | Les tests de règles verts sur `src/design/` | ✅ lot 4, la règle des textes étendue aux trois champs ; au lot 5, un libellé exigé de chaque action d'accessibilité |
+| 11 | NativeWind retiré, les écrans de référence identiques au pixel | ✅ lot 1 ; refait au lot 5 sur la tête du 30, aux trois appareils |
+| 12 | La CI rejouée en local, verte | ✅ à chaque lot, du 1 au 5 |
 
 ## 12. Décisions
 
@@ -558,12 +629,13 @@ build de développement et une pile Supabase locale :
 | **D15** | `Avatar` et `Popy` emploient les Popys de `packages/brand`, dont l'original de `popy-diable` | Le dossier n'en a qu'une découpe provisoire de 256 px |
 | **D16** | Le contraste des couples nommés se prouve par un test, dans les deux thèmes | Le design l'annonce ; le test le garde quand un token change |
 | **D17** | Une taille que le CSS du dossier écrit hors des 22 styles prend le style le plus proche : onglets 16/20 et puces 14 en `label-m`, compte d'onglet et autocollant en `label-s`, sur-titre de `TopBar` 13/18 en `label-s`, pastille en `tab-label` 700. Au lot 4 : texte saisi 17/22 et options d'`ActionSheet` en `body-l` (17/24 ; le champ garde sa hauteur de 53, ses marges passant de 14 à 13), case à cocher, invite et sous-titre de feuille 15/21 en `subhead`, sur-titre de feuille 13/18 en `label-s`, bannière 14/20 en `subhead`, chiffres du code 26/26 et titre de `Dialog` 20/26 en `title-2` | Prise au lot 3, étendue au lot 4. Le README du design range tout texte dans ses 22 styles ; un style de plus écrirait une taille hors du système, que `Text` ne plafonnerait pas. À égalité de taille, la hauteur de ligne départage, comme au lot 3 ; pour le titre de `Dialog`, à égalité des deux, le rang d'un titre de feuille |
-| **D18** | Dès 130 %, ce qui serait coupé passe à la ligne ou défile : libellés de puces et titre en ligne à la ligne, `Tabs` à la largeur de leurs libellés et défilants, actions du grand titre sous lui | Prise au lot 3, après trois coupures relevées à 200 %. Le design le demande des boutons ; les autres composants n'en disaient rien |
+| **D18** | Dès 130 %, ce qui serait coupé passe à la ligne ou défile : libellés de puces et titre en ligne à la ligne, `Tabs` à la largeur de leurs libellés et défilants, actions du grand titre sous lui ; au lot 5, l'heure d'une notification sous son titre | Prise au lot 3, après trois coupures relevées à 200 %. Le design le demande des boutons ; les autres composants n'en disaient rien. Étendue au lot 5, après « Proposition » coupé en deux à l'iPhone SE |
 | **D19** | Quand le CSS du dossier et son aperçu divergent, l'aperçu fait foi | Prise au lot 3 : le CSS souligne le petit bouton tertiaire, mais son `overflow: hidden` coupe le trait, et aucun aperçu ne le montre |
 | **D20** | Les confettis suivent leurs trajectoires du dossier, leurs durées de chute de 2 à 2,9 s ramenées à 600 ms écarts gardés (500 à 725 ms), puis s'effacent en 120 ms | Prise au lot 4. Le README et le token `celebrate` donnent 600 ms aux confettis ; le CSS du canevas les fait tomber 2,4 s en moyenne et les laisse à l'écran, ce qu'une app ne peut garder sur ses boutons |
 | **D21** | Popy se dessine depuis les originaux de `packages/brand` cadrés comme les découpes du dossier : un carré de la plus grande dimension du dessin, centré sur lui (`popy-crops.ts`, recalculé par un test depuis les PNG) | Prise au lot 4, après un écart manqué au lot 3 : sans ce cadrage, `Popy`, `Avatar` et `AppIcon` dessinaient Popy à 81 à 90 % de leurs aperçus. Refaites ainsi, les découpes coïncident au pixel avec celles du dossier (IoU 1,000), sauf le `diable` (D15) |
 | **D22** | Les feuilles et `Dialog` se posent dans une `Modal` ; `Toast` et `InAppNotice` dans leur parent, la racine de l'app au 31 ; au catalogue, tous dans le cadre de leur aperçu (`inline`) | Prise au lot 4. La `Modal` couvre la barre d'onglets, que le design veut sous le voile, se ferme au retour d'Android, et garde le focus : dans les arbres d'accessibilité des deux appareils, il ne reste qu'elle. Un toast ou une notification ne prennent pas le focus |
 | **D23** | Aucun composant ne joue d'haptique : le succès des confettis, l'avertissement d'une confirmation destructive, la sélection d'un interrupteur reviennent à l'écran | Prise au lot 4, dans la ligne de D11 et des composants du lot 3, qui n'en jouent pas. L'écran sait si l'événement en mérite un ; le catalogue, lui, n'en joue aucun |
+| **D24** | Quand le mot le plus long d'une affiche (`Display`) dépasse sa largeur, toute l'affiche rapetisse juste assez pour qu'il tienne ; ses mots sont mesurés dans une copie invisible, à la taille du style (`displayFit`) | Prise au lot 5 : à l'iPhone SE, dès 130 %, « COMPOSE » passait à la ligne en deux morceaux. Une affiche ne peut ni défiler ni passer à la ligne au milieu d'un mot ; l'écart reste petit, 4 % au SE à 130 %, nul à 100 % et sur les écrans plus larges |
 
 ## 13. Suivis
 
@@ -573,9 +645,15 @@ build de développement et une pile Supabase locale :
 - **Les types du 15** (jeux vidéo, livres, plats, activités) n'ont pas de
   couleur dans le design : à trancher au 32, avant qu'ils entrent dans un
   bento.
-- **Le catalogue en production** : son renvoi à l'accueil, à éprouver sur une
-  build de production, au lot 5.
-- **Le clavier à l'écran de l'iPhone** sous une feuille : le simulateur tient
-  un clavier matériel, seul le Pixel l'a montré au lot 4 ; à la recette (§9).
 - **`Tag` et `ProposeRow`**, que l'aperçu de `Sheet` pose dans sa feuille,
   arrivent au 32 ; `Sheet` reçoit déjà la puce par `eyebrowLeading`.
+- **Le toast au 31** : au-delà de 200 % à l'iPhone SE, un toast qui porte une
+  action garde son message dans une colonne étroite, sur quatre lignes, sans
+  couper de mot ; passer l'action dessous, comme la bannière, si l'écran le
+  demande. Au catalogue, les cadres du toast et de la notification rognent
+  alors leur contenu, ouverts pour de vrai ils tiennent en entier.
+- **Une erreur de développement d'expo-router**, deux fois sur une trentaine
+  de lancements au Pixel, animations du système coupées : « Can't perform a
+  React state update on a component that hasn't mounted yet », née à sa racine
+  (`ContextNavigator`). Pas reproduite en seize lancements ciblés ; React ne la
+  dit qu'en développement. À relever si elle revient aux recettes des 31 à 34.

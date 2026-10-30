@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { PanResponder, View } from 'react-native';
+import { PanResponder, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -7,6 +7,7 @@ import { AppIcon } from '../brand/AppIcon';
 import { PopShadow } from '../PopShadow';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
+import { reachesWrapScale } from '../type';
 import { useAnnouncement } from '../useAnnouncement';
 import { timingConfig, useMotion } from '../useMotion';
 
@@ -38,6 +39,9 @@ export const NOTICE_DURATION = 4000;
  * reste 4 s ; la toucher ouvre ce dont elle parle, la glisser vers le haut
  * la ferme. Au lecteur d'écran, elle est un bouton qui l'ouvre, et
  * « Fermer » une action à part, le glissé lui étant hors de portée.
+ *
+ * Dès 130 %, l'heure passe sous le titre : à côté, sur un iPhone SE à 200 %,
+ * elle coupait « Proposition » en deux (D18).
  */
 export function InAppNotice({
   title,
@@ -50,6 +54,8 @@ export function InAppNotice({
 }: InAppNoticeProps) {
   const { colors, border } = useTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const stacked = reachesWrapScale(fontScale);
   const motion = useMotion();
   const shown = useSharedValue(0);
   const drag = useSharedValue(0);
@@ -115,7 +121,12 @@ export function InAppNotice({
           accessible
           accessibilityRole="button"
           accessibilityLabel={`${title}, ${time}. ${message}`}
-          accessibilityActions={[{ name: 'activate' }, { name: 'dismiss', label: 'Fermer' }]}
+          // Chaque action devient une action de VoiceOver, nommée par son
+          // libellé, à défaut par son nom anglais.
+          accessibilityActions={[
+            { name: 'activate', label: 'Ouvrir' },
+            { name: 'dismiss', label: 'Fermer' },
+          ]}
           onAccessibilityAction={(event) => {
             if (event.nativeEvent.actionName === 'activate') open();
             if (event.nativeEvent.actionName === 'dismiss') hide();
@@ -134,11 +145,21 @@ export function InAppNotice({
         >
           <AppIcon size={40} />
           <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+            <View
+              style={
+                stacked
+                  ? { gap: 1 }
+                  : { flexDirection: 'row', justifyContent: 'space-between', gap: 8 }
+              }
+            >
               <Text variant="label-m" style={{ flexShrink: 1 }}>
                 {title}
               </Text>
-              <Text variant="footnote" color="text-tertiary" numberOfLines={1}>
+              <Text
+                variant="footnote"
+                color="text-tertiary"
+                numberOfLines={stacked ? undefined : 1}
+              >
                 {time}
               </Text>
             </View>
