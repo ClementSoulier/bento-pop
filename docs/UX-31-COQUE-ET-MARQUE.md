@@ -220,9 +220,8 @@ Relevé le 30 octobre 2026 sur `19be67e`, en lecture seule.
   comprise, comme aujourd'hui. Un seul à la fois, le suivant remplace le
   précédent, comme aujourd'hui.
 - **Au-dessus d'une modale** : la recherche d'une case s'ouvre en modale
-  native, et lève des toasts. À éprouver au lot 2 qu'ils s'y voient sur
-  iOS ; sinon, l'hôte passe dans une `FullWindowOverlay` de
-  react-native-screens.
+  native, et lève des toasts quand une écriture échoue ; elle monte son
+  propre hôte, celui de la racine restant caché sous elle sur iOS (§11.2).
 
 ## 6. Le bandeau de mise à jour (D8)
 
@@ -230,7 +229,9 @@ Relevé le 30 octobre 2026 sur `19be67e`, en lecture seule.
   pousse l'écran, en-tête compris, au lieu de le recouvrir. Monté dans
   `app/(tabs)/_layout.tsx`, au-dessus des onglets : la zone sûre du haut
   passe au bandeau, et les écrans dessous la reçoivent nulle, par un
-  `SafeAreaProvider` imbriqué, à éprouver au lot 2.
+  `SafeAreaProvider` imbriqué. Le composer et la page d'un compte prennent
+  leur hauteur de la place laissée (`useSafeAreaFrame`), et non de la
+  fenêtre.
 - Ses conditions, son « Plus tard » retenu par version et son lien au store
   ne changent pas. Il se lit le premier, avant l'en-tête.
 - `UpdateBanner.tsx` sort. Le bandeau hors connexion garde sa place et son
@@ -420,22 +421,67 @@ Pixel 8, sur la pile locale, comme le 30.
   et typage 8 sur 8, tests (mobile 1 127, landing 202, back-office 251),
   builds 3 sur 3, e2e 65 sur 65.
 
+### 11.2 Lot 2 · fait le 30 octobre 2026
+
+- **Les toasts** : la file vit dans `src/state/toast.ts`, que
+  `@/components/primitives` réexporte, si bien que les 30 appels ne bougent
+  pas ; l'hôte, `src/components/ToastHost.tsx`, rend le `Toast` du 30. Ses
+  règles sont pures et testées (`overlays/toast-rules.ts`) : la durée, au
+  moins 4 s, 6 s avec une action, plus si l'appel le demande ; l'icône,
+  `warning-circle` pour une erreur, `check-circle` sinon, le toast restant
+  encre ; la distance au bas. Les toasts de `c07` et `c08` prennent leurs
+  icônes de la maquette. Le `Toast` des primitives est retiré.
+- **Mesuré à l'iPhone 17 Pro** : une erreur qui demande 5 s est encore là à
+  4,65 s et partie à 5,67 s ; un toast avec « Annuler », là à 5,5 s, parti à
+  6,8 s ; le toucher le ferme, « Annuler » aussi. Il se pose à 46 points du
+  bas sur un écran poussé, 8 au-dessus de la barre sur Compose (65 du bas à
+  l'iPhone SE), 12 au-dessus du clavier.
+- **Au-dessus d'une modale** : dans la recherche d'une case, le toast de la
+  racine restait caché sous la modale native d'iOS. `FullWindowOverlay`, essayée
+  d'abord, le montrait, mais rendait sa fenêtre modale pour l'accessibilité :
+  l'arbre ne gardait que le toast, tout l'écran disparaissait à VoiceOver le
+  temps qu'il reste, et chaque toast lui prenait son focus. La recherche
+  monte donc son propre hôte (`scope="modal"`), qui ne montre que les toasts
+  levés depuis son ouverture, la racine s'effaçant tant qu'elle est devant :
+  aux deux plateformes, le toast se voit au-dessus d'elle, et l'arbre garde
+  le toast et la modale.
+- **Le clavier d'Android** : React Native l'annonce sans la barre de
+  navigation qu'il recouvre ; le toast passait 12 dp dessous. L'hôte lui rend
+  la zone sûre du bas : mesuré au Pixel 8, 12 dp au-dessus du clavier, ses
+  52 dp entiers.
+- **Le bandeau de mise à jour** (`src/components/UpdateNotice.tsx`), monté
+  au-dessus des onglets par `app/(tabs)/_layout.tsx`, les onglets dans un
+  `SafeAreaProvider` à eux. Une version 2.0.1 annoncée sur la pile locale :
+  aux trois appareils, il se pose en tête, sous la barre d'état, et pousse
+  l'écran ; VoiceOver le lit le premier, « Nouvelle version dispo », « Mettre
+  à jour », « Fermer » ; la croix le ferme, et une relance ne le remontre pas.
+  `UpdateBanner.tsx` est retiré.
+- **Ce que le bandeau a révélé** : le composer et la page d'un compte
+  calculaient leur échelle sur la hauteur de la fenêtre, et leur bouton
+  passait sous la barre. Ils la prennent désormais de la place laissée
+  (`useSafeAreaFrame`), égale à la fenêtre sans bandeau. À l'iPhone SE, où la
+  grille du composer touche son plancher, l'écran défile, comme il le fait
+  déjà à la plus grande police.
+- **La CI rejouée en local** sur l'arbre du lot 2, sans cache : verte, lint
+  et typage 8 sur 8, tests (mobile 1 133, landing 202, back-office 251),
+  builds 3 sur 3, e2e 65 sur 65.
+
 ## 12. Definition of Done
 
 | # | Point | État |
 | --- | --- | --- |
 | 1 | La barre du design sur les cinq racines : l'ordre, Compose au centre, la pastille, l'avatar ; l'arrivée sur Compose (D1), quatre onglets quand Notifs est coupé (D2) | ✅ lot 1 |
-| 2 | Les toasts en bas, au-dessus de la barre, de la zone sûre ou du clavier ; 4 s, 6 s avec une action ; dits poliment ; les 30 appels inchangés | ⬜ |
-| 3 | Le bandeau de mise à jour en tête des racines, qui pousse l'écran ; « Plus tard » retenu par version | ⬜ |
+| 2 | Les toasts en bas, au-dessus de la barre, de la zone sûre ou du clavier ; 4 s, 6 s avec une action ; dits poliment ; les 30 appels inchangés | ✅ lot 2 |
+| 3 | Le bandeau de mise à jour en tête des racines, qui pousse l'écran ; « Plus tard » retenu par version | ✅ lot 2 |
 | 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | ⬜ |
 | 5 | Le lancement sur le fond de marque, sans saut de jaune | ⬜ |
 | 6 | L'icône d'app, l'icône adaptative et la petite icône des notifications vues au simulateur et à l'émulateur | ⬜ |
 | 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | 🟡 lot 1 : les onglets, aux deux plateformes |
 | 8 | Le mouvement réduit : Popys immobiles, toasts en fondu | ⬜ |
 | 9 | Les autres écrans ne changent qu'à la barre, à leur hauteur utile et au toast | 🟡 lot 1 : la barre, sur les neuf écrans de référence du 30 |
-| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | 🟡 lot 1 : la barre et `tab-bar.ts` |
+| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | 🟡 lots 1 et 2 : la barre, `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives |
 | 11 | Les tests de règles verts ; les tests figés sur 84 et sur Bungee repris | ✅ lot 1 |
-| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lot 1 |
+| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lots 1 et 2 |
 
 ## 13. Décisions
 
@@ -447,8 +493,8 @@ Pixel 8, sur la pile locale, comme le 30.
 | **D4** | **La barre sur les écrans poussés vient avec leurs écrans** : le 33 met les profils d'un compte sous les onglets ; les réglages, les crédits et les listes restent sans elle | Rendue par Clément en QCM, l'option recommandée. Le gabarit du design la garde partout, ses maquettes seulement sur les profils d'un compte. Le 31 ne déplace aucune route : une dizaine d'écrans pas encore refaits ne passent pas sous une barre neuve, et chaque chantier reprend ses liens avec ses écrans |
 | **D5** | La coque change dans toute l'app ; les écrans, seulement les cinq du 31 | La barre, les toasts et le bandeau sont partout à la fois : les refaire écran par écran mélangerait deux coques jusqu'au 34 |
 | **D6** | L'avatar prend la teinte de sa Popy : « content » `yolk`, « intello » `ramune`, « fille » `sakura`, « gene » `shiso`, « nani » `wasabi`, « diable » `ume` ; sans pseudo, « content » sur `yolk` | Aucune teinte n'est enregistrée, et en choisir une serait une fonctionnalité nouvelle. La maquette donne « gene » sur `shiso` ; les autres prennent la teinte la plus proche de la couleur que chaque Popy porte déjà aux médailles et aux auteurs de notifications, dans l'app et sur le web (`POPY_ACCENTS`), « nani », turquoise, passant au vert de `wasabi` pour ne pas partager `ramune` avec « intello » |
-| **D7** | Les toasts gardent leur magasin, seul l'hôte change ; au moins 4 s, 6 s avec une action ; encre toujours, l'icône disant la variante | Les 30 appels n'ont pas à bouger. Le guide fixe la durée et interdit qu'une information tienne à la couleur seule |
-| **D8** | Le bandeau de mise à jour monte dans les onglets, en tête et dans le flux ; ses conditions, son « Plus tard » et son lien ne changent pas | Il ne paraît que sur les racines : posé au-dessus d'elles, il pousse chaque écran sans qu'aucun ait à lui réserver de place |
+| **D7** | Les toasts gardent leur magasin, seul l'hôte change ; au moins 4 s, 6 s avec une action ; encre toujours, l'icône disant la variante | Les 30 appels n'ont pas à bouger. Le guide fixe la durée et interdit qu'une information tienne à la couleur seule. Au lot 2, la recherche d'une case monte son propre hôte : `FullWindowOverlay` masquait l'écran à VoiceOver et lui prenait son focus |
+| **D8** | Le bandeau de mise à jour monte dans les onglets, en tête et dans le flux ; ses conditions, son « Plus tard » et son lien ne changent pas | Il ne paraît que sur les racines : posé au-dessus d'elles, il pousse chaque écran sans qu'aucun ait à lui réserver de place. Au lot 2, deux écrans qui calculaient sur la fenêtre prennent la place laissée (`useSafeAreaFrame`) |
 | **D9** | Les règles gardent leurs deux liens, et leur variante pour un compte | La case fait accepter les CGU et la politique de confidentialité : il faut pouvoir les lire avant. La maquette n'a dessiné que le premier lancement |
 | **D10** | Les blocages se rendent dans le thème et la zone sûre ; la maintenance garde les textes du back-office | Les composants du design lisent le thème et la zone sûre. Le back-office écrit la maintenance quand elle arrive |
 | **D11** | Le lancement, natif et JavaScript, passe sur le fond de marque, composé des éléments de l'accueil | Sans maquette, il doit mener à l'accueil sans saut : le jaune de la marque est `#f2a82a`, celui d'aujourd'hui `#fbbf24` |

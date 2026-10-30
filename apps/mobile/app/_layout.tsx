@@ -16,9 +16,8 @@ import { useBlocked } from '@/state/blocked';
 import { useAppStatus } from '@/state/app-status';
 import { Splash } from '@/components/Splash';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { UpdateBanner } from '@/components/UpdateBanner';
 import { ForceUpdateScreen, MaintenanceScreen } from '@/components/AppBlocker';
-import { ToastHost } from '@/components/primitives';
+import { ToastHost } from '@/components/ToastHost';
 import { runStartupUpdateWithExpo } from '@/lib/ota-runtime';
 import type { OtaPhase } from '@/lib/ota';
 import { startPushRegistration, startPushResponses } from '@/lib/push-runtime';
@@ -198,7 +197,6 @@ export default function RootLayout() {
             </Stack>
             <PushResponder />
             <AccountResponder />
-            <UpdateBanner />
             <OfflineBanner />
             <ToastHost />
           </QueryClientProvider>

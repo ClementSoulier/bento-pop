@@ -9,7 +9,7 @@ import {
   Tabs,
   type BottomTabBarProps,
 } from 'expo-router/js-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { popyKeyFor } from '@bento-pop/supabase-mobile/bento';
 import { TabBar, popyTint, tabBarHeight, visibleTabs, type TabKey } from '@/design';
 import {
@@ -17,6 +17,7 @@ import {
   useNotificationBadge,
   useNotificationsEnabled,
 } from '@/components/notifications/use-notifications';
+import { UpdateNotice } from '@/components/UpdateNotice';
 import { selectionFeedback } from '@/lib/haptics';
 import { useSession } from '@/state/session';
 
@@ -43,34 +44,43 @@ const TAB_OF_ROUTE = Object.fromEntries(
  * - Profil montre l'avatar de la personne, sa Popy sur la teinte de sa Popy ;
  *   sans pseudo, « content » sur le jaune (D6).
  * - Changer d'onglet joue une sélection légère (D13).
+ * - Le bandeau de mise à jour se pose au-dessus des onglets, dans le flux
+ *   (D8) : il prend la zone sûre du haut, et les écrans dessous la reçoivent
+ *   nulle, par un `SafeAreaProvider` à eux, toujours là pour ne jamais
+ *   remonter les onglets.
  */
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const notifsOn = useNotificationsEnabled();
   const refreshBadge = useBadgeRefresh();
   return (
-    <Tabs
-      initialRouteName="compose"
-      backBehavior="initialRoute"
-      screenOptions={{
-        headerShown: false,
-        // La hauteur que `useBottomTabBarHeight` rend avant que la barre se
-        // mesure : la sienne, filet compris.
-        tabBarStyle: { height: tabBarHeight(insets.bottom) },
-      }}
-      // Chaque changement d'onglet relit le nombre, s'il date (D9 du 24).
-      screenListeners={{ focus: refreshBadge }}
-      tabBar={(props) => <AppTabBar {...props} notifsOn={notifsOn} />}
-    >
-      <Tabs.Screen name="table" options={{ title: 'La table' }} />
-      <Tabs.Screen name="search" options={{ title: 'Trouver' }} />
-      <Tabs.Screen name="compose" options={{ title: 'Compose' }} />
-      <Tabs.Screen
-        name="notifications"
-        options={{ title: 'Notifs', href: notifsOn ? undefined : null }}
-      />
-      <Tabs.Screen name="profile" options={{ title: 'Profil' }} />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      <UpdateNotice />
+      <SafeAreaProvider style={{ flex: 1 }}>
+        <Tabs
+          initialRouteName="compose"
+          backBehavior="initialRoute"
+          screenOptions={{
+            headerShown: false,
+            // La hauteur que `useBottomTabBarHeight` rend avant que la barre se
+            // mesure : la sienne, filet compris.
+            tabBarStyle: { height: tabBarHeight(insets.bottom) },
+          }}
+          // Chaque changement d'onglet relit le nombre, s'il date (D9 du 24).
+          screenListeners={{ focus: refreshBadge }}
+          tabBar={(props) => <AppTabBar {...props} notifsOn={notifsOn} />}
+        >
+          <Tabs.Screen name="table" options={{ title: 'La table' }} />
+          <Tabs.Screen name="search" options={{ title: 'Trouver' }} />
+          <Tabs.Screen name="compose" options={{ title: 'Compose' }} />
+          <Tabs.Screen
+            name="notifications"
+            options={{ title: 'Notifs', href: notifsOn ? undefined : null }}
+          />
+          <Tabs.Screen name="profile" options={{ title: 'Profil' }} />
+        </Tabs>
+      </SafeAreaProvider>
+    </View>
   );
 }
 
