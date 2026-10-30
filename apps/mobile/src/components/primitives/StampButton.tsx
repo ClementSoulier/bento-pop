@@ -49,6 +49,10 @@ const PALETTES: Record<NonNullable<StampButtonProps['variant']>, { bg: string; f
  * retour à l'appui et le grisé de l'état désactivé, soit un bouton inerte qui
  * se présentait comme actif. `FeedPost` avait relevé le même symptôme sur les
  * marges. L'appui se suit donc à la main, par `onPressIn` / `onPressOut`.
+ *
+ * NativeWind est retiré depuis le chantier 30 (D4) : la forme fonction marche
+ * de nouveau. Ce bouton garde sa structure, au pixel près (D5 du 30), jusqu'à
+ * ce que le `Button` du design system le remplace, du chantier 31 au 34.
  */
 export function StampButton({
   children,

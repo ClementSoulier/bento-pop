@@ -1,0 +1,243 @@
+/* Mon Bento Pop — generated from tokens.json */
+:root, [data-theme="light"] {
+  --yolk-50: #fff6dc;
+  --yolk-100: #ffe9a8;
+  --yolk-200: #ffd976;
+  --yolk-300: #ffc845;
+  --yolk-400: #f4b53a;
+  --yolk-500: #f2a82a;
+  --yolk-600: #d8901e;
+  --yolk-700: #b5751a;
+  --yolk-900: #3d2e0a;
+  --rice-0: #fffcf6;
+  --rice-50: #fbf7ec;
+  --rice-100: #f5efe0;
+  --rice-200: #efe7d2;
+  --rice-300: #e5d8b7;
+  --nori-900: #0e0e0e;
+  --nori-800: #1a1a1a;
+  --neutral-0: #ffffff;
+  --neutral-100: #f4efe5;
+  --neutral-150: #ece5d7;
+  --neutral-200: #e2dacb;
+  --neutral-300: #d3caba;
+  --neutral-400: #b5ad9d;
+  --neutral-500: #9c9484;
+  --neutral-550: #8a8273;
+  --neutral-600: #7d7567;
+  --neutral-650: #716a5d;
+  --neutral-700: #5e574b;
+  --neutral-800: #3b3833;
+  --neutral-850: #2c2925;
+  --neutral-900: #242220;
+  --ume-300: #ff8b7b;
+  --ume-500: #e5533f;
+  --ume-700: #a8301f;
+  --thon-300: #ffb25c;
+  --thon-500: #f39b2d;
+  --thon-700: #a85a0e;
+  --sakura-300: #ffadc6;
+  --sakura-500: #ee7a9c;
+  --sakura-700: #b23f62;
+  --shiso-300: #c3a8ff;
+  --shiso-500: #9470f0;
+  --shiso-700: #5b3cb3;
+  --ramune-300: #7fdaeb;
+  --ramune-500: #2fb5cf;
+  --ramune-700: #10768c;
+  --wasabi-300: #b5d88a;
+  --wasabi-500: #93b66a;
+  --wasabi-700: #55722f;
+  --bg-app: var(--rice-0);
+  --bg-surface: var(--neutral-0);
+  --bg-sunken: var(--neutral-100);
+  --bg-pressed: var(--neutral-200);
+  --bg-elevated: var(--neutral-0);
+  --bg-brand: var(--yolk-500);
+  --bg-brand-dots: var(--yolk-300);
+  --bg-inverse: var(--nori-900);
+  --bg-plate: var(--rice-100);
+  --scrim: rgba(14,14,14,0.5);
+  --text-primary: var(--nori-900);
+  --text-secondary: var(--neutral-700);
+  --text-tertiary: var(--neutral-650);
+  --text-on-brand: var(--nori-900);
+  --text-on-brand-muted: #3d2a07;
+  --text-on-inverse: var(--rice-100);
+  --text-on-media: #ffffff;
+  --text-danger: #b42f22;
+  --text-success: #3f6b1e;
+  --border-subtle: var(--neutral-150);
+  --border-default: var(--neutral-300);
+  --border-strong: var(--neutral-550);
+  --ink: var(--nori-900);
+  --plate-outline: var(--nori-900);
+  --pop-shadow: var(--nori-900);
+  --accent: var(--yolk-300);
+  --accent-pressed: var(--yolk-500);
+  --on-accent: var(--nori-900);
+  --accent-soft: #fff3cc;
+  --on-accent-soft: var(--nori-900);
+  --control-on: var(--nori-900);
+  --control-on-fg: var(--yolk-300);
+  --danger: #c83a2e;
+  --on-danger: var(--neutral-0);
+  --danger-soft: #ffe1dc;
+  --on-danger-soft: #8c2116;
+  --like: var(--ume-500);
+  --success: var(--wasabi-700);
+  --status-live-bg: #e6f2d6;
+  --focus-ring: var(--nori-900);
+  --focus-halo: var(--yolk-300);
+  --skeleton: var(--neutral-150);
+  --tabbar-bg: var(--neutral-0);
+  --toast-bg: var(--nori-900);
+  --media-scrim: rgba(14,14,14,0.78);
+  --cat-film: var(--ume-300);
+  --cat-film-deep: var(--ume-700);
+  --cat-serie: var(--shiso-300);
+  --cat-serie-deep: var(--shiso-700);
+  --cat-artiste: var(--sakura-300);
+  --cat-artiste-deep: var(--sakura-700);
+  --cat-son: var(--ramune-300);
+  --cat-son-deep: var(--ramune-700);
+  --cat-crea: var(--thon-300);
+  --cat-crea-deep: var(--thon-700);
+  --cat-lieu: var(--wasabi-300);
+  --cat-lieu-deep: var(--wasabi-700);
+  --shadow-pop-sm: 2px 2px 0 0 #0e0e0e;
+  --shadow-pop: 3px 3px 0 0 #0e0e0e;
+  --shadow-pop-lg: 5px 5px 0 0 #0e0e0e;
+}
+[data-theme="dark"] {
+  --bg-app: var(--nori-900);
+  --bg-surface: var(--nori-800);
+  --bg-sunken: var(--neutral-900);
+  --bg-pressed: var(--neutral-850);
+  --bg-elevated: var(--neutral-900);
+  --bg-brand: var(--yolk-500);
+  --bg-brand-dots: var(--yolk-300);
+  --bg-inverse: var(--rice-100);
+  --bg-plate: var(--neutral-850);
+  --scrim: rgba(0,0,0,0.66);
+  --text-primary: var(--rice-100);
+  --text-secondary: var(--neutral-400);
+  --text-tertiary: var(--neutral-500);
+  --text-on-brand: var(--nori-900);
+  --text-on-brand-muted: #3d2a07;
+  --text-on-inverse: var(--nori-900);
+  --text-on-media: #ffffff;
+  --text-danger: #ff8e7e;
+  --text-success: var(--wasabi-300);
+  --border-subtle: var(--neutral-850);
+  --border-default: var(--neutral-800);
+  --border-strong: var(--neutral-600);
+  --ink: var(--nori-900);
+  --plate-outline: var(--neutral-600);
+  --pop-shadow: var(--yolk-600);
+  --accent: var(--yolk-300);
+  --accent-pressed: var(--yolk-500);
+  --on-accent: var(--nori-900);
+  --accent-soft: var(--yolk-900);
+  --on-accent-soft: var(--rice-100);
+  --control-on: var(--yolk-300);
+  --control-on-fg: var(--nori-900);
+  --danger: var(--ume-500);
+  --on-danger: var(--nori-900);
+  --danger-soft: #3a1813;
+  --on-danger-soft: #ff8e7e;
+  --like: #ff6b5b;
+  --success: var(--wasabi-300);
+  --status-live-bg: #25331a;
+  --focus-ring: var(--rice-100);
+  --focus-halo: var(--yolk-300);
+  --skeleton: var(--neutral-850);
+  --tabbar-bg: var(--nori-900);
+  --toast-bg: var(--neutral-800);
+  --media-scrim: rgba(14,14,14,0.78);
+  --cat-film: var(--ume-300);
+  --cat-film-deep: var(--ume-700);
+  --cat-serie: var(--shiso-300);
+  --cat-serie-deep: var(--shiso-700);
+  --cat-artiste: var(--sakura-300);
+  --cat-artiste-deep: var(--sakura-700);
+  --cat-son: var(--ramune-300);
+  --cat-son-deep: var(--ramune-700);
+  --cat-crea: var(--thon-300);
+  --cat-crea-deep: var(--thon-700);
+  --cat-lieu: var(--wasabi-300);
+  --cat-lieu-deep: var(--wasabi-700);
+  --shadow-pop-sm: 2px 2px 0 0 #d8901e;
+  --shadow-pop: 3px 3px 0 0 #d8901e;
+  --shadow-pop-lg: 5px 5px 0 0 #d8901e;
+  color-scheme: dark;
+}
+:root {
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+  --border-hairline: 1px;
+  --border-control: 1.5px;
+  --border-ink: 2px;
+  --size-touch: 44px;
+  --size-topbar: 52px;
+  --size-tabbar: 56px;
+  --size-button-lg: 52px;
+  --size-button-md: 44px;
+  --size-button-sm: 32px;
+  --size-field: 52px;
+  --size-avatar-xs: 24px;
+  --size-avatar-sm: 32px;
+  --size-avatar-md: 44px;
+  --size-avatar-lg: 56px;
+  --size-avatar-xl: 96px;
+  --size-icon: 24px;
+  --size-icon-sm: 20px;
+  --screen-margin: 16px;
+  --safe-top: 62px;
+  --safe-bottom: 34px;
+  --plate-padding: 8px;
+  --plate-gap: 6px;
+  --font-display: "Extenda 100 Yotta", "Arial Black", sans-serif;
+  --font-tile: "Fredoka SemiCondensed", Fredoka, "Arial Narrow", sans-serif;
+  --font-heading: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.display-xl { font-family: var(--font-display); font-size: 44px; line-height: 40px; font-weight: 900; letter-spacing: 0.01em; text-transform: uppercase; }
+.display-l { font-family: var(--font-display); font-size: 32px; line-height: 30px; font-weight: 900; letter-spacing: 0.01em; text-transform: uppercase; }
+.display-m { font-family: var(--font-display); font-size: 24px; line-height: 24px; font-weight: 900; letter-spacing: 0.01em; text-transform: uppercase; }
+.tile-xl { font-family: var(--font-tile); font-size: 28px; line-height: 28px; font-weight: 700; letter-spacing: 0.01em; text-transform: uppercase; }
+.tile-l { font-family: var(--font-tile); font-size: 20px; line-height: 21px; font-weight: 700; letter-spacing: 0.01em; text-transform: uppercase; }
+.tile-m { font-family: var(--font-tile); font-size: 15px; line-height: 15px; font-weight: 700; letter-spacing: 0.01em; text-transform: uppercase; }
+.tile-s { font-family: var(--font-tile); font-size: 11px; line-height: 12px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
+.title-1 { font-family: var(--font-heading); font-size: 30px; line-height: 36px; font-weight: 600; }
+.title-2 { font-family: var(--font-heading); font-size: 22px; line-height: 28px; font-weight: 600; }
+.title-3 { font-family: var(--font-heading); font-size: 18px; line-height: 24px; font-weight: 600; }
+.label-l { font-family: var(--font-heading); font-size: 17px; line-height: 22px; font-weight: 600; }
+.label-m { font-family: var(--font-heading); font-size: 15px; line-height: 20px; font-weight: 600; }
+.label-s { font-family: var(--font-heading); font-size: 13px; line-height: 16px; font-weight: 600; }
+.eyebrow { font-family: var(--font-heading); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.tab-label { font-family: var(--font-heading); font-size: 11px; line-height: 14px; font-weight: 500; }
+.body-l { font-family: var(--font-text); font-size: 17px; line-height: 24px; font-weight: 400; }
+.body { font-family: var(--font-text); font-size: 16px; line-height: 22px; font-weight: 400; }
+.body-strong { font-family: var(--font-text); font-size: 16px; line-height: 22px; font-weight: 600; }
+.subhead { font-family: var(--font-text); font-size: 15px; line-height: 20px; font-weight: 400; }
+.subhead-strong { font-family: var(--font-text); font-size: 15px; line-height: 20px; font-weight: 600; }
+.footnote { font-family: var(--font-text); font-size: 13px; line-height: 18px; font-weight: 400; }
+.caption { font-family: var(--font-text); font-size: 12px; line-height: 16px; font-weight: 500; }
+@font-face { font-family: "Extenda 100 Yotta"; src: url("fonts/extenda-100-yotta.otf") format("opentype"); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fredoka SemiCondensed"; src: url("fonts/fredoka-semicondensed-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }

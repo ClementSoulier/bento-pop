@@ -37,6 +37,7 @@ import {
   cancelReadyReminder,
   offerEditorialConsent,
   offerReadyReminder,
+  onItemModeratedReceived,
   readyReminderOffered,
   reconcileReadyReminders,
   type ReminderTarget,
@@ -170,15 +171,21 @@ export default function ComposeTab() {
   useFocusEffect(
     useCallback(() => {
       void refreshProfile();
-      // Chantier 18 : un bento marqué peut sortir pendant que l'app dort, à
-      // la validation de son dernier item. Au retour au premier plan, on le
-      // relit, pour que le bouton dise « Voir mon bento public ».
+      // Au retour au premier plan aussi : l'équipe a pu modérer une case
+      // pendant que l'app dormait, et, chantier 18, un bento marqué peut
+      // sortir à la validation de son dernier item, le bouton disant alors
+      // « Voir mon bento public ». Jusqu'au lot 5b du 17, seul ce second cas
+      // relisait : une case validée restait « en attente » sous la
+      // notification qui la disait en ligne, jusqu'au prochain démarrage.
       const abonnement = AppState.addEventListener('change', (etat) => {
-        if (etat === 'active' && useBento.getState().current?.publishOnValidationAt) {
-          void refreshProfile();
-        }
+        if (etat === 'active') void refreshProfile();
       });
-      return () => abonnement.remove();
+      // Et dès qu'une notification de modération arrive, app ouverte.
+      const desabonner = onItemModeratedReceived(() => void refreshProfile());
+      return () => {
+        abonnement.remove();
+        desabonner();
+      };
     }, [refreshProfile]),
   );
 
@@ -197,14 +204,20 @@ export default function ComposeTab() {
   // lu et l'écran affiché, au démarrage comme app ouverte. Pas avant d'être à
   // l'écran : l'onglet reste monté quand on en change, et suivre la cible
   // depuis un onglet caché ouvrirait la recherche par-dessus un autre.
-  // `take` l'oublie aussitôt : un tap ne se suit qu'une fois.
+  // `take` l'oublie aussitôt : un tap ne se suit qu'une fois. Les cases sont
+  // relues d'abord, lot 5b : composer déjà à l'écran, rien d'autre ne les
+  // relisait, et la case tapée gardait son ancien état.
   const focused = useIsFocused();
   const pushTarget = usePushTarget((s) => s.target);
   useEffect(() => {
     if (!pushTarget || !hydrated || !focused) return;
     const target = usePushTarget.getState().take();
-    if (target) void followPushTarget(target).catch((e) => console.warn('[push] tap', e));
-  }, [pushTarget, hydrated, focused]);
+    if (target) {
+      void refreshProfile()
+        .then(() => followPushTarget(target))
+        .catch((e) => console.warn('[push] tap', e));
+    }
+  }, [pushTarget, hydrated, focused, refreshProfile]);
 
   // Libellé, action et état désactivé viennent d'une seule décision, testée
   // dans `lib/compose-cta.ts`. Les avoir calculés séparément avait produit un

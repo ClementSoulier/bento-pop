@@ -22,13 +22,6 @@
     // (cf. root package.json) garantit qu'on a une seule version de
     // @types/react alignée sur 18.
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts",
-    "images.d.ts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "images.d.ts"],
   "exclude": ["node_modules", ".expo", "ios", "android", "supabase/functions"]
 }

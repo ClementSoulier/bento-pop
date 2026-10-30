@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, AppState, Linking, Platform, type AppStateStatus } from 'react-native';
@@ -12,6 +13,7 @@ import {
   PUSH_ASK_ACCEPT,
   PUSH_ASK_LATER,
   PUSH_ASK_MESSAGE,
+  apnsSandboxOverride,
   coalescePushRefresh,
   pushAskTitle,
   pushTargetFromData,
@@ -106,12 +108,30 @@ function easProjectId(): string {
   return id;
 }
 
+/** L'environnement d'APNs du profil embarqué : `null` sans profil, `undefined` hors iOS ou s'il ne se lit pas. */
+async function iosProfileEnvironment(): Promise<string | null | undefined> {
+  if (Platform.OS !== 'ios') return undefined;
+  try {
+    return await Application.getIosPushNotificationServiceEnvironmentAsync();
+  } catch {
+    return undefined;
+  }
+}
+
 const deps: PushRegistrationDeps = {
   platform,
   userId: () => useSession.getState().user?.id ?? null,
   permission: readPermission,
   expoToken: async () => {
-    const { data } = await Notifications.getExpoPushTokenAsync({ projectId: easProjectId() });
+    const { data } = await Notifications.getExpoPushTokenAsync({
+      projectId: easProjectId(),
+      // Lot 5b : au simulateur, le bac à sable d'APNs, cf. `apnsSandboxOverride`.
+      development: apnsSandboxOverride({
+        platform,
+        dev: __DEV__,
+        profileEnvironment: await iosProfileEnvironment(),
+      }),
+    });
     return data;
   },
   register: async (token, p) => {
@@ -263,6 +283,20 @@ export function startPushResponses(onTarget: (target: PushTarget) => void): () =
     .then(handle)
     .catch((err) => console.warn('[push] dernière réponse', err));
   const subscription = Notifications.addNotificationResponseReceivedListener(handle);
+  return () => subscription.remove();
+}
+
+/**
+ * Une notification de modération reçue pendant qu'on se sert de l'app. Le
+ * composer s'en sert pour relire ses cases : sans cela, la case restait « en
+ * attente » sous la bannière qui la disait validée, jusqu'au prochain
+ * démarrage. Mesuré à l'émulateur à la recette du lot 5b, le 28 octobre 2026.
+ */
+export function onItemModeratedReceived(listener: () => void): () => void {
+  if (Platform.OS === 'web') return () => {};
+  const subscription = Notifications.addNotificationReceivedListener((notification) => {
+    if (pushTargetFromData(notification.request.content.data)?.kind === 'item') listener();
+  });
   return () => subscription.remove();
 }
 

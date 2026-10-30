@@ -1,6 +1,6 @@
 # Mon Bento Pop · Roadmap UX
 
-> **Statut au 28 octobre 2026 : chantiers 1, 4 à 13, 16, 18 à 25, 27 et 28 livrés, le 10 avec le 21 et le 26 refermé avec le 25 ; les 2, 3, 14 et 15 fusionnés, avec un reste : l'appareil réel pour les 2 et 3, la livraison mobile pour le 14, le catalogue de l'équipe pour le 15 ; le 17 fusionné (PR #80) et en service sans destinataire, sa recette de bout en bout attendant la clé APNs et le compte FCM ; le 29 spécifié, préparé et fusionné (PR #106), la sortie en 2.0.0, sa recette sur appareil à la sortie. Tout ce qui est fusionné est en service depuis le 28 octobre.** **Décidé le 17 septembre 2026 : la prochaine sortie store n'aura lieu qu'une fois tous les chantiers de cette roadmap terminés et recettés**, le 29 compris, donc la dette de recette sur appareil soldée ; plus aucune sortie par lot. Décidé le même jour : les migrations des chantiers suivants s'appliquent en production au fur et à mesure, chacune compatible avec la 1.1 et la 0.1.0, et le chantier 29 devient la recette de sortie, seule recette sur appareil. D'ici là, l'App Store sert la 1.1 et le Play Store la 0.1.0, relevé le 17 septembre, et la build 1.3.0 (chantiers 16 et 9), construite le 16 septembre, ne sera pas publiée. La base de production porte depuis le 17 septembre les migrations des chantiers 16, 9 et 13 : **aucune édition ne se compose en production** avant cette sortie et le relèvement du plancher de version. Elle porte aussi les trois du chantier 17, appliquées les 17 et 23 septembre : son battement y passe toutes les 5 minutes et atteint le back-office depuis la mise en service du 26 septembre, sans destinataire. Et celle du chantier 18, appliquée le 26 septembre : elle ne publie que les bentos que la nouvelle app marque, donc rien avant la sortie. Et celle du chantier 8, appliquée le 23 octobre : le web compte les visites depuis ce jour, l'app attendant la sortie pour compter les siennes et proposer le rappel. Et celle du chantier 20, appliquée le 24 octobre : `bento_matches` répond et chaque compte porte le réglage « Apparaître dans la recherche », allumé pour tous ; rien de visible tant que personne n'éteint le réglage, que l'app portera à la sortie : la landing le lit depuis la fusion du 20, le 24 octobre. Et celle du chantier 21, appliquée le 24 octobre : chaque compte peut porter un Popy choisi, vide pour tous, et les anciens pseudos sont réservés et redirigés, aucun n'existant encore ; rien de visible avant la sortie : la landing suit le profil depuis la fusion du 21, le 24 octobre, mais aucun compte n'a encore de Popy choisi, d'ancien pseudo ni de second bento, que seule la nouvelle app permettra. Et celle du chantier 28, appliquée le 26 octobre : `delete_own_account()` répond, que seule la nouvelle app appellera, la 1.1 et la 0.1.0 supprimant toujours par la règle `users_delete_own` ; l'authentification est branchée sur Resend depuis le même jour, sans envoi avant la sortie, aucune version publiée ne proposant de garder son compte. Et celles des chantiers 22, 12, 23, 24, 25 et 27, appliquées le 28 octobre au matin, chacune contrôlée en lecture et comparée, fonction par fonction, au texte collé : les likes, les commentaires et la modération, les pourquoi, les abonnements, la zone de notifications, les réseaux et les succès répondent, chacun derrière son interrupteur, allumé ; rien de visible avant la sortie, sauf les 75 succès déjà mérités, rattrapés par la migration du 27, que les pages web des comptes affichent depuis. La landing sert le code de toutes les fusions depuis le 27 octobre au soir, et le back-office aussi, ses variables de modération posées le 28 octobre avec le domaine `moderation.bento-pop.com` chez Resend. **Les GitHub Actions du dépôt tournent** : notées désactivées le 23 octobre, elles ont pourtant passé `ci.yml` sur chaque PR et sur `main` depuis, et restent actives, décidé le 24 octobre. La CI se rejoue aussi en local, sur la tête de chaque PR. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
+> **Statut au 28 octobre 2026 : chantiers 1, 4 à 13, 16 à 25, 27 et 28 livrés, le 10 avec le 21 et le 26 refermé avec le 25, le 17 à son lot 5b du 28 octobre (PR #108), la clé APNs et le compte FCM posés le même jour ; les 2, 3, 14 et 15 fusionnés, avec un reste : l'appareil réel pour les 2 et 3, la livraison mobile pour le 14, le catalogue de l'équipe pour le 15 ; le 29 spécifié, préparé et fusionné (PR #106), la sortie en 2.0.0, sa recette sur appareil à la sortie ; les 30 à 34 ajoutés le 28 octobre, la refonte visuelle du même jour, à faire avant la sortie, qui les attend, le 30 spécifié et arbitré le même soir, fait et recetté le 30 octobre, en PR (#110) derrière la #109. Tout ce qui est fusionné est en service depuis le 28 octobre.** **Décidé le 17 septembre 2026 : la prochaine sortie store n'aura lieu qu'une fois tous les chantiers de cette roadmap terminés et recettés**, le 29 compris, donc la dette de recette sur appareil soldée ; plus aucune sortie par lot. Décidé le même jour : les migrations des chantiers suivants s'appliquent en production au fur et à mesure, chacune compatible avec la 1.1 et la 0.1.0, et le chantier 29 devient la recette de sortie, seule recette sur appareil. D'ici là, l'App Store sert la 1.1 et le Play Store la 0.1.0, relevé le 17 septembre, et la build 1.3.0 (chantiers 16 et 9), construite le 16 septembre, ne sera pas publiée. La base de production porte depuis le 17 septembre les migrations des chantiers 16, 9 et 13 : **aucune édition ne se compose en production** avant cette sortie et le relèvement du plancher de version. Elle porte aussi les trois du chantier 17, appliquées les 17 et 23 septembre : son battement y passe toutes les 5 minutes et atteint le back-office depuis la mise en service du 26 septembre, sans destinataire. Et celle du chantier 18, appliquée le 26 septembre : elle ne publie que les bentos que la nouvelle app marque, donc rien avant la sortie. Et celle du chantier 8, appliquée le 23 octobre : le web compte les visites depuis ce jour, l'app attendant la sortie pour compter les siennes et proposer le rappel. Et celle du chantier 20, appliquée le 24 octobre : `bento_matches` répond et chaque compte porte le réglage « Apparaître dans la recherche », allumé pour tous ; rien de visible tant que personne n'éteint le réglage, que l'app portera à la sortie : la landing le lit depuis la fusion du 20, le 24 octobre. Et celle du chantier 21, appliquée le 24 octobre : chaque compte peut porter un Popy choisi, vide pour tous, et les anciens pseudos sont réservés et redirigés, aucun n'existant encore ; rien de visible avant la sortie : la landing suit le profil depuis la fusion du 21, le 24 octobre, mais aucun compte n'a encore de Popy choisi, d'ancien pseudo ni de second bento, que seule la nouvelle app permettra. Et celle du chantier 28, appliquée le 26 octobre : `delete_own_account()` répond, que seule la nouvelle app appellera, la 1.1 et la 0.1.0 supprimant toujours par la règle `users_delete_own` ; l'authentification est branchée sur Resend depuis le même jour, sans envoi avant la sortie, aucune version publiée ne proposant de garder son compte. Et celles des chantiers 22, 12, 23, 24, 25 et 27, appliquées le 28 octobre au matin, chacune contrôlée en lecture et comparée, fonction par fonction, au texte collé : les likes, les commentaires et la modération, les pourquoi, les abonnements, la zone de notifications, les réseaux et les succès répondent, chacun derrière son interrupteur, allumé ; rien de visible avant la sortie, sauf les 75 succès déjà mérités, rattrapés par la migration du 27, que les pages web des comptes affichent depuis. La landing sert le code de toutes les fusions depuis le 27 octobre au soir, et le back-office aussi, ses variables de modération posées le 28 octobre avec le domaine `moderation.bento-pop.com` chez Resend. **Les GitHub Actions du dépôt tournent** : notées désactivées le 23 octobre, elles ont pourtant passé `ci.yml` sur chaque PR et sur `main` depuis, et restent actives, décidé le 24 octobre. La CI se rejoue aussi en local, sur la tête de chaque PR. **Le 15 septembre, l'équipe a donné la suite du produit** : quinze sujets, versés dans les chantiers 15 à 27 et dans le 13 qu'ils recadrent, plus un chantier 28 que la liste supposait. Elle passe devant les chantiers 8 à 12, cf. [la roadmap produit](#la-roadmap-produit-du-15-septembre). Rédigé le 11 septembre 2026 à partir d'un audit du code de `apps/mobile` (routes, composants bento, state, libs) et de `apps/landing`.
 >
 > Chaque chantier se traite **un par un**, avec une étape de planification dédiée avant implémentation. Cocher au fur et à mesure et noter la PR en face.
 
@@ -224,7 +224,7 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 16 | Plusieurs bentos par compte | Contenu | L | 5 | ✅ **6 lots livrés (PR #70, CI verte, fusionnée le 16/09)**, spécifiés et livrés dans la journée · migration A appliquée en production avec son correctif urgent · **B et `publish_first_bento` appliquées en production le 17/09**, avec le bloc du chantier 13 et sans attendre d'adoption : aucune version publiée ne lit l'embed dont B change la forme · DoD 12 sur 13 · recette d'appareil versée au 29 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 9 | Onboarding : pseudo au moment de publier | Activation | M | 5 | ✅ **livré au lot 5 du 16 (PR #70)**, parcours vérifié de bout en bout au simulateur · brouillon local, zéro ligne serveur avant publication, CGU horodatées à l'acceptation · gain non prévu : on compose désormais **sans session**, ce qui répond au rejet App Store 2bf822e0 · [spec](./UX-16-PLUSIEURS-BENTOS.md) |
 | 13 | Bento hebdomadaire | Rétention | L | 15, 16 | ✅ **6 lots livrés (PR #74, CI verte, fusionnée le 17/09)** · recette sur simulateur iOS et émulateur Android : seize étapes et contrôle d'horloge, 17 défauts corrigés · arbitrages D11 à D13 : titre en 30 caractères, titre de l'édition dans le ruban de partage, **question de l'édition sur la case remplie**, garantie par un test sur 2 736 questions · bento principal inchangé au bit sur le web et au pixel dans l'app · **bloc SQL appliqué en production le 17/09** : migration B, `publish_first_bento` et les trois migrations des éditions · DoD 12 sur 14 : restent l'appareil réel (29) et le catalogue des quatre types dormants (15) · landing et back-office redéployés sur Coolify le 17/09, pages publiques vérifiées en production : boîte du bento principal identique à l'octet près à celle d'avant le redéploiement · **ne composer aucune édition en production** avant la sortie store unique et le plancher de version (D8) · [spec](./UX-13-BENTO-HEBDOMADAIRE.md) |
-| 17 | Notifications push | Rétention | L | build native | 🟡 **spécifié et arbitré le 17/09**, 28 décisions au 23/09 · **lots 1 à 4 faits et recettés du 17 au 23/09**, en local, au simulateur iPhone 17 Pro et à l'émulateur Pixel 8 : la base (appareils, tickets, déclencheur de modération), l'app qui enregistre son appareil, l'envoi par le back-office et son battement `pg_cron` toutes les 5 minutes (D10), les réglages du profil et le tap · **trois migrations appliquées en production** les 17 et 23/09, chacune prouvée compatible avec la 1.1 et la 0.1.0 avant, lectures des versions publiées inchangées après ; le battement y passe sans rien poster jusqu'à la mise en service (D11) · la recette a trouvé ce qu'aucun test ne voyait : **chaque envoi aurait échoué dans l'image Docker** du back-office, faute d'un fichier du SDK ; des titres coupés vers 28 caractères (D24) ; **deux défauts antérieurs au chantier**, le brouillon qui ne relisait pas ses propositions (D25) et l'item refusé affiché comme accepté à son auteur (D28) · **lot 5a fait le 23/09**, **PR #80 fusionnée le 23/09** après CI verte · **en service le 26/09** : back-office redéployé, secrets posés, battement reçu en 202 et noté toutes les 5 minutes, sans destinataire ; `EXPO_ACCESS_TOKEN` attend le robot d'Expo (D17) · DoD 8 sur 12, le tap fait sur iOS, les points 1 à 3 à la recette de bout en bout · **reste** : le lot 5b, la recette de bout en bout, à l'arrivée de la clé APNs et du compte FCM (délai administratif) ; l'appareil réel est versé au 29 · le besoin mesuré : **6,9 jours** de validation en médiane, sans que personne soit prévenu · envoi par déclencheur SQL et `pg_cron` vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
+| 17 | Notifications push | Rétention | L | build native | ✅ **livré** · **lot 5b fait et recetté le 28/10, PR #108** : la clé APNs et le compte FCM posés le même jour, un item validé, refusé ou une édition sortie arrivent au simulateur iOS et à l'émulateur Android en moins de 4 secondes, un tap ouvre le bon écran, « Mes items » coupé ne reçoit plus rien, un appareil désinstallé est révoqué ; deux défauts corrigés, le jeton du simulateur déclaré à la production d'APNs (D29) et le composer qui ne relisait pas ses cases à l'arrivée d'une notification (D30) · DoD 12/12, l'appareil réel et l'écran verrouillé au 29 · **spécifié et arbitré le 17/09**, 30 décisions au 28/10 · **lots 1 à 4 faits et recettés du 17 au 23/09**, en local, au simulateur iPhone 17 Pro et à l'émulateur Pixel 8 : la base (appareils, tickets, déclencheur de modération), l'app qui enregistre son appareil, l'envoi par le back-office et son battement `pg_cron` toutes les 5 minutes (D10), les réglages du profil et le tap · **trois migrations appliquées en production** les 17 et 23/09, chacune prouvée compatible avec la 1.1 et la 0.1.0 avant, lectures des versions publiées inchangées après ; le battement y passe sans rien poster jusqu'à la mise en service (D11) · la recette a trouvé ce qu'aucun test ne voyait : **chaque envoi aurait échoué dans l'image Docker** du back-office, faute d'un fichier du SDK ; des titres coupés vers 28 caractères (D24) ; **deux défauts antérieurs au chantier**, le brouillon qui ne relisait pas ses propositions (D25) et l'item refusé affiché comme accepté à son auteur (D28) · **lot 5a fait le 23/09**, **PR #80 fusionnée le 23/09** après CI verte · **en service le 26/09** : back-office redéployé, secrets posés, battement reçu en 202 et noté toutes les 5 minutes, sans destinataire ; `EXPO_ACCESS_TOKEN` attend le robot d'Expo (D17) · le besoin mesuré : **6,9 jours** de validation en médiane, sans que personne soit prévenu · envoi par déclencheur SQL et `pg_cron` vers le back-office, seul à détenir la clé de service · deux notifications, transactionnelle et éditoriale, régimes séparés par la règle Apple 4.5.4 · [spec](./UX-17-NOTIFICATIONS-PUSH.md) |
 | 18 | Publication automatique à la validation | Activation | M | 5 | ✅ **4 lots livrés (PR #86, CI verte, fusionnée le 26/09)**, spécifiés, arbitrés, faits et recettés dans la journée, cinq décisions · recettés au simulateur iPhone 17 Pro et à l'émulateur Pixel 8, sur la base locale : la base publie le bento marqué à la validation de son dernier item en attente, le back-office dit « Bento publié », l'app pose la marque et dit « Bientôt en ligne », édition comprise · **migration appliquée en production le 26/09**, prouvée compatible avec la 1.1 et la 0.1.0 avant, lectures des versions publiées inchangées après · **back-office redéployé le 26/09**, battement reçu en 202 juste après · DoD 10 sur 11, la réception de « Bento publié » suivant le 5b du 17, et un vrai téléphone le 29 · mesuré : sur 24 bentos portant une proposition de leur auteur, **15 ne sont jamais sortis**, dont 12 complets, validés le 25 août pour onze d'entre eux ; les 8 autres, 5 jours après la validation en médiane · **tout bento complet sort à la validation de son dernier item**, sans geste, dans la nouvelle app seulement, qui le dit avant et notifie « Bento publié » après · [spec](./UX-18-PUBLICATION-AUTOMATIQUE.md) |
 | 8 | Signaux de retour : compteur de visites, rappel de publication | Rétention | **L** | 17 | ✅ **5 lots livrés (PR #90 et #91, fusionnées le 23/10)**, spécifiés, arbitrés, faits, recettés et mis en service dans la journée, seize décisions · recettés au simulateur iPhone 17 Pro et SE et à l'émulateur Pixel 8, sur la base locale : la base, la landing qui compte par une image d'un pixel, le compteur et « Afficher mes visites » dans l'app, le rappel local, reçu pour de vrai sur l'émulateur · **migration appliquée en production le 23/10**, prouvée compatible avec la 1.1 et la 0.1.0 avant, lectures des versions publiées identiques à l'octet près après · **le web compte depuis le 23/10** : secret au coffre et sur Coolify, landing redéployée, une visite contrôlée comptée et affichée · DoD 13 sur 13, CI rejouée en local · la recette a trouvé un défaut de Safari, qui ne redemandait pas l'image de comptage : le jour est désormais dans son adresse · la purge de la nuit relevée le 27/10, passée chaque nuit depuis le 24, sans échec · **reste** : le compteur et le rappel dans l'app à la sortie store unique ; l'appareil réel versé au 29 · mesuré : les 13 bentos complets jamais publiés contiennent tous une proposition de leur auteur, et sans proposition 18 complets sur 18 ont été publiés, 14 dans l'heure · effort réévalué M → L · [spec](./UX-08-SIGNAUX-DE-RETOUR.md) |
 | 19 | Émissions et podcasts dans « La table » | Contenu | M | 2 | ✅ **4 lots livrés (PR #93, fusionnée le 24/10)**, spécifiés, arbitrés, faits et recettés le 23/10 · **la route des épisodes en service** : bento-pop.com rend ses 40 épisodes à l'app depuis le 24/10 ; « La table » les montrera à la sortie store unique · DoD 10/10 au simulateur et à l'émulateur, la voix de VoiceOver et TalkBack versée au 29 · recette de §7.2 sur l'iPhone 17 Pro, l'iPhone SE et le Pixel 8, deux défauts corrigés : le rôle des cartes et l'étiquette coupée aux grandes tailles de police · **le premier n'en était pas un, corrigé le 24/10 sur `fix/roles-fabric`** : le compagnon d'`idb` gardait le rôle de la première vie d'une vue recyclée, Fabric posait le bon ; les cartes reprennent le rôle « lien », arbitré par Clément · **spécifié et arbitré le 23/10**, quatorze décisions · **lot 1 fait le 23/10** : la route de lecture de la landing, qui rendra les 40 épisodes, 3 podcasts pas encore repris par Spotify ouverts sur leur page du site (D13) · **lot 2 fait le 23/10** : les données et la fusion par date dans l'app, pures et testées · **lot 3 fait le 23/10** : la carte, le tap et les épisodes dans « La table », recettés au simulateur sur les 40 épisodes réels ; le fil attend ses épisodes au plus une seconde (D14) · mesuré : 40 épisodes en ligne, un par semaine le mardi à 18 h, contre 28 bentos ; depuis septembre, la tête du fil compterait 8 bentos et 8 épisodes · tous les épisodes publiés, chacun à sa date parmi les bentos, sous la forme de la carte d'épisode de la landing ; le tap ouvre YouTube ou la plateforme du podcast · une route de lecture de la landing, seule à savoir cacher un épisode programmé, et une fusion par date dans l'app · [spec](./UX-19-EPISODES-LA-TABLE.md) |
@@ -239,7 +239,12 @@ doit être présente en **runtime**, jamais préfixée `NEXT_PUBLIC_`.
 | 24 | Zone de notifications dans l'app | Rétention | M | 22, 23 | ✅ **livré** · **5 lots faits et recettés le 27/10**, **PR #103 fusionnée le 27/10** · **mis en service le 28/10 par Clément**, après le 23 : la migration, appliquée et contrôlée, la landing servie depuis la fusion · DoD 13 sur 13 · 79 contrôles contre une pile locale à part, vingt-six défauts introduits exprès et tous attrapés · recette au simulateur iPhone 17 Pro et SE et à l'émulateur Pixel 8 : la barre, interrupteur éteint, identique au pixel à celle du 23 ; deux défauts trouvés et corrigés, dont la pastille qui rognait son « + » · **spécifié et arbitré le 27/10**, vingt-cinq décisions, dont trois rendues par Clément en QCM : un cinquième onglet « Notifs », plutôt que la cloche recommandée (D1) ; les décisions de l'équipe en plus, items validés ou refusés compris (D2) ; 90 jours (D3) · rien n'est recopié : la zone se calcule à la lecture, exacte par construction, sans purge (D4) · mesuré : 141 items proposés en 90 jours, validés en 6,9 jours sans que personne soit prévenu · [spec](./UX-24-ZONE-DE-NOTIFICATIONS.md) |
 | 25 | Comptes Instagram et TikTok | Appropriation | L | 21 | ✅ **livré** · **5 lots faits et recettés le 27/10**, **PR #104 fusionnée le 27/10** · **mis en service le 28/10 par Clément**, après le 24 : la migration, appliquée et contrôlée, la landing et le back-office à jour · DoD 10 sur 10 · 56 contrôles contre une pile locale à part, seize défauts introduits exprès et tous attrapés · recette au simulateur iPhone 17 Pro et SE, à l'émulateur Pixel 8 et au back-office : une page sans lien identique au pixel à celle du 24 ; deux défauts corrigés, dont les accents échappés hérités du 23 · **spécifié et arbitré le 27/10**, vingt décisions, dont trois rendues par Clément en QCM, chaque fois l'option recommandée : un pseudo saisi, sans connexion ni revue (D1) ; deux glyphes au bout de la ligne de date (D2) ; « Afficher mes réseaux », allumé par défaut (D3) · aucune photo importée, le Popy reste le visage (D19) · le 26 refermé (D18) · [spec](./UX-25-COMPTES-INSTAGRAM-TIKTOK.md) |
 | 27 | Succès | Rétention | L | 13, 21 | ✅ **livré** · **5 lots faits et recettés le 27/10**, **PR #105 fusionnée le 27/10** · **mis en service le 28/10 par Clément**, après le 25 : la migration, appliquée et contrôlée, la landing servie depuis la fusion · DoD 9 sur 9 · 42 contrôles contre une pile locale à part, dix-huit défauts introduits exprès et tous attrapés, une pose en panne qui ne bloque pas la publication, et le rattrapage répété sur des données d'avant la migration · recette au simulateur iPhone 17 Pro et SE, à l'émulateur Pixel 8 et sur le web : publier depuis l'app pose « Premier bento » et « Notifs » l'annonce ; une page sans succès identique au pixel à celle du 25 ; un défaut trouvé et corrigé, « Inconditionnel » coupé au milieu du mot au SE · **spécifié et arbitré le 27/10**, vingt-trois décisions, dont trois rendues par Clément en QCM, chaque fois l'option recommandée : huit succès sur les bentos, les items proposés et les abonnés, pas les j'aime (D1) ; publics, sous la boîte de sa page, dans l'app et sur le web (D2) ; acquis pour toujours (D3) · rattrapé en production le 28/10 : 28 « Premier bento », 27 « Défricheur », 18 « Éclaireur » et 2 « Pionnier », que le web affiche · [spec](./UX-27-SUCCES.md) |
-| 29 | **La dette de recette sur appareil** | Qualité | M | rien | 🟡 **spécifié et préparé le 27/10**, **PR #106 fusionnée le 27/10** : 54 points rassemblés, dédoublonnés et rangés en sept passes, les fiches des stores, les notes de version, la 2.0.0, une répétition de la build de release au simulateur et à l'émulateur, sans défaut propre à la release · quatre décisions rendues par Clément en QCM : la 2.0.0 (D1), la sortie attend le 5b du 17 (D2), la mise en ligne d'un coup (D3), un âge minimum de 15 ans (D23) · les deux suivis de code faits le même jour : VoiceOver en français sur iOS (D18) et les textes légaux justes, l'âge compris (D14) · **l'étape 1 de la sortie faite le 28/10** : les mises en service · **reste**, à la sortie : la recette sur deux vrais téléphones · [spec](./UX-29-RECETTE-DE-SORTIE.md) · **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers · **devient la recette de sortie**, décidé le 17/09 : la liste vidée, puis tous les chantiers parcourus sur iPhone et Android, en build de production, juste avant la soumission · **le chantier 13 y verse sa part le 17/09** : la fluidité du fil avec des boîtes de tailles différentes, le partage d'un bento d'édition dans deux messageries, et surtout « CRÉATEUR DE CONTENU » qui, **au calcul, déborde dans le fil sur iPhone SE** sans qu'aucun écran ne l'ait confirmé · **le chantier 17 y verse sa part le 23/09** : la réception sur un vrai iPhone et un vrai Android en build de production, donc l'environnement de production d'APNs ; l'écran verrouillé ; « Ouvrir les réglages » sur iOS ; une désinstallation réelle et son `DeviceNotRegistered` · **le chantier 18 y verse sa part le 26/09** : « Bento publié » reçu et tapé sur un vrai téléphone · **le chantier 8 y verse sa part le 23/10** : le rappel reçu à 18 h sur un vrai téléphone, écran verrouillé et après un redémarrage ; les visites depuis Safari, Instagram et TikTok en production, et les aperçus de lien qui ne comptent rien · **les chantiers 28, 22, 12, 23, 24, 25 et 27 y versent leur part le 27/10**, à la livraison du 27 : les vrais mails de Resend, l'âge dans App Store Connect et les fiches de confidentialité des deux stores, chaque parcours neuf sur deux vrais téléphones, la voix de VoiceOver et de TalkBack, Instagram et TikTok ouverts pour de vrai |
+| 30 | Socle du design system v2 : tokens, polices, icônes, composants | Fondation | L | rien | 🟡 **fait et recetté du 28 au 30/10**, cinq lots, **PR #110**, empilée sur la #109 ; reste sa fusion · DoD 12 sur 12 · **le socle ne se voit pas** : les neuf écrans de référence identiques au pixel avant et après le 30, au 17 Pro, au SE et au Pixel 8 (D5) · les tokens générés et gardés par un test, le thème, les contrastes prouvés, Fredoka SemiCondensed, `Text` et ses plafonds, NativeWind retiré (lot 1) ; les 72 icônes et `Icon`, comparées à leurs SVG sur les deux appareils, l'ombre franche par un calque décalé, `boxShadow` n'étant pas dessiné sous Android 9, mesurée sans flou, le mouvement et sa variante réduite suivie en direct, les cinq retours haptiques, le catalogue réservé au développement (lot 2) ; les 15 composants de la structure, des actions et de la marque, identiques à leurs aperçus sur les deux appareils, tenus à 130 et 200 % après trois coupures corrigées (lot 3) ; les 21 composants des listes, de la saisie, des calques et des retours, identiques à leurs aperçus, ouverts pour de vrai sur les deux appareils, feuilles et confirmation gardant le focus dans leur `Modal`, et cinq défauts corrigés, dont Popy trop petite depuis le lot 3 et le seuil de 130 % manqué au Pixel (lot 4) ; **la recette complète (lot 5)** : l'iPhone SE à 100, 135 et 200 %, deux mots coupés en deux corrigés, l'affiche qui rapetisse (D24) et l'heure d'une notification sous son titre ; les lecteurs d'écran en français aux deux plateformes, une action anglaise corrigée et gardée par un test ; le clavier à l'écran de l'iPhone enfin vu sous une feuille ; le catalogue fermé en production, éprouvé sur des builds Release locales ; deux points versés au 29 · huit décisions prises aux lots 3 à 5 (D17 à D24) · **spécifié et arbitré le 28/10**, seize décisions, dont quatre rendues par Clément en QCM, chaque fois l'option recommandée : le texte jusqu'à 200 % (D1) ; les 39 composants transverses, ceux du bento et du social avec leurs écrans (D2) ; les 72 icônes du dossier, dans un composant maison (D3) ; `useTheme()`, NativeWind retiré (D4) · **le socle ne se voit pas** : aucun écran ne change avant le 31 (D5) · cinq lots · **ajouté le 28/10**, de la refonte visuelle du même jour, avant la sortie (D1 de la refonte) · [spec](./UX-30-SOCLE-DESIGN-SYSTEM.md) · [refonte](./design-v2/LISEZMOI.md) |
+| 31 | La coque et les moments de marque | Identité | M | 30 | ⬜ **ajouté le 28/10** · la barre d'onglets, Compose au centre ; les toasts en bas ; le bandeau de mise à jour à sa place en haut ; l'icône d'app redessinée ; l'accueil, la mise à jour et la maintenance, 6 écrans pour 11 captures |
+| 32 | Composer et publier, refaits | Complétion | L | 31 | ⬜ **ajouté le 28/10** · le composer, la recherche d'une case, la proposition d'item, les éditions, le pseudo, l'accord, le partage et son image, 17 écrans pour 27 captures ; chaque case prend la couleur, l'icône et la puce de sa catégorie |
+| 33 | La table, les profils et le social, refaits | Engagement | L | 31 | ⬜ **ajouté le 28/10** · La table, Trouver, les profils, les abonnés et les demandes, « Accepter » et « Refuser » sur la ligne, les commentaires et les pourquoi, 26 écrans pour 33 captures |
+| 34 | Le compte, les notifications et les réglages, refaits | Confiance | L | 31 | ⬜ **ajouté le 28/10** · garder et retrouver son compte, « Quoi de neuf ? », la notification reçue app ouverte, les réglages, l'export, la suppression, le profil à modifier, 26 écrans pour 33 captures |
+| 29 | **La dette de recette sur appareil** | Qualité | M | rien | 🟡 **spécifié et préparé le 27/10**, **PR #106 fusionnée le 27/10** : 54 points rassemblés, dédoublonnés et rangés en sept passes, les fiches des stores, les notes de version, la 2.0.0, une répétition de la build de release au simulateur et à l'émulateur, sans défaut propre à la release · quatre décisions rendues par Clément en QCM : la 2.0.0 (D1), la sortie attend le 5b du 17 (D2), la mise en ligne d'un coup (D3), un âge minimum de 15 ans (D23) · les deux suivis de code faits le même jour : VoiceOver en français sur iOS (D18) et les textes légaux justes, l'âge compris (D14) · **l'étape 1 de la sortie faite le 28/10** : les mises en service · **reste**, à la sortie : la recette sur deux vrais téléphones · **attend aussi la refonte visuelle**, chantiers 30 à 34, décidé le 28/10 (D25) · [spec](./UX-29-RECETTE-DE-SORTIE.md) · **ouvert le 16/09** · rassemble tout ce qui n'a pu être vérifié qu'au calcul ou au simulateur, chantiers 1, 2, 3, 11 et 16 · ne dépend de rien et peut se glisser entre deux chantiers · **devient la recette de sortie**, décidé le 17/09 : la liste vidée, puis tous les chantiers parcourus sur iPhone et Android, en build de production, juste avant la soumission · **le chantier 13 y verse sa part le 17/09** : la fluidité du fil avec des boîtes de tailles différentes, le partage d'un bento d'édition dans deux messageries, et surtout « CRÉATEUR DE CONTENU » qui, **au calcul, déborde dans le fil sur iPhone SE** sans qu'aucun écran ne l'ait confirmé · **le chantier 17 y verse sa part le 23/09** : la réception sur un vrai iPhone et un vrai Android en build de production, donc l'environnement de production d'APNs ; l'écran verrouillé ; « Ouvrir les réglages » sur iOS ; une désinstallation réelle et son `DeviceNotRegistered` · **le chantier 18 y verse sa part le 26/09** : « Bento publié » reçu et tapé sur un vrai téléphone · **le chantier 8 y verse sa part le 23/10** : le rappel reçu à 18 h sur un vrai téléphone, écran verrouillé et après un redémarrage ; les visites depuis Safari, Instagram et TikTok en production, et les aperçus de lien qui ne comptent rien · **les chantiers 28, 22, 12, 23, 24, 25 et 27 y versent leur part le 27/10**, à la livraison du 27 : les vrais mails de Resend, l'âge dans App Store Connect et les fiches de confidentialité des deux stores, chaque parcours neuf sur deux vrais téléphones, la voix de VoiceOver et de TalkBack, Instagram et TikTok ouverts pour de vrai |
 
 **Arbitré le 15 septembre 2026 : la roadmap produit passe devant les
 chantiers 8 à 12.** Elle suit l'ordre donné par l'équipe, le 13 y prenant la
@@ -257,6 +262,11 @@ place du bento hebdomadaire, après les 15 et 16 dont il dépend. Les chantiers
 Deux autres arbitrages du même jour : **le chantier 28, compte récupérable**,
 est ajouté avant le 22, et **les réglages de confidentialité partent chacun
 avec leur fonctionnalité** plutôt qu'en un chantier à part.
+
+**Ajouté le 28 octobre 2026 : la refonte visuelle passe avant la sortie.** Les
+chantiers 30 à 34 en viennent (cf. « La refonte visuelle du 28 octobre ») : le
+30 pose le système, les 31 à 34 refont les écrans. Ils se rangent après le 27
+et avant le 29, dont la recette de sortie parcourra les écrans refaits.
 
 ---
 
@@ -351,6 +361,100 @@ Chacune coûte moins cher posée une fois que redécouverte à chaque chantier.
 **Quatre failles relevées en chemin**, sans rapport avec la liste, corrigées
 et fermées en production le même jour, cf.
 [ménage en attente](#ménage-en-attente).
+
+---
+
+## La refonte visuelle du 28 octobre
+
+Dessinée le 28 octobre 2026 dans Claude Design, à partir de la galerie des 104
+écrans de la 2.0 (captures du lot 5b du 17), et remise le soir même en dossier
+pour le développement, versé dans `docs/design-v2/` (cf. son `LISEZMOI.md`).
+**Aucune fonctionnalité ne change** : l'apparence, la mise en page et cinq
+placements. Elle devient les chantiers 30 à 34, avant la sortie.
+
+**Ce que le dossier apporte.**
+
+- Un design system : `tokens.json` (105 couleurs en clair et en sombre, 22
+  styles de texte, des espaces sur une base de 4, des rayons, des ombres
+  franches, des tailles), les polices (Fredoka, Fredoka SemiCondensed Bold
+  pour les titres de cases, Extenda pour les moments de marque, la police du
+  système pour le texte), 72 icônes Phosphor, les Popys et la marque, 63
+  composants avec leurs règles, leur aperçu, leurs props et leur code web de
+  référence.
+- 75 écrans redessinés, en PNG @2x et en arbres de composants (`ecrans.json`),
+  qui couvrent les 104 captures de la 2.0 (`correspondance.md`).
+- En ligne, le design system
+  (https://claude.ai/artifact/BtG2GdL2fUZdBNuWy3611A) et le canevas des écrans
+  (https://claude.ai/artifact/EmdqHyQbfZ1oTk1GL97ZNt), qui fait foi s'il
+  évolue après l'export.
+
+**Les cinq placements qui changent.**
+
+- La barre d'onglets : La table, Trouver, Compose au centre dans une pastille
+  jaune, Notifs, Profil avec la Popy de la personne. Aujourd'hui : Compose, La
+  table, Trouver, Notifs, Profil.
+- Les toasts : en bas, 8 pt au-dessus de la barre d'onglets, 4 s, 6 s avec une
+  action. Aujourd'hui : en haut, 3 s.
+- Les demandes d'abonnement : « Accepter » et « Refuser » sur la ligne.
+  Aujourd'hui : sous la ligne.
+- Le bandeau de mise à jour : à sa place en haut de l'écran. Aujourd'hui :
+  posé sur l'en-tête.
+- Les cases du bento : une couleur, une icône et une puce par catégorie.
+  Aujourd'hui : une teinte tirée de l'item et une puce texte.
+
+**Arbitré avec Clément le 28 octobre, en QCM, chaque fois l'option
+recommandée.**
+
+- **D1 · Avant la 2.0.0.** La sortie unique attend la refonte : une seule
+  recette sur deux vrais téléphones, celle du 29, et des captures de stores
+  déjà neuves.
+- **D2 · Un socle et quatre chantiers.** Le 30 pose le système ; les 31 à 34
+  refont les écrans par familles de parcours, chacun planifié, recetté et
+  fusionné à part.
+- **D3 · Le sombre après la sortie.** Les valeurs sombres entrent avec les
+  tokens, l'app reste en clair (`userInterfaceStyle` à `light`) ; les écrans
+  sombres restent à décliner et relire dans Claude Design.
+- **D4 · Les fichiers dans le dépôt.** Les tokens, les polices, les icônes et
+  les Popys dans l'app ; les 75 écrans de référence et le code web des
+  composants dans `docs/design-v2/`.
+
+**Ce que le code dit déjà**, relevé le 28 octobre en lecture seule sur
+`feat/ux-17-lot-5b`.
+
+- Aucun thème : 678 styles écrits en ligne, 7 `StyleSheet.create`, 358
+  couleurs hexadécimales pour 12 valeurs distinctes. Les tokens de
+  `packages/brand` ne servent qu'au web : l'app n'en importe que le logo et
+  les Popys. NativeWind est installé, jamais employé.
+- Les polices : Bungee (71 emplois : boutons, onglets, toasts, tampons),
+  Extenda (30 : titres, pseudos, titres de cases), Fredoka (9) ; le texte
+  courant est déjà dans la police du système. La refonte retire Bungee, met
+  Fredoka sur les boutons et les onglets, Fredoka SemiCondensed sur les titres
+  de cases, et garde Extenda pour les moments de marque.
+- Aucune bibliothèque d'icônes : six icônes dessinées à la main
+  (`TabIcons.tsx`), quelques SVG en ligne et des caractères Unicode (‹, ✕, ›,
+  ↗, ✓, ★). `react-native-svg` est déjà là : Phosphor
+  (`phosphor-react-native`, MIT) n'ajoute aucune build native.
+- Les composants : un bouton (`StampButton`, 15 fichiers), un fond jaune
+  (`YellowBg`, 20), un toast (14), la grille du bento (9) ; ni avatar, ni
+  champ (13 `TextInput` nus), ni ligne de liste, ni boîte de dialogue (19
+  `Alert.alert`). La page d'un compte (`u/[pseudo].tsx`, 1 532 lignes) et le
+  composer (1 000 lignes) portent leurs propres composants.
+- 24 écrans dans 28 fichiers de `app/` ; publier et partager vivent dans le
+  composer et la page d'un compte, la mise à jour et la maintenance dans
+  `AppBlocker`.
+- Les tests : 79 fichiers `node:test`, aucun instantané. Deux tests de règles
+  lisent chaque `.tsx` (`accessibilite.test.ts`, `font-scaling.test.ts`) ;
+  d'autres figent des nombres : la barre de 84 pt, les métriques de Bungee et
+  d'Extenda, `feed/ribbon.test.ts` et ses `#fbbf24` et `#0a0a0a`.
+- Aucune gestion du mouvement réduit ; la taille de texte plafonnée par
+  `font-scaling.ts` à 140 % pour le contenu et 120 % pour les contrôles, les
+  titres et les cases.
+
+**Ce que la refonte ne touche pas.** La landing, le back-office et le quiz :
+`packages/brand` garde les tokens qu'ils emploient. Les palettes des cases
+(`packages/supabase-mobile/src/bento.ts`) sont partagées avec la landing, dont
+la page d'un bento garde son apparence tant que le 32 n'en décide pas
+autrement.
 
 ---
 
@@ -779,7 +883,7 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 
 ## 17. Notifications push
 
-> **Lots 1 à 4 faits et recettés du 17 au 23 septembre 2026, lot 5a le 23, fusionnés le 23 (PR #80) et en service sans destinataire depuis le 26**, cf. [la spécification](./UX-17-NOTIFICATIONS-PUSH.md), qui tient ses décisions, D1 à D28. Le « fait quand » se vérifie en deux temps : au simulateur et à l'émulateur au lot 5b, à l'arrivée de la clé APNs et du compte FCM ; sur appareil réel, en build de production, au chantier 29. Le constat ci-dessous est celui du 15 septembre.
+> **Lots 1 à 4 faits et recettés du 17 au 23 septembre 2026, lot 5a le 23, fusionnés le 23 (PR #80) et en service sans destinataire depuis le 26 ; lot 5b fait et recetté le 28 octobre (PR #108)**, le jour où la clé APNs et le compte FCM ont été posés, cf. [la spécification](./UX-17-NOTIFICATIONS-PUSH.md), qui tient ses décisions, D1 à D30. Le « fait quand » se vérifie en deux temps : au simulateur et à l'émulateur, fait au lot 5b ; sur appareil réel, en build de production, au chantier 29. Le constat ci-dessous est celui du 15 septembre.
 
 **Demandé.** Deux notifications : un nouveau bento à compléter, et un bento prêt à être publié parce que tous ses éléments sont validés.
 
@@ -1161,6 +1265,104 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 
 ---
 
+## 30. Socle du design system v2
+
+> **Ajouté le 28 octobre 2026**, de la refonte visuelle du même jour (cf. « La refonte visuelle du 28 octobre »). **Spécifié et arbitré le même soir**, cf. [la spécification](./UX-30-SOCLE-DESIGN-SYSTEM.md), qui tient ses décisions, D1 à D24 : le texte jusqu'à 200 %, les 39 composants transverses, les 72 icônes du dossier, `useTheme()` et NativeWind retiré, rendues par Clément en QCM ; un socle qui ne change aucun écran. **Fait et recetté du 28 au 30 octobre**, cinq lots, **PR #110**, à fusionner après la #109 : le socle posé sans changer aucun écran, prouvé au pixel aux trois appareils, ses 39 composants identiques à leurs aperçus et tenus à 200 % jusqu'à l'iPhone SE, DoD 12 sur 12. Le constat ci-dessous est celui de l'ajout.
+
+**Demandé.** Implémenter la refonte visuelle de l'app avant la sortie (D1), en commençant par le système qu'elle décrit : tokens, polices, icônes, composants.
+
+**Constat.** Aucun thème : 358 couleurs écrites en ligne, Bungee sur les boutons et les onglets, aucune bibliothèque d'icônes, ni avatar, ni champ, ni boîte de dialogue partagés (cf. « Ce que le code dit déjà »). Les Popys et Extenda sont déjà dans `packages/brand`, à l'identique ; `popy-diable.png` y est l'original, que le dossier n'a qu'en découpe provisoire.
+
+**Proposition.** Un thème lu depuis `tokens.json`, le clair actif, le sombre présent et éteint (D3) ; Fredoka 500 et 600, Fredoka SemiCondensed Bold, Extenda et la police du système ; `phosphor-react-native` ; les composants reconstruits d'après leur `README.md`, leur `apercu.png` et `code-source/src/bundle.css`, chacun vérifié dans un écran de catalogue réservé au développement ; le mouvement réduit respecté ; les tests de règles étendus au système.
+
+**À trancher quand on y arrive.**
+
+- Le socle construit-il les 63 composants, ou seulement ceux de structure, d'actions, de saisie, de calques et de marque, chaque chantier d'écrans faisant les siens ?
+- La taille de texte : le système veut 200 % (les boutons passent à la ligne dès 130 %, les titres de cases s'arrêtent à 130 %), l'app plafonne aujourd'hui à 140 % et 120 % (chantier 11).
+- Le thème en contexte React ou en constantes ; NativeWind, installé et inemployé, gardé ou retiré.
+- Bungee retirée de l'app : ses tests de métriques remplacés par ceux de Fredoka.
+- La licence d'Extenda pour une app mobile, que la 1.1 embarque déjà pour ses titres.
+
+**Fait quand** : les tokens clairs sont branchés, les polices et les icônes posées, chaque composant est identique à son aperçu au simulateur iPhone 17 Pro et à l'émulateur Pixel 8, et les tests de règles passent sur le système.
+
+---
+
+## 31. La coque et les moments de marque
+
+> **Ajouté le 28 octobre 2026**, de la refonte visuelle du même jour : à spécifier avant d'être construit.
+
+**Demandé.** La coque de l'app selon la refonte, puis ses écrans de marque.
+
+**Constat.** La barre d'onglets range Compose en premier (`app/(tabs)/_layout.tsx`, 84 pt, Bungee 9 pt) ; les toasts tombent du haut, 3 s (`Toast.tsx`) ; le bandeau de mise à jour se pose sur l'en-tête (`UpdateBanner.tsx`) ; l'accueil, la mise à jour et la maintenance sont sur fond jaune (`YellowBg`, `AppBlocker`) ; l'icône d'app pose une petite Popy sur `#fbbf24`, et `app.json` ne donne aucune petite icône aux notifications Android.
+
+**Proposition.** La barre : La table, Trouver, Compose au centre dans sa pastille, Notifs avec sa pastille de compte, Profil avec la Popy de la personne ; les toasts en bas, 4 s, 6 s avec une action, annoncés poliment ; le bandeau de mise à jour à sa place en haut ; les 6 écrans de marque, `p01` à `p03` et `m01` à `m03` ; l'icône d'app redessinée (une Popy plus grande, sur `yolk-500` à pois) et la petite icône Android des notifications, la silhouette blanche de Popy (`notification-icon-96.png`), qui partent avec la build de la 2.0.0.
+
+**À trancher quand on y arrive.**
+
+- L'onglet d'arrivée : l'app ouvre aujourd'hui Compose, son premier onglet ; Compose au centre, ouvre-t-elle La table ?
+- Quand l'interrupteur des notifications est éteint, Notifs disparaît (`href: null`) : à quatre onglets, où va Compose ?
+
+**Fait quand** : la barre, les toasts et le bandeau suivent la maquette dans toute l'app, et les 6 écrans sont identiques à leur PNG au simulateur et à l'émulateur.
+
+---
+
+## 32. Composer et publier, refaits
+
+> **Ajouté le 28 octobre 2026**, de la refonte visuelle du même jour : à spécifier avant d'être construit.
+
+**Demandé.** Les parcours « Composer et chercher » et « Publier et partager » de la refonte.
+
+**Constat.** Le composer tient en un fichier de 1 000 lignes ; une case prend une teinte tirée de son item (`paletteKeyForItem`) et une puce texte en Bungee (`Tile.tsx`) ; publier et partager vivent dans le composer et la page d'un compte (`ShareImage`, view-shot).
+
+**Proposition.** Les 17 écrans `c01` à `c10` et `u01` à `u07` ; chaque case prend la couleur, l'icône et la puce de sa catégorie ; l'image partagée au format story, 1080 × 1920 ; la célébration à la publication et au bento complet, des confettis de 600 ms et un retour haptique, une fois par événement.
+
+**À trancher quand on y arrive.**
+
+- Les palettes des cases sont partagées avec la landing : la page web d'un bento prend-elle les couleurs de l'app, ou garde-t-elle les siennes ?
+- La refonte ne colore que les six cases : les types du 15 (jeux vidéo, livres, plats, activités) restent à dessiner avant d'entrer dans un bento.
+
+**Fait quand** : les 17 écrans sont identiques à leur PNG au simulateur et à l'émulateur, l'image partagée comprise.
+
+---
+
+## 33. La table, les profils et le social, refaits
+
+> **Ajouté le 28 octobre 2026**, de la refonte visuelle du même jour : à spécifier avant d'être construit.
+
+**Demandé.** Les parcours « La table et Trouver », « Profils et bentos » et « Commentaires et pourquoi » de la refonte.
+
+**Constat.** La page d'un compte tient en un fichier de 1 532 lignes, avec seize composants à elle ; les demandes d'abonnement posent « Accepter » et « Refuser » sous la ligne (`app/follows/[userId].tsx`) ; aucun avatar partagé.
+
+**Proposition.** Les 26 écrans `t01` à `t07`, `r01` à `r15` et `s01` à `s04` ; « Accepter » et « Refuser » sur la ligne, comme « Retirer ».
+
+**À trancher quand on y arrive.**
+
+- Le rôle du bouton « Recherche » de l'en-tête de Trouver, gardé tel quel par la maquette.
+- Le message de blocage renvoie à « tes réglages », mais aucun écran ne montre les comptes bloqués : à dessiner, ou le message à changer.
+
+**Fait quand** : les 26 écrans sont identiques à leur PNG au simulateur et à l'émulateur.
+
+---
+
+## 34. Le compte, les notifications et les réglages, refaits
+
+> **Ajouté le 28 octobre 2026**, de la refonte visuelle du même jour : à spécifier avant d'être construit.
+
+**Demandé.** Les parcours « Garder et retrouver son compte », « Notifications » et « Réglages » de la refonte.
+
+**Constat.** Les écrans du compte partagent leurs pièces (`account/AccountParts`) ; les confirmations passent par les alertes du système (19 `Alert.alert`) ; les réglages sont faits de lignes et d'interrupteurs propres à l'écran (`SettingSwitch`).
+
+**Proposition.** Les 26 écrans `a01` à `a11`, `n01` à `n05` et `g01` à `g10` ; les confirmations de la maquette en boîte de dialogue dessinée, qui garde le focus ; la notification reçue app ouverte en bandeau, 4 s.
+
+**À trancher quand on y arrive.**
+
+- Le rôle du bouton « Notifications » de l'en-tête de « Quoi de neuf ? », gardé tel quel par la maquette.
+- Les alertes du système remplacées partout par la boîte dessinée, ou seulement là où la maquette la montre.
+
+**Fait quand** : les 26 écrans sont identiques à leur PNG au simulateur et à l'émulateur, et aucune confirmation de la maquette ne passe plus par une alerte du système.
+
+---
+
 ## 29. La dette de recette sur appareil
 
 > **Spécifié et préparé le 27 octobre 2026**, cf.
@@ -1173,6 +1375,9 @@ Détail au passage : la pagination affiche 3 points (`splash.tsx:169` actif 0, `
 > référence est désormais le §4 de la spécification**, et elle se coche sur
 > la page « Mes tâches Bento Pop ». **Fusionné le soir même** (PR #106), et
 > l'étape 1 de l'ordre de sortie, les mises en service, faite le 28 octobre.
+> **La sortie attend aussi la refonte visuelle**, décidé le 28 octobre (D25
+> de la spécification) : les chantiers 30 à 34 passent avant la répétition,
+> et leurs écrans refaits par la même recette sur appareil.
 >
 > **Ouvert le 16 septembre 2026**, à la fin du chantier 16. Chaque chantier a
 > laissé derrière lui un ou deux points qu'il n'a pas pu vérifier autrement que
@@ -1390,3 +1595,5 @@ vide.
 Reste hors scope tant que ce n'est pas explicitement demandé : auth avec mot de passe, messagerie, internationalisation.
 
 **Sortis de cette liste le 15 septembre 2026**, parce que l'équipe les a demandés : les commentaires sur les bentos des autres (chantier 22) et plusieurs bentos par utilisateur (chantier 16). Le « claim » de compte en sort aussi, sans mot de passe : c'est le chantier 28, ajouté le même jour.
+
+**Le thème sombre**, décidé le 28 octobre 2026 (D3 de la refonte visuelle) : après la sortie, hors de cette roadmap. Les valeurs sombres entrent avec les tokens du 30 ; les écrans restent à décliner et relire dans Claude Design avant de l'activer.

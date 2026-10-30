@@ -1,0 +1,23 @@
+<!-- @dsCard group="Calques et retours" height=600 width=440 -->
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Sheet</title>
+<style>
+  body { margin: 0; background: var(--bg-app); color: var(--text-primary); font-family: var(--font-text); }
+  .stage { padding: 20px; }
+</style></head>
+<body>
+<div id="root" class="stage mbp-root"></div>
+<script>
+var M = window.MonBentoPop, h = React.createElement;
+var TMDB='Affiche : The Movie Database (TMDb)';
+var THEO=[{title:'Ponyo'},{title:'The Office'},{title:'Hans Zimmer',subtitle:'compositeur de films',art:'studio',credit:'Photo : ColliderVideo'},{title:'How To Train Your Dragon',subtitle:'John Powell',art:'sunset',credit:'Photo : DreamWorks'},{title:'Squeezie',subtitle:'vidéaste web français',art:'neon',credit:'Photo : Zack Nani'},{title:'Le Pont Neuf'}];
+var LEA=[{title:'Inception',subtitle:'2010',art:'city',credit:TMDB},{title:'Breaking Bad',subtitle:'2008',art:'meadow',credit:TMDB},{title:'Lady Gaga',subtitle:'chanteuse américaine',art:'stage',credit:'Photo : Agustina Arán'},{title:'Billie Jean',subtitle:'Thriller, Michael Jackson',art:'neon'},{title:'Squeezie',subtitle:'vidéaste web français',art:'studio'},{title:'Paris',subtitle:'France',art:'dusk'}];
+function box(w,hh,kids,theme){return h('div',{'data-theme':theme,style:{position:'relative',width:w,height:hh,overflow:'hidden',background:'var(--bg-app)',color:'var(--text-primary)',borderRadius:16,boxShadow:'inset 0 0 0 1px var(--border-subtle)',flex:'none'}},kids);}
+function col(gap,kids,st){return h('div',{style:Object.assign({display:'flex',flexDirection:'column',gap:gap},st||{})},kids);}
+function row(gap,kids,st){return h('div',{style:Object.assign({display:'flex',flexWrap:'wrap',alignItems:'center',gap:gap},st||{})},kids);}
+
+ReactDOM.createRoot(document.getElementById('root')).render(box(402,540,h(M.Sheet,{height:'full',eyebrow:'Case',eyebrowCategory:'serie',title:'Série',action:'Vider'},h(M.SearchField,{value:'Doctor',focused:true}),h('div',{className:'mbp-eyebrow'},'1 résultat'),h(M.ProposeRow,{query:'Doctor'}))));
+</script>
+</body>
+</html>

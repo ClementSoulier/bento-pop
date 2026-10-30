@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon Bento Pop · Écrans</title>
+<link rel="stylesheet" href="../design-system/tokens.css">
+<link rel="stylesheet" href="../design-system/components/bundle.css">
+<style>
+/* Fredoka en local : la visionneuse marche aussi hors connexion. */
+@font-face { font-family: "Fredoka"; src: url("../design-system/fonts/Fredoka-Variable.ttf") format("truetype"); font-weight: 300 700; font-stretch: 75% 125%; font-display: swap; }
+body { margin: 0; background: #ebe5d8; color: #1a1a1a; font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.v-head { position: sticky; top: 0; z-index: 100; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; padding: 12px 24px; background: rgba(235, 229, 216, .94); border-bottom: 1px solid #d5ccba; }
+.v-head h1 { margin: 0; font: 600 18px/24px "Fredoka", sans-serif; }
+.v-head nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.v-head nav a { padding: 4px 10px; border-radius: 999px; background: #fffcf6; border: 1px solid #d5ccba; color: #1a1a1a; text-decoration: none; font-size: 13px; }
+.v-head nav a:hover { background: #ffd23f; }
+.v-sec { padding: 28px 24px 12px; }
+.v-sec-title { margin: 0 0 18px; font: 600 26px/32px "Fredoka", sans-serif; }
+.v-grid { display: flex; flex-wrap: wrap; gap: 32px 28px; align-items: flex-start; }
+.v-card { margin: 0; }
+.v-card figcaption { max-width: 402px; margin: 0 0 10px; }
+.v-card .v-title { display: block; font-weight: 600; }
+.v-card .v-meta { display: block; color: #5e574b; font-size: 13px; }
+.v-card code { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.v-frame { overflow: hidden; border-radius: 28px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 10px 28px rgba(0, 0, 0, .10); }
+.v-screen { position: relative; overflow: hidden; font-family: var(--font-text); color: var(--text-primary); }
+.v-export .v-frame { border-radius: 0; box-shadow: none; }
+.v-export .v-card figcaption, .v-export .v-head { display: none; }
+@media (max-width: 480px) { .v-head, .v-sec { padding-left: 16px; padding-right: 16px; } }
+</style>
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="../design-system/components/bundle.js"></script>
+<script src="visionneuse-data.js"></script>
+</head>
+<body>
+<header class="v-head">
+  <h1>Mon Bento Pop · 75 écrans</h1>
+  <nav id="nav" aria-label="Parcours"></nav>
+</header>
+<main id="root"></main>
+<script>
+var M = window.MonBentoPop, h = React.createElement;
+
+function styleObj(css) {
+  var o = {};
+  if (!css) return o;
+  css.split(';').forEach(function (d) {
+    var i = d.indexOf(':');
+    if (i < 0) return;
+    var k = d.slice(0, i).trim(), v = d.slice(i + 1).trim();
+    if (!k) return;
+    if (k.indexOf('--') !== 0) k = k.replace(/-([a-z])/g, function (_, c) { return c.toUpperCase(); });
+    o[k] = v;
+  });
+  return o;
+}
+
+function render(n, key) {
+  if (typeof n === 'string' || typeof n === 'number') return n;
+  var kids = (n.k || []).map(function (k, i) { return render(k, i); });
+  if (n.c) {
+    var Comp = M[n.c];
+    if (!Comp) { console.error('Composant introuvable : ' + n.c); return null; }
+    return h.apply(null, [Comp, Object.assign({ key: key }, n.p)].concat(kids));
+  }
+  var a = { key: key };
+  Object.keys(n.a || {}).forEach(function (k) {
+    var v = n.a[k];
+    if (k === 'style') a.style = styleObj(v);
+    else if (k === 'class') a.className = v;
+    else a[k] = v;
+  });
+  return h.apply(null, [n.t, a].concat(kids));
+}
+
+var S = window.SPECS;
+var nav = document.getElementById('nav');
+S.SECTIONS.forEach(function (sec) {
+  var a = document.createElement('a');
+  a.href = '#' + sec.key;
+  a.textContent = sec.title;
+  nav.appendChild(a);
+});
+
+function Section(props) {
+  var list = S.SCREENS.filter(function (s) { return s.section === props.sec.key; });
+  return h('section', { className: 'v-sec', id: props.sec.key },
+    h('h2', { className: 'v-sec-title' }, props.sec.title),
+    h('div', { className: 'v-grid' }, list.map(function (s) {
+      return h('figure', { className: 'v-card', key: s.id },
+        h('figcaption', null,
+          h('span', { className: 'v-title' }, s.title),
+          h('span', { className: 'v-meta' }, h('code', null, s.id), ' · captures V2.0 : ', s.from)),
+        h('div', { className: 'v-frame', style: { width: s.w, height: s.h } },
+          h('div', { className: 'v-screen', 'data-id': s.id, style: { width: s.w, height: s.h } }, render(s.node))));
+    })));
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  h(React.Fragment, null, S.SECTIONS.map(function (sec) { return h(Section, { sec: sec, key: sec.key }); })));
+</script>
+</body>
+</html>
