@@ -1,7 +1,7 @@
 /**
  * Le design system v2 de l'app (chantier 30, `docs/UX-30-SOCLE-DESIGN-SYSTEM.md`),
- * tiré du dossier de la refonte, `docs/design-v2/`. Aucun écran ne l'emploie
- * encore : ils y passent du chantier 31 au 34 (D5).
+ * tiré du dossier de la refonte, `docs/design-v2/`. Les écrans y passent du
+ * chantier 31 au 34 (D5 du 30), la barre d'onglets la première.
  *
  * Les fondations à la racine ; les composants rangés par famille, comme les
  * pages du catalogue : `structure/`, `actions/`, `brand/`, `inputs/` pour
@@ -16,6 +16,7 @@ export { Display, type DisplayProps } from './brand/Display';
 export { Logo, type LogoProps } from './brand/Logo';
 export { Popy, type PopyProps } from './brand/Popy';
 export { popyImage, type Mood } from './brand/popy-images';
+export { POPY_TINTS, popyTint } from './brand/popy-tint';
 export { Sticker, type StickerProps } from './brand/Sticker';
 export { Icon, type IconProps, type IconWeight } from './Icon';
 export type { IconName } from './icons';
@@ -58,6 +59,7 @@ export { Screen, type ScreenProps, type ScreenTone } from './structure/Screen';
 export { SectionHeader, type SectionHeaderProps } from './structure/SectionHeader';
 export { Steps, type StepsProps } from './structure/Steps';
 export { TabBar, type TabBarProps, type TabKey } from './structure/TabBar';
+export { TABS, tabAccessibilityLabel, tabBarHeight, visibleTabs } from './structure/tab-items';
 export { Tabs, type TabsItem, type TabsProps } from './structure/Tabs';
 export { TopBar, type TopBarAction, type TopBarProps } from './structure/TopBar';
 export { Text, type TextProps } from './Text';

@@ -2,21 +2,22 @@ import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { notificationsTabLabel } from '@/lib/notifications';
 import { Avatar, type PantryColor } from '../brand/Avatar';
 import type { Mood } from '../brand/popy-images';
 import { Icon } from '../Icon';
-import type { IconName } from '../icons';
 import { Badge } from '../overlays/Badge';
 import { PopShadow } from '../PopShadow';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
 import { timingConfig, useMotion } from '../useMotion';
+import { TABS, tabAccessibilityLabel, type TabKey } from './tab-items';
 
-export type TabKey = 'table' | 'trouver' | 'compose' | 'notifs' | 'profil';
+export type { TabKey };
 
 export type TabBarProps = {
   active?: TabKey;
+  /** Les onglets montrés, dans l'ordre du design : les cinq par défaut. */
+  tabs?: readonly TabKey[];
   /** Le nombre de nouveautés, en pastille sur Notifs. */
   notifs?: number;
   /** La Popy et la teinte de la personne, pour l'onglet Profil. */
@@ -25,25 +26,19 @@ export type TabBarProps = {
   onSelect?: (tab: TabKey) => void;
 };
 
-const TABS: { key: TabKey; label: string; icon?: IconName }[] = [
-  { key: 'table', label: 'La table', icon: 'bowl-steam' },
-  { key: 'trouver', label: 'Trouver', icon: 'magnifying-glass' },
-  { key: 'compose', label: 'Compose' },
-  { key: 'notifs', label: 'Notifs', icon: 'bell' },
-  { key: 'profil', label: 'Profil' },
-];
-
 /**
- * Les cinq onglets (chantier 30, famille de la structure), toujours dans cet
- * ordre et libellés : Compose au centre dans sa pastille jaune sur son ombre,
- * l'onglet courant en icône pleine et en libellé gras, Profil en avatar, cerclé
- * quand il est courant. Branchée sur la navigation au chantier 31.
+ * Les onglets (chantier 30, famille de la structure), toujours dans l'ordre
+ * du design et libellés : Compose au centre dans sa pastille jaune sur son
+ * ombre, l'onglet courant en icône pleine et en libellé gras, Profil en
+ * avatar, cerclé quand il est courant. Branchée sur la navigation au chantier
+ * 31, qui retire Notifs quand sa zone est coupée (D2 du 31).
  *
- * Chaque onglet s'annonce comme aujourd'hui, « La table, onglet 1 sur 5 »,
- * bouton sélectionné quand il est courant.
+ * Chaque onglet s'annonce comme avant, « La table, onglet 1 sur 5 », bouton
+ * sélectionné quand il est courant.
  */
 export function TabBar({
   active = 'compose',
+  tabs = TABS.map((tab) => tab.key),
   notifs = 0,
   mood = 'content',
   color = 'yolk',
@@ -51,6 +46,7 @@ export function TabBar({
 }: TabBarProps) {
   const { colors, border, size } = useTheme();
   const insets = useSafeAreaInsets();
+  const shown = TABS.filter((tab) => tabs.includes(tab.key));
   return (
     <View
       style={{
@@ -61,12 +57,9 @@ export function TabBar({
         paddingBottom: insets.bottom,
       }}
     >
-      {TABS.map((tab, index) => {
+      {shown.map((tab, index) => {
         const on = tab.key === active;
-        const label =
-          tab.key === 'notifs'
-            ? notificationsTabLabel(notifs, index + 1, TABS.length)
-            : `${tab.label}, onglet ${index + 1} sur ${TABS.length}`;
+        const label = tabAccessibilityLabel(tab.key, index + 1, shown.length, notifs);
         return (
           <Pressable
             key={tab.key}

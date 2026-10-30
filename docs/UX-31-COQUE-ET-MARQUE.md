@@ -165,16 +165,17 @@ Relevé le 30 octobre 2026 sur `19be67e`, en lecture seule.
 - La barre paraît sur les cinq racines, les toasts partout, le bandeau sur
   les racines. Les écrans qu'elle entoure restent ceux d'aujourd'hui jusqu'à
   leur chantier : seule leur hauteur utile change, la barre passant de 84
-  points à 56 plus la zone sûre, soit 90 à l'iPhone 17 Pro, 56 à l'iPhone SE,
-  80 sur Android en navigation par gestes et 104 en navigation à trois
-  boutons.
+  points à 56 plus son filet et la zone sûre, soit 91 à l'iPhone 17 Pro
+  (7 de plus), 57 à l'iPhone SE (27 de moins), 81 sur Android en navigation
+  par gestes et 105 en navigation à trois boutons.
 - Cinq écrans sont refaits en entier : `p01` à `p03`, `m02` et `m03`. De
   `m01`, le 31 fait le bandeau ; l'écran dessous est le composer, refait au
   32.
 - Ce que le 31 retire (D15) : Bungee, `YellowBg`, `StampButton` et `Sticker`
-  des fichiers qu'il refait ; `TabIcons.tsx`, `tab-bar.ts` et son test,
-  `UpdateBanner.tsx` et le `Toast` des primitives, qui n'auront plus
-  d'emploi. `Pagination` et `PageTitle` restent pour le pseudo, refait au 32.
+  des fichiers qu'il refait ; `tab-bar.ts` et son test, `UpdateBanner.tsx`
+  et le `Toast` des primitives, qui n'auront plus d'emploi. `TabIcons.tsx`
+  garde la loupe et le crayon de trois écrans, `Pagination` et `PageTitle`
+  le pseudo : ils partent avec ces écrans, aux 32 et 33.
 
 ## 4. La barre d'onglets (D1, D2, D4, D6, D13)
 
@@ -366,8 +367,8 @@ Pixel 8, sur la pile locale, comme le 30.
 
 1. **La barre** : la `TabBar` branchée, l'ordre, la pastille, l'avatar et sa
    teinte, l'arrivée, Notifs coupé, le retour d'Android, l'haptique ; la
-   hauteur relue par le composer et le profil ; `TabIcons.tsx`,
-   `tab-bar.ts` et son test retirés.
+   hauteur relue par le composer et le profil ; `tab-bar.ts` et son test
+   retirés.
 2. **Les toasts et le bandeau** : l'hôte, sa place et ses durées, au-dessus
    du clavier et des modales ; le bandeau en tête des racines, dans le flux ;
    `UpdateBanner.tsx` et le `Toast` des primitives retirés.
@@ -378,22 +379,63 @@ Pixel 8, sur la pile locale, comme le 30.
    refaites.
 5. **La recette** du §10, la roadmap et la part du 29.
 
+### 11.1 Lot 1 · fait le 30 octobre 2026
+
+- **La barre du design branchée** (`app/(tabs)/_layout.tsx`) : la `TabBar` du
+  30 rend la barre des onglets. L'appui émet `tabPress`, puis change d'onglet
+  avec une sélection légère (D13). La hauteur mesurée remonte à
+  `useBottomTabBarHeight`, que le composer lisait déjà et que le profil lit
+  désormais. `structure/tab-items.ts` tient l'ordre, les annonces et la
+  hauteur (56, le filet, la zone sûre), testés ; `brand/popy-tint.ts`, la
+  teinte de chaque Popy (D6).
+- **Contre la maquette** : à l'iPhone 17 Pro, la barre tombe sur celle de
+  `m01`, Compose courant et « gene » sur `shiso`, à un pixel près, un tiers de
+  point.
+- **Aux trois appareils** : l'app arrive sur Compose, et le retour d'Android
+  y ramène depuis La table et depuis Trouver (D1). Sept nouveautés en
+  attente, la pastille dit « 7 », et VoiceOver « Notifications, 7 nouvelles,
+  onglet 4 sur 5 ». La zone coupée sur la pile locale, quatre onglets,
+  Compose troisième, « onglet 3 sur 4 », au simulateur et à l'émulateur (D2).
+  Un compte sans pseudo montre « content » sur le jaune. Chaque onglet mesure
+  56 points de haut ; 75 de large à l'iPhone SE, où les cinq libellés tiennent
+  entiers à 135 % et au-delà de 200 %, arrêtés à 130 %, comme au Pixel à 1,3
+  et à 2,0. En navigation à trois boutons, la barre se pose au-dessus d'eux.
+- **Les autres écrans** : les neuf écrans de référence du 30, recapturés aux
+  trois appareils. Les écrans poussés (réglages, crédits, page d'un compte)
+  sont identiques au pixel, la recherche ne bougeant que de son curseur. Les
+  racines changent à la barre ; le composer et le profil, à leur hauteur
+  utile, 7 points de moins à l'iPhone 17 Pro, 27 de plus à l'iPhone SE ; le
+  reste ne bouge que d'heures relatives.
+- **Les tests** : `tab-bar.ts` et son test, figés sur 84 et sur Bungee,
+  retirés ; les quatre tests qui prenaient 84 en entrée passent à la nouvelle
+  barre (D14). À l'iPhone SE, la grille du composer ne touche plus son
+  plancher à la taille par défaut : le test de l'écart minimal la cherche à
+  la taille xLarge.
+- **Une erreur de développement déjà notée au 30** (§14) : « Can't perform a
+  React state update on a component that hasn't mounted yet », deux fois sur
+  cinq lancements à froid au Pixel. Sa pile mène au lien initial
+  d'expo-router (`useLinking`, dans `ContextNavigator`), pas à la barre. À
+  réessayer avec expo-router 57.0.29, que monte la PR #111.
+- **La CI rejouée en local** sur l'arbre du lot 1, sans cache : verte, lint
+  et typage 8 sur 8, tests (mobile 1 127, landing 202, back-office 251),
+  builds 3 sur 3, e2e 65 sur 65.
+
 ## 12. Definition of Done
 
 | # | Point | État |
 | --- | --- | --- |
-| 1 | La barre du design sur les cinq racines : l'ordre, Compose au centre, la pastille, l'avatar ; l'arrivée sur Compose (D1), quatre onglets quand Notifs est coupé (D2) | ⬜ |
+| 1 | La barre du design sur les cinq racines : l'ordre, Compose au centre, la pastille, l'avatar ; l'arrivée sur Compose (D1), quatre onglets quand Notifs est coupé (D2) | ✅ lot 1 |
 | 2 | Les toasts en bas, au-dessus de la barre, de la zone sûre ou du clavier ; 4 s, 6 s avec une action ; dits poliment ; les 30 appels inchangés | ⬜ |
 | 3 | Le bandeau de mise à jour en tête des racines, qui pousse l'écran ; « Plus tard » retenu par version | ⬜ |
 | 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | ⬜ |
 | 5 | Le lancement sur le fond de marque, sans saut de jaune | ⬜ |
 | 6 | L'icône d'app, l'icône adaptative et la petite icône des notifications vues au simulateur et à l'émulateur | ⬜ |
-| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | ⬜ |
+| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | 🟡 lot 1 : les onglets, aux deux plateformes |
 | 8 | Le mouvement réduit : Popys immobiles, toasts en fondu | ⬜ |
-| 9 | Les autres écrans ne changent qu'à la barre, à leur hauteur utile et au toast | ⬜ |
-| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `TabIcons`, `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | ⬜ |
-| 11 | Les tests de règles verts ; les tests figés sur 84 et sur Bungee repris | ⬜ |
-| 12 | La CI rejouée en local, verte | ⬜ |
+| 9 | Les autres écrans ne changent qu'à la barre, à leur hauteur utile et au toast | 🟡 lot 1 : la barre, sur les neuf écrans de référence du 30 |
+| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | 🟡 lot 1 : la barre et `tab-bar.ts` |
+| 11 | Les tests de règles verts ; les tests figés sur 84 et sur Bungee repris | ✅ lot 1 |
+| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lot 1 |
 
 ## 13. Décisions
 
@@ -412,8 +454,8 @@ Pixel 8, sur la pile locale, comme le 30.
 | **D11** | Le lancement, natif et JavaScript, passe sur le fond de marque, composé des éléments de l'accueil | Sans maquette, il doit mener à l'accueil sans saut : le jaune de la marque est `#f2a82a`, celui d'aujourd'hui `#fbbf24` |
 | **D12** | L'icône du dossier sur iOS ; sur Android, une icône adaptative générée depuis `AppIcon` et une monochrome ; la petite icône des notifications et sa couleur `yolk-700` ; avec la build 2.0.0 | Le dossier ne donne qu'une icône carrée, que le masque d'Android rognerait. Sans petite icône, Android en dessine une de l'icône d'app ; `yolk-500` ne tient pas 3:1 sur blanc |
 | **D13** | Un retour de sélection à chaque changement d'onglet | Le guide le demande ; c'est l'écran qui joue l'haptique, pas le composant (D23 du 30) |
-| **D14** | Les quatre tests qui prennent 84 en entrée passent aux hauteurs de la nouvelle barre | Ils décrivent des écrans réels ; 84 n'en sera plus un |
-| **D15** | Bungee, `YellowBg`, `StampButton` et `Sticker` sortent des fichiers du 31 ; `TabIcons`, `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives sont retirés ; `Pagination` et `PageTitle` restent pour le pseudo | La D13 du 30 : une primitive part avec son dernier emploi |
+| **D14** | Les quatre tests qui prennent 84 en entrée passent aux hauteurs de la nouvelle barre | Ils décrivent des écrans réels ; 84 n'en sera plus un. Au lot 1, celui de l'écart minimal du composer cherche le plancher de la grille à l'iPhone SE à la taille xLarge, la barre lui rendant 27 points |
+| **D15** | Bungee, `YellowBg`, `StampButton` et `Sticker` sortent des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives sont retirés ; `TabIcons` (la loupe et le crayon), `Pagination` et `PageTitle` restent pour les écrans des 32 et 33 | La D13 du 30 : une primitive part avec son dernier emploi |
 
 ## 14. Suivis
 
