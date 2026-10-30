@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   PUSH_REFRESH_INTERVAL_MS,
+  apnsSandboxOverride,
   coalescePushRefresh,
   notificationSection,
   planItemTarget,
@@ -533,5 +534,33 @@ describe('shouldOfferEditorialAsk', () => {
       shouldOfferEditorialAsk({ permission: { granted: false, canAskAgain: false }, editorialOn: false, alreadyAnswered: false }),
       false,
     );
+  });
+});
+
+/**
+ * Chantier 17, lot 5b. Le simulateur iOS ne reçoit que par le bac à sable
+ * d'APNs ; sans profil embarqué, son jeton partait déclaré en production.
+ */
+describe('apnsSandboxOverride', () => {
+  it('le simulateur : iOS, build de développement, aucun profil', () => {
+    assert.equal(apnsSandboxOverride({ platform: 'ios', dev: true, profileEnvironment: null }), true);
+  });
+
+  it('une build de production sans profil lisible garde le choix d’expo-notifications', () => {
+    assert.equal(apnsSandboxOverride({ platform: 'ios', dev: false, profileEnvironment: null }), false);
+  });
+
+  it('un profil présent décide seul, en développement comme en production', () => {
+    for (const profileEnvironment of ['development', 'production']) {
+      assert.equal(apnsSandboxOverride({ platform: 'ios', dev: true, profileEnvironment }), false);
+    }
+  });
+
+  it('un profil qui ne se lit pas ne force rien', () => {
+    assert.equal(apnsSandboxOverride({ platform: 'ios', dev: true, profileEnvironment: undefined }), false);
+  });
+
+  it('Android ne passe pas par APNs', () => {
+    assert.equal(apnsSandboxOverride({ platform: 'android', dev: true, profileEnvironment: null }), false);
   });
 });

@@ -2103,3 +2103,51 @@ xcrun simctl spawn <UDID> log show --last 2m --info --debug --style compact \
   --predicate 'process == "SpringBoard"' \
   | grep -E "identifier: ready-bento|has a trigger date|pending notification"
 ```
+
+### Une vraie notification distante, de bout en bout, en local
+
+Depuis le lot 5b du chantier 17, le 28 octobre 2026, le simulateur iOS et
+l'émulateur Android reçoivent les vraies notifications d'Expo : la clé APNs et
+le compte FCM sont dans les identifiants EAS, et `google-services.json` dans
+l'app. La chaîne entière tourne sur ce Mac, sans rien toucher en production :
+
+- la base locale, avec les deux secrets de coffre, `push_webhook_url` vers
+  `http://host.docker.internal:<port>` et un `push_webhook_token` tiré au
+  hasard dans un fichier ;
+- le back-office en `next dev`, sans `NEXT_PUBLIC_SUPABASE_*` (jamais
+  `supabase.bento-pop.com`), avec `MOBILE_SUPABASE_*` de la pile locale et le
+  même `PUSH_WEBHOOK_TOKEN` : seules ses routes `/api/push*` servent ;
+- une proposition validée comme le fait le back-office, la même écriture dans
+  `items` (`status`, `validated_by`), donc le même déclencheur.
+
+L'arrivée se mesure dans le journal de SpringBoard (« inserting notification
+request » pour `com.bentopop.mobile`) et dans le volet d'Android
+(`adb shell dumpsys notification --noredact`, `pkg=com.bentopop.mobile`) : 1,8
+et 3,3 secondes après l'écriture, au 5b.
+
+### Ce qu'Apple ou Google ont répondu : les accusés d'Expo
+
+Un ticket accepté par Expo ne dit pas que la notification est arrivée. Son
+accusé, si : il se lit sans jeton d'accès tant que la sécurité renforcée n'est
+pas allumée, avec l'identifiant du ticket de `push_tickets` (jamais celui de
+l'appareil).
+
+```bash
+curl -s https://exp.host/--/api/v2/push/getReceipts \
+  -H 'Content-Type: application/json' -d '{"ids":["<ticket_id>"]}'
+```
+
+`BadDeviceToken` : le jeton n'est pas de l'environnement d'APNs où Expo l'a
+envoyé. C'est ce que faisait le simulateur avant D29 du 17 : sans profil
+d'approvisionnement, `expo-notifications` le déclarait en production.
+`DeviceNotRegistered` : l'app est désinstallée ; au 5b, l'accusé l'a dit une
+minute après la désinstallation sur Android, et le battement révoque
+l'appareil quand il relit les accusés, 15 minutes après l'envoi. Python n'a
+pas les certificats sur ce Mac : `curl` ou Node.
+
+### Une boîte d'Android commence comme son bouton
+
+« Allow Mon Bento Pop to send you notifications? », puis « Allow » : un
+toucher sur le premier élément dont le libellé commence par « Allow » touche
+le titre, et rien ne se passe. Viser le libellé exact, et le dernier qui le
+porte, le bouton passant après le titre dans l'arbre d'`uiautomator`.

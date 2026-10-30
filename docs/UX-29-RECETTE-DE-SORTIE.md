@@ -41,7 +41,7 @@ Relevé le 27 octobre 2026 ; la base et le back-office, le 28.
 | Builds jamais publiées | la 1.2.0 et la 1.3.0, construites en septembre, sur TestFlight et le canal interne |
 | Base de production | toutes les migrations des chantiers ; celles du 22, du 12, du 23, du 24, du 25 et du 27 appliquées le 28 octobre, chacune contrôlée en lecture |
 | Back-office et landing | le code de toutes les fusions ; le domaine `moderation.bento-pop.com` posé chez Resend le 28 octobre |
-| Notifications push | le battement du 17 en service depuis le 26 septembre, sans destinataire ; le 5b attend la clé APNs et le compte FCM |
+| Notifications push | le battement du 17 en service depuis le 26 septembre, sans destinataire ; le 5b fait et recetté le 28 octobre (PR #108), la clé APNs et le compte FCM posés le même jour |
 
 **Vingt-trois chantiers touchent l'app** depuis la 1.1 : les 2, 3, 5, 6, 7, 8,
 9, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27 et 28. Le 4 est
@@ -73,7 +73,7 @@ la mise à jour à distance active au lancement, cf.
 | # | Étape | Qui | Fait quand |
 |---|---|---|---|
 | 1 | Les fusions et les mises en service des 22, 12, 23, 24, 25 et 27, le back-office redéployé | Clément ; l'agent passe les contrôles en lecture seule | chaque `scripts/check-*.sql` rend l'attendu : ✅ le 28 octobre, tous |
-| 2 | Le lot 5b du 17 : la clé APNs et le compte FCM dans EAS, `google-services.json` dans l'app, la recette de bout en bout en local | Clément pour les clés et le fichier, l'agent pour le reste | une notification reçue et tapée au simulateur et à l'émulateur |
+| 2 | Le lot 5b du 17 : la clé APNs et le compte FCM dans EAS, `google-services.json` dans l'app, la recette de bout en bout en local | Clément pour les clés et le fichier, l'agent pour le reste | une notification reçue et tapée au simulateur et à l'émulateur : ✅ le 28 octobre, PR #108 |
 | 3 | La répétition de la build de release (§8), refaite après le 5b | l'agent | elle démarre, se branche, publie et lit sans défaut bloquant |
 | 4 | La build de production 2.0.0 : `pnpm release` depuis `apps/mobile` | Clément | elle arrive sur TestFlight et sur le canal interne de Play |
 | 5 | La recette de sortie : la liste du §4 et les parcours du §5, sur un iPhone et un Android | Clément, l'agent lisant la base et les journaux sans rien écrire | la liste est vide |
@@ -119,7 +119,12 @@ chantier NN ; REC, `RECETTE-MOBILE.md` ; MAJ, `MISES-A-JOUR-APP.md` ; DEP,
 - **P3 · Écrire en production**, avec les comptes de P6 seulement.
 - **P4 · Le 5b du 17** : la clé APNs et le compte de service FCM dans EAS,
   `google-services.json` dans l'app et une build Android neuve ;
-  `EXPO_ACCESS_TOKEN` posé sur le back-office.
+  `EXPO_ACCESS_TOKEN` posé sur le back-office. Rempli le 28 octobre (PR
+  #108), sauf `EXPO_ACCESS_TOKEN`, qui attend le robot d'Expo (D17 du 17).
+  Push est coché depuis le même jour sur l'identifiant d'app : les profils
+  d'approvisionnement iOS sont à refaire à la build 2.0.0, ce qu'EAS fait
+  seul s'il accède à Apple, connexion de Clément ou clé d'API App Store
+  Connect ; Apple a refusé celle de l'outil le 28 octobre (`-20209`).
 - **P5 · Resend** : `auth.bento-pop.com` en service depuis le 26 octobre,
   `moderation.bento-pop.com` depuis le 28, à la mise en service du 22 ; 100
   mails par jour pour tout le compte, codes et modération ensemble.
@@ -299,7 +304,7 @@ Le back-office de production redéployé (P2), le 5b fait (P4), Resend en servic
   - Gestes : Refuser les notifications ; Profil, section Notifications, « Ouvrir les réglages ».
   - Attendu : La fiche de l'app dans Réglages ; au simulateur iOS 26.4, « il arrive à la racine des Réglages et non sur la fiche de l'app ».
   - Sources : RM:1291-1293 ; UX-17:1011, UX-17:1050
-- **17-d · Une désinstallation réelle et son `DeviceNotRegistered`.** Les deux. Versé, « si la recette du lot 5b ne l'a pas vu ».
+- **17-d · Une désinstallation réelle et son `DeviceNotRegistered`.** Les deux. Versé, « si la recette du lot 5b ne l'a pas vu ». **Vu au 5b sur Android le 28 octobre** : l'appareil révoqué 19 minutes après la désinstallation ; reste iOS.
   - Prérequis : P4 ; une lecture de `push_tokens` ; du temps.
   - Gestes : Désinstaller l'app d'un téléphone enregistré ; envoyer une notification à son compte ; relire l'appareil en base.
   - Attendu : L'accusé finit par dire `DeviceNotRegistered` et le jeton se révoque, puis « cesse d'être utilisé en moins de 24 heures » ; « Expo ne promet aucun délai ».
@@ -861,7 +866,7 @@ sont en ligne depuis la fusion, servis par bento-pop.com le 27 octobre à
 | 3 | Les notes de version, dans les limites des deux stores | ✅ le 27 octobre |
 | 4 | La 2.0.0 dans `app.json` | ✅ le 27 octobre |
 | 5 | Une répétition en release sans défaut, sur iOS et Android | ✅ le 27 octobre |
-| 6 | Le 5b du 17 fait et recetté, la répétition refaite | ⬜ |
+| 6 | Le 5b du 17 fait et recetté, la répétition refaite | 🟡 le 5b le 28 octobre (PR #108) ; la répétition ⬜ |
 | 7 | La build de production 2.0.0 sur TestFlight et le canal interne | ⬜ |
 | 8 | La liste vide, sur un iPhone et un Android | ⬜ |
 | 9 | Les fiches saisies dans les deux consoles | ⬜ |
