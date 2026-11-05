@@ -24,7 +24,16 @@ import type { CategoryKey } from '@/supabase/types';
  * c'est lui qui s'écrit, quand `key` est ce qui s'affiche et ce que la
  * recherche reçoit.
  */
-export type CaseSet = CaseMeta & { readonly id: number };
+export type CaseSet = CaseMeta & {
+  readonly id: number;
+  /**
+   * Le type d'items de la case, `film`, `person`… : ce qui lui donne sa couleur
+   * sur une édition (`caseCategory`, chantier 32). Sans objet pour le bento
+   * principal, dont la clé suffit ; nul pour un type inactif, que la base ne
+   * rend pas.
+   */
+  readonly typeKey?: string | null;
+};
 
 /**
  * Les six cases du bento principal.

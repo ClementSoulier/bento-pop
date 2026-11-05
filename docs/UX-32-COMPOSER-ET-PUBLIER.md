@@ -325,14 +325,62 @@ locale, avec une édition de six cases et une de trois posées localement.
 
 Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément avant le suivant.
 
+### 13.1 Lot 1 · fait le 5 novembre 2026
+
+- **`Tag`, `Progress`, `BentoTile`, `Bento`** dans `src/design/bento/`, aux mesures de
+  `bundle.css`, en densités `compose` et `share`. Leurs règles sont pures et testées
+  (`bento-rules.ts`) : les rangées de 2 à 6 cases, ce qu'une case garde, la taille d'un titre,
+  la question dans sa puce. Aucun écran de production ne les emploie encore, hors `p03`.
+- **Contre les maquettes**, à l'iPhone 17 Pro : les plateaux de `c06` et `c09` tombent sur leur
+  maquette sans décalage, 1,8 et 2,7 % de pixels francs, tous sur des bords, la phase des pointillés
+  et l'anticrénelage du texte. Les titres tombent à 0,4 point au plus de la maquette aux trois
+  appareils, après un petit recalage mesuré au pixel (`tileTitleNudge`) : une ligne aussi haute
+  que la police ne pose pas le texte au même endroit sur iOS, sur Android et dans le navigateur
+  qui a rendu la maquette, jusqu'à 2,67 points d'écart dans une grande case. Le texte des puces
+  se pose à un demi-point près. Les images de la page du catalogue sont des Popys, le temps du
+  lot : les cases à image se relisent sur de vraies affiches au lot 2.
+- **Un mot ne se coupe pas au milieu** (D7) : relevés le 5 novembre, les 304 items validés de la
+  production mesurés dans la police des cases. « Productions », « HugoDécrypte », « Montpellier »
+  et « Megalovania » dépassent d'une petite case à l'iPhone 17 Pro, « Dark_Hifus » et « Angoulême »
+  aussi à l'iPhone SE, « Madoka★Magica » d'une moyenne. Le titre rétrécit juste assez, sans jamais
+  atteindre le plancher de 11 sur ces titres (`tile-metrics.ts`, relu dans les fichiers de police
+  par un test). Coupés à leurs lignes : 4 films sur 56 en grande case, 7 items sur 145 en petite.
+- **Rien ne se chevauche** (D7) : un titre de trois lignes sous la puce, comme sur `c07` et `u07`,
+  passe à deux lignes, puis le sous-titre s'efface ; le crédit reste. Relu à 135 % et au-delà de
+  200 % à l'iPhone SE, à 1,3 et 2,0 au Pixel 8, accents et idéogrammes compris.
+- **La question sur une case d'édition remplie** (D2) : la puce la porte, deux lignes au plus, sans
+  passer sous le sablier. **Un écart à la marge** : sur une petite case en attente à l'iPhone SE, la
+  place manque et elle se coupe, « TON / FILM D… » ; le lecteur d'écran la lit entière, et elle
+  revient à la validation.
+- **De 2 à 6 cases** (D6) : le plateau garde sa hauteur, à l'iPhone SE compris. La dernière rangée
+  d'une édition de 4 ou 5 cases, basse et large, que le dossier ne dessine pas, prend le « + » et le
+  libellé d'une petite case et resserre ses écarts (`emptyTileContent`).
+- **La catégorie d'une case** (D5) : `loadEditionCases` lit son type (`item_types(key)`), sans
+  migration. Prouvé en lecture : la pile locale le rend à un visiteur ; en production, `anon` lit
+  `item_types`, la règle est publique et une seule clé y mène. Le repli neutre d'un type sans couleur
+  se voit au catalogue.
+- **La chute d'une case**, filmée au Pixel à 30 images par seconde : de 424 à 457 pixels, puis posée
+  à 452, en huit images ; le mouvement réduit, 452 tout du long et un fondu.
+- **Les lecteurs d'écran** : « Ajouter : Film », « Lieu : Le Pont Neuf, en attente de validation »,
+  « Le son de ton été : How To Train Your Dragon, John Powell », « Cases remplies : 1 sur 6 », relus
+  aux deux plateformes, à l'arbre seulement.
+- **Aucun écran ne change** : `p03` et le plateau d'illustration, les seuls à employer ces composants,
+  comparés à une copie de la PR du 31 (`014256a`), une série de chaque côté : 0 pixel à l'iPhone SE,
+  5 pixels faibles au Pixel 8, sur la barre de geste, et 0 pour le plateau seul aux trois appareils.
+- **Pas éprouvé à ce lot** : une vraie affiche dans une case, le toucher d'une case, la capture de
+  l'image partagée (lots 2 et 5) ; `p03` à l'iPhone 17 Pro, dont le compte de test a un profil, que
+  seul le plateau y couvre.
+- **La CI rejouée en local** sur l'arbre du lot 1, sans cache : verte, lint et typage 8 sur 8, tests
+  (mobile 1 192, landing 202, back-office 251), builds 3 sur 3, e2e 65 sur 65.
+
 ## 14. Definition of Done
 
 | # | Point | État |
 | --- | --- | --- |
 | 1 | `c01` à `c10`, `u01`, `u05`, `u07` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE | ⬜ |
 | 2 | Les feuilles de `u02` et `u03` identiques aux leurs, sur le profil d'aujourd'hui ; `m01` entière | ⬜ |
-| 3 | Chaque case prend la couleur et la puce de sa catégorie, par clé ou par type ; de 2 à 6 cases ; la question sur une case d'édition remplie | ⬜ |
-| 4 | Rien ne se chevauche dans une case ; le crédit photo toujours là | ⬜ |
+| 3 | Chaque case prend la couleur et la puce de sa catégorie, par clé ou par type ; de 2 à 6 cases ; la question sur une case d'édition remplie | 🟡 lot 1, au catalogue ; sur de vrais écrans au lot 2 |
+| 4 | Rien ne se chevauche dans une case ; le crédit photo toujours là | 🟡 lot 1, au catalogue ; sur de vraies affiches au lot 2 |
 | 5 | Le parcours de bout en bout, compte neuf, second bento et édition, inchangé dans sa logique | ⬜ |
 | 6 | Les quatre demandes en `AskSheet`, une à la fois, dans l'ordre ; plus aucun `Alert.alert` dans les écrans du 32 | ⬜ |
 | 7 | Une célébration par événement, aucune de trop ; le mouvement réduit respecté | ⬜ |
@@ -352,7 +400,7 @@ Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément
 | **D4** | **Les feuilles de `u02` et `u03` au 32 ; `u04` et `u06` au 33**, avec le profil | Rendue par Clément en QCM, l'option recommandée. `u/[pseudo].tsx`, 1 535 lignes, sert aussi les profils des autres. Le 31 a fait de même avec `m01` |
 | **D5** | Une case prend la catégorie de sa case, par clé ou par type ; la puce écrit son tampon ; repli neutre pour un type sans couleur | Aucune migration : le type existe en base. « Personne » sert deux cases, d'où le tampon « CRÉA ». Les quatre types inactifs n'ont aucun item : la couleur est à dessiner par Rob avant de les ouvrir, ce que la roadmap laissait à trancher |
 | **D6** | Les éditions de 2 à 5 cases gardent les dispositions de Rob, sur le plateau du design, à la même hauteur | Le dossier ne dessine que six cases. Validées le 16 septembre, elles se lisent aussi sur le web et dans l'aperçu de lien |
-| **D7** | Dans une case, rien ne se chevauche : le titre perd une ligne, le sous-titre s'efface, le crédit reste | Sur `c07` et `u07`, le titre passe sous la puce. Le crédit est une obligation de licence |
+| **D7** | Dans une case, rien ne se chevauche : le titre perd une ligne, le sous-titre s'efface, le crédit reste ; et un mot ne se coupe pas au milieu : le titre rétrécit juste assez, jusqu'au plancher de 11 | Sur `c07` et `u07`, le titre passe sous la puce. Le crédit est une obligation de licence. La maquette permet la coupure d'un mot ; le chantier 11 l'a retirée de l'app, « ARDÈCH / E », et les 304 items validés tiennent au-dessus du plancher |
 | **D8** | Le plateau du composer rend de la hauteur jusqu'à 85 %, puis l'écran défile | Aujourd'hui, tout tient sans défiler tant qu'on peut. Au calcul, à l'iPhone SE, le bento seul tient ; les puces, le rappel ou le bandeau demandent jusqu'à 64 points, à mesurer au lot 2 |
 | **D9** | La recherche reste une route, en `transparentModal`, et rend le `Sheet` du design | Le même dessin aux deux plateformes, sans toucher aux liens profonds ni au retour au composer, qui relit le bento. À éprouver d'abord au clavier du Pixel |
 | **D10** | Une seule file de demandes, `useAsk`, à la place des `Alert.alert` et de `account/keep-offer` | Le guide met une `AskSheet` avant chaque autorisation. Les demandes partent de `lib`, sans écran sous la main, et peuvent arriver ensemble, comme aujourd'hui |

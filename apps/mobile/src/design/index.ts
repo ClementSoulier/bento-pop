@@ -6,12 +6,16 @@
  * Les fondations à la racine ; les composants rangés par famille, comme les
  * pages du catalogue : `structure/`, `actions/`, `brand/`, `inputs/` pour
  * les listes et la saisie, `overlays/` pour les calques et les retours, et
- * `bento/` pour le plateau, vide depuis le 31 et complété au 32.
+ * `bento/` pour le plateau, vide au 31, complété au 32 en `compose` et `share`,
+ * `feed` et `mini` venant au 33.
  */
 export { Button, type ButtonProps, type ButtonVariant } from './actions/Button';
-export { Bento, type BentoProps } from './bento/Bento';
-export { illustrationScale, plateMinHeight } from './bento/bento-rules';
-export { BentoTile, type BentoTileProps } from './bento/BentoTile';
+export { Bento, type BentoProps, type BentoSlot } from './bento/Bento';
+export { illustrationScale, plateMinHeight, plateRows } from './bento/bento-rules';
+export { BentoTile, type BentoTileItem, type BentoTileProps } from './bento/BentoTile';
+export { CATEGORY_STYLES, caseCategory } from './bento/categories';
+export { Progress, type ProgressProps } from './bento/Progress';
+export { Tag, type TagProps } from './bento/Tag';
 export { Chip, type ChipProps } from './actions/Chip';
 export { IconButton, type IconButtonProps } from './actions/IconButton';
 export { AppIcon, type AppIconProps } from './brand/AppIcon';

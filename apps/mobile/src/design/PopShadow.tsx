@@ -8,6 +8,8 @@ export type PopShadowProps = ViewProps & {
   level?: ShadowLevel;
   /** Le rayon de l'objet posé dessus, que le calque reprend. */
   radius: number;
+  /** Un décalage hors des trois du système : les 12 du plateau de l'image partagée. */
+  offset?: number;
 };
 
 /**
@@ -26,9 +28,11 @@ export type PopShadowProps = ViewProps & {
  * mise en page (largeur, marges, position). Le calque déborde de la boîte de
  * son décalage, comme une ombre, sans prendre de place.
  */
-export function PopShadow({ level = 'pop', radius, children, ...props }: PopShadowProps) {
+export function PopShadow({ level = 'pop', radius, offset, children, ...props }: PopShadowProps) {
   const { shadow } = useTheme();
-  const { x, y, color } = shadow[level];
+  const { x: levelX, y: levelY, color } = shadow[level];
+  const x = offset ?? levelX;
+  const y = offset ?? levelY;
   return (
     <View {...props}>
       <View

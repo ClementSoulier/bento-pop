@@ -22,7 +22,7 @@ import type { OwnBento } from './own-bento';
 export async function loadEditionCases(editionId: number): Promise<CaseSet[]> {
   const { data, error } = await supabase
     .from('bento_categories')
-    .select('id, key, prompt, stamp, gender, display_order')
+    .select('id, key, prompt, stamp, gender, display_order, item_types(key)')
     .eq('edition_id', editionId)
     .eq('is_active', true)
     .order('display_order');
@@ -34,6 +34,7 @@ export async function loadEditionCases(editionId: number): Promise<CaseSet[]> {
     prompt: row.prompt as string,
     stamp: row.stamp as string,
     gender: (row.gender as 'm' | 'f') ?? 'm',
+    typeKey: (row.item_types as { key?: string } | null)?.key ?? null,
   }));
 }
 
