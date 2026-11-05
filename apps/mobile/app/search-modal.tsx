@@ -26,6 +26,7 @@ import {
   scaledType,
 } from '@/components/bento/font-scaling';
 import { SearchIcon } from '@/components/TabIcons';
+import { ToastHost } from '@/components/ToastHost';
 import { useOfflineInset } from '@/lib/use-offline-inset';
 import { paletteKeyForItem } from '@/components/bento/palettes';
 import { INK_MUTED, INK_PLACEHOLDER, useToast } from '@/components/primitives';
@@ -341,6 +342,8 @@ export default function SearchModal() {
       slotFilledFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
         variant: 'success',
+        // Les flèches de la maquette `c07` (chantier 31).
+        icon: 'arrows-clockwise',
         durationMs: 5000,
         action: { label: 'Annuler', onPress: () => void restoreSlot(bentoId, previous) },
       });
@@ -747,6 +750,11 @@ export default function SearchModal() {
       {/* Plus de barre de boutons en bas : le tap sur une tuile valide, et
           « Vider cette case » a rejoint l'en-tête. C'est ce qui libère le bas
           de l'écran, donc ce qui rend inutile un `KeyboardAvoidingView`. */}
+
+      {/* Les toasts levés pendant que la recherche est ouverte, quand une
+          écriture échoue : celui de la racine resterait caché sous la modale
+          sur iOS (chantier 31, D7). */}
+      <ToastHost scope="modal" />
     </SafeAreaView>
   );
 }

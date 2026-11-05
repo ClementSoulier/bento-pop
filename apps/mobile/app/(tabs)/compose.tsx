@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { router, useFocusEffect, useIsFocused, useNavigation } from 'expo-router';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
@@ -122,7 +122,10 @@ export default function ComposeTab() {
   const hasPending = Object.values(slots).some((s) => s?.pending);
   const [publishing, setPublishing] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
-  const { width: screenWidth, height: screenHeight, fontScale } = useWindowDimensions();
+  const { width: screenWidth, fontScale } = useWindowDimensions();
+  // La place laissée à l'écran, et non la fenêtre : le bandeau de mise à
+  // jour, posé au-dessus des onglets, en prend le haut (chantier 31, D8).
+  const screenHeight = useSafeAreaFrame().height;
   const insets = useSafeAreaInsets();
 
   const showToast = useToast((s) => s.show);
@@ -365,7 +368,8 @@ export default function ComposeTab() {
       date
         ? `On te le rappelle ${reminderWhenLabel(new Date(), date)}.`
         : 'Sans les notifications, le rappel ne peut pas arriver.',
-      { variant: date ? 'success' : 'neutral', durationMs: 3500 },
+      // La cloche de la maquette `c08` (chantier 31).
+      { variant: date ? 'success' : 'neutral', icon: date ? 'bell-ringing' : undefined, durationMs: 3500 },
     );
   };
 

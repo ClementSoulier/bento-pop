@@ -8,7 +8,7 @@ const LINE_17_PRO = 354;
 
 describe('displayTitleScale', () => {
   it('ne touche pas un titre dont chaque mot tient', () => {
-    // Le splash d'un 17 Pro, à la taille par défaut : « POP / CULTURE. » passe à
+    // Un titre de trois lignes sur un 17 Pro, à la taille par défaut : « POP / CULTURE. » passe à
     // la ligne entre ses mots, et aucun ne dépasse.
     assert.equal(displayTitleScale('Compose\nton bento\npop culture.', LINE_17_PRO, 56, -1), 1);
     assert.equal(displayTitleScale('Les règles\ndu jeu.', 362, 30, -0.3), 1);

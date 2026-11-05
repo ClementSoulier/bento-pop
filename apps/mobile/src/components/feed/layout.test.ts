@@ -179,13 +179,14 @@ describe('feedScale', () => {
   /**
    * La hauteur du post doit laisser voir le début du suivant sur un écran
    * courant : c'est le signal qui dit qu'on peut défiler. Sur un iPhone 15,
-   * 852 pt d'écran moins l'encoche et la barre d'onglets laissent 709 pt.
+   * 852 pt d'écran moins l'encoche (59) et la barre d'onglets du design (91)
+   * laissent 702 pt.
    */
   it('laisse apparaître le post suivant sur un iPhone 15', () => {
     const HEADER = 64;
     const GAP = HEADER_GAP;
     const MARGIN = POST_GAP;
-    const USABLE = 709;
+    const USABLE = 702;
     const post = HEADER + GAP + DESIGN_HEIGHT * feedScale(IPHONE_15) + MARGIN;
     assert.ok(post < USABLE, `le post déborde : ${post} pt pour ${USABLE} pt`);
     assert.ok(USABLE - post > 40, `pas assez de suivant visible : ${USABLE - post} pt`);

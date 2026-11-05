@@ -1,12 +1,9 @@
 import { useState } from 'react';
-import { Alert, Linking, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Linking, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { CONTENT_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
-import { PageTitle, Pagination, Sticker, StampButton, YellowBg } from '@/components/primitives';
-import { checkboxA11y } from '@/lib/a11y-states';
+import { Button, Checkbox, Rule, Screen, Steps, Text, useTheme } from '@/design';
 import { userErrorMessage } from '@/lib/user-error-message';
-import { SHADOWS } from '@/components/primitives/shadow';
 import { supabase } from '@/supabase/client';
 import { useDraft } from '@/state/draft';
 import { useSession } from '@/state/session';
@@ -15,26 +12,25 @@ const TERMS_URL = 'https://bento-pop.com/mentions-legales';
 const PRIVACY_URL = 'https://bento-pop.com/confidentialite';
 
 /**
- * Onboarding — Acceptation des CGU (App Store Guideline 1.2).
+ * Les règles du jeu (`p02-regles`, chantier 31), l'acceptation des CGU qu'exige
+ * la Guideline 1.2 de l'App Store : étape 2 sur 3 de l'accueil, et, au prochain
+ * lancement, sans étapes, pour un compte qui ne les a jamais acceptées (gate
+ * dans `app/index.tsx`).
  *
- * Présenté AVANT la création du profil (pseudo) pour les nouveaux comptes,
- * et au prochain lancement pour les comptes existants qui n'ont jamais
- * accepté (gate dans `app/index.tsx`).
- *
- * Au tap « Continuer » :
- *   - si le profil existe déjà → UPDATE users.terms_accepted_at + retour tabs
- *   - sinon → simple navigation vers /onboarding/pseudo (le timestamp sera
- *     posé dans l'INSERT de la ligne `users` au moment du choix du pseudo)
+ * Au toucher de « Continuer » :
+ *   - un compte existant : `users.terms_accepted_at` est écrit, retour au composer ;
+ *   - un nouveau venu : l'acceptation est gardée sur l'appareil, et c'est elle
+ *     que `publish_first_bento` inscrira au moment de publier.
  */
 export default function TermsOnboarding() {
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const termsA11y = checkboxA11y(accepted, Platform.OS);
   const profile = useSession((s) => s.profile);
   const userId = useSession((s) => s.user?.id);
   const refreshProfile = useSession((s) => s.refreshProfile);
   const acceptTerms = useDraft((s) => s.acceptTerms);
-  const { fontScale } = useWindowDimensions();
+  const { colors, border } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const onContinue = async () => {
     if (!accepted) return;
@@ -54,9 +50,7 @@ export default function TermsOnboarding() {
         await refreshProfile();
         router.replace('/(tabs)/compose');
       } else {
-        // Nouveau venu : l'acceptation est gardée sur l'appareil, et c'est
-        // elle que `publish_first_bento` inscrira au moment de publier. Le
-        // pseudo n'est plus demandé ici : chantier 9.
+        // Nouveau venu : le pseudo n'est plus demandé ici, depuis le chantier 9.
         acceptTerms();
         router.push('/onboarding/mechanics');
       }
@@ -66,209 +60,141 @@ export default function TermsOnboarding() {
   };
 
   return (
-    <YellowBg>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingTop: 16, paddingBottom: 16 }}>
-          {/* Le titre défile avec les règles : posé au-dessus du défilement, il
-              en prenait toute la hauteur à la plus grande police, et la case à
-              cocher comme le bouton sortaient de l'écran. */}
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 16 }}
-            showsVerticalScrollIndicator={false}
-          >
-            <PageTitle
-              kicker={profile ? 'AVANT DE CONTINUER' : 'AVANT DE COMMENCER'}
-              title={'Les règles\ndu jeu.'}
-              sub="Bento Pop est un espace bienveillant, réservé aux 15 ans et plus. Avant de publier ton premier bento, jette un œil aux règles."
+    <Screen>
+      {/* Pas d'étapes pour un compte revenu accepter les règles : il n'est pas
+          dans un parcours. */}
+      {profile ? null : (
+        <View style={{ paddingTop: 8, paddingBottom: 8, paddingHorizontal: 16 }}>
+          <Steps count={3} index={1} />
+        </View>
+      )}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: profile ? 20 : 12,
+          paddingHorizontal: 16,
+          paddingBottom: 20,
+          gap: 18,
+        }}
+      >
+        <View style={{ gap: 6 }}>
+          <Text variant="eyebrow" color="text-secondary">
+            {profile ? 'Avant de continuer' : 'Avant de commencer'}
+          </Text>
+          <Text variant="title-1" accessibilityRole="header">
+            Les règles du jeu.
+          </Text>
+          <Text variant="body-l" color="text-secondary">
+            Bento Pop est un espace bienveillant, réservé aux 15 ans et plus. Avant de publier ton
+            premier bento, jette un œil aux règles.
+          </Text>
+        </View>
+        <View style={{ gap: 12 }}>
+          <Text variant="title-3" accessibilityRole="header">
+            Tolérance zéro
+          </Text>
+          <Rule icon="prohibit" tone="no">
+            Pas de contenu haineux, raciste, sexiste, homophobe, transphobe, validiste ou
+            discriminatoire.
+          </Rule>
+          <Rule icon="prohibit" tone="no">
+            Pas de harcèlement, d’insultes, de menaces ou d’incitation à la haine envers d’autres
+            utilisateur·rice·s.
+          </Rule>
+          <Rule icon="prohibit" tone="no">
+            Pas de contenu illégal, sexuel non consenti, à caractère pédopornographique ou
+            promouvant la violence.
+          </Rule>
+          <Rule icon="prohibit" tone="no">
+            Pas d’usurpation d’identité, pas de spam, pas d’arnaque, pas de doxxing.
+          </Rule>
+        </View>
+        <View style={{ gap: 12 }}>
+          <Text variant="title-3" accessibilityRole="header">
+            Ce qu’on fait
+          </Text>
+          <Rule icon="flag">
+            Tu peux{' '}
+            <Text variant="body" weight={600}>
+              signaler
+            </Text>{' '}
+            tout bento, pourquoi, commentaire ou compte qui te paraît hors-limites, on examine sous
+            24 h.
+          </Rule>
+          <Rule icon="user-minus">
+            Tu peux{' '}
+            <Text variant="body" weight={600}>
+              bloquer
+            </Text>{' '}
+            un·e utilisateur·rice à tout moment depuis sa page profil.
+          </Rule>
+          <Rule icon="warning-circle">
+            Les comptes qui enfreignent ces règles sont avertis puis supprimés sans préavis.
+          </Rule>
+          {/* D9 du 31 : la maquette n'a plus ces deux liens, l'app les garde.
+              Chacun reste un élément à part, que VoiceOver et TalkBack atteignent. */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 4, marginTop: 6 }}>
+            <Text variant="subhead" color="text-secondary">
+              Tu peux lire les
+            </Text>
+            <FullTextLink
+              label="conditions d’utilisation"
+              spoken="Ouvrir les conditions d’utilisation"
+              url={TERMS_URL}
             />
-            <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
-              <Sticker rotation={-2} style={{ alignSelf: 'flex-start', marginBottom: 14 }}>
-                TOLÉRANCE ZÉRO
-              </Sticker>
-              <RuleLine>
-                Pas de contenu haineux, raciste, sexiste, homophobe, transphobe, validiste ou
-                discriminatoire.
-              </RuleLine>
-              <RuleLine>
-                Pas de harcèlement, d'insultes, de menaces ou d'incitation à la haine envers d'autres
-                utilisateur·rice·s.
-              </RuleLine>
-              <RuleLine>
-                Pas de contenu illégal, sexuel non consenti, à caractère pédopornographique ou
-                promouvant la violence.
-              </RuleLine>
-              <RuleLine>
-                Pas d'usurpation d'identité, pas de spam, pas d'arnaque, pas de doxxing.
-              </RuleLine>
-
-              <Sticker rotation={2} style={{ alignSelf: 'flex-start', marginTop: 18, marginBottom: 14 }}>
-                CE QU'ON FAIT
-              </Sticker>
-              <RuleLine>
-                Tu peux <Text style={{ fontWeight: '800' }}>signaler</Text> tout bento, pourquoi,
-                commentaire ou compte qui te paraît hors-limites, on examine sous 24 h.
-              </RuleLine>
-              <RuleLine>
-                Tu peux <Text style={{ fontWeight: '800' }}>bloquer</Text> un·e utilisateur·rice à
-                tout moment depuis sa page profil.
-              </RuleLine>
-              <RuleLine>
-                Les comptes qui enfreignent ces règles sont avertis puis supprimés sans préavis.
-              </RuleLine>
-
-              <View style={{ marginTop: 22, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                <Text
-                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                  style={{ fontSize: 13, color: 'rgba(10,10,10,0.7)' }}
-                >
-                  Tu peux lire les
-                </Text>
-                <Pressable
-                  onPress={() => Linking.openURL(TERMS_URL)}
-                  accessibilityRole="link"
-                  accessibilityLabel="Ouvrir les conditions d'utilisation"
-                >
-                  <Text
-                    maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                    style={{
-                      fontSize: 13,
-                      color: '#0a0a0a',
-                      fontWeight: '700',
-                      textDecorationLine: 'underline',
-                    }}
-                  >
-                    conditions d'utilisation
-                  </Text>
-                </Pressable>
-                <Text
-                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                  style={{ fontSize: 13, color: 'rgba(10,10,10,0.7)' }}
-                >
-                  et la
-                </Text>
-                <Pressable
-                  onPress={() => Linking.openURL(PRIVACY_URL)}
-                  accessibilityRole="link"
-                  accessibilityLabel="Ouvrir la politique de confidentialité"
-                >
-                  <Text
-                    maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                    style={{
-                      fontSize: 13,
-                      color: '#0a0a0a',
-                      fontWeight: '700',
-                      textDecorationLine: 'underline',
-                    }}
-                  >
-                    politique de confidentialité
-                  </Text>
-                </Pressable>
-                <Text
-                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                  style={{ fontSize: 13, color: 'rgba(10,10,10,0.7)' }}
-                >
-                  complètes.
-                </Text>
-              </View>
-            </View>
-          </ScrollView>
-
-          <View style={{ paddingHorizontal: 20 }}>
-            <Pressable
-              onPress={() => setAccepted((v) => !v)}
-              accessibilityRole={termsA11y.role}
-              accessibilityState={termsA11y.state}
-              accessibilityValue={termsA11y.value}
-              accessibilityLabel="J'accepte les conditions d'utilisation"
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  backgroundColor: '#ffffff',
-                  borderWidth: 3,
-                  borderColor: '#0a0a0a',
-                  borderRadius: 14,
-                  marginBottom: 14,
-                },
-                SHADOWS.stamp,
-              ]}
-            >
-              <View
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderWidth: 3,
-                  borderColor: '#0a0a0a',
-                  borderRadius: 6,
-                  backgroundColor: accepted ? '#0a0a0a' : '#ffffff',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {accepted ? (
-                  // Une coche dans une case de 26 pt, pas un texte à lire.
-                  <Text
-                    allowFontScaling={false}
-                    style={{ color: '#fbbf24', fontSize: 18, fontWeight: '900', lineHeight: 22 }}
-                  >
-                    ✓
-                  </Text>
-                ) : null}
-              </View>
-              <Text
-                allowFontScaling={false}
-                style={{
-                  flex: 1,
-                  ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 14, 19),
-                  color: '#0a0a0a',
-                }}
-              >
-                J'ai lu et j'accepte les règles ci-dessus, les CGU et la politique de
-                confidentialité.
-              </Text>
-            </Pressable>
-
-            <StampButton wide disabled={!accepted || submitting} onPress={onContinue}>
-              {submitting ? 'Enregistrement…' : 'Continuer'}
-            </StampButton>
-
-            {/* Le parcours faisait quatre écrans comptés trois : les points
-                sautaient celui-ci, et l'écran du pseudo annonçait « ÉTAPE
-                2 / 3 ». Depuis le chantier 9 il fait trois écrans, et les
-                trois sont comptés. Pas de points pour un compte existant
-                revenu accepter les règles : il n'est pas dans un parcours. */}
-            {profile ? null : (
-              <View style={{ marginTop: 16 }}>
-                <Pagination total={3} active={1} />
-              </View>
-            )}
+            <Text variant="subhead" color="text-secondary">
+              et la
+            </Text>
+            <FullTextLink
+              label="politique de confidentialité"
+              spoken="Ouvrir la politique de confidentialité"
+              url={PRIVACY_URL}
+            />
+            <Text variant="subhead" color="text-secondary">
+              complètes.
+            </Text>
           </View>
         </View>
-      </SafeAreaView>
-    </YellowBg>
+      </ScrollView>
+      <View
+        style={{
+          gap: 16,
+          paddingTop: 16,
+          paddingHorizontal: 16,
+          paddingBottom: insets.bottom + 12,
+          borderTopWidth: border.hairline,
+          borderTopColor: colors['border-subtle'],
+          backgroundColor: colors['bg-surface'],
+        }}
+      >
+        <Checkbox
+          checked={accepted}
+          onValueChange={setAccepted}
+          label="J’ai lu et j’accepte les règles ci-dessus, les CGU et la politique de confidentialité."
+        />
+        <Button
+          block
+          label="Continuer"
+          disabled={!accepted}
+          loading={submitting}
+          onPress={onContinue}
+        />
+      </View>
+    </Screen>
   );
 }
 
-function RuleLine({ children }: { children: React.ReactNode }) {
-  const { fontScale } = useWindowDimensions();
+function FullTextLink({ label, spoken, url }: { label: string; spoken: string; url: string }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-      {/* Vide, il ne sert qu'à décaler la règle : sa hauteur ne suit pas la police. */}
-      <Text allowFontScaling={false} style={{ fontSize: 18, color: '#0a0a0a', lineHeight: 22 }}></Text>
-      <Text
-        allowFontScaling={false}
-        style={{
-          flex: 1,
-          ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 14, 20),
-          color: 'rgba(10,10,10,0.85)',
-        }}
-      >
-        {children}
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={spoken}
+      hitSlop={{ top: 12, bottom: 12 }}
+      onPress={() => Linking.openURL(url)}
+    >
+      <Text variant="subhead-strong" style={{ textDecorationLine: 'underline' }}>
+        {label}
       </Text>
-    </View>
+    </Pressable>
   );
 }

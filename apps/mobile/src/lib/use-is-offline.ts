@@ -4,7 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 /**
  * Vrai quand le device n'a pas d'accès internet.
  *
- * Partagé par `OfflineBanner` et `UpdateBanner`, qui se disputeraient sinon
+ * Partagé par `OfflineBanner` et `UpdateNotice`, qui se disputeraient sinon
  * le haut de l'écran. Plutôt que de les coupler entre eux, chacun lit l'état
  * réseau ; le bandeau de mise à jour s'efface hors ligne, parce que proposer
  * d'aller sur le store sans connexion ne mène nulle part.

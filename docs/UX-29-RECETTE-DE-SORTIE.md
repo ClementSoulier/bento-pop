@@ -99,8 +99,9 @@ répétition, nouvelle build. Le numéro de build suit tout seul
 ## 4. La liste de sortie
 
 Cinquante-quatre points, rassemblés le 27 octobre depuis la roadmap et les
-vingt-six spécifications, puis dédoublonnés, et deux de plus versés par le
-30 le 30 octobre (30-a, 30-b) : un contrôle demandé par
+vingt-six spécifications, puis dédoublonnés, deux de plus versés par le 30
+le 30 octobre (30-a, 30-b) et trois par le 31 le 5 novembre (31-a à 31-c) :
+un contrôle demandé par
 plusieurs chantiers n'a qu'une ligne, numérotée au chantier qui en tient la
 version la plus complète. Chaque point dit d'où il vient : *versé*, listé par
 la roadmap au chantier 29 ; *spec seule*, laissé à l'appareil par une
@@ -153,7 +154,10 @@ le focus de VoiceOver et le nouvel ordre des onglets lu à voix haute. Le 30,
 le socle, a versé la sienne le 30 octobre : 30-a et 30-b en passe B, les cinq
 retours haptiques du design en 3-a, la boîte de dialogue, la feuille et la
 notification reçue app ouverte en 11-a ; ses composants n'entrent dans les
-écrans qu'aux 31 à 34, qui nommeront les leurs.
+écrans qu'aux 31 à 34, qui nommeront les leurs. Le 31 a versé la sienne le
+5 novembre : 31-a et 31-b en passe B, 31-c en passe G, le retour d'un onglet
+en 3-a, le gris de la barre refaite en 11-c, la barre, le bandeau, l'accueil
+et la mise à jour requise en 11-a.
 
 ### Passe A · Avant d'installer, puis au premier lancement
 
@@ -205,6 +209,7 @@ Après les parcours du §5, ce que seul un vrai téléphone montre : l'haptique,
   - Attendu : Selon le 3 : un impact léger au tap d'une tuile, un succès quand la case est remplie au retour sur le composer, une erreur à l'échec ; l'haptique « n'est pas envahissante au sixième déclenchement ». Selon le 11 : « se sentir une fois, au moment de la validation, jamais en double ». Puces : un retour de sélection. Les deux attendus divergent (D17).
   - **Décidé le 27 octobre (D17), d'après `src/lib/haptics.ts` : un impact léger au toucher d'une tuile, d'une puce de « Trouver » ou du cœur ; le motif « succès » quand la case est enregistrée ; le motif « erreur » sur un échec d'écriture. Rien en vidant une case.**
   - **Versé par le 30 le 30 octobre (D11, D23 du 30) : les écrans refaits aux 31 à 34 adoptent les cinq retours du design, une sélection légère (un onglet, une puce, un interrupteur), un impact moyen (le cœur), « succès » (une publication, un code validé), « avertissement » (l'ouverture d'une confirmation destructive) et « erreur » (un code faux), chacun joué une fois par l'écran ; les attendus ci-dessus se relisent avec eux. Appelés au simulateur et à l'émulateur sans erreur, jamais sentis.**
+  - **Versé par le 31 le 5 novembre (D13 du 31) : une sélection légère à chaque changement d'onglet, une seule fois, et rien en retouchant l'onglet courant. Appelée sans erreur, jamais sentie.**
   - Sources : RM:148, RM:216, RM:427-428, RM:1353, RM:1354 ; UX-03:55, UX-03:604-613, UX-03:929, UX-03:1009, UX-03:1052-1053 ; UX-06:440-442, UX-06:770-771, UX-06:921-923 ; UX-11:411, UX-11:676-678 ; DEP:163
 - **2-a · Fluidité de « La table » en build de production.** Les deux. Versé.
   - Prérequis : P1 : au simulateur et en build de débogage, « ni l'un ni l'autre ne prouve quoi que ce soit ». Des bentos d'édition dans le fil pour la part du 13 (D15).
@@ -232,6 +237,7 @@ Après les parcours du §5, ce que seul un vrai téléphone montre : l'haptique,
   - Prérequis : P1 ; Rob.
   - Gestes : Rob regarde la barre d'onglets, les onglets inactifs à 60 % d'encre sur blanc.
   - Attendu : « à valider à l'œil par Rob, DA, avant la mise en revue ».
+  - **Versé par le 31 le 5 novembre : la barre est refaite, ses onglets inactifs prennent `text-secondary`, le gris du design. Le point reste à l'œil de Rob, sur cette barre.**
   - Sources : UX-11:1028-1030
 - **12-b · « AROUND THE WORLD » coupé dans sa case à 200 % sur Android.** Android. Versé, « Relevé en chemin, hors du 12 ».
   - Prérequis : P1 ; ce bento en production.
@@ -260,6 +266,16 @@ Après les parcours du §5, ce que seul un vrai téléphone montre : l'haptique,
   - Gestes : L'app ouverte sur cet écran, allumer « Réduire les animations » (iPhone, Accessibilité, Mouvement) ou « Supprimer les animations » (Android, Accessibilité), revenir à l'app sans la relancer, ouvrir la feuille ou faire paraître le toast ; puis éteindre le réglage et recommencer.
   - Attendu : sans relance, ni rebond ni confettis, les apparitions en fondus de 120 ms ; tout revient une fois le réglage éteint. Vu au simulateur et à l'émulateur au lot 2 du 30, dans les deux sens.
   - Sources : UX-30 §4.6, §10.2 ; D10 du 30
+- **31-a · L'icône d'app et la petite icône des notifications, sur de vrais téléphones.** Les deux. Versé par le 31 (D12).
+  - Prérequis : P1 ; un Android 13 ou plus pour les icônes à thème.
+  - Gestes : Regarder l'icône sur l'écran d'accueil et dans la liste des apps, hors du dock du lanceur Pixel, qui entoure et réduit l'app qu'il suggère. Sur l'Android : changer la forme des icônes si le lanceur le propose ; allumer les icônes à thème. Recevoir une notification, app fermée.
+  - Attendu : iPhone : Popy sur le jaune à pois, les coins laissés au système. Android : Popy entière sous toutes les formes, le fond à pois jusqu'au bord ; à thème, sa silhouette, le visage évidé. La petite icône : la silhouette blanche dans la barre d'état, jamais un carré ; sa couleur `#b5751a` là où le système la montre, Android 17 montrant l'icône entière dans le volet. L'émulateur n'a permis de voir ni une autre forme ni le thème.
+  - Sources : UX-31 §7.4, §11.4 ; D12 du 31
+- **31-b · Le lancement en build de production.** Les deux. Versé par le 31 (D11).
+  - Prérequis : P1 ; une installation neuve, puis un compte qui a publié.
+  - Gestes : App fermée, l'ouvrir plusieurs fois, en installation neuve et avec le compte ; regarder du premier instant au premier écran.
+  - Attendu : Le jaune `#f2a82a` du premier instant à l'accueil, Popy au centre sans disparaître ni sauter. Vu en développement, à revoir ici : au simulateur iOS, un premier instant plus saturé (`#ffa400`, Popy compris), le fichier étant juste ; au Pixel, un fond uni de 0,7 s avant le composer. Le composer garde son jaune d'avant jusqu'au 32.
+  - Sources : UX-31 §7.3, §11.4 ; D11 du 31
 
 ### Passe C · À deux téléphones
 
@@ -444,6 +460,7 @@ Un seul point, le plus long : chaque écran neuf écouté, écouteurs mis.
     (27) une médaille ;
     (28) « Garde ton compte », le champ du code, « J'ai déjà un compte » ;
     (30) sur les écrans refaits aux 31 à 34 : une confirmation dans sa boîte de dialogue, une feuille, une notification reçue app ouverte, un toast ;
+    (31) les onglets l'un après l'autre, avec et sans nouveautés ; le bandeau de mise à jour ; les trois écrans de l'accueil ; la mise à jour requise ;
     (1) la page web dans Safari d'iPhone.
   - Attendu : (11) l'ordre de lecture suit l'écran, « Case Film » s'annonce avant son contenu, un toast se dit tout seul, la perte et le retour de connexion s'annoncent, chaque élément tapable dit son rôle, « aucun libellé ne s'annonce en anglais » (D18) ;
     (3) la grille atteinte en balayant vers la droite, le nombre de propositions annoncé, le toast annoncé ;
@@ -459,6 +476,7 @@ Un seul point, le plus long : chaque écran neuf écouté, écouteurs mis.
     (27) « Premier bento : un bento publié » ;
     (28) non écrit, les rôles n'ont été relus qu'à l'arbre ;
     (30) le focus reste dans la boîte de dialogue et dans la feuille, l'action qui engage d'abord, « Annuler » en dernier ; le geste d'échappement (deux doigts en Z sur iPhone) ou le retour d'Android ferme la feuille et annule la boîte de dialogue ; la notification se dit toute seule, avec « Ouvrir » et « Fermer » parmi ses actions ; le toast se dit poliment, sans prendre le focus. Relu à l'arbre au simulateur et à l'émulateur aux lots 4 et 5 du 30, jamais entendu ;
+    (31) chaque onglet dit son nom et « onglet n sur 5 », ou sur 4 quand Notifs est coupé ; le bandeau se lit le premier, « Nouvelle version dispo », « Mettre à jour », « Fermer » ; « Étape 2 sur 3 » et 67 %, jamais plus de 100 % ; le bento vide en un seul arrêt, ses six catégories dans l'ordre, ses autocollants tus ; l'affiche d'une traite, « Une boîte. Six envies. » ; les deux liens des règles atteints un à un. Relu à l'arbre, jamais entendu ;
     (1) « chaque case annoncée avec sa catégorie et son titre ».
   - **Corrigé le 27 octobre (D18) : sur iOS, VoiceOver lisait en anglais les mots que React Native compose, « checkbox, unchecked », « radio button », « busy », même sur un iPhone en français. Relu sur une build Release corrigée, la case des conditions s'annonce « non coché » sur un bouton, cf. §8 ; la voix elle-même reste à entendre ici.**
   - Sources : RM:148-149, RM:1183-1188, RM:1211-1214, RM:1231-1235, RM:1328-1330, RM:1353, RM:1354-1355 ; UX-01:538 ; UX-02:394-406, UX-02:790-791 ; UX-03:437-449, UX-03:1054-1055 ; UX-11:306-309, UX-11:412, UX-11:528-550, UX-11:679-684 ; UX-12:607-609, UX-12:617-618, UX-12:716-717 ; UX-19:213-215, UX-19:609-613, UX-19:646-649, UX-19:710 ; UX-20:445-447, UX-20:459-463, UX-20:584 ; UX-21:765-769, UX-21:859-862 ; UX-22:289-290, UX-22:600-601, UX-22:731-732 ; UX-23:475-476, UX-23:558 ; UX-24:116, UX-24:357-358, UX-24:438 ; UX-25:57-59, UX-25:241, UX-25:307 ; UX-27:72-73, UX-27:225 ; UX-28:599-601 ; REC:995-997 ; ROLES:108-110, ROLES:517
@@ -509,6 +527,11 @@ Ce qui demande une édition, un bento secondaire ou une mise à jour à distance
   - Attendu : Prévenu de la sortie d'une édition, « et personne d'autre » qui ne l'a pas acceptée ; le tap fait pulser son « + titre » ; « Couper « Mes items » : plus rien n'arrive, et « Les éditions » continue » ; la coupure « tient au redémarrage ».
   - **Après la première édition (D15).**
   - Sources : RM:782, RM:806 ; UX-17:703-705, UX-17:1016, UX-17:1160-1162, UX-17:1185, UX-17:1187
+- **31-c · « Mettre à jour » jusqu'à la fiche de l'App Store.** iOS. Versé par le 31.
+  - Prérequis : P1 ; une version publiée au-dessus de celle du téléphone, la première après la 2.0.0.
+  - Gestes : Un iPhone resté sur la version d'avant, `ios_latest_version` à la nouvelle : toucher « Mettre à jour » dans le bandeau.
+  - Attendu : La fiche de l'app dans l'App Store. Google Play a été vu à l'émulateur, le simulateur iOS n'a pas d'App Store, et `openStore` n'a pas changé au 31.
+  - Sources : UX-31 §6, §11.4
 
 ### Hors appareil
 
@@ -913,7 +936,7 @@ sont en ligne depuis la fusion, servis par bento-pop.com le 27 octobre à
 | 12 | VoiceOver ne lit plus aucun mot anglais de React Native (D18) | ✅ le 27 octobre, relu au simulateur ; la voix à la recette (11-a) |
 | 13 | L'âge minimum fixé (D23) | ✅ le 27 octobre, 15 ans |
 | 14 | Les textes légaux justes, l'âge minimum compris (D14) | ✅ le 27 octobre, en ligne depuis la fusion, le soir même |
-| 15 | La refonte visuelle faite et recettée, chantiers 30 à 34 (D25) | 🟡 ajoutée le 28 octobre ; le 30 fait et recetté le 30 octobre, sa part versée au §4 ; les 31 à 34 à faire |
+| 15 | La refonte visuelle faite et recettée, chantiers 30 à 34 (D25) | 🟡 ajoutée le 28 octobre ; le 30 fait et recetté le 30 octobre, le 31 le 5 novembre, leurs parts versées au §4 ; les 32 à 34 à faire |
 
 ---
 

@@ -29,15 +29,16 @@ import { extendaAccentRoom } from '@/lib/display-title';
 import { extendaTextWidth } from './extenda-metrics';
 import { TITLE_ROUNDING_SLACK } from './tile-title';
 import { CONTROL_MAX_FONT_MULTIPLIER, TITLE_MAX_FONT_MULTIPLIER } from './font-scaling';
+import { tabBarHeight } from '@/design/structure/tab-items';
 
 /**
- * Appareils réels. La barre d'onglets inclut l'indicateur d'accueil, et mesure
- * 84 pt partout où sa hauteur est fixée, SE compris : relevé dans l'arbre
- * d'accessibilité au chantier 11, là où ce test supposait 49.
+ * Appareils réels. La barre d'onglets inclut l'indicateur d'accueil : 84 pt
+ * partout jusqu'au chantier 31, puis celle du design, 57 à l'iPhone SE et 91
+ * aux iPhone à indicateur d'accueil (`tabBarHeight`).
  */
-const SE: ComposeMetrics = { screenHeight: 667, insetTop: 20, tabBarHeight: 84, fontScale: 1 };
-const IPHONE_17: ComposeMetrics = { screenHeight: 874, insetTop: 59, tabBarHeight: 84, fontScale: 1 };
-const PRO_MAX: ComposeMetrics = { screenHeight: 956, insetTop: 62, tabBarHeight: 84, fontScale: 1 };
+const SE: ComposeMetrics = { screenHeight: 667, insetTop: 20, tabBarHeight: tabBarHeight(0), fontScale: 1 };
+const IPHONE_17: ComposeMetrics = { screenHeight: 874, insetTop: 59, tabBarHeight: tabBarHeight(34), fontScale: 1 };
+const PRO_MAX: ComposeMetrics = { screenHeight: 956, insetTop: 62, tabBarHeight: tabBarHeight(34), fontScale: 1 };
 
 /** Tailles de police système relevées : iOS xLarge, xxLarge, xxxLarge, AX5 ; Android 1,3 et 2,0. */
 const FONT_SCALES = [0.823, 1, 1.118, 1.235, 1.3, 1.353, 2, 3.571];
@@ -52,7 +53,7 @@ describe('composeBentoScale', () => {
 
   it('reste dans ses bornes même sur des métriques absurdes', () => {
     for (const h of [0, 100, 300, 2000]) {
-      const scale = composeBentoScale({ screenHeight: h, insetTop: 59, tabBarHeight: 84, fontScale: 1 });
+      const scale = composeBentoScale({ screenHeight: h, insetTop: 59, tabBarHeight: tabBarHeight(34), fontScale: 1 });
       assert.ok(scale >= MIN_SCALE && scale <= MAX_SCALE, `hauteur ${h} : ${scale}`);
       assert.ok(Number.isFinite(scale));
     }
@@ -61,7 +62,7 @@ describe('composeBentoScale', () => {
   it('est monotone : plus d\'écran, une grille au moins aussi grande', () => {
     let previous = 0;
     for (let h = 500; h <= 1200; h += 11) {
-      const scale = composeBentoScale({ screenHeight: h, insetTop: 59, tabBarHeight: 84, fontScale: 1 });
+      const scale = composeBentoScale({ screenHeight: h, insetTop: 59, tabBarHeight: tabBarHeight(34), fontScale: 1 });
       assert.ok(scale >= previous, `régression à ${h}`);
       previous = scale;
     }
@@ -82,7 +83,7 @@ describe('écart entre la boîte et le bouton', () => {
   it('ne descend jamais sous l’écart minimal, et vise CTA_GAP hors plancher', () => {
     for (let h = 560; h <= 1100; h += 7) {
       for (const inset of [20, 44, 47, 59, 62]) {
-        for (const tab of [49, 56, 78, 84, 90]) {
+        for (const tab of [49, 56, 57, 78, 81, 84, 90, 91]) {
           const m = { screenHeight: h, insetTop: inset, tabBarHeight: tab, fontScale: 1 };
           const gap = composeCtaGap(m);
           assert.ok(gap >= CTA_GAP_MIN, `${gap.toFixed(1)} pt à ${h}/${inset}/${tab}`);
@@ -127,15 +128,17 @@ describe('écart entre la boîte et le bouton', () => {
   });
 
   /**
-   * Sur iPhone SE la grille est à son plancher dès la taille par défaut, donc le
-   * ressort se réduit à rien et c'est la marge du bouton qui tient l'écart :
-   * l'écart minimal, et non l'écart visé, qui poussait le bouton sous la barre
-   * d'onglets dès la taille xLarge (chantier 11).
+   * Sur iPhone SE la grille est à son plancher dès la taille xLarge (dès la
+   * taille par défaut avec la barre d'avant le chantier 31, plus haute de 27
+   * points), donc le ressort se réduit à rien et c'est la marge du bouton qui
+   * tient l'écart : l'écart minimal, et non l'écart visé, qui poussait le
+   * bouton sous la barre d'onglets dès la taille xLarge (chantier 11).
    */
   it('tient l\'écart minimal sur le plus petit écran', () => {
-    assert.ok(composeAvailableHeight(SE) < NATIVE_GRID_H, 'la grille devrait être réduite sur SE');
-    assert.equal(composeBentoScale(SE), MIN_SCALE);
-    const gap = composeCtaGap(SE);
+    const seXLarge = { ...SE, fontScale: 1.118 };
+    assert.ok(composeAvailableHeight(seXLarge) < NATIVE_GRID_H, 'la grille devrait être réduite sur SE');
+    assert.equal(composeBentoScale(seXLarge), MIN_SCALE);
+    const gap = composeCtaGap(seXLarge);
     assert.ok(gap >= CTA_GAP_MIN && gap < CTA_GAP, `${gap.toFixed(1)} pt`);
   });
 });
@@ -156,10 +159,11 @@ describe('police système', () => {
   it('laisse le budget inchangé à la taille par défaut', () => {
     assert.equal(composeHeaderHeight(1), HEADER_H);
     assert.equal(composeCtaBlockHeight(1), CTA_BLOCK_H);
-    // 874 − 62 − 46 − 88 − 84 − 66 − 56 = 472, sur 512.
+    // 874 − 62 − 46 − 88 − 91 − 66 − 56 = 465, sur 512 : la barre du design
+    // prend 7 points de plus que celle d'avant le chantier 31.
     assert.equal(
-      composeBentoScale({ screenHeight: 874, insetTop: 62, tabBarHeight: 84, fontScale: 1 }),
-      472 / 512,
+      composeBentoScale({ screenHeight: 874, insetTop: 62, tabBarHeight: tabBarHeight(34), fontScale: 1 }),
+      465 / 512,
     );
   });
 

@@ -31,6 +31,7 @@ const PAGES: { href: Href; title: string; detail: string }[] = [
     title: 'Marque',
     detail: 'Popy, Avatar, Logo, AppIcon, Sticker, Display',
   },
+  { href: '/dev/catalogue/bento', title: 'Bento', detail: 'Bento, BentoTile' },
 ];
 
 /**
