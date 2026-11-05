@@ -13,7 +13,7 @@
 > Notifs coupé, **quatre onglets**, Compose en troisième ; le 31 construit
 > **le bento vide**, que le 32 complète ; **la barre sur les écrans poussés
 > vient avec leurs écrans**, les profils d'un compte au 33. D5 à D15 sont
-> prises par la spécification.
+> prises par la spécification, D16 par la recette du lot 3.
 >
 > **La coque change dans toute l'app, les écrans seulement les cinq du 31**
 > (D5) : la barre d'onglets, les toasts et le bandeau de mise à jour du design
@@ -466,6 +466,66 @@ Pixel 8, sur la pile locale, comme le 30.
   et typage 8 sur 8, tests (mobile 1 133, landing 202, back-office 251),
   builds 3 sur 3, e2e 65 sur 65.
 
+### 11.3 Lot 3 · fait le 5 novembre 2026
+
+- **Sur Expo 57.0.31** : `main` a reçu la #111 le 5 novembre, fusionnée sans
+  conflit dans la branche, et les builds de développement sont refaites dessus.
+- **Le bento vide** (D3), dans `src/design/bento/` : `Bento` et `BentoTile`,
+  aux mesures de `bundle.css` en densité `compose`, relues à l'iPhone 17 Pro
+  sur la maquette, plateau de 370 sur 463. Leurs règles sont pures et testées
+  (`bento-rules.ts`) : les rangées, les hauteurs, le libellé 14/17 ou 12/14
+  plafonné à 130 %, « Créateur / de contenu » gardé sur deux lignes comme la
+  maquette, le libellé unique du plateau. Une case grandit plutôt que de
+  couper son libellé. La page `bento` du catalogue les montre, clair et
+  sombre. `BentoGrid` perd `empty`, que seul l'ancien écran employait.
+- **`p01`** : aux mêmes places que la maquette à l'iPhone 17 Pro, « Commencer »
+  de 730 à 782, « J'ai déjà un compte » de 784 à 828 ; Popy passe à 150 sous
+  720 de haut, et l'accueil tient alors sans défiler à l'iPhone SE.
+- **`p02`** : les sept `Rule`, le pied collé en bas, les deux liens sous « Ce
+  qu'on fait » (D9), éléments à part que VoiceOver et TalkBack atteignent ; un
+  lien ouvre bien Safari. **La variante d'un compte, de bout en bout, sur la
+  pile locale** : le compte de test retrouvé par « J'ai déjà un compte », son
+  code lu dans le Mailpit de la pile, `terms_accepted_at` vidé ; à la relance,
+  « Avant de continuer », sans étapes ; la case cochée, « Continuer » écrit
+  l'acceptation en base et mène au composer.
+- **`p03`** (D16) : à la lettre, la dernière ligne de sa phrase passait sous
+  le bouton à l'iPhone 17 Pro, la maquette dépassant de son cadre de 7 points.
+  Ses marges sont resserrées de 19 points, le bouton restant à 12 de la zone
+  sûre comme partout. À l'iPhone SE, le plateau et ses autocollants passent à
+  l'échelle 0,77 et tout tient sans défiler. Le plateau se lit d'un seul
+  libellé, et ses deux autocollants se taisent.
+- **Les défauts que la recette a trouvés dans le socle du 30**, corrigés :
+  - `Display` coupait l'accent d'une première ligne, le « Î » de « BOÎTE » ;
+    il réserve sa place, sans rien déplacer.
+  - `Steps` : VoiceOver lit `now / (max - min)`, et la dernière étape disait
+    150 %. Elles disent désormais 33, 67 et 100 %.
+  - `Sticker` grandissait jusqu'à 200 % et couvrait les « + » du plateau ; il
+    s'arrête à 130 %, comme le reste d'un moment de marque.
+  - `Button` animait son fond : à l'émulateur, quand la case allumait
+    « Continuer », le fond avait encore l'ancienne couleur 0,8 s après le
+    toucher, 3 fois sur 40. Le fond est un style simple, seule la teinte de
+    l'appui s'anime : 0 fois sur 40, et les teintes enfoncées restent justes
+    à l'iPhone 17 Pro (`accent-pressed`, `bg-pressed`, contour compris).
+  - Le texte défilé touchait les étapes : elles gardent 8 points sous elles.
+- **Les tailles de texte** : l'iPhone SE à 135 % et au-delà de 200 %, le
+  Pixel 8 à 1,3 et 2,0, sur les trois écrans : rien de coupé, le contenu défile
+  au-dessus des boutons, qui restent à l'écran.
+- **Les parcours aux trois appareils** : l'accueil, les règles, les six cases,
+  le composer ; « J'ai déjà un compte » ; le retour d'Android, de `p02` à `p01`.
+  Les arbres d'accessibilité dans l'ordre de lecture, aux deux plateformes.
+- **Une erreur de développement d'expo-router** reste en 57.0.29, sans lien
+  avec ce lot : « Can't perform a React state update on a component that
+  hasn't mounted yet », à `useLinking.native.js:127`, à certains lancements à
+  froid au Pixel 8. C'est un avertissement du mode développement, dont la
+  capture a la pile entière. Attendu au lot 1 avec la montée d'Expo, il n'en
+  part pas.
+- **Pas éprouvé à ce lot, pour la recette du lot 5** : le mouvement réduit sur
+  Popy, la voix de VoiceOver et de TalkBack (leurs arbres seulement), un premier
+  lancement Android après installation.
+- **La CI rejouée en local** sur l'arbre du lot 3, sans cache : verte, lint et
+  typage 8 sur 8, tests (mobile 1 141, landing 202, back-office 251), builds
+  3 sur 3, e2e 65 sur 65.
+
 ## 12. Definition of Done
 
 | # | Point | État |
@@ -473,15 +533,15 @@ Pixel 8, sur la pile locale, comme le 30.
 | 1 | La barre du design sur les cinq racines : l'ordre, Compose au centre, la pastille, l'avatar ; l'arrivée sur Compose (D1), quatre onglets quand Notifs est coupé (D2) | ✅ lot 1 |
 | 2 | Les toasts en bas, au-dessus de la barre, de la zone sûre ou du clavier ; 4 s, 6 s avec une action ; dits poliment ; les 30 appels inchangés | ✅ lot 2 |
 | 3 | Le bandeau de mise à jour en tête des racines, qui pousse l'écran ; « Plus tard » retenu par version | ✅ lot 2 |
-| 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | ⬜ |
+| 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | 🟡 lot 3 : `p01` à `p03`, à l'écart de D16 près |
 | 5 | Le lancement sur le fond de marque, sans saut de jaune | ⬜ |
 | 6 | L'icône d'app, l'icône adaptative et la petite icône des notifications vues au simulateur et à l'émulateur | ⬜ |
-| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | 🟡 lot 1 : les onglets, aux deux plateformes |
+| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | 🟡 lots 1 et 3 : les onglets aux deux plateformes ; l'accueil, ses arbres |
 | 8 | Le mouvement réduit : Popys immobiles, toasts en fondu | ⬜ |
 | 9 | Les autres écrans ne changent qu'à la barre, à leur hauteur utile et au toast | 🟡 lot 1 : la barre, sur les neuf écrans de référence du 30 |
-| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | 🟡 lots 1 et 2 : la barre, `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives |
+| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | 🟡 lots 1 à 3 : la barre, `tab-bar.ts`, `UpdateBanner`, le `Toast` des primitives ; l'accueil sans Bungee, `YellowBg`, `StampButton` ni `Sticker` |
 | 11 | Les tests de règles verts ; les tests figés sur 84 et sur Bungee repris | ✅ lot 1 |
-| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lots 1 et 2 |
+| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lots 1 à 3 |
 
 ## 13. Décisions
 
@@ -502,6 +562,7 @@ Pixel 8, sur la pile locale, comme le 30.
 | **D13** | Un retour de sélection à chaque changement d'onglet | Le guide le demande ; c'est l'écran qui joue l'haptique, pas le composant (D23 du 30) |
 | **D14** | Les quatre tests qui prennent 84 en entrée passent aux hauteurs de la nouvelle barre | Ils décrivent des écrans réels ; 84 n'en sera plus un. Au lot 1, celui de l'écart minimal du composer cherche le plancher de la grille à l'iPhone SE à la taille xLarge, la barre lui rendant 27 points |
 | **D15** | Bungee, `YellowBg`, `StampButton` et `Sticker` sortent des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives sont retirés ; `TabIcons` (la loupe et le crayon), `Pagination` et `PageTitle` restent pour les écrans des 32 et 33 | La D13 du 30 : une primitive part avec son dernier emploi |
+| **D16** | `p03` resserre ses marges de 19 points et garde son bouton à 12 de la zone sûre ; sur un écran court, son plateau rapetisse, autocollants compris, jusqu'à 0,72, et la Popy de `p01` passe à 150 sous 720 de haut | La maquette dépasse de son cadre de 7 points et sa phrase touche le bouton : à la lettre, sa dernière ligne passait sous lui à l'iPhone 17 Pro. Le texte passe avant le décor : à l'iPhone SE, l'accueil et les six cases tiennent sans défiler |
 
 ## 14. Suivis
 

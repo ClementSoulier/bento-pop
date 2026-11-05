@@ -14,10 +14,8 @@ type BentoGridProps = {
    * (`BOX_LAYOUTS`) ; une case sans `tile` se rend vide.
    */
   cases: readonly BentoCase[];
-  /** Échelle (1 = portrait mobile standard, 1.45 pour image de partage, 0.78 pour onboarding). */
+  /** Échelle (1 = portrait mobile standard, 1.45 pour image de partage). */
   scale?: number;
-  /** Si `true`, toutes les cases sont rendues vides (utile pour l'écran Mécanique). */
-  empty?: boolean;
   /** Callback quand l'utilisateur tape une case, avec sa clé. */
   onTap?: (caseKey: string) => void;
   /**
@@ -74,7 +72,6 @@ type BentoGridProps = {
 export function BentoGrid({
   cases,
   scale = 1,
-  empty = false,
   onTap,
   readOnly = false,
   frameBorderWidth = GRID_GEOMETRY.BORDER,
@@ -97,7 +94,7 @@ export function BentoGrid({
     if (!place || !item) return null;
 
     const height = place.height * scale;
-    if (empty || !item.tile) {
+    if (!item.tile) {
       return (
         <EmptyTile
           prompt={item.prompt}
