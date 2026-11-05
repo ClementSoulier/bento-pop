@@ -576,6 +576,52 @@ Pixel 8, sur la pile locale, comme le 30.
   typage 8 sur 8, tests (mobile 1 149, landing 202, back-office 251), builds
   3 sur 3, e2e 65 sur 65.
 
+### 11.5 Lot 5 · fait le 5 novembre 2026
+
+La recette du §10 sur le code final, aux trois appareils, sur Expo 57.0.31 et
+les builds de développement du lot 4.
+
+- **Les autres écrans, avant et après** : une copie de `main` d'avant le 31
+  (`35d0a02`, déjà sur Expo 57.0.31), servie par Metro aux mêmes builds et aux
+  mêmes comptes, contre la tête, huit écrans par appareil. Réglages et crédits :
+  0 pixel aux trois appareils. La page d'un compte : 0 au Pixel ; ailleurs, son
+  compteur de visites, que chaque ouverture augmente, et le décodage des photos.
+  Les racines : la barre et leur hauteur utile. Le fond de la pile de navigation,
+  passé au jaune de marque au lot 4, ne se voit donc sur aucun de ces écrans.
+- **La barre** : les cinq racines et leurs libellés aux trois appareils ;
+  « Notifications, 7 nouvelles, onglet 4 sur 5 » et sa pastille ; quatre onglets,
+  « sur 4 », Notifs coupé sur la pile locale ; le retour d'Android vers Compose,
+  depuis La table et Trouver ; Popy « content » sans pseudo.
+- **Le bandeau et `m01`** : contre sa maquette à l'iPhone 17 Pro ; il pousse
+  Compose et Profil ; lu le premier ; sa croix retenue à la relance. **Hors
+  connexion**, au Pixel, il s'efface devant « Pas de connexion » et revient avec
+  le réseau. Son lien ouvre Google Play. Sous lui, le composer attend le 32.
+- **Les toasts** : une erreur de 5 s encore là à 4,5 s, partie à 5,8 s ; un avec
+  « Annuler », là à 5,5 s, parti à 6,8 s ; le toucher le ferme. Sa place sur une
+  racine, sur un écran poussé, dans la recherche d'une case, clavier ouvert
+  (12 dp au-dessus du clavier au Pixel). **« Annuler » dans un vrai parcours**, au
+  Pixel : la case Film remplacée, « Film : Fight Club », ses flèches, puis la case
+  rendue.
+- **Le mouvement réduit**, mesuré : Popy de l'accueil bouge de 33 662 pixels
+  francs en 0,9 s au Pixel, de 19 977 au SE, et de 0 une fois réduit. Le toast,
+  filmé à 30 images par seconde au Pixel : son haut monte de 16 pixels, puis
+  revient de 3 se poser ; réduit, il ne bouge pas et n'apparaît qu'en fondu.
+- **Un vrai premier lancement à Android**, données de l'app vidées : l'accueil, les
+  règles, les six cases, le composer vide, aux coordonnées, Popy se dandinant y
+  empêchant `uiautomator` de relire l'arbre.
+- **Les lecteurs d'écran** : les arbres relus aux deux plateformes, aux lots 1 à 4
+  et ici ; la voix, elle, à la passe F (11-a), aucun appareil de la recette n'en
+  ayant.
+- **La console** : l'erreur de développement d'expo-router (§14) et l'avertissement
+  de Reanimated sur le mouvement réduit, réservé au développement. Rien d'autre.
+- **La part du 29**, versée à `UX-29-RECETTE-DE-SORTIE.md` : 31-a (les icônes) et
+  31-b (le lancement) en passe B, 31-c (la fiche de l'App Store) en passe G, le
+  retour d'un onglet en 3-a, le gris de la barre refaite en 11-c, la barre, le
+  bandeau, l'accueil et la mise à jour requise à la voix en 11-a.
+- **La CI rejouée en local** sur l'arbre final, sans cache : verte, lint et
+  typage 8 sur 8, tests (mobile 1 149, landing 202, back-office 251), builds
+  3 sur 3, e2e 65 sur 65.
+
 ## 12. Definition of Done
 
 | # | Point | État |
@@ -583,15 +629,15 @@ Pixel 8, sur la pile locale, comme le 30.
 | 1 | La barre du design sur les cinq racines : l'ordre, Compose au centre, la pastille, l'avatar ; l'arrivée sur Compose (D1), quatre onglets quand Notifs est coupé (D2) | ✅ lot 1 |
 | 2 | Les toasts en bas, au-dessus de la barre, de la zone sûre ou du clavier ; 4 s, 6 s avec une action ; dits poliment ; les 30 appels inchangés | ✅ lot 2 |
 | 3 | Le bandeau de mise à jour en tête des racines, qui pousse l'écran ; « Plus tard » retenu par version | ✅ lot 2 |
-| 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | 🟡 lots 3 et 4 : `p01` à `p03`, à l'écart de D16 près, `m02` et `m03` ; l'ensemble au lot 5 |
-| 5 | Le lancement sur le fond de marque, sans saut de jaune | 🟡 lot 4 : au simulateur et à l'émulateur, le premier instant à relire sur un vrai iPhone |
+| 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | ✅ lots 3 à 5 : `p01` à `p03`, à l'écart de D16 près, `m02`, `m03` et le bandeau de `m01` |
+| 5 | Le lancement sur le fond de marque, sans saut de jaune | ✅ lot 4 au simulateur et à l'émulateur ; le premier instant sur un vrai iPhone à 31-b du 29 |
 | 6 | L'icône d'app, l'icône adaptative et la petite icône des notifications vues au simulateur et à l'émulateur | ✅ lot 4 |
-| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | 🟡 lots 1, 3 et 4 : les onglets aux deux plateformes ; l'accueil et les blocages, leurs arbres |
-| 8 | Le mouvement réduit : Popys immobiles, toasts en fondu | ⬜ |
-| 9 | Les autres écrans ne changent qu'à la barre, à leur hauteur utile et au toast | 🟡 lot 1 : la barre, sur les neuf écrans de référence du 30 |
+| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | ✅ lots 1 à 5, relu aux arbres aux deux plateformes ; la voix à 11-a du 29 |
+| 8 | Le mouvement réduit : Popys immobiles, toasts en fondu | ✅ lot 5, mesuré |
+| 9 | Les autres écrans ne changent qu'à la barre, à leur hauteur utile et au toast | ✅ lot 5 : huit écrans par appareil, avant et après |
 | 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | ✅ lots 1 à 4 : la barre, `tab-bar.ts`, `UpdateBanner`, le `Toast` des primitives ; l'accueil, les blocages et le lancement sans Bungee, `YellowBg`, `StampButton` ni `Sticker` |
 | 11 | Les tests de règles verts ; les tests figés sur 84 et sur Bungee repris | ✅ lot 1 |
-| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lots 1 à 4 |
+| 12 | La CI rejouée en local, verte | ✅ à chaque lot, et sur l'arbre final |
 
 ## 13. Décisions
 
@@ -621,3 +667,10 @@ Pixel 8, sur la pile locale, comme le 30.
 - **Les icônes des autres toasts**, au fil des écrans des 32 à 34, si leurs
   maquettes en dessinent.
 - **`m01`** n'est entière qu'au 32, avec le composer sous son bandeau.
+- **L'erreur de développement d'expo-router** : « Can't perform a React state
+  update on a component that hasn't mounted yet », à
+  `useLinking.native.js:127`, à certains lancements à froid au Pixel 8. Sans
+  lien avec nos écrans, toujours là en 57.0.29, réservée au développement. À
+  relire à la prochaine montée d'Expo.
+- **Le jaune d'avant** (`#fbbf24`) reste sur les écrans pas encore refaits,
+  jusqu'au 34 ; le premier à se voir, à la sortie de l'accueil, est le composer.
