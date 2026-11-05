@@ -292,7 +292,7 @@ Relevé le 30 octobre 2026 sur `19be67e`, en lecture seule.
 
 - **iOS** : l'icône du dossier, telle quelle.
 - **Android** : l'icône adaptative, son fond `yolk-500` à pois et Popy dans
-  la zone sûre (les 66 % du centre que tout masque garde), générés par un
+  la zone sûre (le cercle de 66 dp sur 108 que tout masque garde), générés par un
   script depuis les mesures d'`AppIcon` (30) et l'original de Popy ; une icône
   monochrome, la silhouette de Popy, pour les icônes à thème d'Android 13.
 - **La petite icône des notifications**, celle du dossier, et leur couleur,
@@ -362,7 +362,8 @@ Pixel 8, sur la pile locale, comme le 30.
 - **La CI rejouée en local**.
 - **La part du 29** : l'haptique d'un onglet (3-a), l'icône et la petite
   icône sur un vrai téléphone, Android 13 à thème compris, le lancement en
-  build de production.
+  build de production et la couleur de son premier instant sur un vrai iPhone,
+  « Mettre à jour » jusqu'à la fiche de l'App Store.
 
 ## 11. Les lots
 
@@ -526,6 +527,55 @@ Pixel 8, sur la pile locale, comme le 30.
   typage 8 sur 8, tests (mobile 1 141, landing 202, back-office 251), builds
   3 sur 3, e2e 65 sur 65.
 
+### 11.4 Lot 4 · fait le 5 novembre 2026
+
+- **`m02` et `m03`** (`AppBlocker.tsx`), rendus dans leur propre
+  `SafeAreaProvider` et `ThemeProvider`, à moins d'un point de leurs maquettes
+  à l'iPhone 17 Pro. La maintenance garde les textes du back-office, et un long
+  titre et un long message tiennent à l'iPhone SE. Le texte au-delà de 200 %
+  au SE et à 2,0 au Pixel 8 ne coupe rien, le bouton restant en bas. « Mettre à
+  jour » ouvre Google Play au Pixel ; le simulateur iOS n'a pas d'App Store.
+- **Le lancement** : le natif sur `bg-brand`, Popy de 176 au centre, sans
+  l'image plein écran d'avant (`assets/splash.png` retiré) ; le JavaScript
+  (`Splash.tsx`) pose ses pois, son logo et son dandinement autour de la même
+  Popy, à la même place. Le fond de la pile de navigation passe au même jaune.
+- **Popy ne clignote plus** : filmé en captures datées, le lancement natif
+  partait avant le JavaScript, et Popy disparaissait environ 200 ms. `Splash`
+  le retire désormais à sa première mise en page (`preventAutoHideAsync`, puis
+  `hide`) ; une erreur le retire aussi, par `renderRootComponent` d'expo-router.
+  Filmé à nouveau : le premier lancement au SE, de l'icône à `p01`, Popy
+  présente sans coupure. Au Pixel, un fond jaune uni dure 0,7 s avant le composer,
+  sur la même couleur, le temps de sa mise en place en développement.
+- **Une couleur à relire sur un vrai iPhone** : le premier instant, l'instantané
+  de lancement du simulateur paraît plus saturé (`#ffa400`, le visage de Popy
+  aussi), puis `#f2a82a`. Le fichier est juste (sRGB, composantes exactes) et
+  tout le calque change, Popy comprise : ce n'est pas un fichier à corriger.
+- **Le composer garde son ancien jaune** jusqu'au 32 : `#fbbf24` y succède au
+  jaune de marque. C'est le saut que le 32 retire.
+- **Les icônes**, générées par `scripts/generate-assets.mjs`, repris :
+  `icon.png`, le fichier du dossier, opaque, vu dans la bibliothèque d'apps
+  d'iOS ; l'icône adaptative à trois calques, vue dans la liste des apps du
+  Pixel, Popy y prenant la même part que sur l'icône iOS et restant dans le
+  cercle de 66 dp sur 108 ; la silhouette monochrome ; la petite icône.
+  Le dock du lanceur Pixel entoure d'un anneau pâle l'app qu'il suggère et la
+  réduit : c'est son décor, pas un défaut de l'icône.
+- **La petite icône** : la silhouette blanche dans la barre d'état, sa couleur
+  `#b5751a` relue au système (`dumpsys notification`). Le volet d'Android 17
+  montre l'icône entière de l'app à sa place. Un bouton du catalogue la lève.
+- **La barre d'état** : blanche sur le jaune hors de l'arbre de l'app ; le
+  lancement JavaScript et les blocages la posent en encre.
+- **`src/lib/app-assets.test.ts`** : les fichiers de `app.json` présents, leurs
+  tailles, leur transparence, Popy dans la zone sûre, les couleurs prises aux
+  tokens. Sans bibliothèque : il lit les PNG lui-même.
+- **Pas éprouvé à ce lot, pour la recette du lot 5 et la part du 29** : d'autres
+  masques que le cercle au lanceur, l'émulateur n'en proposant pas (l'écart est
+  couvert par le test de la zone sûre et une simulation du carré arrondi) ; les
+  icônes à thème, que l'émulateur ne laisse pas piloter ; la fiche de l'App Store
+  ; « Mise à jour… » pendant un vrai téléchargement, vu seulement au catalogue.
+- **La CI rejouée en local** sur l'arbre du lot 4, sans cache : verte, lint et
+  typage 8 sur 8, tests (mobile 1 149, landing 202, back-office 251), builds
+  3 sur 3, e2e 65 sur 65.
+
 ## 12. Definition of Done
 
 | # | Point | État |
@@ -533,15 +583,15 @@ Pixel 8, sur la pile locale, comme le 30.
 | 1 | La barre du design sur les cinq racines : l'ordre, Compose au centre, la pastille, l'avatar ; l'arrivée sur Compose (D1), quatre onglets quand Notifs est coupé (D2) | ✅ lot 1 |
 | 2 | Les toasts en bas, au-dessus de la barre, de la zone sûre ou du clavier ; 4 s, 6 s avec une action ; dits poliment ; les 30 appels inchangés | ✅ lot 2 |
 | 3 | Le bandeau de mise à jour en tête des racines, qui pousse l'écran ; « Plus tard » retenu par version | ✅ lot 2 |
-| 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | 🟡 lot 3 : `p01` à `p03`, à l'écart de D16 près |
-| 5 | Le lancement sur le fond de marque, sans saut de jaune | ⬜ |
-| 6 | L'icône d'app, l'icône adaptative et la petite icône des notifications vues au simulateur et à l'émulateur | ⬜ |
-| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | 🟡 lots 1 et 3 : les onglets aux deux plateformes ; l'accueil, ses arbres |
+| 4 | `p01` à `p03`, `m02` et `m03` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE ; le bandeau de `m01` identique au sien | 🟡 lots 3 et 4 : `p01` à `p03`, à l'écart de D16 près, `m02` et `m03` ; l'ensemble au lot 5 |
+| 5 | Le lancement sur le fond de marque, sans saut de jaune | 🟡 lot 4 : au simulateur et à l'émulateur, le premier instant à relire sur un vrai iPhone |
+| 6 | L'icône d'app, l'icône adaptative et la petite icône des notifications vues au simulateur et à l'émulateur | ✅ lot 4 |
+| 7 | Les lecteurs d'écran en français ; les onglets « onglet n sur 5 », ou sur 4 (D2) | 🟡 lots 1, 3 et 4 : les onglets aux deux plateformes ; l'accueil et les blocages, leurs arbres |
 | 8 | Le mouvement réduit : Popys immobiles, toasts en fondu | ⬜ |
 | 9 | Les autres écrans ne changent qu'à la barre, à leur hauteur utile et au toast | 🟡 lot 1 : la barre, sur les neuf écrans de référence du 30 |
-| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | 🟡 lots 1 à 3 : la barre, `tab-bar.ts`, `UpdateBanner`, le `Toast` des primitives ; l'accueil sans Bungee, `YellowBg`, `StampButton` ni `Sticker` |
+| 10 | Bungee, `YellowBg`, `StampButton` et `Sticker` sortis des fichiers du 31 ; `tab-bar.ts`, `UpdateBanner` et le `Toast` des primitives retirés | ✅ lots 1 à 4 : la barre, `tab-bar.ts`, `UpdateBanner`, le `Toast` des primitives ; l'accueil, les blocages et le lancement sans Bungee, `YellowBg`, `StampButton` ni `Sticker` |
 | 11 | Les tests de règles verts ; les tests figés sur 84 et sur Bungee repris | ✅ lot 1 |
-| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lots 1 à 3 |
+| 12 | La CI rejouée en local, verte | 🟡 à chaque lot : lots 1 à 4 |
 
 ## 13. Décisions
 
@@ -557,7 +607,7 @@ Pixel 8, sur la pile locale, comme le 30.
 | **D8** | Le bandeau de mise à jour monte dans les onglets, en tête et dans le flux ; ses conditions, son « Plus tard » et son lien ne changent pas | Il ne paraît que sur les racines : posé au-dessus d'elles, il pousse chaque écran sans qu'aucun ait à lui réserver de place. Au lot 2, deux écrans qui calculaient sur la fenêtre prennent la place laissée (`useSafeAreaFrame`) |
 | **D9** | Les règles gardent leurs deux liens, et leur variante pour un compte | La case fait accepter les CGU et la politique de confidentialité : il faut pouvoir les lire avant. La maquette n'a dessiné que le premier lancement |
 | **D10** | Les blocages se rendent dans le thème et la zone sûre ; la maintenance garde les textes du back-office | Les composants du design lisent le thème et la zone sûre. Le back-office écrit la maintenance quand elle arrive |
-| **D11** | Le lancement, natif et JavaScript, passe sur le fond de marque, composé des éléments de l'accueil | Sans maquette, il doit mener à l'accueil sans saut : le jaune de la marque est `#f2a82a`, celui d'aujourd'hui `#fbbf24` |
+| **D11** | Le lancement, natif et JavaScript, passe sur le fond de marque, composé des éléments de l'accueil | Sans maquette, il doit mener à l'accueil sans saut : le jaune de la marque est `#f2a82a`, celui d'aujourd'hui `#fbbf24`. Au lot 4, Popy a la même place et la même taille aux deux étapes, et le natif attend le JavaScript pour partir |
 | **D12** | L'icône du dossier sur iOS ; sur Android, une icône adaptative générée depuis `AppIcon` et une monochrome ; la petite icône des notifications et sa couleur `yolk-700` ; avec la build 2.0.0 | Le dossier ne donne qu'une icône carrée, que le masque d'Android rognerait. Sans petite icône, Android en dessine une de l'icône d'app ; `yolk-500` ne tient pas 3:1 sur blanc |
 | **D13** | Un retour de sélection à chaque changement d'onglet | Le guide le demande ; c'est l'écran qui joue l'haptique, pas le composant (D23 du 30) |
 | **D14** | Les quatre tests qui prennent 84 en entrée passent aux hauteurs de la nouvelle barre | Ils décrivent des écrans réels ; 84 n'en sera plus un. Au lot 1, celui de l'écart minimal du composer cherche le plancher de la grille à l'iPhone SE à la taille xLarge, la barre lui rendant 27 points |

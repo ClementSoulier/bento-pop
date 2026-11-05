@@ -1,10 +1,13 @@
+import * as Notifications from 'expo-notifications';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { CataloguePage, Specimen } from '@/components/dev/CataloguePage';
+import { Splash } from '@/components/Splash';
 import {
   AppIcon,
   Avatar,
   BrandGround,
+  Button,
   Display,
   Logo,
   Popy,
@@ -86,8 +89,33 @@ export default function Marque() {
           <Display size="m" text="On revient vite" />
         </BrandGround>
       </Specimen>
+      <Specimen name="Lancement">
+        <View style={{ height: 460, borderRadius: 16, overflow: 'hidden' }}>
+          <Splash caption="Mise à jour…" />
+        </View>
+      </Specimen>
+      <Specimen name="Petite icône de notification">
+        <Text variant="footnote" color="text-secondary">
+          Quitter l'app aussitôt : sur Android, la barre d'état montre la petite icône et le volet
+          sa couleur (chantier 31, D12).
+        </Text>
+        <Button
+          variant="secondary"
+          label="Une notification dans 4 s"
+          style={{ alignSelf: 'flex-start' }}
+          onPress={sendTestNotification}
+        />
+      </Specimen>
     </CataloguePage>
   );
+}
+
+async function sendTestNotification() {
+  await Notifications.requestPermissionsAsync();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: 'Mon Bento Pop', body: 'La petite icône et sa couleur, à la recette.' },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 4 },
+  });
 }
 
 /** Une rangée de l'aperçu, centrée, à la ligne s'il le faut. */
