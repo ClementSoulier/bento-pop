@@ -10,8 +10,13 @@
  * `feed` et `mini` venant au 33.
  */
 export { Button, type ButtonProps, type ButtonVariant } from './actions/Button';
-export { Bento, type BentoProps, type BentoSlot } from './bento/Bento';
-export { illustrationScale, plateMinHeight, plateRows } from './bento/bento-rules';
+export { Bento, BentoSkeleton, type BentoProps, type BentoSlot } from './bento/Bento';
+export {
+  composePlateScale,
+  illustrationScale,
+  plateMinHeight,
+  plateRows,
+} from './bento/bento-rules';
 export { BentoTile, type BentoTileItem, type BentoTileProps } from './bento/BentoTile';
 export { CATEGORY_STYLES, caseCategory } from './bento/categories';
 export { Progress, type ProgressProps } from './bento/Progress';
@@ -62,6 +67,7 @@ export { Skeleton, type SkeletonProps } from './overlays/Skeleton';
 export { Spinner, type SpinnerProps } from './overlays/Spinner';
 export { Toast, TOAST_DURATION, type ToastProps } from './overlays/Toast';
 export { PopShadow, type PopShadowProps, type ShadowLevel } from './PopShadow';
+export { StatusPill, type StatusPillProps } from './social/StatusPill';
 export { BrandGround, type BrandGroundProps } from './structure/BrandGround';
 export { Screen, type ScreenProps, type ScreenTone } from './structure/Screen';
 export { SectionHeader, type SectionHeaderProps } from './structure/SectionHeader';

@@ -3,7 +3,7 @@ import { Icon } from '../Icon';
 import type { IconName } from '../icons';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { reachesWrapScale } from '../type';
+import { reachesWrapScale, textStyle } from '../type';
 
 export type ChipProps = {
   label: string;
@@ -16,6 +16,8 @@ export type ChipProps = {
   count?: number;
   icon?: IconName;
   disabled?: boolean;
+  /** Ce que lit le lecteur d'écran, quand le libellé ne dit pas ce que fait la puce. */
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -25,8 +27,8 @@ export type ChipProps = {
  * grandissent avec le texte ; la zone tactile dépasse de 4 en haut et en bas.
  * Comme un bouton, dès 130 % son libellé va à la ligne plutôt que d'être coupé.
  *
- * Le design écrit le libellé en 14 ; le système n'a pas ce style, il prend
- * `label-m` (15/20), celui des suggestions.
+ * Le design écrit le libellé en 14 sur une ligne de 20 : `label-m`, réduit (lot 2
+ * du 32, contre `c09`) ; la suggestion, `subhead`.
  */
 export function Chip({
   label,
@@ -36,6 +38,7 @@ export function Chip({
   count,
   icon,
   disabled,
+  accessibilityLabel,
   style,
 }: ChipProps) {
   const { colors, border, radius } = useTheme();
@@ -47,7 +50,9 @@ export function Chip({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={count === undefined ? label : `${label}, ${count} bentos`}
+      accessibilityLabel={
+        accessibilityLabel ?? (count === undefined ? label : `${label}, ${count} bentos`)
+      }
       accessibilityState={{
         disabled: Boolean(disabled),
         selected: variant === 'filter' ? chosen : undefined,
@@ -90,7 +95,10 @@ export function Chip({
         weight={suggestion ? 500 : undefined}
         color={fg}
         numberOfLines={reachesWrapScale(fontScale) ? undefined : 1}
-        style={{ flexShrink: 1 }}
+        style={[
+          { flexShrink: 1 },
+          suggestion ? null : { fontSize: (textStyle('label-m', fontScale).fontSize * 14) / 15 },
+        ]}
       >
         {label}
       </Text>

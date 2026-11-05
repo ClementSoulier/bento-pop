@@ -2,8 +2,11 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import type { PressableProps } from 'react-native';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { STAMP_LABEL_LINE_H } from '@/components/bento/compose-layout';
-import { CONTROL_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
+import {
+  CONTROL_MAX_FONT_MULTIPLIER,
+  naturalLineHeight,
+  scaledType,
+} from '@/components/bento/font-scaling';
 import { SHADOWS } from './shadow';
 
 type StampButtonProps = Omit<PressableProps, 'children'> & {
@@ -22,6 +25,9 @@ type StampButtonProps = Omit<PressableProps, 'children'> & {
   /** Icône à droite du label. */
   iconRight?: ReactNode;
 };
+
+/** Le libellé, Bungee 15 : 20 points. */
+const STAMP_LABEL_LINE_H = naturalLineHeight('Bungee', 15);
 
 const PALETTES: Record<NonNullable<StampButtonProps['variant']>, { bg: string; fg: string }> = {
   primary: { bg: '#e63946', fg: '#fbf3de' },

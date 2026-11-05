@@ -1,36 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  AppState,
-  Image,
-  PixelRatio,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from 'expo-router/js-tabs';
+import { AppState, ScrollView, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect, useIsFocused, useNavigation } from 'expo-router';
-import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
-import { BentoGrid } from '@/components/bento';
-import { BentoBoxSkeleton } from '@/components/bento/BentoBoxSkeleton';
 import { TilePulse } from '@/components/bento/TilePulse';
-import { ProgressBar } from '@/components/bento/ProgressBar';
-import { INK_MUTED, SHADOWS, StampButton, YellowBg, useToast } from '@/components/primitives';
-import { failureFeedback } from '@/lib/haptics';
+import { BentoSelector } from '@/components/compose/BentoSelector';
+import { useToast } from '@/components/primitives';
+import {
+  Bento,
+  BentoSkeleton,
+  Button,
+  Confetti,
+  Progress,
+  Screen,
+  StatusPill,
+  Text,
+  TopBar,
+  composePlateScale,
+  reachesWrapScale,
+  useTheme,
+} from '@/design';
+import { errorFeedback, successFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useOwnWhys } from '@/state/own-whys';
 import { useSession } from '@/state/session';
 import { usePushTarget } from '@/state/push-target';
-import {
-  editableBentoId,
-  listOwnBentos,
-  markPublishOnValidation,
-  publishBento,
-  switchBento,
-} from '@/lib/bento-actions';
+import { editableBentoId, markPublishOnValidation, publishBento } from '@/lib/bento-actions';
 import { followPushTarget } from '@/lib/push-navigation';
 import {
   acceptReadyReminder,
@@ -44,60 +37,33 @@ import {
 } from '@/lib/push-runtime';
 import { REMINDER_LINK_LABEL, readyReminderKey, reminderWhenLabel } from '@/lib/ready-reminder';
 import { bentoRoute } from '@/lib/bento-address';
-import { type Edition, createEditionBento, loadReleasedEditions } from '@/lib/editions';
-import { type OwnBento, bentoName } from '@/lib/own-bento';
-import { extendaAccentRoom } from '@/lib/display-title';
-import {
-  CTA_GAP_MIN,
-  PSEUDO_LINE_H,
-  STATUS_LINE_H,
-  COMPOSE_HEADER_SIDE,
-  COMPOSE_TITLE_LETTER_SPACING,
-  SELECTOR_CHIP_H,
-  SELECTOR_GAP,
-  SELECTOR_SIDE,
-  TITLE_LINE_H,
-  composeBentoScale,
-  composePseudoLift,
-  composeTitleScale,
-  selectorRevealOffset,
-} from '@/components/bento/compose-layout';
-import {
-  CONTROL_MAX_FONT_MULTIPLIER,
-  TITLE_MAX_FONT_MULTIPLIER,
-  fontScaleFor,
-  naturalLineHeight,
-  scaledType,
-} from '@/components/bento/font-scaling';
-import { fittedTitle } from '@/components/bento/tile-title';
+import { type Edition, loadReleasedEditions } from '@/lib/editions';
+import { bentoName } from '@/lib/own-bento';
 import { composeCta } from '@/lib/compose-cta';
+import { composerSlots } from '@/lib/compose-slots';
 import {
   markNoLongerHolds,
   shouldMarkForValidation,
   validationHint,
 } from '@/lib/publish-on-validation';
 import { useOfflineInset } from '@/lib/use-offline-inset';
-import { composerCases } from '@/components/bento/cases';
 
 /**
- * Marge de chaque côté de la grille. Elle en fixe la largeur, que les titres
- * des cases mesurent : cf. `BentoGrid.width`.
+ * Le temps que la recherche finisse de se fermer : les confettis tombent sur le
+ * composer, pas derrière la feuille qui descend.
  */
-const GRID_SIDE_PADDING = 16;
+const CELEBRATION_DELAY_MS = 350;
 
 /**
- * Composer — écran principal de l'app.
+ * Le composer, écran principal de l'app (chantier 32, `c01`, `c06`, `c07`, `c08`,
+ * `c09`, `u05`) : l'en-tête, les segments ou l'état en ligne, les puces des bentos
+ * et des éditions, le plateau, et le bouton, dont le libellé ET l'action viennent
+ * de `lib/compose-cta.ts`. Les avoir calculés séparément avait laissé le bouton
+ * actif et inerte pour tout bento partiel, soit 16 des 58 bentos en production le
+ * 13 septembre 2026.
  *
- * Top bar (logo) + en-tête pseudo + titre + progress bar X/6 + grille
- * bento (taps → modal de recherche pour la catégorie cliquée) + CTA bas
- * dont le libellé ET l'action viennent de `lib/compose-cta.ts`. Les avoir
- * calculés séparément avait laissé le bouton actif et inerte pour tout bento
- * partiel, soit 16 des 58 bentos en production le 13 septembre 2026.
- *
- * Le bento se rescale dynamiquement pour que tout tienne sur l'écran sans
- * scroller — quelle que soit la taille du device (SE → 15 Pro Max).
- *
- * Cf. design Claude Design — `ComposerScreen` dans `screens.jsx`.
+ * Le plateau rend de la hauteur à ce qui l'entoure sur un écran court (D8) : tout
+ * tient sans défiler tant que c'est possible.
  */
 export default function ComposeTab() {
   const slots = useBento((s) => s.slots);
@@ -121,12 +87,8 @@ export default function ComposeTab() {
   // (le SQL strict `can_publish_bento` arrive plus tard, cf. spec §7.1).
   const hasPending = Object.values(slots).some((s) => s?.pending);
   const [publishing, setPublishing] = useState(false);
-  const tabBarHeight = useBottomTabBarHeight();
   const { width: screenWidth, fontScale } = useWindowDimensions();
-  // La place laissée à l'écran, et non la fenêtre : le bandeau de mise à
-  // jour, posé au-dessus des onglets, en prend le haut (chantier 31, D8).
-  const screenHeight = useSafeAreaFrame().height;
-  const insets = useSafeAreaInsets();
+  const { size } = useTheme();
 
   const showToast = useToast((s) => s.show);
 
@@ -432,7 +394,7 @@ export default function ComposeTab() {
       // désormais dans le fil, l'édition de jeudi a un sens.
       void offerEditorialConsent();
     } catch (e) {
-      failureFeedback();
+      errorFeedback();
       console.warn('[compose] publication', e);
       showToast("La publication n'a pas marché. Réessaie.", {
         variant: 'danger',
@@ -443,19 +405,11 @@ export default function ComposeTab() {
     }
   };
 
-  // Le budget vertical vit dans `compose-layout.ts`, testé : il s'était
-  // trompé sans que rien ne le signale, au point que la boîte et le bouton
-  // se touchaient.
-  // Le bandeau hors ligne descend l'écran : le budget le compte, sinon la boîte
-  // passerait sous la barre d'onglets dès qu'il apparaît.
+  // Le bandeau hors ligne descend l'écran, jusqu'à ce que le 33 le refasse.
   const offlineInset = useOfflineInset();
 
   /**
    * Les éditions sorties que ce compte peut composer, **calculées une fois**.
-   *
-   * Une seule liste pour la hauteur du sélecteur et pour ce qu'il dessine :
-   * deux calculs séparés finiraient par diverger, et la boîte se calculerait
-   * sur une hauteur fausse.
    *
    * Vide sans profil. La recette du 16 septembre l'a montré : le sélecteur
    * proposait les éditions à une session sans profil, et un tap ne pouvait
@@ -466,539 +420,154 @@ export default function ComposeTab() {
     ? editions.filter((e) => !own.some((b) => b.editionId === e.id))
     : [];
 
-  const bentoScale = composeBentoScale({
-    // La bande de sélection prend de la place au-dessus de la grille : le
-    // modèle la compte, sans quoi la boîte passerait sous le bouton.
-    // Ce que le sélecteur affiche : les bentos du compte plus les éditions
-    // qu'il reste à composer, la même liste que celle qu'il dessine.
-    bentoCount: own.length + editionsAComposer.length,
-    screenHeight,
-    insetTop: insets.top + offlineInset,
-    tabBarHeight,
-    fontScale,
-  });
+  // La célébration d'un bento complet (D13), demandée par la recherche : une fois,
+  // à l'écran. Le jeton de départ n'en est pas une : revenir sur l'onglet ne
+  // rejoue rien.
+  const celebration = useBento((s) => s.celebration);
+  const celebrated = useRef(celebration);
+  const [rain, setRain] = useState(0);
+  useEffect(() => {
+    if (!focused || celebration === celebrated.current) return;
+    celebrated.current = celebration;
+    const timer = setTimeout(() => {
+      setRain(celebration);
+      successFeedback();
+    }, CELEBRATION_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [focused, celebration]);
 
-  // Les textes de l'en-tête appliquent eux-mêmes la police système, plafonnée,
-  // hauteurs de ligne comprises : ce sont celles que le budget compte.
-  const pseudoType = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 10, PSEUDO_LINE_H);
-  const titleType = scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 28, TITLE_LINE_H);
-  // Le nom du bento courant, sur une ligne : un titre d'édition long rétrécit
-  // plutôt que de se tronquer, jusqu'au plancher. La hauteur de ligne ne bouge
-  // pas, c'est elle que le budget vertical compte. Cf. `COMPOSE_TITLE_MIN_SCALE`.
+  // Ce que le plateau peut garder (D8) : la place de l'écran, moins tout le reste,
+  // tel qu'il se mesure. À 130 % de texte et au-delà, les cases gardent leur
+  // hauteur, et l'écran défile.
+  const [viewport, setViewport] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [plateHeight, setPlateHeight] = useState(0);
+  const heightScale =
+    reachesWrapScale(fontScale) || viewport <= 0 || plateHeight <= 0
+      ? 1
+      : composePlateScale({
+          room: viewport - (contentHeight - plateHeight),
+          count: cases.length,
+          plateWidth: screenWidth - 2 * size['screen-margin'],
+        });
+
   const nomDuBento = current ? bentoName(current) : 'Mon bento';
-  const titleFontSize =
-    titleType.fontSize *
-    composeTitleScale(
-      nomDuBento,
-      screenWidth,
-      titleType.fontSize,
-      Platform.OS === 'android' ? PixelRatio.get() : undefined,
-    );
-  // Sous le plancher, le nom se coupe. Sur Android, sur une ellipse écrite et
-  // mesurée ici : celle de la plateforme peut y perdre son dernier point, cf.
-  // `fittedTitle`. Celle d'iOS est juste.
-  const nomAffiche =
-    Platform.OS === 'android'
-      ? fittedTitle(
-          nomDuBento,
-          screenWidth - COMPOSE_HEADER_SIDE * 2,
-          titleFontSize,
-          COMPOSE_TITLE_LETTER_SPACING,
-          1,
-          PixelRatio.get(),
-        )
-      : nomDuBento;
-  // Un titre d'édition porte des accents, que la ligne de 26 pt rognait en
-  // entier : « EDITION DE RECETTE » à la recette du 26 septembre 2026. Le titre
-  // réserve leur place au-dessus de lui, et le pseudo, posé juste au-dessus,
-  // s'écarte d'autant pour ne pas les toucher. Cf. `composePseudoLift`.
-  const accentRoom = extendaAccentRoom(
-    nomDuBento,
-    titleFontSize,
-    Platform.OS === 'android' ? PixelRatio.get() : undefined,
-  );
-  const pseudoLift = composePseudoLift(accentRoom, fontScale);
-  const statusType = scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 11, STATUS_LINE_H);
-  const onlineType = scaledType(
-    fontScale,
-    CONTROL_MAX_FONT_MULTIPLIER,
-    9,
-    naturalLineHeight('Bungee', 9),
-  );
-  const onlineHintType = scaledType(
-    fontScale,
-    CONTROL_MAX_FONT_MULTIPLIER,
-    12,
-    naturalLineHeight('Fredoka', 12),
-  );
 
   return (
-    <YellowBg>
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* L'écran défile quand la grille est à son plancher et que le reste ne
-            tient plus : à la plus grande police, et sur un petit téléphone. Tant
-            que tout tient, `flexGrow` garde la mise en page d'avant, le ressort
-            poussant le bouton en bas. */}
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-          alwaysBounceVertical={false}
-          contentInsetAdjustmentBehavior="never"
-        >
-          {/* Top bar */}
+    <Screen>
+      {offlineInset > 0 ? <View style={{ height: offlineInset }} /> : null}
+      {/* L'écran défile quand le plateau a rendu ce qu'il pouvait et que le reste ne
+          tient plus : à la plus grande police, et sur un petit téléphone. */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={false}
+        contentInsetAdjustmentBehavior="never"
+        onLayout={(e) => setViewport(e.nativeEvent.layout.height)}
+        onContentSizeChange={(_, height) => setContentHeight(height)}
+      >
+        {/* Le nom du bento courant : « Mon bento » pour le principal, le titre de
+            son édition pour une édition, cf. `bentoName`. Sans pseudo, pas de
+            sur-titre : une adresse en pointillés promettrait ce qui n'existe pas. */}
+        <TopBar variant="large" eyebrow={pseudo ? `@${pseudo}` : undefined} title={nomDuBento} />
+        <View style={{ paddingHorizontal: size['screen-margin'], paddingBottom: 12, gap: 14 }}>
+          {/* Tant que la première lecture n'a pas répondu, la ligne garde sa place
+              mais ne dit rien : « 0 / 6 » affirmerait un bento vide au moment précis
+              où le squelette dit qu'on ne sait pas encore. */}
           <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingTop: 8,
-              marginBottom: 14,
-            }}
+            accessibilityElementsHidden={!hydrated}
+            importantForAccessibility={hydrated ? 'auto' : 'no-hide-descendants'}
+            style={{ opacity: hydrated ? 1 : 0 }}
           >
-            <Image source={logo} style={{ height: 24, width: 110 }} resizeMode="contain" />
-          </View>
-
-          {/* Header pseudo + titre + progress */}
-          <View style={{ paddingHorizontal: COMPOSE_HEADER_SIDE, paddingBottom: 12 }}>
-            <Text
-              allowFontScaling={false}
-              numberOfLines={1}
-              style={{
-                fontFamily: 'Bungee',
-                ...pseudoType,
-                letterSpacing: 2,
-                color: INK_MUTED,
-                textTransform: 'uppercase',
-                includeFontPadding: false,
-                transform: [{ translateY: -pseudoLift }],
-              }}
-            >
-              {/* Sans pseudo, la ligne garde sa hauteur mais ne dit rien.
-                  « @… » ne durait qu'un aller-retour avant le chantier 9 ;
-                  depuis, on compose sans pseudo aussi longtemps qu'on veut,
-                  et afficher une adresse en pointillés tout ce temps promet
-                  quelque chose qui n'existe pas. */}
-              {pseudo ? `@${pseudo}` : ' '}
-            </Text>
-            <Text
-              accessibilityRole="header"
-              // Coupé, le nom se lit encore en entier.
-              accessibilityLabel={nomAffiche === nomDuBento ? undefined : nomDuBento}
-              allowFontScaling={false}
-              numberOfLines={1}
-              style={{
-                fontFamily: 'Extenda',
-                ...titleType,
-                fontSize: titleFontSize,
-                letterSpacing: COMPOSE_TITLE_LETTER_SPACING,
-                color: '#0a0a0a',
-                textTransform: 'uppercase',
-                // Rendue en marge négative : la mise en page ne bouge pas, seul
-                // le dessin gagne la place des accents. Cf. `display-title.ts`.
-                paddingTop: accentRoom,
-                marginTop: -accentRoom,
-              }}
-            >
-              {/* Le nom du bento courant. « Mon bento » reste le titre du
-                  principal, donc l'écran ne change pas tant qu'un compte n'en
-                  a qu'un. Chantier 16. Un bento d'édition porte le titre de
-                  son édition, et non son slug : cf. `bentoName`. */}
-              {nomAffiche}
-            </Text>
-            {/* Une seule ligne, deux contenus possibles, la même hauteur : le
-                budget vertical de `compose-layout.ts` est mesuré au point et
-                ajouter un bloc ferait rétrécir la boîte pour tout le monde.
-                Sur un bento en ligne, « 6 / 6 » n'apprend plus rien, alors que
-                le fait que les modifications partent en direct, si. */}
-            {/* Tant que la première lecture n'a pas répondu, la ligne garde sa
-                hauteur mais ne dit rien : « 0 / 6 » affirmerait un bento vide au
-                moment précis où le squelette dit qu'on ne sait pas encore.
-                Invisible à l'œil et muette au lecteur d'écran, que l'opacité
-                seule ne suffirait pas à faire taire. */}
-            <View
-              accessibilityElementsHidden={!hydrated}
-              importantForAccessibility={hydrated ? 'auto' : 'no-hide-descendants'}
-              style={{ opacity: hydrated ? 1 : 0 }}
-            >
-              {cta.kind === 'view-public' ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  <View
-                    style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#0a0a0a' }}
-                  />
-                  <Text
-                    allowFontScaling={false}
-                    style={{
-                      fontFamily: 'Bungee',
-                      ...onlineType,
-                      letterSpacing: 1,
-                      includeFontPadding: false,
-                    }}
-                    numberOfLines={1}
-                  >
-                    En ligne
-                  </Text>
-                  <Text
-                    allowFontScaling={false}
-                    style={{
-                      fontFamily: 'Fredoka',
-                      ...onlineHintType,
-                      opacity: 0.7,
-                      flexShrink: 1,
-                      includeFontPadding: false,
-                    }}
-                    numberOfLines={1}
-                  >
-                    tes modifications sont visibles tout de suite
-                  </Text>
-                </View>
-              ) : cta.kind === 'awaiting-validation' ? (
-                // Chantier 18 : le pendant d'« En ligne ». Le bento sortira
-                // tout seul à la validation, et on le dit (promesse du 5).
-                <View
-                  accessible
-                  accessibilityLabel={`Bientôt en ligne : ton bento sortira ${validationHint(enAttente)}`}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}
-                >
-                  <View
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: 4,
-                      borderWidth: 1.5,
-                      borderColor: '#0a0a0a',
-                    }}
-                  />
-                  <Text
-                    allowFontScaling={false}
-                    style={{
-                      fontFamily: 'Bungee',
-                      ...onlineType,
-                      letterSpacing: 1,
-                      includeFontPadding: false,
-                    }}
-                    numberOfLines={1}
-                  >
-                    Bientôt en ligne
-                  </Text>
-                  <Text
-                    allowFontScaling={false}
-                    style={{
-                      fontFamily: 'Fredoka',
-                      ...onlineHintType,
-                      opacity: 0.7,
-                      flexShrink: 1,
-                      includeFontPadding: false,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {validationHint(enAttente)}
-                  </Text>
-                </View>
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                  <ProgressBar filled={filled} total={cases.length} />
-                  <Text
-                    allowFontScaling={false}
-                    style={{
-                      fontFamily: 'Bungee',
-                      ...statusType,
-                      letterSpacing: 1,
-                      includeFontPadding: false,
-                    }}
-                  >
-                    {filled} / {cases.length}
-                  </Text>
-                </View>
-              )}
-            </View>
+            {cta.kind === 'view-public' ? (
+              <ComposeStatus
+                label="En ligne"
+                hint="tes modifications sont visibles tout de suite"
+                tone="live"
+              />
+            ) : cta.kind === 'awaiting-validation' ? (
+              // Chantier 18 : le pendant d'« En ligne ». Le bento sortira tout seul à
+              // la validation, et on le dit (promesse du 5).
+              <ComposeStatus
+                label="Bientôt en ligne"
+                hint={validationHint(enAttente)}
+                tone="pending"
+                accessibilityLabel={`Bientôt en ligne : ton bento sortira ${validationHint(enAttente)}`}
+              />
+            ) : (
+              <Progress value={filled} total={cases.length} />
+            )}
           </View>
 
           <BentoSelector own={own} currentId={current?.id ?? null} editions={editionsAComposer} />
 
-          {/* Grille bento — scale dynamique pour fit l'écran. Tant que la première
-              lecture du bento n'a pas répondu, un squelette : un bento vide
-              annoncerait à tort que rien n'a été composé. */}
-          <View style={{ paddingHorizontal: GRID_SIDE_PADDING }}>
+          <View onLayout={(e) => setPlateHeight(e.nativeEvent.layout.height)}>
+            {/* Tant que la première lecture n'a pas répondu, un squelette : un bento
+                vide annoncerait à tort que rien n'a été composé. */}
             {hydrated ? (
-              <BentoGrid
-                cases={composerCases(cases, slots)}
-                scale={bentoScale}
-                // Toute la largeur de l'écran, et non `GRID_WIDTH × bentoScale` :
-                // l'échelle se calcule ici sur la hauteur.
-                width={screenWidth - GRID_SIDE_PADDING * 2}
-                pulse={lastFilled}
-                onTap={(caseKey) =>
+              <Bento
+                slots={composerSlots(cases, slots)}
+                dropped={lastFilled}
+                heightScale={heightScale}
+                onSlotPress={(caseKey) =>
                   router.push({ pathname: '/search-modal', params: { category: caseKey } })
                 }
               />
             ) : (
-              <BentoBoxSkeleton scale={bentoScale} />
+              <BentoSkeleton count={cases.length} />
             )}
           </View>
 
-          {/* Spacer flex pour pousser le CTA en bas */}
-          <View style={{ flex: 1 }} />
+          <TilePulse trigger={publishSpotlight > 0 ? publishSpotlight : null}>
+            <Button
+              block
+              label={hydrated ? cta.label : 'Chargement…'}
+              disabled={cta.disabled || !hydrated}
+              loading={cta.kind === 'busy'}
+              onPress={onPrimary}
+            />
+          </TilePulse>
 
-          {/* CTA en flux normal, juste au-dessus du tab bar.
-              `paddingBottom` ne compte plus `tabBarHeight` : la zone de contenu
-              de l'écran exclut déjà la barre d'onglets, donc l'ajouter la
-              comptait deux fois. Mesuré sur une capture iPhone 17, bento
-              plein : 93 pt de jaune mort sous le bouton, et **zéro** entre le
-              bouton et la boîte, qui se touchaient.
-              `marginTop` plutôt qu'un `paddingTop` : c'est un écart minimal
-              garanti même quand le ressort du dessus se réduit à rien. Minimal
-              et non visé : cf. `CTA_GAP_MIN`. */}
-          <View
-            style={{
-              paddingHorizontal: 16,
-              marginTop: CTA_GAP_MIN,
-              paddingBottom: 12,
-            }}
-          >
-            <TilePulse trigger={publishSpotlight > 0 ? publishSpotlight : null}>
-              <StampButton wide disabled={cta.disabled || !hydrated} onPress={onPrimary}>
-                {hydrated ? cta.label : 'Chargement…'}
-              </StampButton>
-            </TilePulse>
-            {/* Chantier 8, D10 : pour un départ que rien n'intercepte, l'app
-                passée en arrière-plan. Dans l'écart au-dessus du bouton, que le
-                ressort rend : la boîte ne bouge pas. */}
-            {readyKey && reminderOffered ? (
-              <Pressable
-                onPress={() => void onRemindMe()}
-                accessibilityRole="button"
-                accessibilityLabel={REMINDER_LINK_LABEL}
-                accessibilityHint="Une notification demain à 18 h, si ton bento n'est pas publié."
-                // Le libellé fait 18 pt de haut : la cible tactile en fait 44.
-                hitSlop={{ top: 13, bottom: 13, left: 16, right: 16 }}
-                style={{ alignSelf: 'center', marginTop: 12 }}
-              >
-                {/* La police système appliquée par l'écran, comme l'en-tête :
-                    Android ne plafonne pas la hauteur de ligne. */}
-                <Text
-                  allowFontScaling={false}
-                  style={{
-                    fontFamily: 'Fredoka',
-                    ...scaledType(fontScale, CONTROL_MAX_FONT_MULTIPLIER, 14, 18),
-                    color: '#0a0a0a',
-                    textDecorationLine: 'underline',
-                  }}
-                >
-                  {REMINDER_LINK_LABEL}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </YellowBg>
+          {/* Chantier 8, D10 : pour un départ que rien n'intercepte, l'app passée en
+              arrière-plan. */}
+          {readyKey && reminderOffered ? (
+            <Button
+              variant="tertiary"
+              size="md"
+              label={REMINDER_LINK_LABEL}
+              accessibilityHint="Une notification demain à 18 h, si ton bento n'est pas publié."
+              onPress={() => void onRemindMe()}
+              style={{ alignSelf: 'center', marginTop: -8 }}
+            />
+          ) : null}
+        </View>
+      </ScrollView>
+      {rain > 0 ? <Confetti key={rain} onDone={() => setRain(0)} /> : null}
+    </Screen>
   );
 }
 
-/**
- * Le sélecteur de bento, sous l'en-tête du composer.
- *
- * Ne rend rien tant qu'un compte n'a qu'un bento, ce qui est le cas de tous
- * au 16 septembre 2026 : le composer ne change donc pas d'aspect, et
- * `composeSelectorHeight` rend zéro dans ce cas. C'est la promesse du §5.4.
- *
- * Au-dessus de la grille et non dessous, pour la raison mesurée sur la page
- * publique : le budget vertical du composer est calculé au point, et tout ce
- * qui suit la boîte tombe derrière le bloc du bouton.
- */
-function BentoSelector({
-  own,
-  currentId,
-  editions,
+/** L'état d'un bento en ligne, ou qui le sera : la pastille, et sa phrase. */
+function ComposeStatus({
+  label,
+  hint,
+  tone,
+  accessibilityLabel,
 }: {
-  own: OwnBento[];
-  currentId: string | null;
-  /** Les éditions à proposer, déjà filtrées par l'écran. */
-  editions: Edition[];
+  label: string;
+  hint: string;
+  tone: 'live' | 'pending';
+  accessibilityLabel?: string;
 }) {
-  const { fontScale } = useWindowDimensions();
-  const scale = fontScaleFor(fontScale, CONTROL_MAX_FONT_MULTIPLIER);
-  const showToast = useToast((s) => s.show);
-  const [creating, setCreating] = useState<number | null>(null);
-  // L'édition qu'a annoncée une notification tapée (D21).
-  const spotlight = usePushTarget((s) => s.spotlight);
-
-  // Ce qu'il faut pour garder la pastille active à l'écran : où est chaque
-  // pastille, ce que la bande laisse voir, et où elle en est. Des refs et non
-  // de l'état : rien de tout cela ne se dessine.
-  const bande = useRef<ScrollView>(null);
-  const pastilles = useRef(new Map<string, { x: number; width: number }>());
-  const vue = useRef({ offset: 0, viewport: 0 });
-  const montrer = useCallback((id: string | null) => {
-    const pastille = id ? pastilles.current.get(id) : undefined;
-    if (!pastille) return;
-    const x = selectorRevealOffset({ ...pastille, ...vue.current });
-    if (x !== null) bande.current?.scrollTo({ x, animated: true });
-  }, []);
-  // Un changement de bento courant, vers une pastille déjà mesurée. Celle
-  // d'un bento qui vient d'être créé ne l'est pas encore : elle se montre
-  // elle-même à sa première mesure, cf. `onLayout` plus bas.
-  useEffect(() => {
-    montrer(currentId);
-  }, [currentId, montrer]);
-  // L'édition annoncée, si sa pastille est déjà mesurée. Sinon, elle se
-  // montre elle-même à sa première mesure : les éditions se lisent après.
-  useEffect(() => {
-    if (spotlight) montrer(`edition-${spotlight.editionId}`);
-  }, [spotlight, montrer]);
-
-  // Les éditions sorties que ce compte n'a pas encore composées.
-  const aComposer = editions;
-
-  // Rien à choisir : ni second bento, ni édition à rejoindre. Le composer
-  // garde exactement l'aspect qu'il avait, et `composeSelectorHeight` rend
-  // zéro. C'est la promesse du §5.4 du chantier 16.
-  if (own.length <= 1 && aComposer.length === 0) return null;
-
-  const rejoindre = async (edition: Edition) => {
-    if (creating !== null) return;
-    setCreating(edition.id);
-    try {
-      const bentoId = await createEditionBento(edition.id);
-      const userId = useSession.getState().user?.id;
-      if (userId) useBento.getState().setOwn(await listOwnBentos(userId), bentoId);
-      await switchBento(bentoId);
-      // L'autre moment de l'accord éditorial (D20) : rejoindre une édition.
-      // La phrase ne vient qu'une fois par téléphone, cf. `offerEditorialConsent`.
-      void offerEditorialConsent();
-    } catch (e) {
-      showToast(
-        e instanceof Error ? e.message : 'L’édition n’a pas pu s’ouvrir.',
-        { variant: 'danger' },
-      );
-    } finally {
-      setCreating(null);
-    }
-  };
   return (
-    <ScrollView
-      ref={bande}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: SELECTOR_SIDE, gap: 8 }}
-      style={{ marginBottom: SELECTOR_GAP, flexGrow: 0 }}
-      onLayout={(e) => {
-        vue.current.viewport = e.nativeEvent.layout.width;
-      }}
-      // Sans cadence, iOS n'envoie qu'un événement par geste, et la position
-      // lue serait celle du début du défilement.
-      scrollEventThrottle={16}
-      onScroll={(e) => {
-        vue.current.offset = e.nativeEvent.contentOffset.x;
-      }}
+    <View
+      accessible
+      accessibilityLabel={accessibilityLabel ?? `${label} : ${hint}`}
+      style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: -6 }}
     >
-      {own.map((bento) => {
-        const actif = bento.id === currentId;
-        return (
-          <Pressable
-            key={bento.id}
-            onLayout={(e) => {
-              const { x, width } = e.nativeEvent.layout;
-              pastilles.current.set(bento.id, { x, width });
-              if (actif) montrer(bento.id);
-            }}
-            onPress={() => {
-              if (actif) return;
-              void switchBento(bento.id);
-            }}
-            accessibilityRole="button"
-            accessibilityState={{ selected: actif }}
-            accessibilityLabel={
-              bento.isPrimary
-                ? 'Éditer mon bento'
-                : bento.editionTitle
-                  ? `Éditer l’édition ${bento.editionTitle}`
-                  : `Éditer le bento ${bento.slug}`
-            }
-            style={[
-              {
-                height: SELECTOR_CHIP_H * scale,
-                justifyContent: 'center',
-                paddingHorizontal: 14,
-                borderRadius: 999,
-                borderWidth: 2.5,
-                borderColor: '#0a0a0a',
-                backgroundColor: actif ? '#0a0a0a' : '#fbf3de',
-              },
-              actif ? null : SHADOWS.stamp,
-            ]}
-          >
-            <Text
-              allowFontScaling={false}
-              numberOfLines={1}
-              style={{
-                fontFamily: 'Bungee',
-                fontSize: 11 * scale,
-                lineHeight: 15 * scale,
-                letterSpacing: 0.5,
-                color: actif ? '#fbbf24' : '#0a0a0a',
-              }}
-            >
-              {bentoName(bento)}
-            </Text>
-          </Pressable>
-        );
-      })}
-
-      {/* Les éditions sorties qu'on n'a pas encore composées. Un tap crée
-          leur bento et bascule dessus. Celle qu'annonce une notification
-          tapée pulse, et vient à l'écran (D21) : la rejoindre reste un geste. */}
-      {aComposer.map((edition) => (
-        <TilePulse
-          key={`edition-${edition.id}`}
-          trigger={spotlight?.editionId === edition.id ? spotlight.seq : null}
-        >
-          <Pressable
-            onLayout={(e) => {
-              const { x, width } = e.nativeEvent.layout;
-              pastilles.current.set(`edition-${edition.id}`, { x, width });
-              if (spotlight?.editionId === edition.id) {
-                montrer(`edition-${edition.id}`);
-                // Une fois montrée, l'annonce s'oublie : revenir sur l'onglet
-                // ne la rejoue pas.
-                setTimeout(() => usePushTarget.getState().clearSpotlight(), 1500);
-              }
-            }}
-            onPress={() => void rejoindre(edition)}
-            disabled={creating !== null}
-            accessibilityRole="button"
-            accessibilityLabel={`Composer l’édition ${edition.title}`}
-            accessibilityState={{ disabled: creating !== null }}
-            style={[
-              {
-                height: SELECTOR_CHIP_H * scale,
-                justifyContent: 'center',
-                paddingHorizontal: 14,
-                borderRadius: 999,
-                borderWidth: 2.5,
-                borderStyle: 'dashed',
-                borderColor: '#0a0a0a',
-                backgroundColor: '#fbbf24',
-                opacity: creating !== null && creating !== edition.id ? 0.5 : 1,
-              },
-            ]}
-          >
-            <Text
-              allowFontScaling={false}
-              numberOfLines={1}
-              style={{
-                fontFamily: 'Bungee',
-                fontSize: 11 * scale,
-                lineHeight: 15 * scale,
-                letterSpacing: 0.5,
-                color: '#0a0a0a',
-              }}
-            >
-              {creating === edition.id ? '…' : `+ ${edition.title}`}
-            </Text>
-          </Pressable>
-        </TilePulse>
-      ))}
-    </ScrollView>
+      <StatusPill label={label} tone={tone} />
+      <Text variant="footnote" color="text-secondary" style={{ flexShrink: 1 }}>
+        {hint}
+      </Text>
+    </View>
   );
 }

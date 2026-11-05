@@ -7,8 +7,6 @@ import {
   promptFit,
 } from '@bento-pop/supabase-mobile/bento';
 import { feedBoxWidth, feedScale } from '../feed/layout';
-import { tabBarHeight } from '@/design/structure/tab-items';
-import { composeBentoScale } from './compose-layout';
 import { TILE_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
 import { gridBorderWidth, gridTileWidth } from './geometry';
 import { publicBentoScale, publicSideInset } from './public-layout';
@@ -44,26 +42,13 @@ const TELEPHONES = [
   { nom: 'Pixel 8', w: 411, h: 914, top: 24, bottom: 24, pixelRatio: 2.625 },
 ];
 
-/** Les rendus de l'app : composer, fil et page publique, et l'image de partage. */
+/** Les rendus de l'ancienne case : le fil, la page publique, l'image de partage. */
 const RENDUS: Rendu[] = [
   ...TELEPHONES.flatMap((t): Rendu[] => {
     const page = publicBentoScale({
       width: t.w, height: t.h, insetTop: t.top, insetBottom: t.bottom, fontScale: 1, otherBentos: 2,
     });
     return [
-      {
-        nom: `composer ${t.nom}`,
-        box: t.w - 32,
-        scale: composeBentoScale({
-          screenHeight: t.h,
-          insetTop: t.top,
-          tabBarHeight: tabBarHeight(t.bottom),
-          fontScale: 1,
-          bentoCount: 3,
-        }),
-        pixelRatio: t.pixelRatio,
-        fontScaling: true,
-      },
       { nom: `fil ${t.nom}`, box: feedBoxWidth(t.w), scale: feedScale(t.w), pixelRatio: t.pixelRatio, fontScaling: true },
       { nom: `page ${t.nom}`, box: t.w - publicSideInset(t.w, page) * 2, scale: page, pixelRatio: t.pixelRatio, fontScaling: true },
     ];

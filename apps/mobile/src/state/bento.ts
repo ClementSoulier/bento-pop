@@ -75,6 +75,14 @@ type BentoState = {
   slots: BentoSlots;
   lastFilled: LastFilled | null;
   /**
+   * Le jeton de la dernière célébration demandée : un choix vient de remplir la
+   * dernière case (D13 du chantier 32). Un compteur, que le composer compare : il
+   * attend d'être à l'écran pour la jouer, la recherche se fermant tout juste.
+   */
+  celebration: number;
+  /** Demande la célébration d'un bento qui vient de se compléter. */
+  askCelebration: () => void;
+  /**
    * Date de publication du bento, ou `null` s'il n'est pas en ligne.
    *
    * L'app l'ignorait complètement : `loadOwnBento` la lisait et personne ne
@@ -175,6 +183,8 @@ export const useBento = create<BentoState>((set, get) => ({
   cases: MAIN_CASE_SET,
   slots: {},
   lastFilled: null,
+  celebration: 0,
+  askCelebration: () => set((s) => ({ celebration: s.celebration + 1 })),
   publishedAt: null,
   pendingWrites: 0,
   hydrated: false,

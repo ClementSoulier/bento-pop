@@ -6,7 +6,7 @@ import { Icon } from '../Icon';
 import type { IconName } from '../icons';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { reachesWrapScale } from '../type';
+import { reachesWrapScale, textStyle } from '../type';
 
 /** Une action de droite : un bouton-icône, une pilule texte, ou un lien texte. */
 export type TopBarAction =
@@ -42,8 +42,7 @@ export type TopBarProps = {
  * ligne plutôt que d'être coupé ; le grand titre va toujours à la ligne, et
  * dès 130 % ses actions passent sous lui.
  *
- * Le design écrit le sur-titre en 13/18 ; le système n'a pas ce style, il
- * prend `label-s` (13/16).
+ * Le design écrit le sur-titre en 13/18 : `label-s` (13/16), sur une ligne de 18.
  */
 export function TopBar({
   variant = 'inline',
@@ -118,7 +117,11 @@ export function TopBar({
         >
           <View style={stacked ? { alignSelf: 'stretch', gap: 2 } : { flex: 1, gap: 2 }}>
             {eyebrow ? (
-              <Text variant="label-s" color="text-secondary">
+              <Text
+                variant="label-s"
+                color="text-secondary"
+                style={{ lineHeight: eyebrowLineHeight(fontScale) }}
+              >
                 {eyebrow}
               </Text>
             ) : null}
@@ -185,6 +188,12 @@ export function TopBar({
       {children}
     </View>
   );
+}
+
+/** La ligne de 18 du sur-titre, à la taille du système, comme `label-s`. */
+function eyebrowLineHeight(fontScale: number): number {
+  const { fontSize } = textStyle('label-s', fontScale);
+  return (fontSize * 18) / 13;
 }
 
 function TopBarActionView({ action }: { action: TopBarAction }) {

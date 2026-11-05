@@ -4,6 +4,7 @@ import { CATEGORY_ORDER, promptFit } from '@bento-pop/supabase-mobile/bento';
 import {
   BENTO_ROWS,
   PLATE,
+  composePlateScale,
   dotsFadeLine,
   emptyBentoLabel,
   emptyTileContent,
@@ -150,6 +151,47 @@ describe('les rangées d’un plateau', () => {
     assert.ok(Math.abs(heights.l - (((inner - 12) / 2) * 5) / 7) < 0.01);
     assert.ok(Math.abs(heights.s - (((inner - 24) / 3) * 17) / 20) < 0.01);
     assert.ok(Math.abs(tileWidth(960, 3, 'share') - (inner - 24) / 3) < 0.01);
+  });
+});
+
+describe('la hauteur du plateau du composer (D8)', () => {
+  const height = (count: number, width: number, scale: number) => {
+    const rows = plateRows(count, width, 'compose', scale);
+    const { gap, padding, border } = PLATE.compose;
+    return (
+      rows.reduce((sum, row) => sum + row.height, 0) +
+      (rows.length - 1) * gap +
+      2 * (padding + border)
+    );
+  };
+
+  it('ne bouge pas tant que le plateau tient', () => {
+    assert.equal(composePlateScale({ room: 600, count: 6, plateWidth: 370 }), 1);
+    assert.equal(composePlateScale({ room: plateMinHeight(370), count: 6, plateWidth: 370 }), 1);
+  });
+
+  it('rend juste ce qui manque, et le plateau tombe sur la place', () => {
+    const scale = composePlateScale({ room: 400, count: 6, plateWidth: 343 });
+    assert.ok(scale < 1 && scale > 0.85, `${scale}`);
+    assert.ok(Math.abs(height(6, 343, scale) - 400) < 0.01, `${height(6, 343, scale)}`);
+  });
+
+  it('s’arrête à 85 % : l’écran défile alors', () => {
+    assert.equal(composePlateScale({ room: 100, count: 6, plateWidth: 343 }), 0.85);
+  });
+
+  it('compte de 2 à 5 cases comme à six', () => {
+    for (const count of [2, 3, 4, 5]) {
+      const scale = composePlateScale({ room: 400, count, plateWidth: 343 });
+      assert.ok(
+        Math.abs(height(count, 343, scale) - 400) < 8,
+        `${count} : ${height(count, 343, scale)}`,
+      );
+    }
+  });
+
+  it('ne rend rien pour un nombre de cases hors des dispositions', () => {
+    assert.equal(composePlateScale({ room: 100, count: 7, plateWidth: 343 }), 1);
   });
 });
 

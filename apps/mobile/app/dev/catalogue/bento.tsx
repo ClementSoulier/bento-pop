@@ -3,9 +3,11 @@ import { Image, View } from 'react-native';
 import { CataloguePage, Specimen } from '@/components/dev/CataloguePage';
 import {
   Bento,
+  BentoSkeleton,
   BentoTile,
   Button,
   Progress,
+  StatusPill,
   Tag,
   Text,
   ThemeProvider,
@@ -138,9 +140,20 @@ export default function BentoCatalogue() {
           <Progress value={2} total={3} />
         </View>
       </Specimen>
+      <Specimen name="StatusPill">
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <StatusPill />
+          <StatusPill label="Bientôt en ligne" tone="pending" />
+        </View>
+      </Specimen>
       <Specimen name="Bento">
         <Plate>
           <Bento />
+        </Plate>
+      </Specimen>
+      <Specimen name="Bento, chargement">
+        <Plate>
+          <BentoSkeleton />
         </Plate>
       </Specimen>
       <Specimen name="Bento, complet">

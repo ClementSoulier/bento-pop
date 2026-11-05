@@ -51,6 +51,7 @@ import { MAIN_CASE_SET } from '@/lib/case-set';
 import { useBento } from '@/state/bento';
 import { useOwnWhys } from '@/state/own-whys';
 import { useSession } from '@/state/session';
+import { fillsBento } from '@/lib/compose-slots';
 import { searchItems, submitItem, type ItemSearchResult } from '@/lib/items';
 import { offerPushAfterProposal } from '@/lib/push-runtime';
 import {
@@ -316,6 +317,8 @@ export default function SearchModal() {
       choosingRef.current = false;
       return;
     }
+    // À demander avant de poser la case : c'est ce choix qui complète le bento.
+    const completes = fillsBento(cases, useBento.getState().slots, category);
     // Posé avant l'écriture optimiste : le composer reprend le focus dès le
     // `router.back()` ci-dessous et relit le bento en base, où la nouvelle
     // case n'existe pas encore. Sans ce verrou, l'hydratation écraserait la
@@ -339,7 +342,9 @@ export default function SearchModal() {
       const bentoId = userId ? await editableBentoId(userId) : null;
       if (bentoId && caseId !== null) await setBentoSlot(bentoId, caseId, item.id);
       if (replacing) forgetWhy(bentoId);
-      slotFilledFeedback();
+      // La célébration porte son retour de succès : un seul par événement (D13).
+      if (completes) useBento.getState().askCelebration();
+      else slotFilledFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
         variant: 'success',
         // Les flèches de la maquette `c07` (chantier 31).
@@ -392,6 +397,9 @@ export default function SearchModal() {
       const bentoId = await editableBentoId(userId);
       if (bentoId && caseId !== null) await setBentoSlot(bentoId, caseId, itemId);
       forgetWhy(bentoId);
+      if (fillsBento(cases, useBento.getState().slots, category)) {
+        useBento.getState().askCelebration();
+      }
       setSlot(category, {
         title,
         subtitle: undefined,

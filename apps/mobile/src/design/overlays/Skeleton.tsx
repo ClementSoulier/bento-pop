@@ -32,28 +32,7 @@ export type SkeletonProps = {
  */
 export function Skeleton({ kind = 'post', rows = 3 }: SkeletonProps) {
   const { colors, border, radius } = useTheme();
-  const motion = useMotion();
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    if (!motion.pulse) {
-      cancelAnimation(pulse);
-      pulse.value = 1;
-      return;
-    }
-    pulse.value = withRepeat(
-      withTiming(0.55, {
-        duration: 700,
-        // `ease-in-out` du CSS.
-        easing: Easing.bezier(0.42, 0, 0.58, 1),
-        reduceMotion: ReduceMotion.Never,
-      }),
-      -1,
-      true,
-      undefined,
-      ReduceMotion.Never,
-    );
-    return () => cancelAnimation(pulse);
-  }, [motion.pulse, pulse]);
+  const pulse = useSkeletonPulse();
   const a11y = busyA11y({ busy: true }, Platform.OS);
   return (
     <View
@@ -99,7 +78,51 @@ export function Skeleton({ kind = 'post', rows = 3 }: SkeletonProps) {
   );
 }
 
+/** La pulsation des blocs d'un chargement : de tout à 55 % et retour en 1,4 s, ou immobile. */
+export function useSkeletonPulse(): SharedValue<number> {
+  const motion = useMotion();
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    if (!motion.pulse) {
+      cancelAnimation(pulse);
+      pulse.value = 1;
+      return;
+    }
+    pulse.value = withRepeat(
+      withTiming(0.55, {
+        duration: 700,
+        // `ease-in-out` du CSS.
+        easing: Easing.bezier(0.42, 0, 0.58, 1),
+        reduceMotion: ReduceMotion.Never,
+      }),
+      -1,
+      true,
+      undefined,
+      ReduceMotion.Never,
+    );
+    return () => cancelAnimation(pulse);
+  }, [motion.pulse, pulse]);
+  return pulse;
+}
+
 /** Un bloc qui pulse avec les autres. */
+export function SkeletonBar({
+  pulse,
+  style,
+}: {
+  pulse: SharedValue<number>;
+  style: {
+    width?: DimensionValue;
+    height?: number;
+    flex?: number;
+    alignSelf?: 'stretch';
+    aspectRatio?: number;
+    borderRadius: number;
+  };
+}) {
+  return <Bar pulse={pulse} style={style} />;
+}
+
 function Bar({
   pulse,
   style,

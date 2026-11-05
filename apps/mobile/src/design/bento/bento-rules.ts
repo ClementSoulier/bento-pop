@@ -129,6 +129,30 @@ export function plateRows(
   });
 }
 
+/** Le plateau du composer ne rend pas plus de 15 % de sa hauteur : l'écran défile alors. */
+const MIN_COMPOSE_HEIGHT_SCALE = 0.85;
+
+/**
+ * La hauteur que le plateau du composer rend à ce qui l'entoure sur un écran court
+ * (D8), pour que le bouton reste à l'écran sans défiler tant que c'est possible.
+ * `room` : la place qui lui reste, une fois tout le reste servi. Seules ses rangées
+ * rapetissent, son contour, sa marge et ses écarts non.
+ */
+export function composePlateScale({
+  room,
+  count,
+  plateWidth,
+}: {
+  room: number;
+  count: number;
+  plateWidth: number;
+}): number {
+  const rows = plateRows(count, plateWidth).reduce((sum, row) => sum + row.height, 0);
+  if (rows <= 0) return 1;
+  const fixed = plateMinHeight(plateWidth) - rows;
+  return Math.max(MIN_COMPOSE_HEIGHT_SCALE, Math.min(1, (room - fixed) / rows));
+}
+
 /** La largeur d'une case d'une rangée de `cases` cases. */
 export function tileWidth(
   plateWidth: number,

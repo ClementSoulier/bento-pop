@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { tabBarHeight } from '@/design/structure/tab-items';
-import { MIN_SCALE, composeBentoScale } from './compose-layout';
 import { GRID_GEOMETRY } from './geometry';
 import {
   TILE_PENDING_OVERHANG,
@@ -19,44 +17,19 @@ import {
 } from './tile-text';
 
 /**
- * La pastille d'une case en attente n'existe que dans le composer : ce sont ses
- * échelles qui comptent. Le Pixel 8 y figure deux fois, avec les marges de
- * `question-label.test.ts` et avec celles qui redonnent l'échelle relevée sur
- * l'émulateur le 17 septembre 2026, 0,941 avec la bande de sélection et non
- * 0,992.
+ * La pastille de l'ancienne case, à ses échelles, de son plancher à sa taille.
+ * Elle ne se voit plus nulle part depuis le lot 2 du chantier 32, le composer étant
+ * passé au nouveau plateau : elle part avec `Tile`, au 33.
  */
-const COMPOSERS = [
-  { nom: 'iPhone SE', h: 667, top: 20, bottom: 0 },
-  { nom: 'iPhone 17 Pro', h: 874, top: 62, bottom: 34 },
-  { nom: 'iPhone 17 Pro Max', h: 956, top: 62, bottom: 34 },
-  { nom: 'Pixel 8', h: 914, top: 24, bottom: 24 },
-  { nom: 'Pixel 8 relevé', h: 914.3, top: 50.5, bottom: 24 },
-];
-
-/** Tailles de police système : iOS de xSmall à la plus grande, Android jusqu'à 2. */
-const POLICES = [0.823, 1, 1.235, 2, 3.571];
+const ECHELLES = [0.65, 0.76, 0.84, 0.92, 1];
 
 const TAILLES: TileSize[] = ['sm', 'md', 'lg'];
 
 /** Écart minimal voulu entre la pastille et ce qu'elle ne doit pas toucher, en points. */
 const ECART = 2;
 
-/** Les échelles du composer : un bento seul, puis la bande de sélection. */
 function echelles(): { cas: string; scale: number }[] {
-  return COMPOSERS.flatMap((c) =>
-    POLICES.flatMap((police) =>
-      [1, 3].map((bentoCount) => ({
-        cas: `${c.nom}, police ${police}, ${bentoCount} bento(s)`,
-        scale: composeBentoScale({
-          screenHeight: c.h,
-          insetTop: c.top,
-          tabBarHeight: tabBarHeight(c.bottom),
-          fontScale: police,
-          bentoCount,
-        }),
-      })),
-    ),
-  );
+  return ECHELLES.map((scale) => ({ cas: `échelle ${scale}`, scale }));
 }
 
 describe('tilePendingBadge', () => {
@@ -95,14 +68,11 @@ describe('tilePendingBadge', () => {
     }
     assert.deepEqual(pires, [], `pastille trop près du texte :\n  ${pires.join('\n  ')}`);
     // Témoin : une boucle vide passerait l'assertion précédente sans rien vérifier.
-    assert.equal(cases, COMPOSERS.length * POLICES.length * 2 * TAILLES.length);
+    assert.equal(cases, ECHELLES.length * TAILLES.length);
   });
 
   it('laisse la case voisine à distance, et reste dans le cadre crème', () => {
-    for (const { cas, scale } of [
-      ...echelles(),
-      { cas: 'plancher du composer', scale: MIN_SCALE },
-    ]) {
+    for (const { cas, scale } of echelles()) {
       const { overhang } = tilePendingBadge('sm', scale);
       const ecartVoisine = GRID_GEOMETRY.GAP * scale - overhang;
       assert.ok(ecartVoisine >= ECART, `${cas} : ${ecartVoisine.toFixed(2)} pt de la case voisine`);

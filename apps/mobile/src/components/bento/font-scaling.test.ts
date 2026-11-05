@@ -468,9 +468,9 @@ describe('cases du bento', () => {
     const grids = files.flatMap((path) =>
       tagsNamed(parse(path), 'BentoGrid').map((tag) => ({ path, tag })),
     );
-    // Page publique, fil, composer, image de partage. L'écran de mécanique a
-    // quitté cette grille au chantier 31, pour le `Bento` vide du design.
-    assert.equal(grids.length, 4, grids.map(({ path }) => path).join(', '));
+    // Page publique, fil, image de partage. L'écran de mécanique et le composer ont
+    // quitté cette grille pour le `Bento` du design, aux chantiers 31 et 32.
+    assert.equal(grids.length, 3, grids.map(({ path }) => path).join(', '));
     const missing = grids.filter(({ tag }) => !tag.attributes.has('width'));
     assert.deepEqual(
       missing.map(({ path, tag }) => `${path}, ligne ${tag.line}`),

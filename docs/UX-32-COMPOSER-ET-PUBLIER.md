@@ -186,8 +186,8 @@ dont 58 sans image, 0 édition, 9 types d'items dont 5 actifs.
   mesures de la maquette, 370 de large ; il garde sa largeur et rend de la hauteur à ce
   qui l'entoure, jusqu'à 85 %, sur un écran court, avec les puces, le lien du rappel ou le
   bandeau ; au-delà, et au-delà de 130 % de texte, l'écran défile. Le budget au point de
-  `compose-layout.ts` sort avec l'ancien écran, sauf ce que `StampButton` et les tests de
-  l'ancienne case lisent, jusqu'au 33.
+  `compose-layout.ts` sort avec l'ancien écran, le fichier entier : `StampButton` garde sa
+  constante, les tests de l'ancienne case leurs échelles.
 - **Le bouton** : `Button` plein, `Button tertiary` pour le rappel, comme `c07`. Le rappel
   tapé dans une notification le fait toujours pulser.
 - **Le premier chargement** : le plateau, ses cases en `Skeleton`, et rien qui affirme un
@@ -282,8 +282,8 @@ dont 58 sans image, 0 édition, 9 types d'items dont 5 actifs.
   des demandes, une à la fois et dans l'ordre (D10) ; les textes de la vérification du
   pseudo (D12).
 - **Gardés** : `compose-cta`, `publish-on-validation`, `ready-reminder`, `exact-title`, les
-  tests de `Tile`, qui reste. **Retirés** avec leur code : ce qui ne sert plus de
-  `compose-layout.test.ts` et de `search/layout.test.ts`, et `share-layout.test.ts`.
+  tests de `Tile`, qui reste. **Retirés** avec leur code : `compose-layout.test.ts`, ce qui ne
+  sert plus de `search/layout.test.ts`, et `share-layout.test.ts`.
 
 ## 12. Recette
 
@@ -344,7 +344,8 @@ Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément
   et « Megalovania » dépassent d'une petite case à l'iPhone 17 Pro, « Dark_Hifus » et « Angoulême »
   aussi à l'iPhone SE, « Madoka★Magica » d'une moyenne. Le titre rétrécit juste assez, sans jamais
   atteindre le plancher de 11 sur ces titres (`tile-metrics.ts`, relu dans les fichiers de police
-  par un test). Coupés à leurs lignes : 4 films sur 56 en grande case, 7 items sur 145 en petite.
+  par un test). Coupés à leurs lignes : 4 films sur 56 en grande case, 4 items sur 145 en petite,
+  titres nettoyés de leurs parenthèses comme à l'écran (`cleanTitle`).
 - **Rien ne se chevauche** (D7) : un titre de trois lignes sous la puce, comme sur `c07` et `u07`,
   passe à deux lignes, puis le sous-titre s'efface ; le crédit reste. Relu à 135 % et au-delà de
   200 % à l'iPhone SE, à 1,3 et 2,0 au Pixel 8, accents et idéogrammes compris.
@@ -373,22 +374,78 @@ Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément
 - **La CI rejouée en local** sur l'arbre du lot 1, sans cache : verte, lint et typage 8 sur 8, tests
   (mobile 1 192, landing 202, back-office 251), builds 3 sur 3, e2e 65 sur 65.
 
+### 13.2 Lot 2 · fait le 5 novembre 2026
+
+- **Le composer refait** (`app/(tabs)/compose.tsx`), sa logique intacte (D16) : le grand titre et son
+  pseudo, `StatusPill` ou `Progress`, les puces du design (`components/compose/BentoSelector.tsx`), le
+  `Bento` du lot 1 avec ses vraies images (`lib/compose-slots.ts`), `Button`, le rappel en lien.
+  `compose-layout.ts` et `ProgressBar` sortent. Le fichier n'emploie plus ni Bungee, ni `YellowBg`, ni
+  `StampButton`.
+- **Contre les maquettes**, à l'iPhone 17 Pro, sur la pile locale garnie de leurs items : `c01`, `c06`,
+  `c07`, `c08`, `c09` et `u05` tombent sur leur PNG, en parcours réel, d'une installation neuve sans
+  compte, puis avec le compte de test. Les écarts qui restent sont des données : les vraies photos à la
+  place des dégradés dessinés, le tampon STAR de l'édition de la pile, le badge des notifications.
+- **`m01`** : le bandeau tombe sur le sien. **Un écart voulu** (D8) : la maquette laisse « Voir mon
+  bento public » sous la barre d'onglets ; ici le plateau rétrécit pour le garder visible, et le
+  sous-titre des petites cases s'efface à cette hauteur.
+- **La hauteur du plateau, mesurée** (D8) : au 17 Pro et au Pixel 8, tout tient, bandeau compris. À
+  l'iPhone SE, le bento complet et son rappel tiennent. **Une limite assumée** : avec les puces d'une
+  édition, le plateau à son plancher de 85 %, le bouton finit de 31 à 39 points sous la barre, 113 avec
+  le bandeau, et l'écran défile. Sans puces, il tient à 11 points près, déduit de la mesure. La
+  production n'a aucune édition : aucune puce à la sortie.
+- **Le bento complet** (D13), filmé à 30 images par seconde au 17 Pro : la case qui le complète fait
+  tomber les confettis, 16 346 pixels de pluie sur la bande du titre, une case vidée puis remplie à
+  nouveau aussi. Un remplacement et son annulation, 355 images : aucune. Une relance à froid : aucune.
+  Le mouvement réduit au Pixel 8, échelles d'animation à zéro : aucune sur 309 images, la même case
+  remplie. Fêté aux trois appareils en parcours réel.
+- **De vraies éditions** au 17 Pro, créées et remplies pour de bon, six, deux et trois cases : la
+  question reste sur la case remplie (D2), une affiche et un dégradé compris, le crédit à sa place, et
+  la puce de l'édition courante revient d'elle-même à l'écran. Le bouton à deux lignes s'équilibre
+  comme sur `c09`, « Commence par le film / que tu reverrais ce soir » (`balancedLabel`), aux trois
+  appareils.
+- **Les états** : « Bientôt en ligne » en vrai, sur un bento marqué dont un lieu attend, aux trois
+  appareils, et la base le publie seule à la validation ; un bento déjà en ligne reste « En ligne »,
+  sablier sur la case. Hors connexion au Pixel 8, le bandeau pousse l'écran et le rend au retour. Le
+  squelette se relit au catalogue, aux trois appareils : la vraie lecture, en local, va trop vite pour
+  être capturée.
+- **Les grands textes** : à 135 % et au-delà de 200 % à l'iPhone SE, à 1,3 et 2,0 au Pixel 8, rien ne se
+  coupe ni ne se chevauche, le plateau garde sa hauteur et l'écran défile.
+- **Les lecteurs d'écran**, à l'arbre, aux deux plateformes et dans l'ordre : « @theo.pixel », « Mon
+  bento », « Bientôt en ligne : ton bento sortira à la validation de « Le Pont Neuf » », « Éditer
+  l'édition Le grand inventaire », « Composer l'édition Le retour du jeudi », « Le son de ton été : How
+  To Train Your Dragon, John Powell », « Cases remplies : 2 sur 6 ».
+- **Aucun autre écran ne change**, contre une copie de la PR du 31 (`014256a`), une série de chaque
+  côté : `p03`, 0 pixel à l'iPhone SE et au Pixel 8 ; le plateau d'illustration, 0 pixel au 17 Pro et au
+  SE, au plus 4 niveaux sur 255 au Pixel 8, invisibles ; les boutons du catalogue, 0 pixel hors le rond
+  de chargement, qui tourne ; l'écran de maintenance, 0 pixel hors Popy, qui flotte. Seul change, dès
+  130 % de texte ou sur un long libellé, l'interligne d'un grand bouton, 20 pour 17, celui du dossier.
+  Les autres écrans se comparent au lot 6.
+- **Deux faux défauts du banc**, à ne pas chercher de nouveau : l'erreur rouge « Can't perform a React
+  state update » du Pixel 8 vient de `useLinking` d'expo-router, relevée au 31, sans rapport avec le
+  composer ; un fond gris sur la rangée d'état au Pixel 8 est le surlignage de focus d'Android, quand la
+  dernière saisie vient du clavier (`adb shell input text`), parti au premier toucher.
+- **Pas éprouvé à ce lot** : la recherche reste l'ancienne jusqu'au lot 3, et la question des
+  notifications passe par `Alert.alert` jusqu'au lot 4 ; le retour haptique, à ressentir, part du 29.
+- **La CI rejouée en local** sur l'arbre du lot 2, sans cache : verte, lint et typage 8 sur 8, tests
+  (mobile 1 182, landing 202, back-office 251), builds 3 sur 3, e2e 65 sur 65. Dix tests de moins au
+  mobile qu'au lot 1 : ceux de `compose-layout`, retirés avec lui, moins ceux des nouvelles règles.
+
 ## 14. Definition of Done
 
 | # | Point | État |
 | --- | --- | --- |
-| 1 | `c01` à `c10`, `u01`, `u05`, `u07` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE | ⬜ |
-| 2 | Les feuilles de `u02` et `u03` identiques aux leurs, sur le profil d'aujourd'hui ; `m01` entière | ⬜ |
-| 3 | Chaque case prend la couleur et la puce de sa catégorie, par clé ou par type ; de 2 à 6 cases ; la question sur une case d'édition remplie | 🟡 lot 1, au catalogue ; sur de vrais écrans au lot 2 |
-| 4 | Rien ne se chevauche dans une case ; le crédit photo toujours là | 🟡 lot 1, au catalogue ; sur de vraies affiches au lot 2 |
-| 5 | Le parcours de bout en bout, compte neuf, second bento et édition, inchangé dans sa logique | ⬜ |
+| 1 | `c01` à `c10`, `u01`, `u05`, `u07` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE | 🟡 lot 2 : `c01`, `c06`, `c07`, `c08`, `c09`, `u05` ; restent `c02` à `c05`, `c10`, `u01`, `u07` |
+| 2 | Les feuilles de `u02` et `u03` identiques aux leurs, sur le profil d'aujourd'hui ; `m01` entière | 🟡 lot 2 : `m01`, avec l'écart voulu de D8 ; `u02` et `u03` au lot 4 |
+| 3 | Chaque case prend la couleur et la puce de sa catégorie, par clé ou par type ; de 2 à 6 cases ; la question sur une case d'édition remplie | ✅ lot 1 au catalogue, lot 2 sur de vrais écrans et de vraies éditions |
+| 4 | Rien ne se chevauche dans une case ; le crédit photo toujours là | ✅ lot 1 au catalogue, lot 2 sur de vraies affiches, grands textes compris |
+| 5 | Le parcours de bout en bout, compte neuf, second bento et édition, inchangé dans sa logique | 🟡 lot 2 : de l'installation neuve au bento complet, éditions créées et remplies ; la publication et le compte aux lots 3 et 4 |
 | 6 | Les quatre demandes en `AskSheet`, une à la fois, dans l'ordre ; plus aucun `Alert.alert` dans les écrans du 32 | ⬜ |
-| 7 | Une célébration par événement, aucune de trop ; le mouvement réduit respecté | ⬜ |
+| 7 | Une célébration par événement, aucune de trop ; le mouvement réduit respecté | 🟡 lot 2 : le bento complet, filmé ; la publication au lot 4 |
 | 8 | L'image partagée capturée pour de bon, ses zones sûres mesurées, une édition et un long pseudo compris | ⬜ |
-| 9 | Les lecteurs d'écran en français, les cases annoncées en entier | ⬜ |
-| 10 | Les autres écrans inchangés au pixel | ⬜ |
-| 11 | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortis des fichiers du 32 ; `ProgressBar`, `ItemTile`, `ShareImage`, `account/keep-offer` retirés | ⬜ |
-| 12 | Les tests de règles verts, la CI rejouée en local, verte | ⬜ |
+| 9 | Les lecteurs d'écran en français, les cases annoncées en entier | 🟡 lot 2 : le composer, à l'arbre, aux deux plateformes |
+| 10 | Les autres écrans inchangés au pixel | 🟡 lot 2 : `p03`, le plateau, les boutons, la maintenance ; le reste au lot 6 |
+| 11 | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortis des fichiers du 32 ; `ProgressBar`, `ItemTile`, `ShareImage`, `account/keep-offer` retirés | 🟡 lot 2 : le composer sorti, `ProgressBar` et `compose-layout.ts` retirés |
+| 12 | Les tests de règles verts, la CI rejouée en local, verte | 🟡 verte à chaque lot, à rejouer au dernier |
 
 ## 15. Décisions
 
@@ -401,7 +458,7 @@ Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément
 | **D5** | Une case prend la catégorie de sa case, par clé ou par type ; la puce écrit son tampon ; repli neutre pour un type sans couleur | Aucune migration : le type existe en base. « Personne » sert deux cases, d'où le tampon « CRÉA ». Les quatre types inactifs n'ont aucun item : la couleur est à dessiner par Rob avant de les ouvrir, ce que la roadmap laissait à trancher |
 | **D6** | Les éditions de 2 à 5 cases gardent les dispositions de Rob, sur le plateau du design, à la même hauteur | Le dossier ne dessine que six cases. Validées le 16 septembre, elles se lisent aussi sur le web et dans l'aperçu de lien |
 | **D7** | Dans une case, rien ne se chevauche : le titre perd une ligne, le sous-titre s'efface, le crédit reste ; et un mot ne se coupe pas au milieu : le titre rétrécit juste assez, jusqu'au plancher de 11 | Sur `c07` et `u07`, le titre passe sous la puce. Le crédit est une obligation de licence. La maquette permet la coupure d'un mot ; le chantier 11 l'a retirée de l'app, « ARDÈCH / E », et les 304 items validés tiennent au-dessus du plancher |
-| **D8** | Le plateau du composer rend de la hauteur jusqu'à 85 %, puis l'écran défile | Aujourd'hui, tout tient sans défiler tant qu'on peut. Au calcul, à l'iPhone SE, le bento seul tient ; les puces, le rappel ou le bandeau demandent jusqu'à 64 points, à mesurer au lot 2 |
+| **D8** | Le plateau du composer rend de la hauteur jusqu'à 85 %, puis l'écran défile | Aujourd'hui, tout tient sans défiler tant qu'on peut. Mesuré au lot 2 à l'iPhone SE : le bento complet et son rappel tiennent ; les puces d'une édition laissent le bouton de 31 à 39 points sous la barre, 113 avec le bandeau, et l'écran défile. Aucune édition en production, donc aucune puce à la sortie |
 | **D9** | La recherche reste une route, en `transparentModal`, et rend le `Sheet` du design | Le même dessin aux deux plateformes, sans toucher aux liens profonds ni au retour au composer, qui relit le bento. À éprouver d'abord au clavier du Pixel |
 | **D10** | Une seule file de demandes, `useAsk`, à la place des `Alert.alert` et de `account/keep-offer` | Le guide met une `AskSheet` avant chaque autorisation. Les demandes partent de `lib`, sans écran sous la main, et peuvent arriver ensemble, comme aujourd'hui |
 | **D11** | Remplacer ou vider une case expliquée passe par `Dialog` | Le gabarit « Confirmation » du guide ; aucune maquette ne le montre, le texte ne change pas |
@@ -410,7 +467,7 @@ Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément
 | **D14** | `ShareCard` à la lettre du dossier, figée à la police par défaut ; le pseudo sur une ligne, le ruban au titre de l'édition | L'image sort la même pour tout le monde, comme aujourd'hui. La maquette ne dessine que le bento principal et un pseudo court |
 | **D15** | `feed` et `mini` viennent au 33 | Ce qui précise la D3 du 31 : aucun écran du 32 ne les emploie |
 | **D16** | La logique du composer et de la recherche ne bouge pas ; seul leur dessin change | « Aucune fonctionnalité ne change » (le dossier). `composeCta` et ses voisins sont testés, et le fruit de recettes |
-| **D17** | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortent des fichiers du 32 ; `ProgressBar`, `ItemTile`, `SuggestionSkeleton`, `ShareImage`, `share-layout.ts` et `account/keep-offer` sont retirés ; `search/layout.ts` et `compose-layout.ts` perdent ce qui ne sert plus ; `Tile`, `BentoGrid`, `EmptyTile`, `TilePulse` et `BentoBoxSkeleton` restent pour le 33 | La D13 du 30 : une primitive part avec son dernier emploi |
+| **D17** | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortent des fichiers du 32 ; `ProgressBar`, `ItemTile`, `SuggestionSkeleton`, `ShareImage`, `share-layout.ts`, `compose-layout.ts` et `account/keep-offer` sont retirés ; `search/layout.ts` perd ce qui ne sert plus ; `Tile`, `BentoGrid`, `EmptyTile`, `TilePulse` et `BentoBoxSkeleton` restent pour le 33 | La D13 du 30 : une primitive part avec son dernier emploi |
 | **D18** | Les retours haptiques du composer et de la recherche passent à `haptics.ts` du design | La D11 du 30 : les écrans les adoptent avec leur chantier |
 
 ## 16. Suivis

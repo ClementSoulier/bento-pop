@@ -15,7 +15,8 @@ import { Spinner } from '../overlays/Spinner';
 import { PopShadow } from '../PopShadow';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { reachesWrapScale } from '../type';
+import { reachesWrapScale, textStyle } from '../type';
+import { WRAP_LENGTH, balancedLabel } from './button-rules';
 import { usePress } from './usePress';
 
 export type ButtonVariant =
@@ -41,6 +42,8 @@ export type ButtonProps = {
   block?: boolean;
   loading?: boolean;
   disabled?: boolean;
+  /** Ce que le bouton provoque, quand son libellé ne le dit pas, pour le lecteur d'écran. */
+  accessibilityHint?: string;
   /** La place du bouton dans l'écran (marges, alignement), jamais son dessin. */
   style?: StyleProp<ViewStyle>;
 };
@@ -50,9 +53,6 @@ const SIZES = {
   md: { height: 44, padding: 18, text: 'label-m', icon: 20, spinner: 18, gap: 8 },
   sm: { height: 32, padding: 14, text: 'label-s', icon: 16, spinner: 14, gap: 6 },
 } as const;
-
-/** Au-delà, un libellé passe sur deux lignes au lieu d'être coupé. */
-const WRAP_LENGTH = 34;
 
 /**
  * Le bouton, en pilule (chantier 30, famille des actions).
@@ -84,6 +84,7 @@ export function Button({
   block,
   loading,
   disabled,
+  accessibilityHint,
   style,
 }: ButtonProps) {
   const { colors, palette, border, radius, shadow } = useTheme();
@@ -135,6 +136,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={accessibilityHint}
       accessibilityState={a11y.state}
       accessibilityValue={a11y.value}
       disabled={blocked}
@@ -190,10 +192,15 @@ export function Button({
           style={[
             { color: look.fg, flexShrink: 1 },
             wraps && { textAlign: 'center' },
+            // Sur plusieurs lignes, 20 de haut : le `.mbp-btn--wrap` du dossier.
+            wraps &&
+              size === 'lg' && {
+                lineHeight: (textStyle(metrics.text, fontScale).fontSize * 20) / 17,
+              },
             variant === 'tertiary' && size !== 'sm' && { textDecorationLine: 'underline' },
           ]}
         >
-          {label}
+          {balancedLabel(label)}
         </Text>
         {iconRight && !loading ? (
           <Icon name={iconRight} size={metrics.icon} tint={look.fg} />

@@ -1,7 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { Platform, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { busyA11y } from '@/lib/a11y-states';
 import type { CategoryKey } from '@/supabase/types';
+import { SkeletonBar, useSkeletonPulse } from '../overlays/Skeleton';
 import { PopShadow } from '../PopShadow';
 import { useTheme } from '../theme';
 import { timingConfig, useMotion } from '../useMotion';
@@ -10,6 +12,7 @@ import {
   PLATE,
   emptyBentoLabel,
   plateRows,
+  tileMeasures,
   tileMinHeights,
   tileWidth,
   type BentoDensity,
@@ -154,6 +157,58 @@ export function Bento({
             </View>
           );
         })}
+      </View>
+    </PopShadow>
+  );
+}
+
+/**
+ * Le plateau qui charge, à la place de ses cases : un bento vide annoncerait à
+ * tort que rien n'a été composé. Le lecteur d'écran n'y lit que « Chargement ».
+ */
+export function BentoSkeleton({ count = 6 }: { count?: number }) {
+  const { colors, radius, size } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const [laidWidth, setLaidWidth] = useState<number>();
+  const pulse = useSkeletonPulse();
+  const width = laidWidth ?? windowWidth - 2 * size['screen-margin'];
+  const plate = PLATE.compose;
+  const a11y = busyA11y({ busy: true }, Platform.OS);
+  return (
+    <PopShadow
+      level="pop-lg"
+      radius={plate.radius}
+      accessible
+      accessibilityLabel="Chargement"
+      accessibilityState={a11y.state}
+      accessibilityValue={a11y.value}
+      onLayout={(event) => setLaidWidth(event.nativeEvent.layout.width)}
+    >
+      <View
+        style={{
+          gap: plate.gap,
+          padding: plate.padding,
+          borderRadius: radius.xl,
+          borderWidth: plate.border,
+          borderColor: colors['plate-outline'],
+          backgroundColor: colors['bg-plate'],
+        }}
+      >
+        {plateRows(count, width).map((row, rowIndex) => (
+          <View key={rowIndex} style={{ flexDirection: 'row', gap: plate.gap }}>
+            {Array.from({ length: row.cases }, (_, index) => (
+              <SkeletonBar
+                key={index}
+                pulse={pulse}
+                style={{
+                  flex: 1,
+                  height: row.height,
+                  borderRadius: tileMeasures(row.size).radius,
+                }}
+              />
+            ))}
+          </View>
+        ))}
       </View>
     </PopShadow>
   );
