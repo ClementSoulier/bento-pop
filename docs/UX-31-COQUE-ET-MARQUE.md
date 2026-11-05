@@ -22,6 +22,8 @@
 > icône des notifications. Les autres écrans restent ceux d'aujourd'hui
 > jusqu'à leur chantier, du 32 au 34. Même sortie store unique que tous les
 > chantiers, qui attend la refonte entière (D25 du 29).
+>
+> **Fait et recetté le 5 novembre 2026, à fusionner : PR #112.**
 
 ---
 
