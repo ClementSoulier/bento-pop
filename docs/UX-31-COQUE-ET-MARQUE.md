@@ -314,8 +314,9 @@ Relevé le 30 octobre 2026 sur `19be67e`, en lecture seule.
 - **Le reste du bento** (D3) : au 32.
 - **La barre sur les écrans poussés** (D4) : avec leurs écrans, les profils
   d'un compte au 33.
-- **Le fond de la racine** (`backgroundColor` de `app.json`, `#fbbf24`) : il
-  reste jaune tant que des écrans jaunes restent, jusqu'au 34.
+- **Le jaune des écrans pas encore refaits** (`#fbbf24`) : jusqu'au 34 (§14). Le
+  fond de la racine (`backgroundColor` de `app.json`), d'abord prévu pour
+  l'attendre, passe au jaune de marque au lot 4, avec le lancement (D11).
 - **Bungee** : `fonts.ts` la charge jusqu'au dernier écran qui l'emploie.
 - **Le thème sombre** (D3 de la refonte).
 
@@ -587,7 +588,10 @@ les builds de développement du lot 4.
   0 pixel aux trois appareils. La page d'un compte : 0 au Pixel ; ailleurs, son
   compteur de visites, que chaque ouverture augmente, et le décodage des photos.
   Les racines : la barre et leur hauteur utile. Le fond de la pile de navigation,
-  passé au jaune de marque au lot 4, ne se voit donc sur aucun de ces écrans.
+  passé au jaune de marque au lot 4, ne se voit donc sur aucun de ces écrans. Le
+  fond natif de la racine (`backgroundColor` de `app.json`), lui, est le même des
+  deux côtés, sur les mêmes builds : cette comparaison ne le mesure pas. Il ne se
+  montre que là où aucun écran ne peint, et les parcours n'en ont rien montré.
 - **La barre** : les cinq racines et leurs libellés aux trois appareils ;
   « Notifications, 7 nouvelles, onglet 4 sur 5 » et sa pastille ; quatre onglets,
   « sur 4 », Notifs coupé sur la pile locale ; le retour d'Android vers Compose,
