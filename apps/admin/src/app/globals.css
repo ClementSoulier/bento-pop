@@ -237,3 +237,80 @@ a {
     color: #2d9d6f;
   }
 }
+
+/* ---------- Contenu de l'éditeur d'articles (Tiptap) ----------
+   Proche du rendu de la landing, sans en copier la charte : le reset global
+   ci-dessus efface marges, puces et tailles, on les remet pour l'édition. */
+.blog-prose {
+  font-size: 16px;
+  line-height: 1.65;
+  color: #1a1a1a;
+}
+.blog-prose > * + * {
+  margin-top: 0.9em;
+}
+.blog-prose h2 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 1.4em;
+}
+.blog-prose h3 {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 1.2em;
+}
+.blog-prose ul,
+.blog-prose ol {
+  padding-left: 1.5em;
+}
+.blog-prose ul {
+  list-style: disc;
+}
+.blog-prose ol {
+  list-style: decimal;
+}
+.blog-prose li + li {
+  margin-top: 0.25em;
+}
+.blog-prose blockquote {
+  border-left: 4px solid var(--bento-yellow);
+  padding-left: 1em;
+  font-style: italic;
+  color: #4a4a4a;
+}
+.blog-prose a {
+  color: var(--bento-red);
+  text-decoration: underline;
+}
+.blog-prose hr {
+  border: none;
+  border-top: 2px dashed #d4d0c4;
+  margin: 1.6em 0;
+}
+.blog-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+.blog-prose img.ProseMirror-selectednode,
+.blog-prose div[data-youtube-video].ProseMirror-selectednode {
+  outline: 3px solid var(--bento-yellow);
+  outline-offset: 2px;
+}
+.blog-prose div[data-youtube-video] iframe {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border-radius: 10px;
+}
+.blog-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: #a39f94;
+}

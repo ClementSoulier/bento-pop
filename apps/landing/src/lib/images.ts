@@ -63,7 +63,10 @@ export function isOptimizableImage(src: string): boolean {
   // et fichiers de `public/` : pas de remotePattern nécessaire.
   if (src.startsWith('/')) return true;
   try {
-    return OPTIMIZABLE_HOSTS.has(new URL(src).hostname);
+    const url = new URL(src);
+    // `remotePatterns` n'accepte que le https : une adresse http d'un hôte connu ferait
+    // lever `next/image` et tomber toute la page. Elle passe donc par le `<img>` brut.
+    return url.protocol === 'https:' && OPTIMIZABLE_HOSTS.has(url.hostname);
   } catch {
     return false;
   }

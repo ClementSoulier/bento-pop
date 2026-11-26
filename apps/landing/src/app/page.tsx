@@ -2,6 +2,7 @@ import { Nav } from '@/sections/Nav/Nav';
 import { Hero } from '@/sections/Hero/Hero';
 import { Invites } from '@/sections/Invites/Invites';
 import { Agenda } from '@/sections/Agenda/Agenda';
+import { LatestPosts } from '@/sections/Blog/LatestPosts';
 import { Thermometre } from '@/sections/Thermometre/Thermometre';
 import { Univers } from '@/sections/Univers/Univers';
 import { Debriefs } from '@/sections/Debriefs/Debriefs';
@@ -28,6 +29,7 @@ export default function Page() {
         <Hero />
         <Invites />
         <Agenda />
+        <LatestPosts />
         <Thermometre />
         <Univers />
         <Debriefs />
