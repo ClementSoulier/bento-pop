@@ -44,6 +44,13 @@ export const PollIcon = (p: SVGProps<SVGSVGElement>) => (
   </Svg>
 );
 
+export const MailIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Svg {...p}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3 7 9 6 9-6" />
+  </Svg>
+);
+
 export const LinkIcon = (p: SVGProps<SVGSVGElement>) => (
   <Svg {...p}>
     <path d="M10 13a5 5 0 0 1 0-7l3-3a5 5 0 0 1 7 7l-1.5 1.5" />
