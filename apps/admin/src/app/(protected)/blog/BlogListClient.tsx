@@ -122,7 +122,7 @@ export function BlogListClient({
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {p.authors.length === 0 ? (
-                        <span className="text-[11px] text-admin-muted">Aucun</span>
+                        <span className="text-[11px] text-admin-muted">Bento Pop</span>
                       ) : (
                         p.authors.map((name, i) => (
                           <span

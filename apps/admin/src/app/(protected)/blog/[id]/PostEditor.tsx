@@ -15,6 +15,7 @@ import type { TeamMemberOption } from '@/components/episodes/HostsField';
 import { SlugField } from '@/components/episodes/SlugField';
 import { EMPTY_DOC, type BlogDoc } from '@/lib/blog/document';
 import { BLOG_BUCKET } from '@/lib/blog/image-upload';
+import type { PollSnapshot } from '@/lib/blog/poll';
 import { blogPostSchema, type BlogPostPayload, type RelatedEpisodeRef } from '@/lib/blog/schemas';
 import { POST_STATE_LABELS, postState } from '@/lib/blog/status';
 import { datetimeLocalToIso, isoToDatetimeLocal } from '@/lib/episodes/format';
@@ -44,12 +45,13 @@ type Props = {
   team: TeamMemberOption[];
   categories: Array<{ id: string; name: string }>;
   episodes: EpisodeOption[];
+  polls: PollSnapshot[];
   landingUrl: string | null;
 };
 
 type FormValues = BlogPostPayload;
 
-export function PostEditor({ post, team, categories, episodes, landingUrl }: Props) {
+export function PostEditor({ post, team, categories, episodes, polls, landingUrl }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -231,6 +233,7 @@ export function PostEditor({ post, team, categories, episodes, landingUrl }: Pro
 
         <RichTextEditor
           initialContent={post?.content ?? EMPTY_DOC}
+          polls={polls}
           onChange={(doc) => {
             contentRef.current = doc;
             setContentDirty(true);

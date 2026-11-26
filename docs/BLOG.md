@@ -16,7 +16,7 @@ Le blog suit le modèle déjà en place pour les émissions et les podcasts : de
 | D2 | La landing **rend le JSON avec ses propres composants React**, sans `dangerouslySetInnerHTML` ni dépendance Tiptap. Un nœud ou une marque inconnus sont ignorés ; un lien n'est rendu que s'il pointe en `http(s)`, `mailto` ou en relatif. |
 | D3 | Contenus autorisés : paragraphes, titres H2 et H3, gras, italique, souligné, barré, liens, listes à puces et numérotées, citations, séparateurs, images (texte alternatif et légende), vidéos YouTube. Pas de bloc de code, pas de tableau, pas de H1 (le titre de l'article l'occupe). Le serveur de l'admin refuse un document qui sort de cette liste. |
 | D4 | **Catégories gérées au BO** : une catégorie par article (facultative), table `landing_blog_categories`, page `/blog/categorie/[slug]`. Une catégorie sans article publié n'apparaît ni dans les filtres ni au sitemap. |
-| D5 | **Auteurs pris dans la Team** (`landing_team`), un ou plusieurs par article, comme les animateurs des épisodes (table de liaison `landing_blog_post_authors`). |
+| D5 | **Auteurs pris dans la Team** (`landing_team`), un ou plusieurs par article, comme les animateurs des épisodes (table de liaison `landing_blog_post_authors`). Facultatifs depuis le 26/11 (D18) : sans auteur, l'article est signé « Bento Pop ». |
 | D6 | **Statuts** brouillon et publié, plus la **publication programmée** des épisodes : un article publié dont la date est future reste invisible jusqu'à cette date. |
 | D7 | **Épisodes liés** : un article peut citer des émissions et des podcasts, affichés en cartes en bas d'article. Une seule table `landing_blog_post_episodes` à deux clés étrangères, dont exactement une est remplie. Un épisode supprimé disparaît de l'article (cascade). |
 | D8 | **Images** dans un bucket public `blog-media` : couverture recadrée en 16:9 (WebP, 1600 px) et images d'article redimensionnées à 1600 px de large au plus, avec leurs dimensions mémorisées dans le document. La landing les sert par `next/image` (egress, cf. `SmartImage`). |
@@ -26,6 +26,11 @@ Le blog suit le modèle déjà en place pour les émissions et les podcasts : de
 | D12 | **Aperçu d'un brouillon** : le BO fabrique un lien signé (HMAC sur `REVALIDATE_TOKEN`, déjà partagé par les deux apps, valable 24 h) vers `/blog/apercu/[id]` sur la landing, qui lit l'article par la clé de service et le sert en `noindex`. Aucune nouvelle variable d'environnement. |
 | D13 | Le temps de lecture et le nombre de mots sont **calculés par l'admin à l'enregistrement** et stockés, pour que les listes n'aient pas à charger le contenu. |
 | D14 | Changer le slug d'un article purge l'ancienne et la nouvelle adresse. L'ancienne répond ensuite 404 (pas de redirection en V1). |
+| D15 | **Résultats du Thermomètre** (arbitré le 26/11/2026) : quand un sondage se clôt, ses résultats sont publiés sur le blog **tout seuls**, sans relecture. Seulement pour les sondages clos à partir de la mise en ligne : rien de rétroactif. |
+| D16 | Un sondage se clôt de deux façons dans le BO : « Archiver », ou « Publier » un autre sondage, qui retire le statut « en cours » au précédent. Les deux publient l'article. Rien n'est publié pour un sondage **sans vote**, ni deux fois pour le même sondage (le bloc garde l'identifiant de la semaine). Un échec de publication ne défait pas la clôture : le BO l'affiche. |
+| D17 | **Bloc « Sondage » figé** : question, options et votes copiés dans les attributs du bloc au moment de la clôture. Ils ne bougent plus, même si des votes arrivent encore (l'enregistrement d'un vote ne vérifie pas que le sondage est en cours) ou si le sondage est supprimé (ses votes partent en cascade). Le bouton « Sondage » de l'éditeur insère aussi ce bloc dans n'importe quel article, avec les chiffres lus à l'ouverture de la page. Pourcentages entiers arrondis pour totaliser 100. |
+| D18 | L'article de résultats est signé « Bento Pop » (aucun auteur), titré « Résultats du Thermomètre : <question> », rangé dans la catégorie **Le Thermomètre** (`/blog/categorie/thermometre`, créée à la première clôture), et renvoie vers la nouvelle question sur la home. La team peut le retoucher ensuite dans le BO. |
+| D19 | Côté site, un sondage archivé n'était visible nulle part : la home ne charge que le sondage en cours. Les articles de résultats sont désormais sa seule trace publique. |
 
 ## 3. Données
 
@@ -75,3 +80,12 @@ Défauts trouvés et corrigés pendant la recette :
 6. Préexistant : l'intro d'un `SectionHead` aligné à gauche restait centrée (`mx-auto` l'emportait sur `mx-0`), aussi sur `/emissions` et `/podcasts`.
 
 Non vérifié : l'envoi d'une image choisie dans le sélecteur de fichiers (le panneau de test ne sait pas choisir un fichier). Le redimensionnement dans le navigateur reste à essayer à la main ; la règle de Storage qu'il utilise est, elle, vérifiée.
+
+## 8. Recette des résultats du Thermomètre (26/11/2026)
+
+Même montage qu'au §7 (Supabase local, vraie session admin, BO et landing en local). Deux sondages de test : S47 en cours avec 47 votes (30, 12, 5), S48 sans vote.
+
+- « Publier » S48 clôt S47 et publie aussitôt « Résultats du Thermomètre : Le meilleur Zelda de tous les temps ? » : catégorie Le Thermomètre créée, aucun auteur, chapô « Vous avez été 47 personnes à répondre. « Breath of the Wild » l’emporte avec 64 % des votes. », instantané des votes dans le bloc.
+- Landing : bloc rendu aux couleurs du Thermomètre (64, 25 et 11 %, gagnant en rouge, date d'arrêt), signature « Par Bento Pop », lien vers la nouvelle question.
+- « Archiver » S48 (zéro vote) : aucun article. S47 rouvert puis archivé de nouveau : aucun doublon.
+- Bouton « Sondage » de l'éditeur : résultats de S47 insérés dans un article écrit à la main, enregistré sans auteur, accepté par le serveur ; l'article automatique se rouvre dans l'éditeur avec son bloc.

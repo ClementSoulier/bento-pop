@@ -52,13 +52,8 @@ export const blogPostSchema = z.object({
   author_ids: z.array(z.string().uuid()).max(6, '6 auteurs au plus'),
   related: z.array(relatedEpisodeSchema).max(12, '12 épisodes liés au plus'),
 }).superRefine((data, ctx) => {
-  if (data.status === 'published' && data.author_ids.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['author_ids'],
-      message: 'Choisis au moins un auteur avant de publier.',
-    });
-  }
+  /* Pas d'auteur obligatoire : un article sans auteur est signé « Bento Pop », comme
+     les résultats du Thermomètre publiés seuls (docs/BLOG.md D5, D18). */
   if (data.cover_url && !data.cover_alt) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
