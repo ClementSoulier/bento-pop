@@ -430,21 +430,85 @@ Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément
   (mobile 1 182, landing 202, back-office 251), builds 3 sur 3, e2e 65 sur 65. Dix tests de moins au
   mobile qu'au lot 1 : ceux de `compose-layout`, retirés avec lui, moins ceux des nouvelles règles.
 
+### 13.3 Lot 3 · fait le 26 novembre 2026
+
+- **La recherche refaite** (`app/search-modal.tsx`), sa logique intacte (D16) : la route passe en
+  `transparentModal`, sans animation ni geste du système, et rend le `Sheet` du design en hauteur `full`
+  sur le composer, qu'on voit sous le voile (D9). `Sheet` apprend `inScreen` : posé dans sa route, sans
+  `Modal` de plus, aux marges du téléphone, le clavier compris, et le retour d'Android passe par lui ;
+  `onHidden` laisse la route partir une fois la feuille sortie. La croix, le voile, la poignée tirée et le
+  retour d'Android la font redescendre ; une traction de 30 points la laisse en place.
+- **Les composants** dans `src/design/bento/` : `ItemCard`, `ItemGrid`, `ItemGridSkeleton` et `ProposeRow`,
+  aux mesures de `bundle.css`, leurs règles pures et testées (`item-grid-rules.ts`), au catalogue. Le titre
+  d'un item prend `footnote` en 600, le plus proche du 14 sur 18 du dossier (D17 du 30), à la hauteur de
+  ligne de la maquette.
+- **Contre les maquettes**, à l'iPhone 17 Pro, sur la pile locale : `c02`, `c03`, `c04` et `c10` tombent sur
+  leur PNG à un demi-point près, mesurés au pixel : le haut de la feuille à 72, la puce de 101 à 123, le
+  champ de 165 à 210,5, le libellé à 231, les rangées d'affiches à 259, 488 et 717, la grille jusqu'à 840 ;
+  sur `c04`, Popy de 235 à 298,5, « Aucun résultat trouvé » à 96 du bord, la ligne « Ajouter » à 315. Les
+  écarts qui restent sont des données et la police du système : de vraies affiches, « Vider » sur une case
+  remplie (le titre de `c10` passe alors sur deux lignes), la ligne « Ajouter » haute de 66,7 points contre
+  65,5.
+- **Remplacer ou vider une case expliquée** (D11) : `Dialog`, Popy « gene », « Remplacer « Hans Zimmer » ? »,
+  « Son pourquoi sera effacé. », « Remplacer » en `danger`, « Annuler » ; le retour d'avertissement à son
+  ouverture. Éprouvé sur un pourquoi posé en base locale : « Annuler » garde la feuille, « Remplacer » pose
+  la case et efface le pourquoi en base. Le lecteur d'écran ne lit plus que la question.
+- **Les parcours**, en vrai sur la pile locale : choisir, et « Annuler » du toast qui rend l'item d'avant ;
+  vider, et son annulation ; proposer un lieu absent, qui part en attente, sablier sur la case ; choisir
+  sans compte, au brouillon de l'appareil, d'une installation neuve à l'iPhone SE et au Pixel 8 ; la
+  recherche ouverte par un lien profond, le chemin des notifications. Le toast, filmé : de 1,5 à 6 secondes
+  après le choix, à la racine, au-dessus de la barre.
+- **La feuille ne change pas en descendant** : choisir, proposer ou vider modifie la case puis ferme la
+  feuille ; elle se redessinait pendant sa sortie, « Vider » apparu et ses propositions rechargées. Ce
+  qu'elle montre se fige à la fermeture, filmé à mi-course au SE ; le clavier se range avec elle. La route
+  part une seule fois : un retour d'Android pendant la sortie ne fait plus rien, là où il aurait retiré la
+  route avant que la feuille ne la fasse reculer une seconde fois (deux retours rapides au Pixel 8 laissent
+  le composer) ; et si la sortie n'aboutissait pas, la route part d'elle-même au bout d'une seconde, plutôt
+  que de rester, transparente, sur le composer.
+- **Le clavier**, mesuré : à l'iPhone 17 Pro, la grille à 259, le clavier à 539,7, une rangée entière et le
+  haut de la suivante ; à l'iPhone SE, la grille à 217, le clavier à 408 : les affiches et la première
+  ligne de leur titre tiennent, **l'année passe sous le clavier, de 8,5 points**, et se lit en défilant ou
+  clavier baissé. Une limite de la feuille du design, gardée par un test, comme l'était la rangée du
+  chantier 3. Au Pixel 8, le clavier réduit la feuille sans double décalage ; le premier retour le baisse,
+  le second ferme.
+- **Un défaut trouvé et corrigé, aux grands textes** : au-delà de 200 % à l'iPhone SE et à 2,0 au Pixel 8,
+  « Interstell / ar », « Inceptio / n » et « Deadpo / ol » se coupaient au milieu dans leur colonne de 105.
+  Le titre d'un item rapetisse désormais juste assez pour que son plus long mot tienne, mesuré dans une
+  copie invisible, comme `Display` (D24 du 30). À 135 %, rien ne se coupe ; à 100 %, rien ne bouge, les
+  bords remesurés.
+- **Les états** : le squelette d'une rangée au catalogue, la vraie lecture allant trop vite en local ;
+  « Erreur réseau », son icône et sa phrase, sans proposition d'ajout, l'API locale coupée.
+- **Les lecteurs d'écran** : VoiceOver ne voit que la feuille, le composer dessous hors de portée ; « Case
+  Artiste » en en-tête sur le bento principal, « Case film » puis la question sur une édition, « Choisir
+  Inception, 2010 », « Proposer Tour Eiffel au catalogue ». TalkBack, à la tabulation, reste dans la feuille.
+- **Les retours haptiques** passent à ceux du design (D18) : `selectionFeedback` au toucher d'un item,
+  `successFeedback` à la case enregistrée, comme avant, `errorFeedback` à l'échec ; `slotFilledFeedback`
+  sort avec son dernier emploi.
+- **Retirés** (D17) : `ItemTile`, `SuggestionSkeleton`, les mesures de l'ancienne grille et leurs tests ;
+  `search/layout.ts` ne garde que la loupe de « Trouver », refaite au 33, et le texte d'exemple du champ.
+  La recherche n'emploie plus ni Bungee, ni Extenda, ni `SHADOWS`.
+- **Pas éprouvé à ce lot** : la recherche ouverte par une vraie notification (le lien profond seulement),
+  le retour haptique ressenti (part du 29), les autres écrans au pixel (lot 6). Avec un clavier physique
+  branché à Android, quand un item a le focus du clavier, il faut deux retours pour fermer : relevé, laissé.
+- **La CI rejouée en local** sur l'arbre du lot 3, sans cache : verte, lint et typage 8 sur 8, tests
+  (mobile 1 181, landing 202, back-office 251), builds 3 sur 3, e2e 65 sur 65. Un test de moins au mobile
+  qu'au lot 2 : les sept de l'ancienne grille, retirés avec elle, moins les six des nouvelles règles.
+
 ## 14. Definition of Done
 
 | # | Point | État |
 | --- | --- | --- |
-| 1 | `c01` à `c10`, `u01`, `u05`, `u07` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE | 🟡 lot 2 : `c01`, `c06`, `c07`, `c08`, `c09`, `u05` ; restent `c02` à `c05`, `c10`, `u01`, `u07` |
+| 1 | `c01` à `c10`, `u01`, `u05`, `u07` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE | 🟡 lot 2 : `c01`, `c06`, `c07`, `c08`, `c09`, `u05` ; lot 3 : `c02`, `c03`, `c04`, `c10` ; restent `c05`, `u01`, `u07` |
 | 2 | Les feuilles de `u02` et `u03` identiques aux leurs, sur le profil d'aujourd'hui ; `m01` entière | 🟡 lot 2 : `m01`, avec l'écart voulu de D8 ; `u02` et `u03` au lot 4 |
 | 3 | Chaque case prend la couleur et la puce de sa catégorie, par clé ou par type ; de 2 à 6 cases ; la question sur une case d'édition remplie | ✅ lot 1 au catalogue, lot 2 sur de vrais écrans et de vraies éditions |
 | 4 | Rien ne se chevauche dans une case ; le crédit photo toujours là | ✅ lot 1 au catalogue, lot 2 sur de vraies affiches, grands textes compris |
-| 5 | Le parcours de bout en bout, compte neuf, second bento et édition, inchangé dans sa logique | 🟡 lot 2 : de l'installation neuve au bento complet, éditions créées et remplies ; la publication et le compte aux lots 3 et 4 |
+| 5 | Le parcours de bout en bout, compte neuf, second bento et édition, inchangé dans sa logique | 🟡 lot 2 : de l'installation neuve au bento complet, éditions créées et remplies ; lot 3 : choisir, remplacer une case expliquée, vider, annuler, proposer, sans compte et avec ; la publication et le compte au lot 4 |
 | 6 | Les quatre demandes en `AskSheet`, une à la fois, dans l'ordre ; plus aucun `Alert.alert` dans les écrans du 32 | ⬜ |
 | 7 | Une célébration par événement, aucune de trop ; le mouvement réduit respecté | 🟡 lot 2 : le bento complet, filmé ; la publication au lot 4 |
 | 8 | L'image partagée capturée pour de bon, ses zones sûres mesurées, une édition et un long pseudo compris | ⬜ |
-| 9 | Les lecteurs d'écran en français, les cases annoncées en entier | 🟡 lot 2 : le composer, à l'arbre, aux deux plateformes |
+| 9 | Les lecteurs d'écran en français, les cases annoncées en entier | 🟡 lot 2 : le composer, à l'arbre, aux deux plateformes ; lot 3 : la recherche, VoiceOver à l'arbre, TalkBack à la tabulation, qui restent dans la feuille |
 | 10 | Les autres écrans inchangés au pixel | 🟡 lot 2 : `p03`, le plateau, les boutons, la maintenance ; le reste au lot 6 |
-| 11 | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortis des fichiers du 32 ; `ProgressBar`, `ItemTile`, `ShareImage`, `account/keep-offer` retirés | 🟡 lot 2 : le composer sorti, `ProgressBar` et `compose-layout.ts` retirés |
+| 11 | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortis des fichiers du 32 ; `ProgressBar`, `ItemTile`, `ShareImage`, `account/keep-offer` retirés | 🟡 lot 2 : le composer sorti, `ProgressBar` et `compose-layout.ts` retirés ; lot 3 : la recherche sortie, `ItemTile` et `SuggestionSkeleton` retirés |
 | 12 | Les tests de règles verts, la CI rejouée en local, verte | 🟡 verte à chaque lot, à rejouer au dernier |
 
 ## 15. Décisions

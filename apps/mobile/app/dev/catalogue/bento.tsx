@@ -6,7 +6,10 @@ import {
   BentoSkeleton,
   BentoTile,
   Button,
+  ItemGrid,
+  ItemGridSkeleton,
   Progress,
+  ProposeRow,
   StatusPill,
   Tag,
   Text,
@@ -15,6 +18,7 @@ import {
   useTheme,
   type BentoSlot,
   type BentoTileItem,
+  type ItemGridEntry,
 } from '@/design';
 
 /** Une image du bundle, le temps du catalogue : la Popy « content » en guise d'affiche. */
@@ -97,6 +101,23 @@ const TOUGH: BentoTileItem[] = [
   { title: 'HugoDécrypte (média)' },
   { title: 'Megalovania X Megalovania' },
   { title: '浦沢直樹' },
+];
+
+/** Les résultats d'une case : des affiches, des titres longs, sans image ni sous-titre. */
+const RESULTS: ItemGridEntry[] = [
+  { id: 'fight', title: 'Fight Club', subtitle: '1999', imageUrl: IMAGE },
+  { id: 'graal', title: 'Sacré Graal', subtitle: '1975' },
+  { id: 'inception', title: 'Inception', subtitle: '2010', imageUrl: IMAGE },
+  {
+    id: 'anneaux',
+    title: 'Le Seigneur des Anneaux : La Communauté de l’anneau',
+    subtitle: '2001',
+  },
+  { id: 'loups', title: 'Danse avec les loups', subtitle: '1990', imageUrl: IMAGE },
+  { id: 'kimi', title: 'Kimi no na wa', subtitle: '2016' },
+  { id: 'ponyo', title: 'Ponyo', subtitle: '2008' },
+  { id: 'deadpool', title: 'Deadpool et Wolverine' },
+  { id: 'enfer', title: 'Entre le ciel et l’enfer', subtitle: '1963' },
 ];
 
 /** La largeur de l'image partagée, et l'échelle qui la fait tenir dans la page. */
@@ -265,6 +286,48 @@ export default function BentoCatalogue() {
             <BentoTile category="place" size="s" item={{ ...ITEMS.pontNeuf!, pending: true }} />
           </View>
         </View>
+      </Specimen>
+      <Specimen name="ItemGrid">
+        <Plate>
+          <View style={{ gap: 16 }}>
+            <Text variant="eyebrow" color="text-secondary">
+              Au menu
+            </Text>
+            <ItemGrid items={RESULTS} category="film" onItemPress={() => {}} />
+          </View>
+        </Plate>
+      </Specimen>
+      <Specimen name="ItemGrid, un résultat">
+        <Plate>
+          <View style={{ gap: 16 }}>
+            <Text variant="eyebrow" color="text-secondary">
+              1 résultat
+            </Text>
+            <ItemGrid
+              items={[{ id: 'who', title: 'Doctor Who', subtitle: '2005' }]}
+              category="series"
+              onItemPress={() => {}}
+            />
+            <ProposeRow query="Doctor" onPress={() => {}} />
+          </View>
+        </Plate>
+      </Specimen>
+      <Specimen name="ItemGrid, chargement">
+        <Plate>
+          <ItemGridSkeleton />
+        </Plate>
+      </Specimen>
+      <Specimen name="ProposeRow">
+        <Plate>
+          <View style={{ gap: 12 }}>
+            <ProposeRow query="Le Pont Neuf" onPress={() => {}} />
+            <ProposeRow
+              query="Le Seigneur des Anneaux : La Communauté de l’anneau"
+              onPress={() => {}}
+            />
+            <ProposeRow query="Doctor" busy onPress={() => {}} />
+          </View>
+        </Plate>
       </Specimen>
     </CataloguePage>
   );

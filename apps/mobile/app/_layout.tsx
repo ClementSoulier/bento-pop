@@ -155,12 +155,17 @@ export default function RootLayout() {
                 contentStyle: { backgroundColor: THEMES.light.colors['bg-brand'] },
               }}
             >
+              {/* Chantier 32 (D9) : une route qui n'est qu'une feuille du design,
+                  posée sur le composer, qu'on voit dessous. La feuille joue
+                  elle-même son entrée et sa sortie : la route arrive et part
+                  sans animation, et sans geste du système. */}
               <Stack.Screen
                 name="search-modal"
                 options={{
-                  presentation: 'modal',
-                  animation: 'slide_from_bottom',
-                  contentStyle: { backgroundColor: '#fbf3de' },
+                  presentation: 'transparentModal',
+                  animation: 'none',
+                  gestureEnabled: false,
+                  contentStyle: { backgroundColor: 'transparent' },
                 }}
               />
               {/* Chantier 22 : les commentaires d'un bento, et « Signaler ». */}

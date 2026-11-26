@@ -1,49 +1,36 @@
-import { useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  PixelRatio,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, ScrollView, View, type TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { busyA11y } from '@/lib/a11y-states';
+import { CATEGORY_META } from '@bento-pop/supabase-mobile/bento';
+import {
+  Dialog,
+  Icon,
+  ItemGrid,
+  ItemGridSkeleton,
+  Popy,
+  ProposeRow,
+  SearchField,
+  Sheet,
+  Tag,
+  Text,
+  caseCategory,
+  type ItemGridEntry,
+} from '@/design';
 import { cleanTitle } from '@/lib/text';
 import { hasExactTitle } from '@/lib/exact-title';
 import { userErrorMessage } from '@/lib/user-error-message';
-import {
-  CONTENT_MAX_FONT_MULTIPLIER,
-  CONTROL_MAX_FONT_MULTIPLIER,
-  TITLE_MAX_FONT_MULTIPLIER,
-  scaledType,
-} from '@/components/bento/font-scaling';
-import { SearchIcon } from '@/components/TabIcons';
 import { ToastHost } from '@/components/ToastHost';
 import { useOfflineInset } from '@/lib/use-offline-inset';
 import { paletteKeyForItem } from '@/components/bento/palettes';
-import { INK_MUTED, INK_PLACEHOLDER, useToast } from '@/components/primitives';
-import { SHADOWS } from '@/components/primitives/shadow';
-import {
-  ItemTile,
-  SEARCH_ICON_BOX,
-  SuggestionSkeleton,
-  searchPlaceholder,
-  searchTileWidth,
-} from '@/components/search';
+import { useToast } from '@/components/primitives';
+import { searchPlaceholder } from '@/components/search';
 import {
   SUGGESTIONS_COUNT,
   loadSuggestions,
   suggestionAccessibilityLabel,
 } from '@/lib/suggestions';
-import { failureFeedback, slotFilledFeedback, tapFeedback } from '@/lib/haptics';
+import { errorFeedback, selectionFeedback, successFeedback, warningFeedback } from '@/lib/haptics';
 import { supabase } from '@/supabase/client';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { CategoryKey } from '@/supabase/types';
@@ -54,18 +41,22 @@ import { useSession } from '@/state/session';
 import { fillsBento } from '@/lib/compose-slots';
 import { searchItems, submitItem, type ItemSearchResult } from '@/lib/items';
 import { offerPushAfterProposal } from '@/lib/push-runtime';
-import {
-  clearBentoSlot,
-  editableBentoId,
-  setBentoSlot,
-} from '@/lib/bento-actions';
+import { clearBentoSlot, editableBentoId, setBentoSlot } from '@/lib/bento-actions';
 
 /**
- * Modal de recherche d'un item pour une catégorie donnée.
+ * La recherche d'un item pour une case (chantier 32, lot 3 : `c02`, `c03`,
+ * `c04`, `c10`).
  *
  * La recherche tape le catalogue maison (table `items` filtrée
  * `status='validated'`). Si l'utilisateur ne trouve pas, il peut soumettre
  * un item, qui part en `pending` et attend la modération côté admin.
+ *
+ * **Une route qui n'est qu'une feuille** (D9 du 32) : en `transparentModal`,
+ * elle rend le `Sheet` du design, `full`, sur le composer qu'on voit dessous,
+ * le même dessin aux deux plateformes. Les liens profonds, les notifications et
+ * le retour au composer, qui relit le bento, ne changent pas. La feuille monte
+ * à l'ouverture ; la croix, la poignée tirée, le voile et le retour d'Android la
+ * font redescendre, et la route part une fois la feuille sortie.
  *
  * **L'écran ne s'ouvre plus sur du vide.** Il montre d'abord un échantillon
  * du catalogue, le bloc « Au menu », parce qu'au moment de remplir une case
@@ -107,14 +98,11 @@ function reportWriteFailure(what: string, error: unknown) {
   console.warn(`[search-modal] ${what}`, error);
 }
 
-/** Ce dont l'écran a besoin pour afficher une tuile et remplir une case. */
-type ChosenItem = Pick<
-  ItemSearchResult,
-  'id' | 'title' | 'subtitle' | 'imageUrl' | 'imageCredit'
->;
+/** Ce dont l'écran a besoin pour afficher un item et remplir une case. */
+type ChosenItem = Pick<ItemSearchResult, 'id' | 'title' | 'subtitle' | 'imageUrl' | 'imageCredit'>;
 
-/** Une tuile prête à rendre : les données plus son libellé VoiceOver. */
-type DisplayedItem = ChosenItem & { a11y: string };
+/** Un item prêt à rendre : les données plus son libellé VoiceOver. */
+type DisplayedItem = ChosenItem & ItemGridEntry;
 
 /**
  * État d'une case avant modification. `null` veut dire « la case était
@@ -122,6 +110,9 @@ type DisplayedItem = ChosenItem & { a11y: string };
  * d'une case vide doit la revider.
  */
 type SlotSnapshot = ReturnType<typeof useBento.getState>['slots'][CategoryKey] | null;
+
+/** La question posée avant d'effacer un pourquoi (chantier 12, D7 ; D11 du 32). */
+type WhyLossAsk = { verb: 'replace' | 'clear'; title: string };
 
 export default function SearchModal() {
   const params = useLocalSearchParams<{ category?: string }>();
@@ -140,27 +131,65 @@ export default function SearchModal() {
   // d'édition porte une question : l'article ne s'accorde que sur les
   // premières.
   const estBentoPrincipal = MAIN_CASE_SET.some((c) => c.key === category);
-  const meta = { label: caseMeta?.prompt ?? '', stamp: caseMeta?.stamp ?? '', gender: caseMeta?.gender ?? 'm' };
+  const meta = {
+    label: caseMeta?.prompt ?? '',
+    stamp: caseMeta?.stamp ?? '',
+    gender: caseMeta?.gender ?? 'm',
+  };
+  // La catégorie de la case (D5) : la couleur de sa puce et des affiches absentes.
+  const tint = caseMeta ? caseCategory(caseMeta) : null;
 
   const [query, setQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  /**
+   * La feuille : montée à l'ouverture, elle redescend avant que la route parte,
+   * et le clavier avec elle, plutôt que de rester levé jusqu'au départ de la route.
+   */
+  const [open, setOpen] = useState(true);
+  const close = () => {
+    inputRef.current?.blur();
+    setOpen(false);
+  };
+  /**
+   * La route part une fois, et seulement si elle est encore là : un départ de
+   * trop ferait reculer la navigation sous le composer. Si la sortie de la
+   * feuille n'aboutissait pas, la route transparente resterait posée sur le
+   * composer et prendrait ses touchers : elle part d'elle-même au bout d'une
+   * seconde, la sortie en durant 320 ms.
+   */
+  const left = useRef(false);
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
+  const leave = () => {
+    if (left.current || !alive.current) return;
+    left.current = true;
+    router.back();
+  };
+  useEffect(() => {
+    if (open) return;
+    const fallback = setTimeout(leave, 1000);
+    return () => clearTimeout(fallback);
+    // `leave` ne lit que des refs : seule la fermeture compte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   /**
    * Verrou du tap unique. Une ref et non un état : il doit être lu et posé
    * dans le même tour de boucle que le tap, avant tout rendu.
    */
   const choosingRef = useRef(false);
 
-  const { width: windowWidth, fontScale } = useWindowDimensions();
-  // Sur iOS, la modale est une feuille native posée au-dessus de la vue racine :
-  // le bandeau hors ligne n'y est pas visible, donc il n'y a rien à réserver.
-  // Sur Android, c'est un écran de la pile comme un autre.
+  // Sur iOS, la route est une présentation native posée au-dessus de la vue
+  // racine : le bandeau hors ligne n'y est pas visible, donc il n'y a rien à
+  // réserver. Sur Android, il passe au-dessus de la route : la feuille descend
+  // de sa hauteur.
   const bannerInset = useOfflineInset();
   const offlineInset = Platform.OS === 'android' ? bannerInset : 0;
-  const tileWidth = searchTileWidth(windowWidth);
-  // Constant sur la durée de vie de l'écran : la densité d'un écran ne change
-  // pas. Mémorisé pour ne pas rappeler le pont natif à chaque tuile rendue.
-  const pixelRatio = useMemo(() => PixelRatio.get(), []);
-  const inputRef = useRef<TextInput>(null);
 
   const userId = useSession((s) => s.user?.id);
   const setSlot = useBento((s) => s.setSlot);
@@ -168,6 +197,15 @@ export default function SearchModal() {
   const beginWrite = useBento((s) => s.beginWrite);
   const endWrite = useBento((s) => s.endWrite);
   const currentSlot = useBento((s) => s.slots[category]);
+  /**
+   * La case telle que la feuille la montre : figée dès qu'elle se ferme. Choisir,
+   * proposer ou vider change la case puis ferme la feuille dans le même geste ;
+   * sans ça, elle se redessinait en descendant, « Vider » apparu et ses
+   * propositions rechargées.
+   */
+  const shownSlotRef = useRef(currentSlot);
+  if (open) shownSlotRef.current = currentSlot;
+  const shownSlot = shownSlotRef.current;
   const showToast = useToast((s) => s.show);
 
   const debouncedQuery = useDebouncedValue(query.trim(), 300);
@@ -189,7 +227,7 @@ export default function SearchModal() {
     placeholderData: keepPreviousData,
   });
 
-  const currentItemId = currentSlot?.itemId ?? null;
+  const currentItemId = shownSlot?.itemId ?? null;
 
   const { data: suggestions = [], isPending: suggestionsPending } = useQuery({
     // `currentItemId` fait partie de la clé : ouvrir une case remplie et une
@@ -250,7 +288,14 @@ export default function SearchModal() {
    * Chantier 12 (D7) : remplacer ou vider une case expliquée efface son
    * pourquoi, qui expliquait l'autre item. La question d'abord, seulement
    * quand la case en a un ; `true` quand on peut continuer.
+   *
+   * Dans le `Dialog` du design (D11 du 32), le gabarit « Confirmation » du
+   * guide, à la place de l'`Alert` du système : Popy gênée, la question, la
+   * conséquence, l'action destructive puis « Annuler ». Le texte ne change pas.
    */
+  const [whyLoss, setWhyLoss] = useState<WhyLossAsk | null>(null);
+  const [whyLossOpen, setWhyLossOpen] = useState(false);
+  const whyLossAnswer = useRef<((proceed: boolean) => void) | null>(null);
   const confirmWhyLoss = (verb: 'replace' | 'clear'): Promise<boolean> => {
     const bentoId = useBento.getState().current?.id;
     if (!currentSlot?.itemId || !useOwnWhys.getState().has(bentoId, category)) {
@@ -258,20 +303,21 @@ export default function SearchModal() {
     }
     const title = cleanTitle(currentSlot.title, 30);
     return new Promise((resolve) => {
-      Alert.alert(
-        verb === 'replace' ? `Remplacer « ${title} » ?` : `Vider la case « ${title} » ?`,
-        'Son pourquoi sera effacé.',
-        [
-          { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
-          {
-            text: verb === 'replace' ? 'Remplacer' : 'Vider',
-            style: 'destructive',
-            onPress: () => resolve(true),
-          },
-        ],
-        { cancelable: true, onDismiss: () => resolve(false) },
-      );
+      // Le clavier se range : la question prend tout l'écran.
+      inputRef.current?.blur();
+      whyLossAnswer.current = resolve;
+      setWhyLoss({ verb, title });
+      setWhyLossOpen(true);
+      // L'ouverture d'une confirmation destructive, le retour du guide.
+      warningFeedback();
     });
+  };
+  /** Une seule réponse, même si le bouton et le retour arrivent ensemble. */
+  const answerWhyLoss = (proceed: boolean) => {
+    const answer = whyLossAnswer.current;
+    whyLossAnswer.current = null;
+    setWhyLossOpen(false);
+    answer?.(proceed);
   };
 
   /** Ce que la base vient d'effacer, effacé ici aussi. */
@@ -280,13 +326,13 @@ export default function SearchModal() {
   };
 
   /**
-   * Un tap sur une tuile remplit la case et ferme la modale.
+   * Un tap sur un item remplit la case et ferme la feuille.
    *
    * Le double tap d'avant (sélectionner, puis « Choisir X » en bas) coûtait
    * deux taps à tout le monde, soit douze sur un bento complet, pour un
    * geste dont la seule conséquence est réversible.
    *
-   * L'écriture part en arrière-plan et la modale se ferme tout de suite :
+   * L'écriture part en arrière-plan et la feuille se ferme tout de suite :
    * `setSlot` est un store Zustand et `showToast` aussi, donc l'un et
    * l'autre survivent au démontage de cet écran. Si l'écriture échoue, le
    * store revient en arrière et le toast le dit.
@@ -294,7 +340,7 @@ export default function SearchModal() {
    * La clé primaire de `bento_items` étant `(bento_id, category_id)`, une
    * seconde tuile remplacerait simplement la première : il n'y a pas d'état
    * incohérent atteignable. Le verrou `choosingRef` sert seulement à ce
-   * qu'un double tap très rapide, avant que la modale n'ait disparu, ne
+   * qu'un double tap très rapide, avant que la feuille n'ait disparu, ne
    * lance pas deux écritures dont l'ordre d'arrivée n'est pas garanti.
    */
   const onChoose = async (item: ChosenItem) => {
@@ -309,7 +355,7 @@ export default function SearchModal() {
 
     // Au moment du tap, pas à la fin de l'écriture : le retour tactile doit
     // accompagner le geste, pas confirmer un aller-retour réseau.
-    tapFeedback();
+    selectionFeedback();
 
     const previous = currentSlot ?? null;
     const replacing = Boolean(previous?.itemId && previous.itemId !== item.id);
@@ -319,10 +365,10 @@ export default function SearchModal() {
     }
     // À demander avant de poser la case : c'est ce choix qui complète le bento.
     const completes = fillsBento(cases, useBento.getState().slots, category);
-    // Posé avant l'écriture optimiste : le composer reprend le focus dès le
-    // `router.back()` ci-dessous et relit le bento en base, où la nouvelle
-    // case n'existe pas encore. Sans ce verrou, l'hydratation écraserait la
-    // tuile qu'on vient d'afficher. Cf. `state/bento.ts`.
+    // Posé avant l'écriture optimiste : le composer reprend le focus dès que
+    // la route part, et relit le bento en base, où la nouvelle case n'existe
+    // pas encore. Sans ce verrou, l'hydratation écraserait la case qu'on vient
+    // d'afficher. Cf. `state/bento.ts`.
     beginWrite();
     setSlot(category, {
       title: item.title,
@@ -333,7 +379,7 @@ export default function SearchModal() {
       itemId: item.id,
       pending: false,
     });
-    router.back();
+    close();
 
     try {
       // `null` : pas encore de profil, donc rien où écrire côté serveur. La
@@ -344,7 +390,7 @@ export default function SearchModal() {
       if (replacing) forgetWhy(bentoId);
       // La célébration porte son retour de succès : un seul par événement (D13).
       if (completes) useBento.getState().askCelebration();
-      else slotFilledFeedback();
+      else successFeedback();
       showToast(`${meta.label} : ${cleanTitle(item.title, 20)}`, {
         variant: 'success',
         // Les flèches de la maquette `c07` (chantier 31).
@@ -356,7 +402,7 @@ export default function SearchModal() {
       // Retour arrière local : la case affichée doit refléter la base.
       if (previous) setSlot(category, previous);
       else clearSlot(category);
-      failureFeedback();
+      errorFeedback();
       reportWriteFailure('remplissage de case', e);
       showToast("La case n'a pas pu être enregistrée. Réessaie.", {
         variant: 'danger',
@@ -408,7 +454,7 @@ export default function SearchModal() {
         itemId,
         pending: true,
       });
-      router.back();
+      close();
       showToast('Proposition envoyée à la modération', {
         variant: 'neutral',
         durationMs: 4000,
@@ -417,7 +463,7 @@ export default function SearchModal() {
       // sera validé » a un sens. Ne bloque rien, ne lève pas.
       void offerPushAfterProposal(title);
     } catch (e) {
-      reportWriteFailure('soumission d\'item', e);
+      reportWriteFailure("soumission d'item", e);
       showToast("La proposition n'a pas pu être envoyée. Réessaie.", {
         variant: 'danger',
         durationMs: 5000,
@@ -437,7 +483,7 @@ export default function SearchModal() {
       if (bentoId && caseId !== null) await clearBentoSlot(bentoId, caseId);
       forgetWhy(bentoId);
       clearSlot(category);
-      router.back();
+      close();
       showToast('Case vidée', {
         variant: 'neutral',
         durationMs: 5000,
@@ -455,9 +501,9 @@ export default function SearchModal() {
   };
 
   /**
-   * Les deux sources ramenées à une seule liste de tuiles.
+   * Les deux sources ramenées à une seule liste d'items.
    *
-   * Le libellé VoiceOver est calculé ici plutôt que dans `ItemTile` : une
+   * Le libellé VoiceOver est calculé ici plutôt que dans `ItemCard` : une
    * proposition annonce en plus son nombre de choix quand il dépasse 1, un
    * résultat de recherche n'a pas cette information.
    */
@@ -470,7 +516,7 @@ export default function SearchModal() {
             subtitle: s.subtitle,
             imageUrl: s.imageUrl,
             imageCredit: s.imageCredit,
-            a11y: `Choisir ${suggestionAccessibilityLabel(s)}`,
+            accessibilityLabel: `Choisir ${suggestionAccessibilityLabel(s)}`,
           }))
         : results.map((r) => ({
             id: r.id,
@@ -478,10 +524,16 @@ export default function SearchModal() {
             subtitle: r.subtitle,
             imageUrl: r.imageUrl,
             imageCredit: r.imageCredit,
-            a11y: `Choisir ${cleanTitle(r.title)}${r.subtitle ? `, ${r.subtitle}` : ''}`,
+            accessibilityLabel: `Choisir ${cleanTitle(r.title)}${r.subtitle ? `, ${r.subtitle}` : ''}`,
           })),
     [showSuggestions, suggestions, results],
   );
+
+  /**
+   * Aucun résultat pour ce qu'on a tapé (`c04`) : Popy surprise et « Aucun
+   * résultat trouvé » à la place du libellé, la ligne pour proposer dessous.
+   */
+  const noResult = !showSuggestions && !error && !loading && results.length === 0;
 
   /**
    * Libellé au-dessus de la grille.
@@ -499,9 +551,7 @@ export default function SearchModal() {
       ? 'Erreur réseau'
       : loading
         ? 'Recherche…'
-        : results.length > 0
-          ? `${results.length} résultat${results.length > 1 ? 's' : ''}`
-          : 'Aucun résultat trouvé';
+        : `${results.length} résultat${results.length > 1 ? 's' : ''}`;
 
   /**
    * La ligne « Ajouter » n'apparaît que quand la grille correspond
@@ -517,7 +567,7 @@ export default function SearchModal() {
    *   résultat ;
    * - `!error` : quand la recherche est tombée, on ne sait pas si l'item
    *   existe. Proposer de le créer, c'est inviter au doublon précisément
-   *   quand on est le moins capable de le détecter. Le bandeau d'erreur
+   *   quand on est le moins capable de le détecter. Le message d'erreur
    *   suffit à expliquer pourquoi l'écran ne propose rien ;
    * - **et le titre tapé n'est pas déjà dans la grille** (chantier 11) : la
    *   condition ne comparait rien, et « Ajouter « Squeezie » » s'affichait
@@ -528,347 +578,135 @@ export default function SearchModal() {
     debouncedQuery === query.trim() &&
     !loading &&
     !error &&
-    !hasExactTitle(query, results.map((r) => r.title));
+    !hasExactTitle(
+      query,
+      results.map((r) => r.title),
+    );
+
+  // L'en-tête (`c02`, `c10`) : la puce de la case, « Case », ou « Case · Film »
+  // sur une édition, et le titre, la question entière sur une édition. Le
+  // lecteur d'écran garde ce qu'il disait : « Case Artiste » en en-tête sur le
+  // bento principal ; sur une édition, « Case film », puis la question.
+  const typeName = tint ? CATEGORY_META[tint].label : null;
+  const eyebrow = !estBentoPrincipal && typeName ? `Case · ${typeName}` : 'Case';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fbf3de', paddingTop: offlineInset }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Fermer la recherche"
-          // La pastille fait 36 pt : la cible tactile en fait 44.
-          hitSlop={4}
-          style={[styles.closeBtn, SHADOWS.stamp]}
-        >
-          {/* Une croix dans une cible de 36 pt, pas un texte à lire : grossie, elle
-              débordait de son cercle. */}
-          <Text allowFontScaling={false} style={{ fontSize: 18, fontWeight: '800', lineHeight: 18 }}>
-            ×
-          </Text>
-        </Pressable>
-        {/* Le tampon est une abréviation, « CRÉA » : le lecteur d'écran entend
-            l'intitulé entier. Sur une case d'édition, l'intitulé est la
-            question affichée juste en dessous, qui porte le rôle d'en-tête :
-            le tampon ne dit plus que ce qu'on cherche. */}
-        <Text
-          numberOfLines={1}
-          accessibilityRole={estBentoPrincipal ? 'header' : 'text'}
-          accessibilityLabel={
-            estBentoPrincipal ? `Case ${meta.label}` : `Case ${meta.stamp.toLowerCase()}`
-          }
-          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-          style={[styles.headerLabel, { flexShrink: 1 }]}
-        >
-          Case · {meta.stamp}
-        </Text>
-        <View style={{ flex: 1 }} />
-        {/* Remontée du bas de l'écran : c'est une action rare, elle n'a pas
-            à occuper en permanence la zone que le clavier vient recouvrir.
-            `minHeight` à 44 pour une cible tactile réglementaire, contre
-            8 pt de padding vertical dans la version précédente. */}
-        {currentSlot ? (
-          <Pressable
-            onPress={() => void onClear()}
-            disabled={submitting}
-            accessibilityRole="button"
-            accessibilityLabel="Vider cette case"
-            accessibilityState={{ disabled: submitting }}
-            style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }}
-          >
-            <Text
-              numberOfLines={1}
-              maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-              style={styles.clearLabel}
-            >
-              Vider
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
-
-      {/* La question d'une case d'édition, en entier et jamais coupée : c'est
-          elle qu'on remplit. La recette du 16 septembre l'a montré, le titre
-          ne disait que « Case · Film », et sur « Le duel du samedi » les deux
-          cases sont des films. Le tampon reste au-dessus, parce que « Celui
-          qui t'a fait rire » ne dit pas, lui, qu'on cherche un film. */}
-      {!estBentoPrincipal && meta.label ? (
-        // La police système appliquée par l'écran : Android ne plafonne pas la
-        // hauteur de ligne, cf. `fontScaleFor`.
-        <Text
-          accessibilityRole="header"
-          allowFontScaling={false}
-          style={[styles.question, scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 16, 21)]}
-        >
-          {meta.label}
-        </Text>
-      ) : null}
-
-      {/* Search input */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 14 }}>
-        <View style={[styles.searchInput, SHADOWS.stamp]}>
-          {/* L'icône de la barre d'onglets, et non l'emoji 🔍 : même dessin sur les
-              deux plateformes, et rien que VoiceOver lise à voix haute. */}
-          <View
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={SEARCH_ICON_BOX}
-          >
-            <SearchIcon size={18} color={INK_PLACEHOLDER} />
-          </View>
-          <TextInput
-            ref={inputRef}
-            value={query}
-            onChangeText={setQuery}
-            placeholder={searchPlaceholder(meta, estBentoPrincipal)}
-            autoCapitalize="none"
-            autoCorrect={false}
-            // Le clavier est levé d'emblée : six cases à remplir, c'est six
-            // taps économisés. Il reste 229 pt au-dessus du clavier sur un
-            // iPhone SE, mesuré, soit une rangée de tuiles entière.
-            autoFocus
-            returnKeyType="search"
-            accessibilityLabel={searchPlaceholder(meta, estBentoPrincipal)}
-            // La recherche tourne déjà en continu sur le debounce : la touche
-            // entrée ne relance rien, elle replie le clavier pour découvrir
-            // le reste de la grille.
-            onSubmitEditing={() => inputRef.current?.blur()}
-            maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-            style={{ fontSize: 16, fontWeight: '600', flex: 1, paddingVertical: 0 }}
-          />
-          {loading ? <ActivityIndicator size="small" /> : null}
-        </View>
-      </View>
-
-      {/* Résultats + CTA Ajouter */}
-      <View style={{ flex: 1, paddingHorizontal: 16 }}>
-        <Text
-          style={styles.resultsCount}
-          accessibilityRole="header"
-          numberOfLines={1}
-          maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-        >
-          {sectionLabel}
-        </Text>
-        {error ? (
-          <View style={styles.errorBanner}>
-            <Text
-              allowFontScaling={false}
-              style={{
-                ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 12, 17),
-                // À l'encre, pas en rouge : le rouge sur son propre voile ne
-                // donnait que 3,29 : 1. Le cadre rouge dit déjà l'erreur.
-                color: '#0a0a0a',
-              }}
-            >
-              {userErrorMessage('search', error)}
-            </Text>
-          </View>
-        ) : null}
-
-        <FlatList
-          data={displayed}
-          keyExtractor={(r) => r.id}
-          numColumns={3}
-          // `alignItems: 'flex-start'` et non l'étirement par défaut d'une
-          // rangée flex : sans lui, une tuile sans sous-titre est étirée à la
-          // hauteur de la plus grande de sa rangée et montre une bande
-          // blanche vide sous son affiche. Le catalogue mélange les deux cas
-          // (les films portent leur année, les créateurs non), donc c'est
-          // visible dès la première grille. Des rangées légèrement inégales
-          // vont bien mieux à une DA d'autocollants posés à la main.
-          columnWrapperStyle={{ gap: 10, justifyContent: 'flex-start', alignItems: 'flex-start' }}
-          contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
-          // Décale le contenu de la hauteur du clavier pour que la dernière
-          // rangée reste atteignable. Remplace un `KeyboardAvoidingView`, que
-          // rien ne justifie ici : il n'y a pas de champ en bas d'écran à
-          // protéger, juste une liste à ne pas tronquer.
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+    <View style={{ flex: 1, marginTop: offlineInset }}>
+      <Sheet
+        visible={open}
+        onClose={close}
+        onHidden={leave}
+        inScreen
+        height="full"
+        eyebrow={eyebrow}
+        eyebrowLeading={<Tag category={tint} variant="surface" label={meta.stamp} />}
+        eyebrowAccessibilityLabel={
+          estBentoPrincipal ? null : `Case ${meta.stamp.toLocaleLowerCase('fr')}`
+        }
+        title={meta.label}
+        titleAccessibilityLabel={estBentoPrincipal ? `Case ${meta.label}` : undefined}
+        closeLabel="Fermer la recherche"
+        // Une action rare, dans l'en-tête : elle n'a pas à occuper la zone que
+        // le clavier vient recouvrir.
+        action={
+          shownSlot
+            ? {
+                label: 'Vider',
+                accessibilityLabel: 'Vider cette case',
+                onPress: () => void onClear(),
+                disabled: submitting,
+              }
+            : undefined
+        }
+      >
+        <SearchField
+          ref={inputRef}
+          value={query}
+          onChangeText={setQuery}
+          placeholder={searchPlaceholder(meta, estBentoPrincipal)}
+          autoCapitalize="none"
+          autoCorrect={false}
+          // Le clavier est levé d'emblée : six cases à remplir, c'est six
+          // taps économisés.
+          autoFocus
+          // La recherche tourne déjà en continu sur le debounce : la touche
+          // entrée ne relance rien, elle replie le clavier pour découvrir
+          // le reste de la grille.
+          onSubmitEditing={() => inputRef.current?.blur()}
+        />
+        <ScrollView
+          // Jusqu'au bord de la zone sûre, comme la maquette : la marge du bas de
+          // la feuille ne coupe pas la grille, elle termine le défilement.
+          style={{ flex: 1, marginBottom: -16 }}
+          contentContainerStyle={{ gap: 16, paddingBottom: 24 }}
           // Défiler ferme le clavier : sur un petit écran c'est le geste
           // naturel pour voir plus de résultats.
           keyboardDismissMode="on-drag"
-          // Sans ça, le premier tap sur une tuile ne servirait qu'à fermer le
-          // clavier et il en faudrait un second pour sélectionner.
+          // Sans ça, le premier tap sur un item ne servirait qu'à fermer le
+          // clavier et il en faudrait un second pour le choisir.
           keyboardShouldPersistTaps="handled"
-          // Une rangée d'os, pas quatre : c'est ce qui est visible au-dessus
-          // du clavier, et remplir l'écran pour un chargement d'environ
-          // 50 ms ressemblerait plus à une panne qu'à une attente.
-          ListEmptyComponent={
-            showSuggestions && suggestionsPending ? (
-              <SuggestionSkeleton width={tileWidth} />
-            ) : null
-          }
-          ListFooterComponent={
-            canSubmitNew ? (
-              <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
-                <Pressable
-                  onPress={onSubmitNew}
-                  disabled={submitting}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Proposer ${query.trim()} au catalogue`}
-                  accessibilityState={
-                    busyA11y({ disabled: submitting, busy: submitting }, Platform.OS).state
-                  }
-                  accessibilityValue={busyA11y({ busy: submitting }, Platform.OS).value}
-                  style={[styles.addRow, SHADOWS.stamp]}
-                >
-                  <View style={styles.addIconBubble}>
-                    {/* Un signe dans une pastille de 38 pt, pas un texte à lire. */}
-                    <Text
-                      allowFontScaling={false}
-                      style={{ fontSize: 20, lineHeight: 20, fontWeight: '800' }}
-                    >
-                      +
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={styles.addRowTitle}
-                      numberOfLines={1}
-                      maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-                    >
-                      Ajouter « {query.trim()} »
-                    </Text>
-                    <Text
-                      style={styles.addRowSubtitle}
-                      maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                    >
-                      Proposer au catalogue (validé par l&apos;équipe)
-                    </Text>
-                  </View>
-                  {submitting ? <ActivityIndicator size="small" /> : null}
-                </Pressable>
-              </View>
-            ) : null
-          }
-          renderItem={({ item, index }) => (
-            <ItemTile
-              item={item}
-              index={index}
-              width={tileWidth}
-              pixelRatio={pixelRatio}
-              accessibilityLabel={item.a11y}
-              onPress={() => void onChoose(item)}
-            />
+        >
+          {noResult ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 8 }}>
+              <Popy mood="surpris" size={64} />
+              <Text variant="title-3" accessibilityRole="header" style={{ flex: 1 }}>
+                Aucun résultat trouvé
+              </Text>
+            </View>
+          ) : (
+            <Text variant="eyebrow" color="text-secondary" accessibilityRole="header">
+              {sectionLabel}
+            </Text>
           )}
-        />
-      </View>
+          {error ? (
+            // L'erreur dit ce qui se passe et quoi faire, avec son icône : jamais
+            // la couleur seule (le guide).
+            <View accessible style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+              <Icon name="warning-circle" size={18} color="text-danger" />
+              <Text variant="footnote" weight={600} color="text-danger" style={{ flex: 1 }}>
+                {userErrorMessage('search', error)}
+              </Text>
+            </View>
+          ) : null}
+          {showSuggestions && suggestionsPending ? (
+            <ItemGridSkeleton />
+          ) : displayed.length > 0 ? (
+            <ItemGrid
+              items={displayed}
+              category={tint}
+              onItemPress={(item) => void onChoose(item)}
+            />
+          ) : null}
+          {canSubmitNew ? (
+            <ProposeRow query={query.trim()} busy={submitting} onPress={() => void onSubmitNew()} />
+          ) : null}
+        </ScrollView>
+      </Sheet>
 
-      {/* Plus de barre de boutons en bas : le tap sur une tuile valide, et
-          « Vider cette case » a rejoint l'en-tête. C'est ce qui libère le bas
-          de l'écran, donc ce qui rend inutile un `KeyboardAvoidingView`. */}
+      <Dialog
+        visible={whyLossOpen}
+        mood="gene"
+        title={
+          whyLoss?.verb === 'clear'
+            ? `Vider la case « ${whyLoss.title} » ?`
+            : `Remplacer « ${whyLoss?.title ?? ''} » ?`
+        }
+        message="Son pourquoi sera effacé."
+        actions={[
+          {
+            label: whyLoss?.verb === 'clear' ? 'Vider' : 'Remplacer',
+            variant: 'danger',
+            onPress: () => answerWhyLoss(true),
+          },
+          { label: 'Annuler', onPress: () => answerWhyLoss(false) },
+        ]}
+        onCancel={() => answerWhyLoss(false)}
+      />
 
-      {/* Les toasts levés pendant que la recherche est ouverte, quand une
-          écriture échoue : celui de la racine resterait caché sous la modale
-          sur iOS (chantier 31, D7). */}
-      <ToastHost scope="modal" />
-    </SafeAreaView>
+      {/* Les toasts levés pendant que la feuille est ouverte, quand une écriture
+          échoue : celui de la racine resterait caché sous la route sur iOS
+          (chantier 31, D7). La feuille partie, la racine les reprend. */}
+      {open ? <ToastHost scope="modal" /> : null}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  closeBtn: {
-    backgroundColor: '#ffffff',
-    borderWidth: 2.5,
-    borderColor: '#0a0a0a',
-    borderRadius: 999,
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerLabel: {
-    fontFamily: 'Bungee',
-    fontSize: 11,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  question: {
-    fontFamily: 'Bungee',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: '#0a0a0a',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  searchInput: {
-    backgroundColor: '#ffffff',
-    borderWidth: 3,
-    borderColor: '#0a0a0a',
-    borderRadius: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  resultsCount: {
-    fontFamily: 'Bungee',
-    fontSize: 10,
-    letterSpacing: 2,
-    paddingHorizontal: 4,
-    paddingBottom: 8,
-    color: INK_MUTED,
-    textTransform: 'uppercase',
-  },
-  errorBanner: {
-    marginHorizontal: 4,
-    marginBottom: 10,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: 'rgba(230,57,70,0.1)',
-    borderWidth: 1.5,
-    borderColor: '#e63946',
-  },
-  addRow: {
-    backgroundColor: '#ffffff',
-    borderWidth: 2.5,
-    borderColor: '#0a0a0a',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  addIconBubble: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 2.5,
-    borderColor: '#0a0a0a',
-    backgroundColor: '#fbbf24',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addRowTitle: {
-    fontFamily: 'Bungee',
-    fontSize: 13,
-    letterSpacing: 0.4,
-    color: '#0a0a0a',
-  },
-  addRowSubtitle: {
-    fontFamily: 'Fredoka',
-    fontSize: 12,
-    color: 'rgba(10,10,10,0.6)',
-    marginTop: 2,
-  },
-  clearLabel: {
-    fontFamily: 'Bungee',
-    fontSize: 12,
-    letterSpacing: 1,
-    // À l'encre, soulignée : en rouge sur le crème, 3,77 : 1 seulement.
-    color: '#0a0a0a',
-    textTransform: 'uppercase',
-    textDecorationLine: 'underline',
-  },
-});

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -38,15 +39,23 @@ import { timingConfig, useMotion } from '../useMotion';
 export function useLayer(
   visible: boolean,
   exit: Duration,
+  /** Une fois la sortie jouée : la route qui portait la feuille peut partir. */
+  onHidden?: () => void,
 ): { mounted: boolean; progress: SharedValue<number> } {
   const motion = useMotion();
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(0);
+  const hiddenRef = useRef(onHidden);
+  hiddenRef.current = onHidden;
   if (visible && !mounted) setMounted(true);
   useEffect(() => {
     if (visible || !mounted) return;
+    const hidden = () => {
+      setMounted(false);
+      hiddenRef.current?.();
+    };
     progress.value = withTiming(0, timingConfig(motion.exit(exit)), (finished) => {
-      if (finished) scheduleOnRN(setMounted, false);
+      if (finished) scheduleOnRN(hidden);
     });
   }, [visible, mounted, exit, motion, progress]);
   return { mounted, progress };
@@ -84,22 +93,25 @@ export function useLayerInsets(inline: boolean | undefined): { top: number; bott
 }
 
 /**
- * Le calque lui-même : dans une `Modal` transparente, ou, pour le catalogue,
- * posé dans son parent comme dans l'aperçu (`inline`).
+ * Le calque lui-même : dans une `Modal` transparente ; ou posé dans son parent,
+ * pour le catalogue comme dans l'aperçu (`inline`), et pour une route qui n'est
+ * que lui (`inScreen`), qui a déjà sa propre fenêtre.
  */
 export function LayerHost({
   mounted,
   inline,
+  inScreen,
   onRequestClose,
   children,
 }: {
   mounted: boolean;
   inline?: boolean;
+  inScreen?: boolean;
   onRequestClose: () => void;
   children: ReactNode;
 }) {
   if (!mounted) return null;
-  if (inline) {
+  if (inline || inScreen) {
     return (
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {children}
@@ -173,20 +185,30 @@ export type SheetHeight = 'auto' | 'large' | 'full';
 export function SheetLayer({
   visible,
   onClose,
+  onHidden,
   closeLabel = 'Fermer',
   height = 'auto',
   grabber = true,
   inline,
+  inScreen,
   head,
   overlay,
   children,
 }: {
   visible: boolean;
   onClose: () => void;
+  /** Une fois la feuille sortie de l'écran. */
+  onHidden?: () => void;
   closeLabel?: string;
   height?: SheetHeight;
   grabber?: boolean;
   inline?: boolean;
+  /**
+   * Seule dans une route en `transparentModal` (D9 du 32) : sans `Modal` de
+   * plus, aux marges du téléphone ; le retour d'Android la ferme, comme la
+   * croix, au lieu de retirer la route d'un coup.
+   */
+  inScreen?: boolean;
   /** L'en-tête, qu'on peut tirer avec la poignée. */
   head?: ReactNode;
   /** Ce qui se pose au-dessus de la feuille : les confettis d'une `AskSheet`. */
@@ -198,7 +220,7 @@ export function SheetLayer({
   const window = useWindowDimensions();
   const insets = useLayerInsets(inline);
   const keyboard = useKeyboardShown();
-  const { mounted, progress } = useLayer(visible, 'slow');
+  const { mounted, progress } = useLayer(visible, 'slow', onHidden);
   const [layerHeight, setLayerHeight] = useState(window.height);
   const distance = useSharedValue(window.height);
   const drag = useSharedValue(0);
@@ -218,6 +240,17 @@ export function SheetLayer({
   useEffect(() => {
     if (!mounted) measured.current = false;
   }, [mounted]);
+  // Dans sa route, le retour d'Android passe par la feuille : écouté après celui
+  // de la navigation, il est consulté avant lui. Pendant sa sortie, il ne fait
+  // rien : retirer la route à ce moment ferait reculer la navigation deux fois.
+  useEffect(() => {
+    if (!inScreen || !mounted) return;
+    const back = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (latest.current.visible) latest.current.onClose();
+      return true;
+    });
+    return () => back.remove();
+  }, [inScreen, mounted]);
 
   const onPanelLayout = (event: LayoutChangeEvent) => {
     distance.value = event.nativeEvent.layout.height;
@@ -262,7 +295,7 @@ export function SheetLayer({
         ? { height: layerHeight * 0.82, flexShrink: 1 }
         : { flexShrink: 1 };
   return (
-    <LayerHost mounted={mounted} inline={inline} onRequestClose={onClose}>
+    <LayerHost mounted={mounted} inline={inline} inScreen={inScreen} onRequestClose={onClose}>
       <View
         style={StyleSheet.absoluteFill}
         onLayout={(event) => setLayerHeight(event.nativeEvent.layout.height)}

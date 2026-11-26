@@ -9,10 +9,19 @@ export type SheetProps = {
   visible: boolean;
   /** La croix, le voile, la poignée tirée, le retour d'Android : la feuille demande à se fermer. */
   onClose: () => void;
+  /** Une fois la feuille sortie de l'écran, sa sortie jouée. */
+  onHidden?: () => void;
   title?: string;
+  /** Ce que lit le lecteur d'écran à la place du titre : « Case Artiste ». */
+  titleAccessibilityLabel?: string;
   eyebrow?: string;
   /** Avant le sur-titre : la puce de la catégorie d'une case, `Tag`, qu'apporte le chantier 32. */
   eyebrowLeading?: ReactNode;
+  /**
+   * Ce que lit le lecteur d'écran du sur-titre et de sa puce, lus ensemble ; le
+   * sur-titre par défaut ; `null` les tait, quand le titre dit déjà tout.
+   */
+  eyebrowAccessibilityLabel?: string | null;
   subtitle?: string;
   /** `auto` par défaut, à la hauteur du contenu ; `large`, 82 % de l'écran ; `full`, jusque sous la barre d'état. */
   height?: SheetHeight;
@@ -21,7 +30,14 @@ export type SheetProps = {
   /** « Fermer » par défaut. */
   closeLabel?: string;
   /** Un lien texte à droite du titre, « Vider ». */
-  action?: { label: string; onPress: () => void; tone?: 'danger' };
+  action?: {
+    label: string;
+    onPress: () => void;
+    tone?: 'danger';
+    /** Ce que lit le lecteur d'écran, « Vider cette case ». */
+    accessibilityLabel?: string;
+    disabled?: boolean;
+  };
   grabber?: boolean;
   /** L'action collée en bas : un `SheetFooter`. */
   footer?: ReactNode;
@@ -29,6 +45,8 @@ export type SheetProps = {
   children?: ReactNode;
   /** Pour le catalogue : posée dans son parent, sans `Modal`, comme dans l'aperçu. */
   inline?: boolean;
+  /** Seule dans sa route, en `transparentModal` : la recherche d'une case (D9 du 32). */
+  inScreen?: boolean;
 };
 
 /**
@@ -43,9 +61,12 @@ export type SheetProps = {
 export function Sheet({
   visible,
   onClose,
+  onHidden,
   title,
+  titleAccessibilityLabel,
   eyebrow,
   eyebrowLeading,
+  eyebrowAccessibilityLabel,
   subtitle,
   height = 'auto',
   close = 'icon',
@@ -55,7 +76,9 @@ export function Sheet({
   footer,
   children,
   inline,
+  inScreen,
 }: SheetProps) {
+  const silentEyebrow = eyebrowAccessibilityLabel === null;
   const head =
     title || close !== 'none' || action ? (
       <View
@@ -71,7 +94,18 @@ export function Sheet({
       >
         <View style={{ flex: 1, minWidth: 0, paddingTop: 6, gap: 2 }}>
           {eyebrow ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              accessible={!silentEyebrow}
+              // Du texte, pas un bouton : l'en-tête, qu'on tire, prend le toucher, et
+              // VoiceOver en déduisait un bouton.
+              accessibilityRole={silentEyebrow ? undefined : 'text'}
+              accessibilityLabel={
+                silentEyebrow ? undefined : (eyebrowAccessibilityLabel ?? eyebrow)
+              }
+              accessibilityElementsHidden={silentEyebrow}
+              importantForAccessibility={silentEyebrow ? 'no-hide-descendants' : 'auto'}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
               {eyebrowLeading}
               <Text variant="label-s" color="text-secondary">
                 {eyebrow}
@@ -79,7 +113,11 @@ export function Sheet({
             </View>
           ) : null}
           {title ? (
-            <Text variant="title-2" accessibilityRole="header">
+            <Text
+              variant="title-2"
+              accessibilityRole="header"
+              accessibilityLabel={titleAccessibilityLabel}
+            >
               {title}
             </Text>
           ) : null}
@@ -90,7 +128,13 @@ export function Sheet({
           ) : null}
         </View>
         {action ? (
-          <TextAction label={action.label} onPress={action.onPress} tone={action.tone} />
+          <TextAction
+            label={action.label}
+            onPress={action.onPress}
+            tone={action.tone}
+            accessibilityLabel={action.accessibilityLabel}
+            disabled={action.disabled}
+          />
         ) : null}
         {close === 'icon' ? (
           <IconButton icon="x" label={closeLabel} variant="tonal" onPress={onClose} />
@@ -103,10 +147,12 @@ export function Sheet({
     <SheetLayer
       visible={visible}
       onClose={onClose}
+      onHidden={onHidden}
       closeLabel={closeLabel}
       height={height}
       grabber={grabber}
       inline={inline}
+      inScreen={inScreen}
       head={head}
     >
       {/* Le contenu cède la place quand elle manque ; le pied, jamais. */}
@@ -134,19 +180,28 @@ function TextAction({
   label,
   onPress,
   tone,
+  accessibilityLabel,
+  disabled,
 }: {
   label: string;
   onPress: () => void;
   tone?: 'danger';
+  accessibilityLabel?: string;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={disabled ? { disabled } : undefined}
+      disabled={disabled}
       onPress={onPress}
       style={{ minHeight: 44, paddingHorizontal: 10, justifyContent: 'center' }}
     >
-      <Text variant="label-m" color={tone === 'danger' ? 'text-danger' : 'text-primary'}>
+      <Text
+        variant="label-m"
+        color={disabled ? 'text-tertiary' : tone === 'danger' ? 'text-danger' : 'text-primary'}
+      >
         {label}
       </Text>
     </Pressable>

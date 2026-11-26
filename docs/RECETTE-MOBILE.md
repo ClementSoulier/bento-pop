@@ -1498,6 +1498,38 @@ qu'aucun test le voie, les titres passant par la description. Relevé au
 chantier 12, quand la section des pourquoi n'a trouvé aucune case. Un champ
 que la requête demande se pose dans le bouchon, même nul.
 
+### Sous une feuille, `uiautomator` liste aussi l'écran caché
+
+Depuis le lot 3 du chantier 32, la recherche d'une case est une route en
+`transparentModal` : le composer reste dessous, et `uiautomator dump` en garde
+tous les nœuds, ceux de la feuille à la suite. Un toucher par libellé peut donc
+viser un bouton du composer et tomber dans la feuille ouverte, sur un item qui
+se trouve à sa place : « Le Voyage de Chihiro » s'est choisi ainsi, et a d'abord
+ressemblé à un défaut de l'app. Avant de toucher par libellé, savoir si la
+feuille est ouverte (« Fermer la recherche » dans l'arbre). TalkBack, lui,
+reste dans la feuille, vérifié à la tabulation.
+
+### Une API locale en pause ne fait pas d'erreur
+
+Pour voir l'erreur réseau d'un écran, `docker pause` ou `docker stop` du
+conteneur `supabase_rest_<projet>` font pendre la requête : le relais `kong`
+attend son amont une minute. `adb reverse --remove` ne coupe pas non plus une
+connexion déjà ouverte, gardée vivante. Ce qui marche : arrêter le relais
+lui-même, `docker stop supabase_kong_<projet>`, la connexion est refusée et
+l'écran tombe en erreur après les trois essais de React Query, environ
+7 secondes ; puis `docker start` et attendre une réponse 200.
+
+### Relancer une pile Supabase dont le dossier a disparu
+
+Une pile montée depuis le dossier temporaire de la session (cf. « Recetter à
+côté d'une autre session ») survit à la disparition de ce dossier, mais ne
+redémarre plus : `supabase start` la croit lancée, et `docker start` échoue sur
+`kong`, qui monte les modèles de mails du dossier effacé. Recréer le dossier,
+ailleurs et durablement, avec le même `project_id` et les mêmes ports
+(`docker inspect` les donne), `.temp/postgres-version` compris, puis
+`supabase stop --workdir <dossier>`, qui garde le volume de la base, et
+`supabase start --workdir <dossier>` : les données de la recette d'avant sont là.
+
 ## 5. Après la recette
 
 ```bash

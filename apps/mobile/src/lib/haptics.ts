@@ -38,11 +38,6 @@ export function tapFeedback() {
   safely(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
 }
 
-/** Une case vient d'être remplie et enregistrée. */
-export function slotFilledFeedback() {
-  safely(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
-}
-
 /** Une écriture a échoué. */
 export function failureFeedback() {
   safely(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));

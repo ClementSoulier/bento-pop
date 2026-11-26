@@ -19,7 +19,17 @@ export {
 } from './bento/bento-rules';
 export { BentoTile, type BentoTileItem, type BentoTileProps } from './bento/BentoTile';
 export { CATEGORY_STYLES, caseCategory } from './bento/categories';
+export {
+  ItemCard,
+  ItemGrid,
+  ItemGridSkeleton,
+  type ItemCardItem,
+  type ItemCardProps,
+  type ItemGridEntry,
+  type ItemGridProps,
+} from './bento/ItemCard';
 export { Progress, type ProgressProps } from './bento/Progress';
+export { ProposeRow, type ProposeRowProps } from './bento/ProposeRow';
 export { Tag, type TagProps } from './bento/Tag';
 export { Chip, type ChipProps } from './actions/Chip';
 export { IconButton, type IconButtonProps } from './actions/IconButton';

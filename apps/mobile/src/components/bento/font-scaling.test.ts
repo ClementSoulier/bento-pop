@@ -679,9 +679,10 @@ describe('toute l’app', () => {
         /fontFamily:\s*'Extenda'/.test(fullStyleSource(t, moduleDeclarations(t.path))) &&
         t.attributes.has('numberOfLines'),
     );
-    // Pseudos, titres de case, de vignette, du composer, de l'étiquette d'un
-    // post et de l'écran vide de « Trouver ».
-    assert.ok(extenda.length >= 12, `${extenda.length} textes : ${where(extenda)}`);
+    // Pseudos, titres de case, de l'étiquette d'un post et de l'écran vide de
+    // « Trouver ». La vignette de la recherche est sortie au chantier 32, son
+    // titre n'étant plus en Extenda (`ItemCard`).
+    assert.ok(extenda.length >= 11, `${extenda.length} textes : ${where(extenda)}`);
     const truncated = extenda.filter(
       (t) => t.attributes.get('adjustsFontSizeToFit') !== true && !/\bfittedTitle\(/.test(shown(t)),
     );
