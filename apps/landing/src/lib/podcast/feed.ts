@@ -228,6 +228,28 @@ function categorieXml(settings: FeedSettings): string {
 }
 
 /**
+ * Jeton de revendication d'Apple Podcasts Connect (« Revendiquer une émission existante »),
+ * tiré le 26/11/2026 et valable 7 jours. Apple le cherche dans le flux et, quand il l'y
+ * trouve, déplace l'émission vers le compte qui l'a demandé. Il ne vaut que pour ce compte
+ * et cette émission : le laisser en place une fois la revendication faite ne risque rien.
+ * Pour une nouvelle revendication, remplacer la valeur ; vide, aucune balise n'est écrite.
+ */
+export const APPLE_PODCASTS_VERIFY_TOKEN = '36a302a0-e9d3-11f1-872f-fb683ce04a2c';
+
+/**
+ * Les deux formes que le guide RSS d'Apple accepte pour ce jeton. Les deux à la fois : la
+ * fenêtre de 7 jours ne laisse pas le temps d'en essayer une puis l'autre.
+ */
+export function appleVerifyXml(token: string): string[] {
+  const t = token.trim();
+  if (!t) return [];
+  return [
+    `    <itunes:applepodcastsverify>${escapeXml(t)}</itunes:applepodcastsverify>`,
+    `    <podcast:txt purpose="applepodcastsverify">${escapeXml(t)}</podcast:txt>`,
+  ];
+}
+
+/**
  * @param feedUrl adresse publique du flux, qu'il doit déclarer lui-même (`atom:link`) :
  *   c'est ainsi que les annuaires savent qu'ils lisent bien la bonne source.
  */
@@ -267,6 +289,7 @@ export function buildFeed(
     // Podcasting 2.0 : identifiant stable du podcast, et verrou contre un import sauvage.
     `    <podcast:guid>${escapeXml(settings.podcast_guid)}</podcast:guid>`,
     `    <podcast:locked owner="${escapeXml(settings.owner_email)}">${settings.locked ? 'yes' : 'no'}</podcast:locked>`,
+    ...appleVerifyXml(APPLE_PODCASTS_VERIFY_TOKEN),
   ];
   return [...head, ...items.map((e) => itemXml(e, settings)), '  </channel>', '</rss>', ''].join(
     '\n',
