@@ -1,6 +1,7 @@
-import { Image, Platform, Text, View, useWindowDimensions } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image, Text, View, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useSession } from '@/state/session';
 import { POPY_CHOICES } from '@/lib/popy-avatar';
 import {
@@ -9,7 +10,6 @@ import {
   fontScaleFor,
 } from '@/components/bento/font-scaling';
 import { INK_MUTED, SHADOWS, StampButton, YellowBg } from '@/components/primitives';
-import { TAB_BAR_BASE_INSET, tabBarHeight } from '@/components/tab-bar';
 import { AccountScreen, SettingsButton } from '../u/[pseudo]';
 
 /**
@@ -24,13 +24,9 @@ import { AccountScreen, SettingsButton } from '../u/[pseudo]';
  */
 export default function ProfileTab() {
   const pseudo = useSession((s) => s.profile?.pseudo);
-  const insets = useSafeAreaInsets();
-  // La même hauteur que `app/(tabs)/_layout.tsx` donne à la barre d'onglets :
-  // la page tient au-dessus d'elle.
-  const tabBar = tabBarHeight(
-    insets.bottom,
-    Platform.OS === 'ios' ? TAB_BAR_BASE_INSET.ios : TAB_BAR_BASE_INSET.android,
-  );
+  // La hauteur de la barre d'onglets, comme le composer : la page tient
+  // au-dessus d'elle.
+  const tabBar = useBottomTabBarHeight();
 
   if (pseudo) {
     return <AccountScreen pseudo={pseudo} slug={null} mode="tab" tabBarHeight={tabBar} />;

@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "bentopop",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#fbbf24",
+    "backgroundColor": "#f2a82a",
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": false,
@@ -23,7 +23,9 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#fbbf24"
+        "backgroundImage": "./assets/adaptive-icon-background.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+        "backgroundColor": "#f2a82a"
       },
       "intentFilters": [
         {
@@ -57,21 +59,20 @@
           "faceIDPermission": false
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#b5751a"
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#fbbf24",
-          "android": {
-            "image": "./assets/splash-icon.png",
-            "imageWidth": 260,
-            "resizeMode": "contain"
-          },
-          "ios": {
-            "image": "./assets/splash.png",
-            "resizeMode": "contain",
-            "enableFullScreenImage_legacy": true
-          }
+          "backgroundColor": "#f2a82a",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 176,
+          "resizeMode": "contain"
         }
       ]
     ],

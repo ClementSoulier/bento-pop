@@ -459,10 +459,7 @@ describe('cases du bento', () => {
     assert.match(String(tile?.attributes.get('width')), /\bgridTileWidth\(/);
   });
 
-  /**
-   * Sans largeur, un titre ne mesure rien et son premier mot se coupe : seule
-   * une grille vide, qui n'a pas de titre, peut s'en passer.
-   */
+  /** Sans largeur, un titre ne mesure rien et son premier mot se coupe. */
   it('donne à chaque grille de l’app la largeur de sa boîte', () => {
     const files = readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
       (path) =>
@@ -471,11 +468,10 @@ describe('cases du bento', () => {
     const grids = files.flatMap((path) =>
       tagsNamed(parse(path), 'BentoGrid').map((tag) => ({ path, tag })),
     );
-    // Page publique, fil, composer, image de partage, écran de mécanique.
-    assert.equal(grids.length, 5, grids.map(({ path }) => path).join(', '));
-    const missing = grids.filter(
-      ({ tag }) => !tag.attributes.has('empty') && !tag.attributes.has('width'),
-    );
+    // Page publique, fil, composer, image de partage. L'écran de mécanique a
+    // quitté cette grille au chantier 31, pour le `Bento` vide du design.
+    assert.equal(grids.length, 4, grids.map(({ path }) => path).join(', '));
+    const missing = grids.filter(({ tag }) => !tag.attributes.has('width'));
     assert.deepEqual(
       missing.map(({ path, tag }) => `${path}, ligne ${tag.line}`),
       [],

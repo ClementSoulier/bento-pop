@@ -1,8 +1,8 @@
 import { useWindowDimensions, View } from 'react-native';
+import { FIXED_MAX_FONT_MULTIPLIER, scaledType } from '@/components/bento/font-scaling';
 import { PopShadow } from '../PopShadow';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
-import { textStyle } from '../type';
 
 export type StickerProps = {
   /** Trois mots au plus, mis en capitales. */
@@ -21,12 +21,19 @@ const RADIUS = 10;
  * d'encre, sur l'ombre `pop-sm`.
  *
  * Le design l'écrit en 14 ; le système n'a pas ce style, elle prend `label-s`
- * (13/16) et son approche de 0,08 em, qui suit la taille du texte.
+ * (13/16) et son approche de 0,08 em, qui suit la taille du texte. Comme le
+ * reste d'un moment de marque, elle s'arrête à 130 % : au-delà, posée sur le
+ * plateau de l'accueil, elle couvrait les « + » (lot 3 du 31).
  */
 export function Sticker({ label, tone = 'ink', tilt = -3 }: StickerProps) {
-  const { palette } = useTheme();
+  const { palette, type } = useTheme();
   const { fontScale } = useWindowDimensions();
-  const { fontSize } = textStyle('label-s', fontScale);
+  const { fontSize, lineHeight } = scaledType(
+    fontScale,
+    FIXED_MAX_FONT_MULTIPLIER,
+    type['label-s'].fontSize,
+    type['label-s'].lineHeight,
+  );
   const ink = tone === 'ink';
   const face = (
     <View
@@ -47,6 +54,8 @@ export function Sticker({ label, tone = 'ink', tilt = -3 }: StickerProps) {
         variant="label-s"
         numberOfLines={1}
         style={{
+          fontSize,
+          lineHeight,
           color: ink ? palette['yolk-300'] : palette['nori-900'],
           textTransform: 'uppercase',
           letterSpacing: Math.round(fontSize * 0.08 * 100) / 100,

@@ -14,7 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -199,7 +199,10 @@ export function AccountScreen({
     state.kind === 'not-found' &&
     (redirect.fetchStatus === 'fetching' || redirectTo !== null);
 
-  const { width, height, fontScale } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  // La place laissée à la page, et non la fenêtre : dans l'onglet, le
+  // bandeau de mise à jour en prend le haut (chantier 31, D8).
+  const { height } = useSafeAreaFrame();
   const insets = useSafeAreaInsets();
   // Le bandeau hors ligne descend l'écran, et c'est justement dans l'état
   // « Connexion perdue » qu'il apparaît : le modèle le compte.

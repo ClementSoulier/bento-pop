@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { PixelRatio, Platform, useWindowDimensions, View } from 'react-native';
+import { extendaAccentRoom } from '@/lib/display-title';
 import { Text } from '../Text';
 import { useTheme } from '../theme';
 import { displayFit, textStyle, type TextVariant } from '../type';
@@ -40,6 +41,10 @@ const LAYERS: [number, number][] = [
  * tenait plus dans sa largeur et passait à la ligne en deux morceaux. Une
  * copie invisible mesure chaque mot à la taille du style ; si le plus long
  * dépasse, toute l'affiche rapetisse juste assez.
+ *
+ * Son interligne est plus court que sa police : l'accent d'une première ligne
+ * y serait coupé, le « Î » de « BOÎTE » relevé au lot 3 du 31. Il a donc sa place
+ * réservée au-dessus de la ligne, sans rien déplacer (`extendaAccentRoom`).
  */
 export function Display({ text, size = 'xl', outline, align = 'left' }: DisplayProps) {
   const { palette } = useTheme();
@@ -58,11 +63,19 @@ export function Display({ text, size = 'xl', outline, align = 'left' }: DisplayP
         }
       : null;
   const words = [text, outline ?? ''].join(' ').trim().split(/\s+/);
+  const accent = (line: string) => {
+    const room = extendaAccentRoom(
+      line,
+      fitted?.fontSize ?? base.fontSize,
+      Platform.OS === 'android' ? PixelRatio.get() : undefined,
+    );
+    return { paddingTop: room, marginTop: -room };
+  };
   return (
     <View
       accessible
       accessibilityRole="header"
-      accessibilityLabel={outline ? `${text} ${outline}` : text}
+      accessibilityLabel={words.join(' ')}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
     >
       <View
@@ -80,7 +93,7 @@ export function Display({ text, size = 'xl', outline, align = 'left' }: DisplayP
           {words.join('\n')}
         </Text>
       </View>
-      <Text variant={variant} style={[{ textAlign: align }, fitted]}>
+      <Text variant={variant} style={[{ textAlign: align }, fitted, accent(text)]}>
         {text}
       </Text>
       {outline ? (
@@ -100,6 +113,7 @@ export function Display({ text, size = 'xl', outline, align = 'left' }: DisplayP
                   textAlign: align,
                 },
                 fitted,
+                accent(outline),
               ]}
             >
               {outline}
@@ -107,7 +121,7 @@ export function Display({ text, size = 'xl', outline, align = 'left' }: DisplayP
           ))}
           <Text
             variant={variant}
-            style={[{ color: palette['rice-100'], textAlign: align }, fitted]}
+            style={[{ color: palette['rice-100'], textAlign: align }, fitted, accent(outline)]}
           >
             {outline}
           </Text>

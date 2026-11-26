@@ -2,11 +2,12 @@ import {
   PixelRatio,
   Platform,
   Pressable,
+  StyleSheet,
   useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { interpolateColor, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { busyA11y } from '@/lib/a11y-states';
 import { Icon } from '../Icon';
 import type { IconName } from '../icons';
@@ -67,6 +68,11 @@ const WRAP_LENGTH = 34;
  * `tertiary` est souligné, sauf en petite taille : les aperçus du dossier ne
  * le soulignent pas (« Tout voir » de `SectionHeader`), leur CSS coupant le
  * trait sous un libellé de 16 de haut.
+ *
+ * Le fond est un style simple, et seule la teinte de l'appui s'anime. Tout
+ * animé, il passait par un calcul qu'aucun appui n'attendait : à l'émulateur,
+ * quand la case des règles allumait « Continuer », le contour changeait aussitôt
+ * et le fond pouvait suivre plus d'une demi-seconde après (lot 3 du 31).
  */
 export function Button({
   label,
@@ -116,13 +122,13 @@ export function Button({
   const shrinks = (variant === 'secondary' || variant === 'inverse') && !dimmed;
 
   const animated = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(pressed.value, [0, 1], [bg, pressedBg]),
     transform: [
       { translateX: sinkX * pressed.value },
       { translateY: sinkY * pressed.value },
       { scale: shrinks ? 1 - 0.02 * pressed.value : 1 },
     ],
   }));
+  const pressTint = useAnimatedStyle(() => ({ opacity: pressed.value }));
 
   const a11y = busyA11y({ disabled: blocked, busy: Boolean(loading) }, Platform.OS);
   const pressable = (
@@ -152,10 +158,27 @@ export function Button({
             alignItems: 'center',
             justifyContent: 'center',
             gap: metrics.gap,
+            backgroundColor: bg,
           },
           animated,
         ]}
       >
+        {pressedBg === bg ? null : (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                // Sous un contour d'encre, la teinte s'arrête au contour ; sous un
+                // contour transparent, elle couvre aussi sa place.
+                margin: shadowed ? 0 : -border.ink,
+                borderRadius: radius.full,
+                backgroundColor: pressedBg,
+              },
+              pressTint,
+            ]}
+          />
+        )}
         {loading ? (
           <Spinner size={metrics.spinner} tint={look.fg} />
         ) : icon ? (

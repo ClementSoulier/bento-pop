@@ -10,7 +10,8 @@ export type AppIconProps = {
 /**
  * L'icône de l'app dessinée dans l'app (chantier 30, famille de la marque) :
  * Popy content sur `yolk-500`, coins arrondis au quart, un filet d'encre à
- * 12 %. L'icône du système, elle, change au 31.
+ * 12 %. L'icône du système, elle, est un fichier : `assets/icon.png` et ses
+ * calques adaptatifs, tirés de ces mesures par `scripts/generate-assets.mjs`.
  */
 export function AppIcon({ size = 40 }: AppIconProps) {
   const { colors, palette } = useTheme();

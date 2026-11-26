@@ -1,165 +1,98 @@
-import { PixelRatio, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
 import { router } from 'expo-router';
-import { BentoGrid } from '@/components/bento';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  CONTENT_MAX_FONT_MULTIPLIER,
-  TITLE_MAX_FONT_MULTIPLIER,
-  scaledType,
-} from '@/components/bento/font-scaling';
-import { Pagination, Sticker, StampButton, YellowBg } from '@/components/primitives';
-import { displayTitleScale, extendaAccentRoom } from '@/lib/display-title';
-import { mainBentoCases } from '@/components/bento/cases';
-
-const SIDE_PADDING = 20;
-const TITLE = 'Une boîte.\nSix envies.';
-const TITLE_LETTER_SPACING = -0.3;
+  Bento,
+  Button,
+  Display,
+  Screen,
+  Steps,
+  Sticker,
+  Text,
+  illustrationScale,
+  plateMinHeight,
+} from '@/design';
 
 /**
- * Onboarding 03 — Mécanique. Bento vide en demi-échelle avec deux
- * annotations en stamps (FILM PRÉFÉRÉ / UNE CHANSON), explication courte,
- * bouton « Je m'y mets ».
+ * Autour du plateau, à la taille de texte par défaut : les étapes (20),
+ * l'autocollant (42), l'affiche (72), les deux marges du plateau et la phrase
+ * (105), le bas de la zone qui défile (12), le bouton et sa marge (64).
+ */
+const AROUND_PLATE = 315;
+const SIDE_MARGIN = 16;
+
+/**
+ * Les six cases, étape 3 sur 3 (`p03-six-cases`, chantier 31). Le bento y est
+ * une illustration : il se lit d'un seul libellé, et ses deux autocollants se
+ * taisent.
  *
- * Cf. design Claude Design — `MechanicsScreen` dans `screens.jsx`.
- *
- * Le contenu défile au-dessus du bouton, qui reste en bas : sans défilement, le
- * bouton sortait de l'écran d'un iPhone 17 Pro dès la taille AX2. Tant que tout
- * tient, la mise en page est celle d'avant. Le titre réserve la place de
- * l'accent de « BOÎTE », que son interligne rognait à la taille par défaut.
+ * La maquette dépasse de son cadre de 7 points, et sa phrase touche le bouton :
+ * les marges au-dessus du plateau et de la phrase sont resserrées de 19 points
+ * pour que tout tienne à l'iPhone 17 Pro (D16). Sur un écran plus court, le
+ * plateau rapetisse, autocollants compris, plutôt que de cacher la phrase sous
+ * le bouton. Au-delà, quand le texte du système monte, le contenu défile
+ * au-dessus du bouton, qui ne sort jamais de l'écran.
  */
 export default function MechanicsOnboarding() {
-  const { fontScale, width } = useWindowDimensions();
-  const capped = scaledType(fontScale, TITLE_MAX_FONT_MULTIPLIER, 28, 26);
-  const shrink = displayTitleScale(
-    TITLE,
-    width - SIDE_PADDING * 2,
-    capped.fontSize,
-    TITLE_LETTER_SPACING,
-    Platform.OS === 'android' ? PixelRatio.get() : undefined,
-  );
-  const accentRoom = extendaAccentRoom(TITLE, capped.fontSize * shrink);
-
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const [plateHeight, setPlateHeight] = useState(plateMinHeight(width - 2 * SIDE_MARGIN));
+  const scale = illustrationScale(height - insets.top - insets.bottom - AROUND_PLATE, plateHeight);
   return (
-    <YellowBg>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingTop: 16, paddingBottom: 16 }}>
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1 }}
-            showsVerticalScrollIndicator={false}
-            alwaysBounceVertical={false}
+    <Screen tone="brand">
+      <View style={{ paddingTop: 8, paddingBottom: 8, paddingHorizontal: SIDE_MARGIN }}>
+        <Steps count={3} index={2} />
+      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: SIDE_MARGIN, paddingBottom: 12 }}
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={false}
+      >
+        <View style={{ flexDirection: 'row', paddingTop: 10 }}>
+          <Sticker label="6 cases · 6 choix" tilt={-3} />
+        </View>
+        <View style={{ paddingTop: 12 }}>
+          <Display text={'Une boîte.\nSix envies.'} size="l" />
+        </View>
+        <View style={{ marginTop: 16, height: plateHeight * scale }}>
+          <View
+            onLayout={(event) => setPlateHeight(event.nativeEvent.layout.height)}
+            style={{ transform: [{ scale }], transformOrigin: 'top center' }}
           >
-            <View style={{ paddingHorizontal: SIDE_PADDING }}>
-              <Sticker rotation={-3} style={{ marginBottom: 12 }}>
-                6 CASES · 6 CHOIX
-              </Sticker>
-              <Text
-                allowFontScaling={false}
-                // Android : passer à la ligne entre deux mots, jamais au milieu.
-                textBreakStrategy="simple"
-                style={{
-                  fontFamily: 'Extenda',
-                  fontSize: capped.fontSize * shrink,
-                  lineHeight: capped.lineHeight * shrink,
-                  letterSpacing: TITLE_LETTER_SPACING,
-                  color: '#0a0a0a',
-                  textTransform: 'uppercase',
-                  paddingTop: accentRoom,
-                  marginTop: -accentRoom,
-                }}
-              >
-                {TITLE}
-              </Text>
+            <Bento />
+            <View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{ position: 'absolute', right: -6, top: 38 }}
+            >
+              <Sticker label="Film préféré" tone="rice" tilt={6} />
             </View>
-
-            {/* Bento demi-échelle + annotations */}
-            <View style={{ paddingHorizontal: 32, marginTop: 20, position: 'relative' }}>
-              <BentoGrid cases={mainBentoCases({})} scale={0.78} empty />
-
-              {/* Annotation FILM PRÉFÉRÉ (cellule du haut, à droite). Posée sur le
-                  dessin de la boîte, à échelle fixe : sa police ne suit pas. */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 60,
-                  right: 14,
-                  backgroundColor: '#0a0a0a',
-                  borderWidth: 2,
-                  borderColor: '#0a0a0a',
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 4,
-                  transform: [{ rotate: '6deg' }],
-                }}
-              >
-                <Text
-                  allowFontScaling={false}
-                  style={{
-                    fontFamily: 'Bungee',
-                    fontSize: 9,
-                    letterSpacing: 1.2,
-                    color: '#fbbf24',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Film préféré
-                </Text>
-              </View>
-
-              {/* Annotation UNE CHANSON (cellule petite, en bas à gauche) */}
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: 76,
-                  left: 14,
-                  backgroundColor: '#0a0a0a',
-                  borderWidth: 2,
-                  borderColor: '#0a0a0a',
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 4,
-                  transform: [{ rotate: '-5deg' }],
-                }}
-              >
-                <Text
-                  allowFontScaling={false}
-                  style={{
-                    fontFamily: 'Bungee',
-                    fontSize: 9,
-                    letterSpacing: 1.2,
-                    color: '#fbbf24',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Une chanson
-                </Text>
-              </View>
-            </View>
-
-            <View style={{ paddingHorizontal: 24, marginTop: 24, marginBottom: 24 }}>
-              <Text
-                allowFontScaling={false}
-                style={{
-                  ...scaledType(fontScale, CONTENT_MAX_FONT_MULTIPLIER, 13, 19),
-                  color: 'rgba(10,10,10,0.8)',
-                  textAlign: 'center',
-                }}
-              >
-                Touche une case, cherche, valide. Tu peux changer d'avis à tout moment. Quand le bento est plein, publie-le.
-              </Text>
-            </View>
-          </ScrollView>
-
-          <View style={{ paddingHorizontal: 20 }}>
-            <StampButton wide onPress={() => router.replace('/(tabs)/compose')}>
-              Je m'y mets
-            </StampButton>
-            <View style={{ marginTop: 16 }}>
-              <Pagination total={3} active={2} />
+            <View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{ position: 'absolute', left: -8, bottom: 96 }}
+            >
+              <Sticker label="Une chanson" tone="rice" tilt={-5} />
             </View>
           </View>
         </View>
-      </SafeAreaView>
-    </YellowBg>
+        <Text variant="body-l" style={{ marginTop: 17, textAlign: 'center' }}>
+          Touche une case, cherche, valide. Tu peux changer d’avis à tout moment. Quand le bento est
+          plein, publie-le.
+        </Text>
+      </ScrollView>
+      <View style={{ paddingHorizontal: SIDE_MARGIN, paddingBottom: insets.bottom + 12 }}>
+        <Button
+          variant="on-brand"
+          block
+          label="Je m’y mets"
+          onPress={() => router.replace('/(tabs)/compose')}
+        />
+      </View>
+    </Screen>
   );
 }

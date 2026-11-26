@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { tabBarHeight } from '@/design/structure/tab-items';
 import { MIN_SCALE, composeBentoScale } from './compose-layout';
 import { GRID_GEOMETRY } from './geometry';
 import {
@@ -25,11 +26,11 @@ import {
  * 0,992.
  */
 const COMPOSERS = [
-  { nom: 'iPhone SE', h: 667, top: 20 },
-  { nom: 'iPhone 17 Pro', h: 874, top: 62 },
-  { nom: 'iPhone 17 Pro Max', h: 956, top: 62 },
-  { nom: 'Pixel 8', h: 914, top: 24 },
-  { nom: 'Pixel 8 relevé', h: 914.3, top: 50.5 },
+  { nom: 'iPhone SE', h: 667, top: 20, bottom: 0 },
+  { nom: 'iPhone 17 Pro', h: 874, top: 62, bottom: 34 },
+  { nom: 'iPhone 17 Pro Max', h: 956, top: 62, bottom: 34 },
+  { nom: 'Pixel 8', h: 914, top: 24, bottom: 24 },
+  { nom: 'Pixel 8 relevé', h: 914.3, top: 50.5, bottom: 24 },
 ];
 
 /** Tailles de police système : iOS de xSmall à la plus grande, Android jusqu'à 2. */
@@ -49,7 +50,7 @@ function echelles(): { cas: string; scale: number }[] {
         scale: composeBentoScale({
           screenHeight: c.h,
           insetTop: c.top,
-          tabBarHeight: 84,
+          tabBarHeight: tabBarHeight(c.bottom),
           fontScale: police,
           bentoCount,
         }),

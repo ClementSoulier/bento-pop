@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { CataloguePage, Specimen } from '@/components/dev/CataloguePage';
+import { useToast } from '@/state/toast';
 import {
   ActionSheet,
   AskSheet,
@@ -55,7 +56,8 @@ export default function Calques() {
   const [ask, setAsk] = useState(false);
   const [menu, setMenu] = useState(false);
   const [dialog, setDialog] = useState(false);
-  const [toast, setToast] = useState(0);
+  const [field, setField] = useState('');
+  const showToast = useToast((s) => s.show);
   const [notice, setNotice] = useState(0);
   const [rain, setRain] = useState(0);
   return (
@@ -207,7 +209,40 @@ export default function Calques() {
               />
             </Frame>
           </ThemeProvider>
-          <Open label="Montrer un toast" onPress={() => setToast((n) => n + 1)} />
+          {/* Par la file des toasts de l'app et son hôte (chantier 31) : en bas,
+              au-dessus de la zone sûre ici, du clavier quand il est ouvert. */}
+          <Open
+            label="Montrer un toast"
+            onPress={() =>
+              showToast('Créateur de contenu : Squeezie', {
+                variant: 'success',
+                icon: 'arrows-clockwise',
+                action: { label: 'Annuler', onPress: noop },
+              })
+            }
+          />
+          <Open
+            label="Montrer une erreur"
+            onPress={() =>
+              showToast("La case n'a pas pu être enregistrée. Réessaie.", {
+                variant: 'danger',
+                durationMs: 5000,
+              })
+            }
+          />
+          <Open
+            label="Montrer un toast dans 4 s"
+            onPress={() =>
+              setTimeout(() => showToast('Compte gardé', { variant: 'success' }), 4000)
+            }
+          />
+          <View style={{ paddingHorizontal: 16 }}>
+            <TextField
+              label="Un champ, pour ouvrir le clavier"
+              value={field}
+              onChangeText={setField}
+            />
+          </View>
         </Specimen>
         <Specimen name="Banner" bleed style={{ gap: 12 }}>
           <Frame height={40} flow>
@@ -291,17 +326,7 @@ export default function Calques() {
           </View>
         </Specimen>
       </CataloguePage>
-      {/* Hors du défilement : le toast et la notification se posent sur l'écran. */}
-      {toast > 0 ? (
-        <Toast
-          key={`toast-${toast}`}
-          message="Créateur de contenu : Squeezie"
-          icon="arrows-clockwise"
-          action="Annuler"
-          tabBar={false}
-          onDismiss={() => setToast(0)}
-        />
-      ) : null}
+      {/* Hors du défilement : la notification se pose sur l'écran. */}
       {notice > 0 ? (
         <InAppNotice
           key={`notice-${notice}`}

@@ -10,6 +10,9 @@ import { Text } from '../Text';
 import { useTheme } from '../theme';
 import { useAnnouncement } from '../useAnnouncement';
 import { timingConfig, useMotion } from '../useMotion';
+import { TOAST_DURATION, toastBottom, toastDuration } from './toast-rules';
+
+export { TOAST_DURATION };
 
 export type ToastProps = {
   /** Ce qui vient de se passer : « Compte gardé ». */
@@ -17,6 +20,8 @@ export type ToastProps = {
   icon?: IconName;
   /** Une action réversible, « Annuler » : le toast reste alors 6 s au lieu de 4. */
   action?: string;
+  /** Une durée plus longue que celle du guide, que l'appel demande. */
+  duration?: number;
   onAction?: () => void;
   /** Une fois parti, de lui-même, touché, ou par son action : le parent le retire. */
   onDismiss: () => void;
@@ -28,9 +33,6 @@ export type ToastProps = {
   inline?: boolean;
 };
 
-/** Ce qu'un toast reste à l'écran, en millisecondes : 4 s, 6 s avec une action (README du design). */
-export const TOAST_DURATION = { plain: 4000, action: 6000 } as const;
-
 /**
  * Le message bref qui confirme une action (chantier 30, famille des calques
  * et des retours) : en bas, jamais en haut, où il couvrirait le titre et le
@@ -39,20 +41,21 @@ export const TOAST_DURATION = { plain: 4000, action: 6000 } as const;
  *
  * Il paraît en 200 ms avec un léger rebond, se dit au lecteur d'écran avec
  * son action, reste 4 s ou 6 s, et part quand on le touche. Le parent le
- * monte pour un message et le retire à `onDismiss` ; la file des toasts de
- * l'app se branche au chantier 31.
+ * monte pour un message et le retire à `onDismiss` ; dans l'app, c'est
+ * `ToastHost`, depuis le chantier 31.
  */
 export function Toast({
   message,
   icon,
   action,
+  duration,
   onAction,
   onDismiss,
   tabBar = true,
   offset,
   inline,
 }: ToastProps) {
-  const { colors, palette, radius, size } = useTheme();
+  const { colors, palette, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const motion = useMotion();
   const shown = useSharedValue(0);
@@ -71,7 +74,7 @@ export function Toast({
   useEffect(() => {
     shown.value = withTiming(1, timingConfig(latest.current.motion.enter('base')));
     if (inline) return;
-    const timer = setTimeout(hide, action ? TOAST_DURATION.action : TOAST_DURATION.plain);
+    const timer = setTimeout(hide, toastDuration(Boolean(action), duration));
     return () => clearTimeout(timer);
     // Un toast par montage : un nouveau message est un nouveau toast.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,7 +95,7 @@ export function Toast({
           position: 'absolute',
           left: 12,
           right: 12,
-          bottom: offset ?? insets.bottom + (tabBar ? size.tabbar + 8 : 12),
+          bottom: offset ?? toastBottom({ tabBar, insetBottom: insets.bottom }),
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,

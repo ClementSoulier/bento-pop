@@ -23,7 +23,8 @@ export function Steps({ count = 3, index = 0, label, color = 'text-primary' }: S
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={label ?? `Étape ${index + 1} sur ${count}`}
-      accessibilityValue={{ min: 1, max: count, now: index + 1 }}
+      // iOS lit `now / (max - min)` : à partir de 1, la dernière étape disait 150 %.
+      accessibilityValue={{ min: 0, max: count, now: index + 1 }}
       style={{ flexDirection: 'row', gap: 6 }}
     >
       {Array.from({ length: count }, (_, step) => (

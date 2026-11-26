@@ -1,6 +1,7 @@
 import { startDraft } from '@/state/draft-mirror';
 import { Stack, router, usePathname, useRootNavigationState } from 'expo-router';
 import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,14 +17,19 @@ import { useBlocked } from '@/state/blocked';
 import { useAppStatus } from '@/state/app-status';
 import { Splash } from '@/components/Splash';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { UpdateBanner } from '@/components/UpdateBanner';
 import { ForceUpdateScreen, MaintenanceScreen } from '@/components/AppBlocker';
-import { ToastHost } from '@/components/primitives';
+import { ToastHost } from '@/components/ToastHost';
 import { runStartupUpdateWithExpo } from '@/lib/ota-runtime';
 import type { OtaPhase } from '@/lib/ota';
 import { startPushRegistration, startPushResponses } from '@/lib/push-runtime';
 import { AccountResponder } from '@/components/account/AccountResponder';
-import { ThemeProvider } from '@/design';
+import { THEMES, ThemeProvider } from '@/design';
+
+// Le lancement natif reste à l'écran jusqu'à ce que `Splash` y soit, qui le
+// retire : laissé à lui-même, il partait avant, et Popy disparaissait entre les
+// deux (chantier 31, D11). Une erreur le retire aussi, cf. `renderRootComponent`.
+void SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ duration: 200, fade: true });
 
 /**
  * Root layout : charge les polices, démarre la session anonyme, monte les
@@ -145,7 +151,8 @@ export default function RootLayout() {
             <Stack
               screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: '#fbbf24' },
+                // Le jaune du lancement : rien ne saute avant le premier écran.
+                contentStyle: { backgroundColor: THEMES.light.colors['bg-brand'] },
               }}
             >
               <Stack.Screen
@@ -198,7 +205,6 @@ export default function RootLayout() {
             </Stack>
             <PushResponder />
             <AccountResponder />
-            <UpdateBanner />
             <OfflineBanner />
             <ToastHost />
           </QueryClientProvider>

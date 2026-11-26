@@ -7,6 +7,7 @@ import {
   promptFit,
 } from '@bento-pop/supabase-mobile/bento';
 import { feedBoxWidth, feedScale } from '../feed/layout';
+import { tabBarHeight } from '@/design/structure/tab-items';
 import { composeBentoScale } from './compose-layout';
 import { TILE_MAX_FONT_MULTIPLIER, fontScaleFor } from './font-scaling';
 import { gridBorderWidth, gridTileWidth } from './geometry';
@@ -53,7 +54,13 @@ const RENDUS: Rendu[] = [
       {
         nom: `composer ${t.nom}`,
         box: t.w - 32,
-        scale: composeBentoScale({ screenHeight: t.h, insetTop: t.top, tabBarHeight: 84, fontScale: 1, bentoCount: 3 }),
+        scale: composeBentoScale({
+          screenHeight: t.h,
+          insetTop: t.top,
+          tabBarHeight: tabBarHeight(t.bottom),
+          fontScale: 1,
+          bentoCount: 3,
+        }),
         pixelRatio: t.pixelRatio,
         fontScaling: true,
       },

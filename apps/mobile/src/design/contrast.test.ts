@@ -88,6 +88,13 @@ describe('contrastes du design system v2', () => {
     }
   });
 
+  it('donne à la petite icône des notifications 3:1 sur le volet, clair ou sombre (D12 du 31)', () => {
+    assert.ok(contrast(palette['yolk-700'], '#ffffff') >= 3);
+    assert.ok(contrast(palette['yolk-700'], '#1c1b1f') >= 3);
+    // `yolk-500`, le jaune de la marque, ne les tient pas sur blanc.
+    assert.ok(contrast(palette['yolk-500'], '#ffffff') < 3);
+  });
+
   it('mesure le WCAG comme lui : noir sur blanc, 21:1', () => {
     assert.equal(Math.round(contrast('#000000', '#ffffff') * 100) / 100, 21);
   });
