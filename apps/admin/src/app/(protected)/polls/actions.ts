@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
+import { publishPollResults, resultsFailureMessage } from '@/lib/blog/poll-results';
 
 const optionSchema = z.object({
   id: z.string().trim().min(1, 'ID requis').max(40),
@@ -63,6 +64,14 @@ export async function savePoll(input: PollFormPayload): Promise<ActionResult> {
 export async function publishPoll(id: string): Promise<ActionResult> {
   await requireAdmin();
   const supabase = await createServerClient();
+  // Le sondage en cours se clôt quand un autre le remplace : ses résultats partent
+  // sur le blog comme à l'archivage (docs/BLOG.md D16).
+  const { data: previous, error: prevErr } = await supabase
+    .from('landing_vote_weeks')
+    .select('id')
+    .eq('is_current', true)
+    .neq('id', id);
+  if (prevErr) return { ok: false, error: prevErr.message };
   const { error: clearErr } = await supabase
     .from('landing_vote_weeks')
     .update({ is_current: false } as never)
@@ -74,7 +83,7 @@ export async function publishPoll(id: string): Promise<ActionResult> {
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
   revalidate();
-  return { ok: true };
+  return closeResults(supabase, ((previous ?? []) as Array<{ id: string }>).map((p) => p.id));
 }
 
 export async function archivePoll(id: string): Promise<ActionResult> {
@@ -86,7 +95,24 @@ export async function archivePoll(id: string): Promise<ActionResult> {
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
   revalidate();
-  return { ok: true };
+  return closeResults(supabase, [id]);
+}
+
+/**
+ * Publie l'article de résultats de chaque sondage qui vient de se clore. La clôture
+ * est déjà faite : un échec ici est signalé sans être annulé.
+ */
+async function closeResults(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  weekIds: string[],
+): Promise<ActionResult> {
+  const failures: string[] = [];
+  for (const weekId of weekIds) {
+    const failure = resultsFailureMessage(await publishPollResults(supabase, weekId));
+    if (failure) failures.push(failure);
+  }
+  if (weekIds.length > 0) revalidatePath('/blog');
+  return failures.length > 0 ? { ok: false, error: failures.join('\n') } : { ok: true };
 }
 
 export async function deletePoll(id: string): Promise<ActionResult> {

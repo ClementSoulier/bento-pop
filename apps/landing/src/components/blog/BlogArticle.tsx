@@ -37,7 +37,9 @@ export function BlogArticle({ post, more }: { post: BlogPost; more: BlogPostSumm
             <p className="mt-5 text-[20px] leading-[1.5] text-bento-ink/80 text-pretty">{post.excerpt}</p>
           ) : null}
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3">
-            {post.authors.length > 0 ? (
+            {post.authors.length === 0 ? (
+              <span className="text-[15px] font-semibold">Par Bento Pop</span>
+            ) : (
               <div className="flex items-center gap-2.5">
                 <div className="flex -space-x-2">
                   {post.authors.map((a) => (
@@ -54,7 +56,7 @@ export function BlogArticle({ post, more }: { post: BlogPost; more: BlogPostSumm
                   ))}
                 </span>
               </div>
-            ) : null}
+            )}
             <span className="font-mono text-[12px] uppercase tracking-[0.15em] text-bento-ink/65">
               {date ? (
                 <time dateTime={post.publishedAt ?? undefined}>{date}</time>

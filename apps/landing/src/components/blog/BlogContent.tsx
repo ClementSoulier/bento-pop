@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { SmartImage } from '@/components/SmartImage';
 import { YouTubeEmbed } from '@/components/YouTubeEmbed';
+import { PollResults } from '@/components/blog/PollResults';
+import { readPollAttrs } from '@/lib/blog/poll';
 import {
   headingAnchor,
   isHttpUrl,
@@ -87,6 +89,10 @@ function renderBlock(node: BlogNode, key: number, anchors: Set<string>): ReactNo
           <YouTubeEmbed youtubeId={youtubeId} title="Vidéo YouTube" />
         </div>
       );
+    }
+    case 'poll': {
+      const poll = readPollAttrs(node.attrs);
+      return poll ? <PollResults key={key} poll={poll} /> : null;
     }
     default:
       return null;

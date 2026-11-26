@@ -25,7 +25,7 @@ export const EMPTY_DOC: BlogDoc = { type: 'doc', content: [] };
 
 /** Nœuds acceptés, avec les types d'enfants qu'ils peuvent contenir. */
 const BLOCK_CHILDREN: Record<string, readonly string[]> = {
-  doc: ['paragraph', 'heading', 'bulletList', 'orderedList', 'blockquote', 'horizontalRule', 'image', 'youtube'],
+  doc: ['paragraph', 'heading', 'bulletList', 'orderedList', 'blockquote', 'horizontalRule', 'image', 'youtube', 'poll'],
   paragraph: ['text', 'hardBreak'],
   heading: ['text', 'hardBreak'],
   bulletList: ['listItem'],
@@ -35,6 +35,8 @@ const BLOCK_CHILDREN: Record<string, readonly string[]> = {
   horizontalRule: [],
   image: [],
   youtube: [],
+  /* Résultats figés d'un sondage du Thermomètre, tout dans les attributs. */
+  poll: [],
   text: [],
   hardBreak: [],
 };
@@ -153,6 +155,8 @@ function checkNode(node: BlogNode, parent: string, depth: number): string | null
     case 'youtube':
       if (!youtubeIdFromUrl(node.attrs?.src)) return 'Vidéo YouTube : adresse non reconnue.';
       return null;
+    case 'poll':
+      return checkPollAttrs(node.attrs);
   }
 
   if (node.marks && node.marks.length > 0) return 'Mise en forme inattendue sur un bloc.';
@@ -160,6 +164,34 @@ function checkNode(node: BlogNode, parent: string, depth: number): string | null
     const error = checkNode(child, node.type, depth + 1);
     if (error) return error;
   }
+  return null;
+}
+
+/**
+ * Bloc `poll` : question, 2 à 8 options avec leurs votes, et un total égal à leur
+ * somme. La landing recalcule les pourcentages, elle ne reçoit que des entiers.
+ */
+function checkPollAttrs(attrs: Record<string, unknown> | undefined): string | null {
+  const invalid = 'Bloc sondage illisible : réinsère-le depuis la barre d’outils.';
+  if (!attrs) return invalid;
+  const { question, options, total, weekTag, closedAt } = attrs;
+  if (typeof question !== 'string' || question.trim() === '' || question.length > 300) return invalid;
+  if (weekTag !== undefined && weekTag !== null && (typeof weekTag !== 'string' || weekTag.length > 80)) {
+    return invalid;
+  }
+  if (closedAt !== undefined && closedAt !== null && (typeof closedAt !== 'string' || Number.isNaN(Date.parse(closedAt)))) {
+    return invalid;
+  }
+  if (!Array.isArray(options) || options.length < 2 || options.length > 8) return invalid;
+  let sum = 0;
+  for (const option of options as Array<Record<string, unknown> | null>) {
+    const label = option?.label;
+    const votes = option?.votes;
+    if (typeof label !== 'string' || label.trim() === '' || label.length > 120) return invalid;
+    if (typeof votes !== 'number' || !Number.isInteger(votes) || votes < 0 || votes > 10_000_000) return invalid;
+    sum += votes;
+  }
+  if (total !== sum) return invalid;
   return null;
 }
 

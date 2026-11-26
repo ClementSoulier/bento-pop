@@ -7,12 +7,17 @@ import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import { Placeholder } from '@tiptap/extensions';
 import { ImageInsertDialog } from '@/components/blog/ImageInsertDialog';
+import { PollInsertDialog } from '@/components/blog/PollInsertDialog';
+import { PollNode } from '@/components/blog/PollNode';
 import { isSafeHref, youtubeIdFromUrl, type BlogDoc } from '@/lib/blog/document';
+import { pollNodeAttrs, type PollSnapshot } from '@/lib/blog/poll';
 import { clsx } from '@/lib/clsx';
 
 type Props = {
   initialContent: BlogDoc;
   onChange: (doc: BlogDoc) => void;
+  /** Sondages du Thermomètre proposés par le bouton « Sondage ». */
+  polls?: PollSnapshot[];
 };
 
 /**
@@ -20,8 +25,9 @@ type Props = {
  * exactement celles que `validateBlogDoc` accepte et que la landing sait rendre :
  * en ajouter une demande de toucher aux trois.
  */
-export function RichTextEditor({ initialContent, onChange }: Props) {
+export function RichTextEditor({ initialContent, onChange, polls = [] }: Props) {
   const [imageOpen, setImageOpen] = useState(false);
+  const [pollOpen, setPollOpen] = useState(false);
 
   const editor = useEditor({
     // Rendu côté client uniquement : évite un écart d'hydratation avec Next.
@@ -43,6 +49,7 @@ export function RichTextEditor({ initialContent, onChange }: Props) {
       }),
       Image.configure({ inline: false, allowBase64: false }),
       Youtube.configure({ nocookie: true, modestBranding: true, width: 640, height: 360 }),
+      PollNode,
       Placeholder.configure({
         placeholder: 'Écris ton article ici. Les intertitres, images et vidéos sont dans la barre ci-dessus.',
       }),
@@ -61,7 +68,9 @@ export function RichTextEditor({ initialContent, onChange }: Props) {
 
   return (
     <div className="admin-card overflow-hidden">
-      {editor ? <Toolbar editor={editor} onImage={() => setImageOpen(true)} /> : null}
+      {editor ? (
+        <Toolbar editor={editor} onImage={() => setImageOpen(true)} onPoll={() => setPollOpen(true)} />
+      ) : null}
       <EditorContent editor={editor} />
       <ImageInsertDialog
         open={imageOpen}
@@ -74,11 +83,27 @@ export function RichTextEditor({ initialContent, onChange }: Props) {
             .run();
         }}
       />
+      <PollInsertDialog
+        open={pollOpen}
+        onOpenChange={setPollOpen}
+        polls={polls}
+        onInsert={(snapshot) => {
+          editor?.chain().focus().insertPoll(pollNodeAttrs(snapshot)).run();
+        }}
+      />
     </div>
   );
 }
 
-function Toolbar({ editor, onImage }: { editor: Editor; onImage: () => void }) {
+function Toolbar({
+  editor,
+  onImage,
+  onPoll,
+}: {
+  editor: Editor;
+  onImage: () => void;
+  onPoll: () => void;
+}) {
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) => ({
@@ -197,6 +222,9 @@ function Toolbar({ editor, onImage }: { editor: Editor; onImage: () => void }) {
       ) : null}
       <Btn label="Insérer une vidéo YouTube" onClick={onVideo}>
         Vidéo
+      </Btn>
+      <Btn label="Insérer les résultats d’un sondage du Thermomètre" onClick={onPoll}>
+        Sondage
       </Btn>
       <div className="flex-1" />
       <Btn label="Annuler (Cmd+Z)" disabled={!state.canUndo} onClick={() => editor.chain().focus().undo().run()}>
