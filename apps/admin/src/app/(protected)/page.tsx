@@ -57,7 +57,7 @@ export default async function DashboardPage() {
         <StatCard label="Événements à venir" value={(eventsRes.data ?? []).filter((e) => (e as unknown as { status: string }).status === 'soon').length} hint="dans l'agenda" />
         <StatCard label="Sondages actifs" value={(pollsRes.data ?? []).filter((p) => (p as unknown as { is_current: boolean }).is_current).length} hint={`${formatNumber(totalVotes)} votes cumulés`} />
         <StatCard label="Liens" value={linksEnabled} hint={`${linksTotal - linksEnabled} désactivés`} />
-        <StatCard label="Newsletter" value={subscribersRes.count ?? 0} hint="abonnés cumulés" />
+        <StatCard label="Newsletter" value={subscribersRes.count ?? 0} hint="adresses inscrites" />
       </div>
 
       {/* L'app mobile : la santé des notifications push (chantier 17, D19). */}

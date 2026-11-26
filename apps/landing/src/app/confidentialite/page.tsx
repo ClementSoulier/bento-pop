@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { LegalPage } from '@/components/LegalPage';
+import { NewsletterUnsubscribe } from '@/components/newsletter/NewsletterUnsubscribe';
 
 export const metadata: Metadata = {
   title: 'Politique de confidentialité',
@@ -14,7 +15,7 @@ export default function ConfidentialitePage() {
     <LegalPage
       eyebrow="Données personnelles"
       title="Politique de confidentialité"
-      updatedAt="27/10/2026"
+      updatedAt="26/11/2026"
     >
       <section>
         <h2>1. Responsable du traitement</h2>
@@ -66,6 +67,16 @@ export default function ConfidentialitePage() {
             relie à un visiteur. Le nombre de visites d&apos;un bento est
             affiché publiquement sur sa page. Aucun cookie ni traceur
             n&apos;est déposé dans le navigateur.
+          </li>
+          <li>
+            <strong>Newsletter</strong> : l&apos;adresse email saisie dans le
+            formulaire d&apos;inscription (sur l&apos;accueil ou en pied de
+            page), avec la date de l&apos;inscription et le formulaire
+            d&apos;où elle vient. Elle sert uniquement à envoyer la newsletter
+            de Bento Pop : elle n&apos;est jamais affichée publiquement, ni
+            cédée. L&apos;équipe est prévenue de chaque inscription et
+            désinscription par un message qui ne donne que le nombre
+            d&apos;inscrits, jamais l&apos;adresse.
           </li>
         </ul>
 
@@ -350,6 +361,11 @@ export default function ConfidentialitePage() {
             numériques).
           </li>
           <li>
+            <strong>Newsletter</strong> : vous envoyer la newsletter
+            (consentement, donné en vous inscrivant et retiré en vous
+            désinscrivant, <a href="#newsletter">ci-dessous</a>).
+          </li>
+          <li>
             <strong>Logs serveur</strong> : sécurité et diagnostic (intérêt
             légitime).
           </li>
@@ -422,6 +438,10 @@ export default function ConfidentialitePage() {
             par l&apos;équipe : 1 an après leur traitement, puis effacés.
             Ceux qui visent un compte gardent son pseudo et une copie du texte
             signalé jusque-là, même s&apos;il est supprimé entre-temps.
+          </li>
+          <li>
+            <strong>Adresse de la newsletter</strong> : jusqu&apos;à la
+            désinscription, qui l&apos;efface immédiatement.
           </li>
           <li>Logs serveur : 30 jours.</li>
           <li>
@@ -516,6 +536,17 @@ export default function ConfidentialitePage() {
           droit à la portabilité aussi : <em>« Exporter mes données »</em>, dans
           les mêmes réglages, remet un fichier de ses données.
         </p>
+
+        <h3 id="newsletter" className="mb-2 mt-7 text-[18px] font-bold text-bento-ink">
+          Se désinscrire de la newsletter
+        </h3>
+        <p>
+          Saisissez l&apos;adresse qui reçoit la newsletter : elle est effacée
+          de la liste immédiatement et définitivement. Pour vous réinscrire
+          plus tard, il suffira de la saisir à nouveau dans le formulaire
+          d&apos;inscription.
+        </p>
+        <NewsletterUnsubscribe />
         <p>
           Pour exercer les autres droits, contactez-nous à{' '}
           <a href="mailto:contact@bento-pop.com">contact@bento-pop.com</a>. Une

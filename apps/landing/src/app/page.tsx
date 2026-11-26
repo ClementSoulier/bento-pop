@@ -7,6 +7,7 @@ import { Thermometre } from '@/sections/Thermometre/Thermometre';
 import { Univers } from '@/sections/Univers/Univers';
 import { Debriefs } from '@/sections/Debriefs/Debriefs';
 import { Team } from '@/sections/Team/Team';
+import { Newsletter } from '@/sections/Newsletter/Newsletter';
 import { Footer } from '@/sections/Footer/Footer';
 import { JsonLd } from '@/components/JsonLd';
 import {
@@ -34,8 +35,9 @@ export default function Page() {
         <Univers />
         <Debriefs />
         <Team />
+        <Newsletter />
       </main>
-      <Footer />
+      <Footer newsletter={false} />
     </>
   );
 }

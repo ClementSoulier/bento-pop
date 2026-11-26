@@ -3,8 +3,17 @@ import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import { getFooter } from '@/content/footer';
 import { SocialLinks } from './SocialLinks';
 import { LegalLinks } from './LegalLinks';
+import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup';
 
-export async function Footer() {
+type FooterProps = {
+  /**
+   * Le champ d'inscription à la newsletter. Coupé sur l'accueil, qui a déjà
+   * sa section « La newsletter » juste au-dessus du footer.
+   */
+  newsletter?: boolean;
+};
+
+export async function Footer({ newsletter = true }: FooterProps = {}) {
   const footer = await getFooter();
   return (
     <footer className="border-t-[5px] border-bento-ink bg-bento-ink px-7 pb-8 pt-20 text-bento-cream">
@@ -19,6 +28,11 @@ export async function Footer() {
           <p className="text-[13px] leading-[1.55] text-bento-cream/55">
             Une production indépendante.
           </p>
+          {newsletter ? (
+            <div className="mt-9">
+              <NewsletterSignup source="footer" variant="footer" />
+            </div>
+          ) : null}
         </div>
         <div>
           <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.25em] text-bento-yellow">
