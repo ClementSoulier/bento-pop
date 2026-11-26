@@ -49,9 +49,11 @@ export function SectionHead({
       {description ? (
         <p
           className={clsx(
-            'mx-auto max-w-[620px] text-[17px] leading-[1.5] text-pretty',
+            'max-w-[620px] text-[17px] leading-[1.5] text-pretty',
             'whitespace-pre-line',
-            align === 'left' && 'mx-0',
+            /* L'un ou l'autre, jamais les deux : sans tailwind-merge, `mx-auto` l'emportait
+               sur `mx-0` dans la feuille générée et l'intro restait centrée. */
+            align === 'left' ? 'mx-0' : 'mx-auto',
             isDark ? 'text-bento-cream/75' : 'text-bento-ink/75',
           )}
         >

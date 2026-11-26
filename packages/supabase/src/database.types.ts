@@ -245,6 +245,52 @@ type LandingPodcastEpisodeHostFields = {
   created_at: string;
 };
 
+type LandingBlogCategoryFields = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type LandingBlogPostFields = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  /** Document Tiptap (JSON ProseMirror), cf. docs/BLOG.md. */
+  content: Json;
+  cover_url: string | null;
+  cover_alt: string;
+  category_id: string | null;
+  status: 'draft' | 'published';
+  published_at: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  reading_minutes: number;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type LandingBlogPostAuthorFields = {
+  post_id: string;
+  team_member_id: string;
+  display_order: number;
+  created_at: string;
+};
+
+type LandingBlogPostEpisodeFields = {
+  id: string;
+  post_id: string;
+  show_episode_id: string | null;
+  podcast_episode_id: string | null;
+  display_order: number;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -481,6 +527,34 @@ export type Database = {
         Insert: Omit<LandingPodcastEpisodeHostFields, 'created_at' | 'display_order'> &
           Partial<Pick<LandingPodcastEpisodeHostFields, 'created_at' | 'display_order'>>;
         Update: Partial<LandingPodcastEpisodeHostFields>;
+        Relationships: [];
+      };
+      landing_blog_categories: {
+        Row: LandingBlogCategoryFields;
+        Insert: Omit<LandingBlogCategoryFields, 'id' | 'created_at' | 'updated_at' | 'description' | 'display_order'> &
+          Partial<Pick<LandingBlogCategoryFields, 'id' | 'created_at' | 'updated_at' | 'description' | 'display_order'>>;
+        Update: Partial<LandingBlogCategoryFields>;
+        Relationships: [];
+      };
+      landing_blog_posts: {
+        Row: LandingBlogPostFields;
+        Insert: Pick<LandingBlogPostFields, 'slug' | 'title'> &
+          Partial<Omit<LandingBlogPostFields, 'slug' | 'title'>>;
+        Update: Partial<LandingBlogPostFields>;
+        Relationships: [];
+      };
+      landing_blog_post_authors: {
+        Row: LandingBlogPostAuthorFields;
+        Insert: Omit<LandingBlogPostAuthorFields, 'created_at' | 'display_order'> &
+          Partial<Pick<LandingBlogPostAuthorFields, 'created_at' | 'display_order'>>;
+        Update: Partial<LandingBlogPostAuthorFields>;
+        Relationships: [];
+      };
+      landing_blog_post_episodes: {
+        Row: LandingBlogPostEpisodeFields;
+        Insert: Pick<LandingBlogPostEpisodeFields, 'post_id'> &
+          Partial<Omit<LandingBlogPostEpisodeFields, 'post_id'>>;
+        Update: Partial<LandingBlogPostEpisodeFields>;
         Relationships: [];
       };
     };

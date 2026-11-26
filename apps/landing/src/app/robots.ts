@@ -10,7 +10,8 @@ export default function robots(): MetadataRoute.Robots {
         // Le backoffice vit sur le sous-domaine `admin.bento-pop.com` (pas sur
         // cette landing), mais on bloque par précaution `/api/` et `/admin/`
         // au cas où un rewrite/proxy les exposerait un jour ici.
-        disallow: ['/api/', '/admin/'],
+        // `/blog/apercu/` : aperçus signés des brouillons, jamais à explorer.
+        disallow: ['/api/', '/admin/', '/blog/apercu/'],
       },
     ],
     sitemap: `${base}/sitemap.xml`,

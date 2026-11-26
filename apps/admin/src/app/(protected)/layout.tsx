@@ -11,11 +11,12 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const supabase = await createServerClient();
   const mobile = createMobileClient();
 
-  const [eventsRes, pollsRes, showDraftsRes, podcastDraftsRes, catalogueRes] = await Promise.all([
+  const [eventsRes, pollsRes, showDraftsRes, podcastDraftsRes, blogDraftsRes, catalogueRes] = await Promise.all([
     supabase.from('landing_events').select('id', { count: 'exact', head: true }).eq('status', 'soon'),
     supabase.from('landing_vote_weeks').select('id', { count: 'exact', head: true }).eq('is_current', true),
     supabase.from('landing_show_episodes').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
     supabase.from('landing_podcast_episodes').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+    supabase.from('landing_blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
     mobile
       ? mobile.from('items').select('id', { count: 'exact', head: true }).eq('status', 'pending')
       : Promise.resolve({ count: 0 } as { count: number | null }),
@@ -30,6 +31,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           polls: pollsRes.count ?? 0,
           emissions: showDraftsRes.count ?? 0,
           podcasts: podcastDraftsRes.count ?? 0,
+          blog: blogDraftsRes.count ?? 0,
           catalogue: catalogueRes.count ?? 0,
         }}
       />

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import {
+  ArticleIcon,
   CalendarIcon,
   DashboardIcon,
   EyeIcon,
@@ -26,6 +27,7 @@ type SidebarProps = {
     polls?: number;
     emissions?: number;
     podcasts?: number;
+    blog?: number;
     catalogue?: number;
   };
 };
@@ -34,6 +36,7 @@ const NAV = [
   { id: 'dashboard', href: '/',         label: 'Dashboard',  Icon: DashboardIcon },
   { id: 'emissions', href: '/emissions',label: 'Émissions',  Icon: PlayIcon },
   { id: 'podcasts',  href: '/podcasts', label: 'Podcasts',   Icon: MicIcon },
+  { id: 'blog',      href: '/blog',     label: 'Blog',       Icon: ArticleIcon },
   { id: 'events',    href: '/events',   label: 'Événements', Icon: CalendarIcon },
   { id: 'polls',     href: '/polls',    label: 'Sondages',   Icon: PollIcon },
   { id: 'links',     href: '/links',    label: 'Liens & CTAs', Icon: LinkIcon },
@@ -83,7 +86,9 @@ export function Sidebar({ user, badges }: SidebarProps) {
                   ? badges?.emissions
                   : n.id === 'podcasts'
                     ? badges?.podcasts
-                    : n.id === 'catalogue'
+                    : n.id === 'blog'
+                      ? badges?.blog
+                      : n.id === 'catalogue'
                       ? badges?.catalogue
                       : undefined;
           return (

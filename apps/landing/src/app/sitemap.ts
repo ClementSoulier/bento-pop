@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { getPodcastEpisodes, getShowEpisodes } from '@/content/episodes';
+import { getBlogCategoriesInUse, getBlogPosts } from '@/content/blog';
 import { bentoPath } from '@/lib/bento/metadata';
 import { listFeaturedPseudos } from '@/lib/bento/queries';
 
@@ -7,10 +8,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://bento-pop.com';
   const now = new Date();
 
-  const [shows, podcasts, featuredBentos] = await Promise.all([
+  const [shows, podcasts, featuredBentos, posts, categories] = await Promise.all([
     getShowEpisodes(),
     getPodcastEpisodes(),
     listFeaturedPseudos(),
+    getBlogPosts(),
+    getBlogCategoriesInUse(),
   ]);
 
   /**
@@ -47,6 +50,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  /* Blog (docs/BLOG.md D11) : chaque article, et les catégories qui en ont au moins un. */
+  const postUrls: MetadataRoute.Sitemap = posts.map((p) => ({
+    url: `${base}/blog/${p.slug}`,
+    lastModified: new Date(p.updatedAt),
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  const categoryUrls: MetadataRoute.Sitemap = categories.map((c) => ({
+    url: `${base}/blog/categorie/${c.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.5,
+  }));
+
   return [
     {
       url: `${base}/`,
@@ -66,8 +84,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    {
+      url: `${base}/blog`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
     ...showUrls,
     ...podcastUrls,
+    ...postUrls,
+    ...categoryUrls,
     ...bentoUrls,
     {
       url: `${base}/mentions-legales`,

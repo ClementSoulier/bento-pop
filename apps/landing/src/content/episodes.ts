@@ -79,7 +79,7 @@ const SHOW_SELECT =
 const PODCAST_SELECT =
   'id, slug, title, description, spotify_episode_id, audio_platform, audio_show_id, audio_url, audio_image_url, thumbnail_url, duration_seconds, published_at, season, episode_number, display_order, seo_title, seo_description, guests, mentions, chapters, landing_podcast_episode_hosts(display_order, landing_team(id, name, nick, initials, photo_kind, photo_from, photo_to, photo_url))';
 
-type DbTeamMember = {
+export type DbTeamMember = {
   id: string;
   name: string;
   nick: string;
@@ -125,7 +125,7 @@ type DbPodcastRow = Omit<DbShowRow, 'youtube_id' | 'landing_show_episode_hosts'>
   audio_image_url: string | null;
 } & DbHostJoin<'landing_podcast_episode_hosts'>;
 
-function mapHosts(
+export function mapHosts(
   rows: Array<{ display_order: number; landing_team: DbTeamMember | DbTeamMember[] | null }>,
 ): EpisodeHost[] {
   return rows
