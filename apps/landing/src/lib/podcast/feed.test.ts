@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  APPLE_PODCASTS_VERIFY_TOKEN,
+  appleVerifyXml,
   buildFeed,
   descriptionHtml,
   escapeXml,
@@ -112,6 +114,25 @@ test('le flux porte les balises que les plateformes exigent', () => {
   ]) {
     assert.ok(xml.includes(attendu), `balise manquante : ${attendu}`);
   }
+});
+
+test('le flux porte le jeton de revendication Apple, sous ses deux formes', () => {
+  const xml = buildFeed(SETTINGS, [episode()], 'https://bento-pop.com/feed.xml', MAINTENANT);
+  const jeton = APPLE_PODCASTS_VERIFY_TOKEN;
+  assert.ok(jeton, 'aucun jeton en place');
+  assert.ok(xml.includes(`<itunes:applepodcastsverify>${jeton}</itunes:applepodcastsverify>`));
+  assert.ok(xml.includes(`<podcast:txt purpose="applepodcastsverify">${jeton}</podcast:txt>`));
+  // Au niveau du podcast, pas dans un épisode.
+  assert.ok(xml.indexOf('applepodcastsverify') < xml.indexOf('<item>'));
+});
+
+test('sans jeton, aucune balise de revendication', () => {
+  assert.deepEqual(appleVerifyXml(''), []);
+  assert.deepEqual(appleVerifyXml('   '), []);
+  assert.deepEqual(appleVerifyXml(' a&b '), [
+    '    <itunes:applepodcastsverify>a&amp;b</itunes:applepodcastsverify>',
+    '    <podcast:txt purpose="applepodcastsverify">a&amp;b</podcast:txt>',
+  ]);
 });
 
 test('la page liée dépend de la rubrique', () => {

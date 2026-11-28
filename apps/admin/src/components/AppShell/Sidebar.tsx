@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import logo from '@bento-pop/brand/assets/logo/bento-pop.png';
 import {
+  ArticleIcon,
   CalendarIcon,
   DashboardIcon,
   EyeIcon,
   LinkIcon,
   LogoutIcon,
+  MailIcon,
   MicIcon,
   PlayIcon,
   PollIcon,
@@ -26,6 +28,7 @@ type SidebarProps = {
     polls?: number;
     emissions?: number;
     podcasts?: number;
+    blog?: number;
     catalogue?: number;
   };
 };
@@ -34,10 +37,12 @@ const NAV = [
   { id: 'dashboard', href: '/',         label: 'Dashboard',  Icon: DashboardIcon },
   { id: 'emissions', href: '/emissions',label: 'Émissions',  Icon: PlayIcon },
   { id: 'podcasts',  href: '/podcasts', label: 'Podcasts',   Icon: MicIcon },
+  { id: 'blog',      href: '/blog',     label: 'Blog',       Icon: ArticleIcon },
   { id: 'events',    href: '/events',   label: 'Événements', Icon: CalendarIcon },
   { id: 'polls',     href: '/polls',    label: 'Sondages',   Icon: PollIcon },
   { id: 'links',     href: '/links',    label: 'Liens & CTAs', Icon: LinkIcon },
   { id: 'team',      href: '/team',     label: 'Team',       Icon: UsersIcon },
+  { id: 'newsletter', href: '/newsletter', label: 'Newsletter', Icon: MailIcon },
   { id: 'users',     href: '/utilisateurs', label: 'Utilisateurs (mobile)', Icon: UsersIcon },
   { id: 'bentos',    href: '/bentos',   label: 'Bentos (mobile)', Icon: DashboardIcon },
   { id: 'editions',  href: '/editions', label: 'Éditions (mobile)', Icon: CalendarIcon },
@@ -83,7 +88,9 @@ export function Sidebar({ user, badges }: SidebarProps) {
                   ? badges?.emissions
                   : n.id === 'podcasts'
                     ? badges?.podcasts
-                    : n.id === 'catalogue'
+                    : n.id === 'blog'
+                      ? badges?.blog
+                      : n.id === 'catalogue'
                       ? badges?.catalogue
                       : undefined;
           return (
