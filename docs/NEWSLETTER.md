@@ -46,6 +46,8 @@ Policies : `admins read newsletter` (select) et `admins delete newsletter` (dele
 
 ## 6. Le jour du premier envoi
 
+> Depuis le 28/11/2026, l'envoi se prépare dans le BO lui-même, par Resend Broadcasts : cf. [NEWSLETTER-ENVOI.md](./NEWSLETTER-ENVOI.md), qui remplace cette section une fois en service.
+
 - Exporter le CSV au BO et l'importer dans l'outil d'envoi.
 - Ajouter cet outil aux destinataires de la politique de confidentialité (§5), puisqu'il recevra les adresses.
 - Mettre dans chaque newsletter un lien de désinscription : celui de l'outil, ou `https://bento-pop.com/confidentialite#newsletter`. Une adresse désinscrite dans l'outil doit aussi être retirée au BO, et inversement, tant que les deux listes vivent séparément.

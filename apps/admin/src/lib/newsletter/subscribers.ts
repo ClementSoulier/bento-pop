@@ -10,6 +10,14 @@ export type SubscriberRow = {
   consent_at: string;
 };
 
+/**
+ * Le plafond du plan gratuit de Resend Marketing, et le seuil d'alerte
+ * (docs/NEWSLETTER-ENVOI.md, D12) : au-delà de 1 000 contacts, l'envoi passe
+ * au plan payant ou change d'outil.
+ */
+export const FREE_PLAN_CONTACTS = 1000;
+export const FREE_PLAN_ALERT = 800;
+
 const SOURCE_LABELS: Record<string, string> = {
   home: 'Accueil',
   footer: 'Pied de page',

@@ -31,6 +31,33 @@ type LandingNewsletterSubscriberFields = {
   consent_at: string;
 };
 
+/** Un numéro de la newsletter (docs/NEWSLETTER-ENVOI.md). */
+type NewsletterIssueFields = {
+  id: string;
+  subject: string;
+  preheader: string;
+  html: string;
+  text: string;
+  status: 'draft' | 'sending' | 'scheduled' | 'sent';
+  scheduled_at: string | null;
+  sent_at: string | null;
+  recipients: number | null;
+  delivered: number;
+  bounces: number;
+  complaints: number;
+  resend_broadcast_id: string | null;
+  last_error: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NewsletterWebhookEventFields = {
+  id: string;
+  type: string;
+  received_at: string;
+};
+
 type AdminUserFields = {
   user_id: string;
   role: 'admin' | 'editor';
@@ -322,6 +349,19 @@ export type Database = {
         Update: Partial<LandingNewsletterSubscriberFields>;
         Relationships: [];
       };
+      newsletter_issues: {
+        Row: NewsletterIssueFields;
+        Insert: Partial<NewsletterIssueFields>;
+        Update: Partial<NewsletterIssueFields>;
+        Relationships: [];
+      };
+      newsletter_webhook_events: {
+        Row: NewsletterWebhookEventFields;
+        Insert: Pick<NewsletterWebhookEventFields, 'id' | 'type'> &
+          Partial<Pick<NewsletterWebhookEventFields, 'received_at'>>;
+        Update: Partial<NewsletterWebhookEventFields>;
+        Relationships: [];
+      };
       landing_events: {
         Row: LandingEventFields;
         Insert: Omit<LandingEventFields, 'id' | 'created_at' | 'updated_at' | 'stand' | 'status' | 'status_label' | 'display_order' | 'replay_url'> &
@@ -567,6 +607,15 @@ export type Database = {
     Functions: {
       is_admin: {
         Args: { uid?: string };
+        Returns: boolean;
+      };
+      newsletter_record_event: {
+        Args: {
+          p_event_id: string;
+          p_type: string;
+          p_broadcast_id?: string | null;
+          p_at?: string;
+        };
         Returns: boolean;
       };
     };

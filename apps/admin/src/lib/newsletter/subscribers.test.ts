@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { filterSubscribers, sourceLabel, subscribersCsv, type SubscriberRow } from './newsletter';
+import { filterSubscribers, sourceLabel, subscribersCsv, type SubscriberRow } from './subscribers';
 
 const rows: SubscriberRow[] = [
   { id: '1', email: 'alice@exemple.fr', source: 'home', consent_at: '2026-11-26T19:00:00+00:00' },

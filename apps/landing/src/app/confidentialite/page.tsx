@@ -15,7 +15,7 @@ export default function ConfidentialitePage() {
     <LegalPage
       eyebrow="Données personnelles"
       title="Politique de confidentialité"
-      updatedAt="26/11/2026"
+      updatedAt="28/11/2026"
     >
       <section>
         <h2>1. Responsable du traitement</h2>
@@ -73,10 +73,13 @@ export default function ConfidentialitePage() {
             formulaire d&apos;inscription (sur l&apos;accueil ou en pied de
             page), avec la date de l&apos;inscription et le formulaire
             d&apos;où elle vient. Elle sert uniquement à envoyer la newsletter
-            de Bento Pop : elle n&apos;est jamais affichée publiquement, ni
-            cédée. L&apos;équipe est prévenue de chaque inscription et
-            désinscription par un message qui ne donne que le nombre
-            d&apos;inscrits, jamais l&apos;adresse.
+            de Bento Pop, par Resend (§5) : elle n&apos;est jamais affichée
+            publiquement, ni cédée. Une adresse qui n&apos;existe plus (le mail
+            revient en erreur) ou qui signale la newsletter comme indésirable
+            est retirée de la liste. L&apos;équipe est prévenue de chaque
+            inscription, désinscription et retrait par un message qui ne donne
+            que le nombre d&apos;inscrits, jamais l&apos;adresse. Nous ne
+            mesurons ni les ouvertures ni les clics.
           </li>
         </ul>
 
@@ -441,12 +444,15 @@ export default function ConfidentialitePage() {
           </li>
           <li>
             <strong>Adresse de la newsletter</strong> : jusqu&apos;à la
-            désinscription, qui l&apos;efface immédiatement.
+            désinscription, qui l&apos;efface immédiatement de notre liste et
+            de celle de Resend. Après un mail revenu en erreur ou une plainte
+            pour courrier indésirable, Resend garde l&apos;adresse dans sa
+            liste de blocage, pour ne plus jamais lui écrire.
           </li>
           <li>Logs serveur : 30 jours.</li>
           <li>
-            Journaux d&apos;envoi chez Resend, codes de connexion et mails de
-            modération : 30 jours.
+            Journaux d&apos;envoi chez Resend (codes de connexion, mails de
+            modération, newsletter) : 30 jours.
           </li>
           <li>
             Logs Supabase de l&apos;app : 1 jour. Sa base n&apos;a pas de
@@ -481,7 +487,10 @@ export default function ConfidentialitePage() {
             utilisateurs qui gardent leur compte, et des mails de modération :
             à l&apos;équipe, et à l&apos;adresse d&apos;un compte gardé que
             l&apos;équipe supprime, pour lui en donner le motif. Resend reçoit
-            l&apos;adresse et le message. Le transfert hors de l&apos;Union européenne est
+            l&apos;adresse et le message. Resend envoie aussi la newsletter :
+            il garde pour cela la liste des adresses inscrites, effacées chez
+            lui en même temps que chez nous, et le lien de désinscription de
+            chaque newsletter mène à sa page. Le transfert hors de l&apos;Union européenne est
             encadré par les clauses contractuelles types de la Commission
             européenne, prévues par son accord de traitement des données.
           </li>
@@ -541,8 +550,9 @@ export default function ConfidentialitePage() {
           Se désinscrire de la newsletter
         </h3>
         <p>
-          Saisissez l&apos;adresse qui reçoit la newsletter : elle est effacée
-          de la liste immédiatement et définitivement. Pour vous réinscrire
+          Chaque newsletter porte un lien de désinscription en un clic. Vous
+          pouvez aussi saisir ici l&apos;adresse qui la reçoit : elle est
+          effacée de la liste immédiatement et définitivement. Pour vous réinscrire
           plus tard, il suffira de la saisir à nouveau dans le formulaire
           d&apos;inscription.
         </p>

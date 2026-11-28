@@ -5,6 +5,7 @@ import { readFileSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { popyKeyForPseudo } from '@bento-pop/supabase-mobile/bento';
+import { NEWSLETTER_PUBLIC_IMAGES, pngWidth } from '../src/lib/newsletter/public-images';
 import { bentoId, startStub, type EpisodeQuery, type VisitCall } from './stub';
 
 /**
@@ -829,5 +830,16 @@ describe('épisodes pour l’app', () => {
     assert.equal(res.status, 503);
     assert.equal(res.headers.get('cache-control'), 'no-store');
     await resetStub();
+  });
+});
+
+describe('images fixes de la newsletter', () => {
+  it('sert chaque image sous /newsletter/, en PNG, à sa taille', async () => {
+    for (const image of NEWSLETTER_PUBLIC_IMAGES) {
+      const res = await get(image.path);
+      assert.equal(res.status, 200, image.path);
+      assert.equal(res.headers.get('content-type'), 'image/png', image.path);
+      assert.equal(pngWidth(new Uint8Array(await res.arrayBuffer())), image.width, image.path);
+    }
   });
 });

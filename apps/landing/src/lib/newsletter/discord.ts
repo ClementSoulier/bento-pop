@@ -22,6 +22,13 @@ export function unsubscriptionMessage(total: number | null): string {
   return `👋 Une désinscription de la newsletter${subscribers(total)}`;
 }
 
+/** Une adresse retirée d'office (docs/NEWSLETTER-ENVOI.md, D9). */
+export function removalMessage(reason: 'bounce' | 'complaint', total: number | null): string {
+  return reason === 'bounce'
+    ? `📭 Une adresse retirée de la newsletter : rebond${subscribers(total)}`
+    : `🚫 Une adresse retirée de la newsletter : signalée comme indésirable${subscribers(total)}`;
+}
+
 export type DiscordOutcome = 'sent' | 'skipped' | 'failed';
 
 /**

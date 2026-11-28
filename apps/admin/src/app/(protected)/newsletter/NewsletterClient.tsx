@@ -4,11 +4,13 @@ import { useMemo, useState, useTransition } from 'react';
 import { SearchIcon, TrashIcon } from '@/components/icons';
 import { formatNumber } from '@/lib/format';
 import {
+  FREE_PLAN_ALERT,
+  FREE_PLAN_CONTACTS,
   filterSubscribers,
   sourceLabel,
   subscribersCsv,
   type SubscriberRow,
-} from '@/lib/newsletter';
+} from '@/lib/newsletter/subscribers';
 import { deleteSubscriber } from './actions';
 
 const DATE = new Intl.DateTimeFormat('fr-FR', {
@@ -73,7 +75,12 @@ export function NewsletterClient({
   return (
     <>
       <div className="mb-5 grid grid-cols-3 gap-4">
-        <Stat label="Inscrits" value={rows.length} hint="adresses dans la liste" />
+        <Stat
+          label="Inscrits"
+          value={rows.length}
+          hint={`sur ${formatNumber(FREE_PLAN_CONTACTS)} du plan gratuit de Resend`}
+          alert={rows.length >= FREE_PLAN_ALERT}
+        />
         <Stat label="30 derniers jours" value={lastMonth} hint="nouvelles inscriptions" />
         <div className="admin-card flex flex-col justify-center gap-2 p-4">
           <button
@@ -167,14 +174,25 @@ export function NewsletterClient({
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: number; hint: string }) {
+function Stat({
+  label,
+  value,
+  hint,
+  alert = false,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  /** Le plan gratuit approche de sa limite : la carte se voit. */
+  alert?: boolean;
+}) {
   return (
-    <div className="admin-card flex flex-col gap-1 p-4">
+    <div className={`admin-card flex flex-col gap-1 p-4${alert ? ' border-l-4 border-l-bento-red' : ''}`}>
       <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-admin-muted">
         {label}
       </span>
       <span className="font-display text-[36px] leading-none">{formatNumber(value)}</span>
-      <span className="text-[11px] text-admin-muted">{hint}</span>
+      <span className={`text-[11px] ${alert ? 'font-semibold text-bento-red' : 'text-admin-muted'}`}>{hint}</span>
     </div>
   );
 }

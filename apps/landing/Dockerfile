@@ -84,10 +84,10 @@ COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/.next/static     ./
 RUN mkdir -p /repo/apps/landing/.next/cache/images \
  && chown -R nextjs:nodejs /repo/apps/landing/.next
 
-# public/ optionnel : copié seulement s'il existe
-# (Le test ci-dessus se fait au build du Dockerfile via une instruction shell.)
-# Si tu ajoutes un dossier apps/landing/public/, décommente la ligne suivante :
-# COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/public ./apps/landing/public
+# public/ : la sortie standalone ne le copie pas d'elle-même. Il porte les
+# images à adresse fixe des newsletters (bento-pop.com/newsletter/…), que les
+# mails déjà envoyés chargent encore.
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/landing/public ./apps/landing/public
 
 USER nextjs
 EXPOSE 3200
