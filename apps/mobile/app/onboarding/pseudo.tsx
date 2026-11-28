@@ -1,36 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import popyIntello from '@bento-pop/brand/assets/mascot/popy-intello.png';
-import {
-  CONTENT_MAX_FONT_MULTIPLIER,
-  CONTROL_MAX_FONT_MULTIPLIER,
-} from '@/components/bento/font-scaling';
-import { INK_MUTED, INK_PLACEHOLDER, PageTitle, StampButton, YellowBg, useToast } from '@/components/primitives';
-import { SHADOWS } from '@/components/primitives/shadow';
+import { Button, Chip, Popy, Screen, Text, TextField, TopBar, useTheme } from '@/design';
+import { useToast } from '@/components/primitives';
 import {
   PSEUDO_MAX,
   checkPseudoAvailability,
   generatePseudoSuggestions,
   type PseudoCheck,
 } from '@/lib/pseudo';
+import { pseudoLine } from '@/lib/pseudo-status';
 import { userErrorMessage } from '@/lib/user-error-message';
+import { errorFeedback } from '@/lib/haptics';
 import { useSession } from '@/state/session';
 import { useDraft } from '@/state/draft';
 import { publishFirstBento } from '@/lib/bento-actions';
 import { keptEmail } from '@/lib/account';
 import { offerKeepAccount } from '@/lib/keep-offer';
-import { TextButton } from '@/components/account/AccountParts';
+
+/** Popy de la maquette, 104 de haut, posée 36 au-dessus du bouton. */
+const POPY_SIZE = 104;
+const POPY_GAP = 36;
 
 /**
  * Le pseudo, demandé **au moment de publier**.
@@ -51,9 +42,15 @@ import { TextButton } from '@/components/account/AccountParts';
  * **en une transaction**. Ni profil orphelin si les cases échouent, ni cases
  * orphelines si la publication échoue.
  *
- * Cf. design Claude Design — `PseudoScreen` dans `screens.jsx`.
+ * Refait au design au chantier 32 (`u01`), sa logique intacte (D16) : le
+ * gabarit « Parcours » du guide, le champ préfixé « @ », l'état de la
+ * vérification sous lui (D12), les suggestions en puces, Popy « intello » qui
+ * se dandine. La publication réussie célèbre, une fois (D13) ; son échec passe
+ * en toast, le pseudo restant saisi.
  */
 export default function PseudoOnboarding() {
+  const { size } = useTheme();
+  const insets = useSafeAreaInsets();
   const [pseudo, setPseudo] = useState('');
   const [check, setCheck] = useState<PseudoCheck>({ status: 'idle' });
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +77,8 @@ export default function PseudoOnboarding() {
 
   // Suggestions générées à partir du début du pseudo tapé (sinon défaut "bento").
   const suggestions = useMemo(() => generatePseudoSuggestions(pseudo), [pseudo]);
+  // Un pseudo pris propose le dernier, « _culture » : la phrase du guide.
+  const line = pseudoLine(pseudo, check, suggestions[suggestions.length - 1]);
 
   const onValidate = async () => {
     if (check.status !== 'available' || !userId) return;
@@ -108,240 +107,128 @@ export default function PseudoOnboarding() {
       // Chantier 17, D20 : juste après la première publication, l'accord pour
       // les éditions. Une seule fois par téléphone, et jamais bloquant.
       // Chantier 28, D11 : derrière la feuille « Garde ton bento », qui passe
-      // d'abord ; l'accord suit sa fermeture.
-      void offerKeepAccount({ userId, kept, thenEditorial: true });
+      // d'abord ; l'accord suit sa fermeture. Chantier 32, D13 : la publication
+      // célèbre, sur la feuille (`u02`), ou sur la page quand elle ne se propose pas.
+      void offerKeepAccount({ userId, kept, thenEditorial: true, celebration: true });
     } catch (e) {
       console.warn('[publication] premier bento', e);
-      Alert.alert('Oups', userErrorMessage('create-profile', e));
+      errorFeedback();
+      showToast(userErrorMessage('create-profile', e), { variant: 'danger', durationMs: 5000 });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <YellowBg>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingTop: 24, paddingBottom: 16 }}>
-          {/* Tout défile au-dessus du bouton, qui reste en bas : à la plus grande
-              police, le titre prenait l'écran, et le champ comme le bouton en
-              sortaient. Tant que tout tient, `flexGrow` garde la mise en page
-              d'avant, le Popy en bas à droite. */}
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            alwaysBounceVertical={false}
-          >
-            {/* Plus de numéro d'étape : cet écran n'est plus dans un
-                parcours, il est la dernière chose avant que le bento soit
-                public. Le parcours d'accueil, lui, fait trois écrans et les
-                compte trois. */}
-            <PageTitle
-              kicker="DERNIÈRE ÉTAPE"
-              title="Choisis ton pseudo."
-              sub="C'est l'adresse de ton bento. 3 à 20 caractères, lettres, chiffres, underscores."
-            />
+    <Screen>
+      <TopBar onBack={() => router.back()} />
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        {/* Tout défile au-dessus du bouton, qui reste en bas : à la plus grande
+            police, le titre prenait l'écran, et le champ comme le bouton en
+            sortaient. Tant que tout tient, Popy garde sa place en bas à droite ;
+            quand le texte grossit, la page défile plutôt que de la poser sur
+            les suggestions. */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            gap: 16,
+            paddingHorizontal: size['screen-margin'],
+          }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          alwaysBounceVertical={false}
+        >
+          {/* Plus de numéro d'étape : cet écran n'est plus dans un parcours, il
+              est la dernière chose avant que le bento soit public. */}
+          <View style={{ gap: 6 }}>
+            <Text variant="eyebrow" color="text-secondary">
+              Dernière étape
+            </Text>
+            <Text variant="title-1" accessibilityRole="header">
+              Choisis ton pseudo.
+            </Text>
+            <Text variant="body-l" color="text-secondary">
+              C’est l’adresse de ton bento. 3 à 20 caractères, lettres, chiffres, underscores.
+            </Text>
+          </View>
 
-            {/* Input pseudo + statut */}
-            <View style={{ marginTop: 32, paddingHorizontal: 20 }}>
-              <View
-                style={[
-                  {
-                    backgroundColor: '#ffffff',
-                    borderWidth: 3,
-                    borderColor: '#0a0a0a',
-                    borderRadius: 16,
-                    paddingVertical: 14,
-                    paddingHorizontal: 16,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                  },
-                  SHADOWS.stamp,
-                ]}
-              >
-                <Text
-                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                  style={{ fontFamily: 'Bungee', fontSize: 18, color: INK_PLACEHOLDER }}
-                >
-                  @
-                </Text>
-                <TextInput
-                  value={pseudo}
-                  onChangeText={setPseudo}
-                  placeholder="ton_pseudo"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  spellCheck={false}
-                  maxLength={PSEUDO_MAX}
-                  accessibilityLabel="Pseudo"
-                  accessibilityHint="3 à 20 caractères, lettres, chiffres, underscores"
-                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                  style={{
-                    fontFamily: 'Extenda',
-                    fontSize: 24,
-                    flex: 1,
-                    paddingVertical: 0,
-                    color: '#0a0a0a',
-                    textTransform: 'lowercase',
-                  }}
+          <TextField
+            value={pseudo}
+            onChangeText={setPseudo}
+            prefix="@"
+            placeholder="ton_pseudo"
+            accessibilityLabel="Pseudo"
+            accessibilityHint="3 à 20 caractères, lettres, chiffres, underscores"
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            maxLength={PSEUDO_MAX}
+            // L'état de la vérification à la place de l'adresse (D12), le compteur à droite.
+            helper={line.kind === 'helper' ? line.text : undefined}
+            success={line.kind === 'success' ? line.text : undefined}
+            error={line.kind === 'error' ? line.text : undefined}
+            helperRight={`${pseudo.length} / ${PSEUDO_MAX}`}
+          />
+
+          <View style={{ gap: 10, marginTop: 6 }}>
+            <Text variant="eyebrow" color="text-secondary">
+              Suggestions populaires
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {suggestions.map((suggestion) => (
+                <Chip
+                  key={suggestion}
+                  label={`@${suggestion}`}
+                  accessibilityLabel={`Utiliser la suggestion ${suggestion}`}
+                  onPress={() => setPseudo(suggestion)}
                 />
-                <StatusBadge check={check} />
-              </View>
-
-              {/* L'adresse cède la place au compteur : à la taille 2,0 d'Android, les
-                  deux se chevauchaient, « ton_pseudo0 / 20 ». */}
-              <View
-                style={{
-                  marginTop: 12,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                }}
-              >
-                <Text
-                  numberOfLines={1}
-                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                  style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)', flexShrink: 1 }}
-                >
-                  bento-pop.com/u/<Text style={{ fontWeight: '700' }}>{pseudo || 'ton_pseudo'}</Text>
-                </Text>
-                <Text
-                  maxFontSizeMultiplier={CONTENT_MAX_FONT_MULTIPLIER}
-                  style={{ fontSize: 12, color: 'rgba(10,10,10,0.6)' }}
-                >
-                  {pseudo.length} / {PSEUDO_MAX}
-                </Text>
-              </View>
+              ))}
             </View>
+          </View>
 
-            {/* Suggestions */}
-            <View style={{ marginTop: 28, paddingHorizontal: 20 }}>
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-                style={{
-                  fontFamily: 'Bungee',
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  color: INK_MUTED,
-                  marginBottom: 10,
-                  textTransform: 'uppercase',
-                }}
-              >
-                Suggestions populaires
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {suggestions.map((s, i) => (
-                  <Pressable
-                    key={s}
-                    onPress={() => setPseudo(s)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Utiliser la suggestion ${s}`}
-                    // La puce fait 31 pt de haut : la cible tactile en fait 44.
-                    hitSlop={{ top: 7, bottom: 7 }}
-                    style={[
-                      {
-                        backgroundColor: '#ffffff',
-                        borderWidth: 2,
-                        borderColor: '#0a0a0a',
-                        borderRadius: 999,
-                        paddingHorizontal: 12,
-                        paddingVertical: 5,
-                        transform: [{ rotate: `${[-1, 0.5, -0.5, 1, -0.3][i] ?? 0}deg` }],
-                      },
-                      SHADOWS.stamp,
-                    ]}
-                  >
-                    <Text
-                      maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-                      style={{ fontSize: 13, fontWeight: '600' }}
-                    >
-                      @{s}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+          {/* La place de Popy, réservée. */}
+          <View
+            style={{
+              flexGrow: 1,
+              minHeight: POPY_SIZE + POPY_GAP,
+              justifyContent: 'flex-end',
+              alignItems: 'flex-end',
+              paddingBottom: POPY_GAP,
+              paddingRight: 2,
+            }}
+          >
+            <Popy mood="intello" size={POPY_SIZE} tilt={10} wiggle />
+          </View>
+        </ScrollView>
 
-            {/* Popy peek. Sa hauteur est réservée : quand le texte grossit, la page
-                défile au lieu de poser la mascotte sur les suggestions. */}
-            <View style={{ flex: 1, minHeight: 130, position: 'relative' }}>
-              <Image
-                source={popyIntello}
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  right: -20,
-                  width: 130,
-                  height: 130,
-                  transform: [{ rotate: '8deg' }],
-                }}
-                resizeMode="contain"
-              />
-            </View>
-          </ScrollView>
-
-          <View style={{ paddingHorizontal: 20 }}>
-            <StampButton
-              wide
-              disabled={check.status !== 'available' || submitting}
-              onPress={onValidate}
-            >
-              {submitting ? 'Publication…' : 'Publier mon bento'}
-            </StampButton>
-            {/* Chantier 28 : un compte gardé ailleurs se retrouve ici, avant
-                d'en publier un second. */}
-            <TextButton
-              label="J'ai déjà un compte"
+        <View
+          style={{
+            gap: 2,
+            paddingHorizontal: size['screen-margin'],
+            paddingBottom: insets.bottom,
+          }}
+        >
+          <Button
+            block
+            label="Publier mon bento"
+            loading={submitting}
+            disabled={check.status !== 'available' || submitting}
+            onPress={() => void onValidate()}
+          />
+          {/* Chantier 28 : un compte gardé ailleurs se retrouve ici, avant d'en
+              publier un second. */}
+          <View style={{ alignItems: 'center' }}>
+            <Button
+              variant="tertiary"
+              size="md"
+              label="J’ai déjà un compte"
               disabled={submitting}
               onPress={() => router.push('/account/sign-in')}
             />
           </View>
         </View>
-      </SafeAreaView>
-    </YellowBg>
-  );
-}
-
-function StatusBadge({ check }: { check: PseudoCheck }) {
-  if (check.status === 'idle') return null;
-  if (check.status === 'checking') {
-    return <ActivityIndicator size="small" color={INK_MUTED} />;
-  }
-  const color =
-    check.status === 'available'
-      ? '#2ec4b6'
-      : check.status === 'taken' || check.status === 'reserved' || check.status === 'forbidden'
-      ? '#e63946'
-      : '#d97706';
-  const label =
-    check.status === 'available'
-      ? 'Libre'
-      : check.status === 'taken'
-      ? 'Pris'
-      : check.status === 'reserved'
-      ? 'Réservé'
-      : check.status === 'forbidden'
-      ? 'Non autorisé'
-      : check.status === 'too-short'
-      ? 'Trop court'
-      : check.status === 'too-long'
-      ? 'Trop long'
-      : check.status === 'invalid'
-      ? 'Invalide'
-      : 'Erreur';
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-      <Text
-        maxFontSizeMultiplier={CONTROL_MAX_FONT_MULTIPLIER}
-        style={{ fontSize: 12, fontWeight: '600', color }}
-      >
-        {label}
-      </Text>
-    </View>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }

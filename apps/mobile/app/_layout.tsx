@@ -7,7 +7,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import { queryClient } from '@/lib/query-client';
 import { FONTS } from '@/lib/fonts';
 import { useSession } from '@/state/session';
@@ -18,6 +17,7 @@ import { useAppStatus } from '@/state/app-status';
 import { Splash } from '@/components/Splash';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { ForceUpdateScreen, MaintenanceScreen } from '@/components/AppBlocker';
+import { AskHost } from '@/components/AskHost';
 import { ToastHost } from '@/components/ToastHost';
 import { runStartupUpdateWithExpo } from '@/lib/ota-runtime';
 import type { OtaPhase } from '@/lib/ota';
@@ -194,24 +194,14 @@ export default function RootLayout() {
                   contentStyle: { backgroundColor: '#fbf3de' },
                 }}
               />
-              {/* Chantier 28, D4 : la feuille « Garde ton bento ». */}
-              <Stack.Screen
-                name="account/keep-offer"
-                options={{
-                  presentation: 'formSheet',
-                  sheetAllowedDetents: 'fitToContents',
-                  sheetGrabberVisible: true,
-                  // Android dessine sinon la feuille à angles droits ; iOS garde
-                  // les siens.
-                  sheetCornerRadius: Platform.OS === 'android' ? 28 : undefined,
-                  contentStyle: { backgroundColor: '#fbf3de' },
-                }}
-              />
             </Stack>
             <PushResponder />
             <AccountResponder />
             <OfflineBanner />
             <ToastHost />
+            {/* Chantier 32 (D10) : les demandes, une à la fois, et la célébration
+                de la publication. « Garde ton bento » n'est plus une route. */}
+            <AskHost />
           </QueryClientProvider>
         </ThemeProvider>
       </SafeAreaProvider>

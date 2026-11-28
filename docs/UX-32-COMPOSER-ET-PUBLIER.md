@@ -494,21 +494,75 @@ Comme au 31, un compte rendu à la fin de chaque lot, et le feu vert de Clément
   (mobile 1 181, landing 202, back-office 251), builds 3 sur 3, e2e 65 sur 65. Un test de moins au mobile
   qu'au lot 2 : les sept de l'ancienne grille, retirés avec elle, moins les six des nouvelles règles.
 
+### 13.4 Lot 4 · fait le 28 novembre 2026
+
+- **La file des demandes** (D10) : `src/state/ask.ts` et ses règles pures, testées (`ask-rules.ts`), un
+  hôte, `AskHost`, monté une fois à la racine. `ask()` part de `lib` sans écran sous la main et rend la
+  réponse une fois la feuille sortie de l'écran ; une demande à la fois, dans l'ordre d'arrivée, et pas deux
+  fois la même en même temps (l'accord des éditions, levé par le composer et par le sélecteur). La feuille
+  fermée sans choisir, par le voile, la poignée ou le retour d'Android, ne répond pas : l'accord des
+  éditions et le rappel reviendront au moment suivant, et « Plus tard » ne retenait déjà rien.
+- **Elle remplace** les trois `Alert.alert` de `push-runtime.ts` (la proposition, l'accord des éditions, le
+  rappel) et la route `account/keep-offer`, retirée : « Garde ton bento » est une demande, Popy « bisou ».
+  Les textes ne changent pas ; des insécables tiennent « 18 h » et les « ? » sur leur ligne. La boîte du
+  système vient toujours après « Oui », éprouvée au SE : l'accord des éditions enregistré en base pour
+  l'appareil.
+- **`c05`** : le toast de la proposition se pose à 8,5 points de la feuille (D12), mesuré au SE à la couleur
+  de son fond, le demi-point venant de son coin arrondi ; même chose au Pixel 8. Les toasts suivent ce que
+  l'hôte montre : une demande à l'écran les prend dans sa fenêtre.
+- **Un défaut trouvé et corrigé** : la demande de notifications, levée juste après une proposition, se
+  présentait pendant qu'iOS fermait encore la recherche. iOS la refusait (« Attempt to present … which is
+  already presenting RNSScreen »), la recherche restait posée, transparente, sur le composer, et l'app ne
+  répondait plus aux touchers. Une demande attend désormais 400 ms après le départ de la recherche
+  (`ASK_SETTLE_MS`).
+- **`u01`, le pseudo** (`app/onboarding/pseudo.tsx`), sa logique intacte (D16) : le gabarit « Parcours »,
+  `TextField` préfixé « @ », la vérification à la place de l'adresse (D12) : « On vérifie… », « Libre » en
+  succès avec son icône, ce que `TextField` apprend (`success`), et chaque refus en erreur avec de quoi s'en
+  sortir (`pseudo-status.ts`, testé), le compteur à droite sur la même ligne ; les suggestions en `Chip` ;
+  Popy « intello » de 104, penchée, qui se dandine ; « Publier mon bento » et « J'ai déjà un compte ». Au 17
+  Pro, à 1 ou 2 points de la maquette, le champ étant actif sur elle et au repos ici ; au SE, aux mêmes
+  écarts ; au-delà de 200 % au SE, la page défile au-dessus du bouton, rien ne se coupe. L'échec de la
+  publication passe en toast d'erreur, le pseudo restant saisi.
+- **Un défaut du socle corrigé** : `TopBar` sans titre posait un en-tête vide, que VoiceOver et TalkBack
+  annonçaient à côté du retour.
+- **`u02` et `u03`**, sur le profil d'aujourd'hui (D4) : après une première publication, « Garde ton bento »
+  monte sur la page publique avec ses confettis et Popy « bisou », filmée au SE ; « Plus tard », puis
+  l'accord des éditions. Au Pixel 8, « Garder mon compte » ouvre l'écran du même nom, et l'accord suit en
+  revenant (D11).
+- **La célébration de la publication** (D13) : une fois, avec son retour de succès. Par le pseudo, sur la
+  feuille ; quand elle ne se propose pas, et depuis le composer, sur la page publique, filmée au 17 Pro :
+  environ 0,6 s de confettis pendant que la page arrive. Le toast perd son émoji : « Bento publié.
+  Partage-le ! ». Rien au retour sur la page, rien pour un bento déjà en ligne.
+- **Le rappel**, au gabarit « Demande » du guide (la maquette n'en dessine que le toast) : en quittant le
+  composer pour un autre onglet, bento prêt ; fermée par le voile, elle laisse le lien « Me le rappeler
+  demain ».
+- **Les lecteurs d'écran** : une demande à l'écran est seule dans l'arbre de VoiceOver ; le retour d'Android
+  la ferme sans répondre.
+- **Pas éprouvé à ce lot** : les confettis comptés image par image (le film de la publication saccade, la
+  pluie se voit sans se compter), le mouvement réduit pour la publication (celui du bento complet est mesuré
+  au lot 2, même composant), « J'ai déjà un compte » depuis le pseudo, la voix de VoiceOver et de TalkBack
+  (part du 29).
+- **La CI rejouée en local** sur l'arbre du lot 4, sans cache, après fusion de `main` (le blog et la
+  newsletter de la landing) : verte, lint et typage 8 sur 8, tests (mobile 1 189, landing 231, back-office
+  277), builds 3 sur 3, e2e 65 sur 65 au second passage. Le premier a dépassé les 5 minutes que l'e2e laisse
+  au build de la landing, la machine chargée par le banc de recette (charge moyenne de 12) ; la même suite
+  passe sur GitHub pour `main`.
+
 ## 14. Definition of Done
 
 | # | Point | État |
 | --- | --- | --- |
-| 1 | `c01` à `c10`, `u01`, `u05`, `u07` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE | 🟡 lot 2 : `c01`, `c06`, `c07`, `c08`, `c09`, `u05` ; lot 3 : `c02`, `c03`, `c04`, `c10` ; restent `c05`, `u01`, `u07` |
-| 2 | Les feuilles de `u02` et `u03` identiques aux leurs, sur le profil d'aujourd'hui ; `m01` entière | 🟡 lot 2 : `m01`, avec l'écart voulu de D8 ; `u02` et `u03` au lot 4 |
+| 1 | `c01` à `c10`, `u01`, `u05`, `u07` identiques à leur PNG au simulateur et à l'émulateur, tenus à 130 et 200 % jusqu'à l'iPhone SE | 🟡 lot 2 : `c01`, `c06`, `c07`, `c08`, `c09`, `u05` ; lot 3 : `c02`, `c03`, `c04`, `c10` ; lot 4 : `c05`, `u01` ; reste `u07` |
+| 2 | Les feuilles de `u02` et `u03` identiques aux leurs, sur le profil d'aujourd'hui ; `m01` entière | ✅ lot 2 : `m01`, avec l'écart voulu de D8 ; lot 4 : les feuilles de `u02` et `u03` sur la page publique d'aujourd'hui |
 | 3 | Chaque case prend la couleur et la puce de sa catégorie, par clé ou par type ; de 2 à 6 cases ; la question sur une case d'édition remplie | ✅ lot 1 au catalogue, lot 2 sur de vrais écrans et de vraies éditions |
 | 4 | Rien ne se chevauche dans une case ; le crédit photo toujours là | ✅ lot 1 au catalogue, lot 2 sur de vraies affiches, grands textes compris |
-| 5 | Le parcours de bout en bout, compte neuf, second bento et édition, inchangé dans sa logique | 🟡 lot 2 : de l'installation neuve au bento complet, éditions créées et remplies ; lot 3 : choisir, remplacer une case expliquée, vider, annuler, proposer, sans compte et avec ; la publication et le compte au lot 4 |
-| 6 | Les quatre demandes en `AskSheet`, une à la fois, dans l'ordre ; plus aucun `Alert.alert` dans les écrans du 32 | ⬜ |
-| 7 | Une célébration par événement, aucune de trop ; le mouvement réduit respecté | 🟡 lot 2 : le bento complet, filmé ; la publication au lot 4 |
+| 5 | Le parcours de bout en bout, compte neuf, second bento et édition, inchangé dans sa logique | ✅ lot 2 : de l'installation neuve au bento complet, éditions créées et remplies ; lot 3 : choisir, remplacer une case expliquée, vider, annuler, proposer ; lot 4 : un compte neuf publié par le pseudo, une édition publiée depuis le composer |
+| 6 | Les quatre demandes en `AskSheet`, une à la fois, dans l'ordre ; plus aucun `Alert.alert` dans les écrans du 32 | ✅ lot 4 : la proposition, le rappel, « Garde ton bento » et l'accord des éditions, dans l'ordre ; `Alert.alert` sorti du composer, de la recherche et du pseudo |
+| 7 | Une célébration par événement, aucune de trop ; le mouvement réduit respecté | ✅ lot 2 : le bento complet, filmé ; lot 4 : la publication, sur la feuille ou sur la page, une fois |
 | 8 | L'image partagée capturée pour de bon, ses zones sûres mesurées, une édition et un long pseudo compris | ⬜ |
-| 9 | Les lecteurs d'écran en français, les cases annoncées en entier | 🟡 lot 2 : le composer, à l'arbre, aux deux plateformes ; lot 3 : la recherche, VoiceOver à l'arbre, TalkBack à la tabulation, qui restent dans la feuille |
+| 9 | Les lecteurs d'écran en français, les cases annoncées en entier | 🟡 lot 2 : le composer, à l'arbre, aux deux plateformes ; lot 3 : la recherche ; lot 4 : les demandes, seules dans l'arbre, et le pseudo, l'en-tête vide de `TopBar` retiré |
 | 10 | Les autres écrans inchangés au pixel | 🟡 lot 2 : `p03`, le plateau, les boutons, la maintenance ; le reste au lot 6 |
-| 11 | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortis des fichiers du 32 ; `ProgressBar`, `ItemTile`, `ShareImage`, `account/keep-offer` retirés | 🟡 lot 2 : le composer sorti, `ProgressBar` et `compose-layout.ts` retirés ; lot 3 : la recherche sortie, `ItemTile` et `SuggestionSkeleton` retirés |
+| 11 | Bungee, Extenda hors de l'image, `YellowBg` et `StampButton` sortis des fichiers du 32 ; `ProgressBar`, `ItemTile`, `ShareImage`, `account/keep-offer` retirés | 🟡 lot 2 : le composer sorti, `ProgressBar` et `compose-layout.ts` retirés ; lot 3 : la recherche sortie, `ItemTile` et `SuggestionSkeleton` retirés ; lot 4 : le pseudo sorti, `account/keep-offer` retiré ; reste `ShareImage` |
 | 12 | Les tests de règles verts, la CI rejouée en local, verte | 🟡 verte à chaque lot, à rejouer au dernier |
 
 ## 15. Décisions

@@ -2,7 +2,8 @@ import * as Notifications from 'expo-notifications';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, AppState, Linking, Platform, type AppStateStatus } from 'react-native';
+import { AppState, Linking, Platform, type AppStateStatus } from 'react-native';
+import { ask } from '@/state/ask';
 import { supabase } from '@/supabase/client';
 import { useSession } from '@/state/session';
 import {
@@ -187,6 +188,10 @@ export function startPushRegistration(): void {
  * boîte du système sur « Oui » seulement (D14) : iOS ne la montre qu'une fois,
  * un refus par réflexe serait définitif. « Plus tard » ne retient rien, la
  * phrase reviendra à la proposition suivante.
+ *
+ * La phrase est une demande de la file depuis le chantier 32 (D10, `c05`) :
+ * Popy, au-dessus du toast de la proposition. Elle attend que la recherche
+ * d'une case soit partie, cf. `askVisible`.
  */
 export async function offerPushAfterProposal(itemTitle: string): Promise<void> {
   try {
@@ -198,14 +203,15 @@ export async function offerPushAfterProposal(itemTitle: string): Promise<void> {
     }
     if (!shouldOfferPushAsk(permission)) return;
 
-    // Pas d'attente de la fermeture de la modale de recherche : sur iOS,
-    // React Native présente l'alerte dans sa propre fenêtre, au-dessus de
-    // tout (`RCTAlertController.mm`, `alertWindow`). `InteractionManager`,
-    // essayé d'abord, est déprécié : il levait un avertissement à chaque fois.
-    Alert.alert(pushAskTitle(itemTitle), PUSH_ASK_MESSAGE, [
-      { text: PUSH_ASK_LATER, style: 'cancel' },
-      { text: PUSH_ASK_ACCEPT, isPreferred: true, onPress: () => void acceptPush() },
-    ]);
+    const answer = await ask({
+      key: 'push-proposal',
+      mood: 'content',
+      title: pushAskTitle(itemTitle),
+      message: PUSH_ASK_MESSAGE,
+      primary: PUSH_ASK_ACCEPT,
+      secondary: PUSH_ASK_LATER,
+    });
+    if (answer === 'primary') await acceptPush();
   } catch (err) {
     console.warn('[push] demande après proposition', err);
   }
@@ -376,6 +382,10 @@ const EDITORIAL_ANSWERED_KEY = 'bp_push_editorial_answered';
  * Juste après une publication, ou en rejoignant une première édition (D20).
  * « On te prévient quand une édition sort ? » : une seule fois par téléphone,
  * puis seul l'interrupteur du profil décide. Ne lève jamais.
+ *
+ * Une demande de la file depuis le chantier 32 (D10, `u03`). « Oui » et « Non
+ * merci » répondent pour de bon ; la feuille fermée sans choisir, par le voile
+ * ou le retour, ne répond pas : la question reviendra au moment suivant.
  */
 export async function offerEditorialConsent(): Promise<void> {
   try {
@@ -393,10 +403,16 @@ export async function offerEditorialConsent(): Promise<void> {
       return;
     }
 
-    Alert.alert(EDITORIAL_ASK_TITLE, EDITORIAL_ASK_MESSAGE, [
-      { text: EDITORIAL_ASK_DECLINE, style: 'cancel', onPress: () => void rememberEditorialAnswer() },
-      { text: EDITORIAL_ASK_ACCEPT, isPreferred: true, onPress: () => void acceptEditorial() },
-    ]);
+    const answer = await ask({
+      key: 'editorial',
+      mood: 'content',
+      title: EDITORIAL_ASK_TITLE,
+      message: EDITORIAL_ASK_MESSAGE,
+      primary: EDITORIAL_ASK_ACCEPT,
+      secondary: EDITORIAL_ASK_DECLINE,
+    });
+    if (answer === 'primary') await acceptEditorial();
+    else if (answer === 'secondary') await rememberEditorialAnswer();
   } catch (err) {
     console.warn('[push] accord éditorial', err);
   }
@@ -461,27 +477,25 @@ export async function readyReminderOffered(key: string | null): Promise<boolean>
  * « Oui » mène à `acceptReadyReminder`. `onAnswer` part à la réponse, oui
  * comme non : le composer y retire son lien, que la question posée par-dessus
  * lui laisserait sinon jusqu'au prochain passage. Ne lève jamais.
+ *
+ * Une demande de la file depuis le chantier 32 (D10), au gabarit « Demande » du
+ * guide, la maquette ne dessinant que son toast (`c08`). Fermée sans choisir,
+ * elle ne répond pas : le lien reste, et la question reviendra.
  */
 export async function offerReadyReminder(target: ReminderTarget, onAnswer?: () => void): Promise<void> {
   if (!(await readyReminderOffered(target.key))) return;
-  Alert.alert(REMINDER_ASK_TITLE, REMINDER_ASK_MESSAGE, [
-    {
-      text: REMINDER_ASK_DECLINE,
-      style: 'cancel',
-      onPress: () => {
-        onAnswer?.();
-        void rememberReminderAnswer(target.key);
-      },
-    },
-    {
-      text: REMINDER_ASK_ACCEPT,
-      isPreferred: true,
-      onPress: () => {
-        onAnswer?.();
-        void acceptReadyReminder(target);
-      },
-    },
-  ]);
+  const answer = await ask({
+    key: `reminder:${target.key}`,
+    mood: 'content',
+    title: REMINDER_ASK_TITLE,
+    message: REMINDER_ASK_MESSAGE,
+    primary: REMINDER_ASK_ACCEPT,
+    secondary: REMINDER_ASK_DECLINE,
+  });
+  if (answer === 'dismissed') return;
+  onAnswer?.();
+  if (answer === 'primary') void acceptReadyReminder(target);
+  else void rememberReminderAnswer(target.key);
 }
 
 /**

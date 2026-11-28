@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { Button, type ButtonVariant } from '../actions/Button';
 import { Popy } from '../brand/Popy';
@@ -29,6 +30,12 @@ export type AskSheetProps = {
   confetti?: boolean;
   /** Pour le catalogue : posée dans son parent, sans `Modal`, comme dans l'aperçu. */
   inline?: boolean;
+  /** Une fois la feuille sortie de l'écran : la demande suivante, ou ce qu'on a choisi, peut venir. */
+  onHidden?: () => void;
+  /** Au-dessus de la feuille, dans sa fenêtre : le toast qui l'accompagne (`c05`). */
+  overlay?: ReactNode;
+  /** La hauteur de la feuille, pour poser ce qui l'accompagne au-dessus. */
+  onPanelHeight?: (height: number) => void;
 };
 
 /**
@@ -55,6 +62,9 @@ export function AskSheet({
   secondaryVariant = 'tertiary',
   confetti,
   inline,
+  onHidden,
+  overlay,
+  onPanelHeight,
 }: AskSheetProps) {
   const { fontScale } = useWindowDimensions();
   const { fontSize } = textStyle('body', fontScale);
@@ -62,8 +72,15 @@ export function AskSheet({
     <SheetLayer
       visible={visible}
       onClose={onClose}
+      onHidden={onHidden}
       inline={inline}
-      overlay={confetti && visible ? <Confetti /> : null}
+      onPanelHeight={onPanelHeight}
+      overlay={
+        <>
+          {confetti && visible ? <Confetti /> : null}
+          {overlay}
+        </>
+      }
     >
       <ScrollView
         style={{ flexGrow: 0 }}

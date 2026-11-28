@@ -4,6 +4,7 @@ import { useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toast } from '@/design';
 import { toastBottom, toastIcon } from '@/design/overlays/toast-rules';
+import { useAsk } from '@/state/ask';
 import { useToast } from '@/state/toast';
 
 /**
@@ -26,8 +27,20 @@ const OWN_HOST = new Set(['search-modal']);
  * ouverture ; la racine s'efface tant qu'une de ces modales est devant.
  * `FullWindowOverlay`, essayé d'abord, cachait tout l'écran à VoiceOver le
  * temps du toast et lui prenait son focus.
+ *
+ * Et dans la fenêtre d'une demande (`scope="ask"`, chantier 32, D12) : la
+ * feuille de Popy recouvre la racine comme les modales, et le toast qu'elle
+ * suit, « Proposition envoyée à la modération » (`c05`), se pose à 8 au-dessus
+ * d'elle (`bottom`). Il y montre le toast courant, même levé juste avant elle.
  */
-export function ToastHost({ scope = 'root' }: { scope?: 'root' | 'modal' }) {
+export function ToastHost({
+  scope = 'root',
+  bottom,
+}: {
+  scope?: 'root' | 'modal' | 'ask';
+  /** La distance au bas de l'écran, quand l'hôte la connaît mieux que le calcul d'usage. */
+  bottom?: number;
+}) {
   const message = useToast((s) => s.message);
   const variant = useToast((s) => s.variant);
   const icon = useToast((s) => s.icon);
@@ -40,7 +53,16 @@ export function ToastHost({ scope = 'root' }: { scope?: 'root' | 'modal' }) {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
   const ownHostInFront = OWN_HOST.has(segments[0] ?? '');
-  const mine = scope === 'root' ? !ownHostInFront : ownHostInFront && seq > since;
+  // Une feuille de demande à l'écran : son hôte montre les toasts, cf. `AskHost`.
+  const askInFront = useAsk((s) => s.shown);
+  const mine =
+    scope === 'ask'
+      ? true
+      : askInFront
+        ? false
+        : scope === 'root'
+          ? !ownHostInFront
+          : ownHostInFront && seq > since;
   if (!message || !mine) return null;
   return (
     <Toast
@@ -51,13 +73,16 @@ export function ToastHost({ scope = 'root' }: { scope?: 'root' | 'modal' }) {
       onAction={action?.onPress}
       duration={durationMs ?? undefined}
       onDismiss={() => dismiss(seq)}
-      offset={toastBottom({
-        tabBar: segments[0] === '(tabs)',
-        insetBottom: insets.bottom,
-        // Android annonce un clavier sans la barre de navigation qu'il
-        // recouvre (24 dp mesurés au Pixel 8, au lot 2) : on la lui rend.
-        keyboard: keyboard > 0 && Platform.OS === 'android' ? keyboard + insets.bottom : keyboard,
-      })}
+      offset={
+        bottom ??
+        toastBottom({
+          tabBar: segments[0] === '(tabs)',
+          insetBottom: insets.bottom,
+          // Android annonce un clavier sans la barre de navigation qu'il
+          // recouvre (24 dp mesurés au Pixel 8, au lot 2) : on la lui rend.
+          keyboard: keyboard > 0 && Platform.OS === 'android' ? keyboard + insets.bottom : keyboard,
+        })
+      }
     />
   );
 }

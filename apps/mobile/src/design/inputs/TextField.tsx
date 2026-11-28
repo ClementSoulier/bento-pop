@@ -33,6 +33,8 @@ export type TextFieldProps = Omit<
   counter?: string;
   /** Ce qui ne va pas, sous le champ, avec une icône ; le contour passe au rouge. */
   error?: string;
+  /** Ce qui va, sous le champ, avec une icône : « Libre » pour un pseudo (chantier 32, D12). */
+  success?: string;
   multiline?: boolean;
   /** L'apparence du champ actif, que le focus lui donne de lui-même : pour le catalogue. */
   focused?: boolean;
@@ -61,6 +63,7 @@ export function TextField({
   helperRight,
   counter,
   error,
+  success,
   multiline,
   focused,
   style,
@@ -83,7 +86,7 @@ export function TextField({
       ? colors['focus-ring']
       : colors['border-strong'];
   const hint =
-    [error, helper, helperRight, counter, accessibilityHint].filter(Boolean).join('. ') ||
+    [error, success, helper, helperRight, counter, accessibilityHint].filter(Boolean).join('. ') ||
     undefined;
   return (
     <View style={[{ gap: 8 }, style]}>
@@ -166,23 +169,46 @@ export function TextField({
           ) : null}
         </View>
       </View>
-      {error ? <FieldError message={error} /> : null}
-      {helper || helperRight ? (
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}
-        >
-          <Text variant="footnote" color="text-secondary" style={{ flexShrink: 1 }}>
-            {helper}
+      {/* L'état sous le champ, à la place de l'aide, partage sa ligne avec le compteur. */}
+      {(error || success) && !helper && helperRight ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            {error ? <FieldError message={error} /> : <FieldSuccess message={success ?? ''} />}
+          </View>
+          <Text
+            variant="footnote"
+            color="text-secondary"
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
+            {helperRight}
           </Text>
-          {helperRight ? (
-            <Text variant="footnote" color="text-secondary">
-              {helperRight}
-            </Text>
-          ) : null}
         </View>
-      ) : null}
+      ) : (
+        <>
+          {error ? (
+            <FieldError message={error} />
+          ) : success ? (
+            <FieldSuccess message={success} />
+          ) : null}
+          {helper || helperRight ? (
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}
+            >
+              <Text variant="footnote" color="text-secondary" style={{ flexShrink: 1 }}>
+                {helper}
+              </Text>
+              {helperRight ? (
+                <Text variant="footnote" color="text-secondary">
+                  {helperRight}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
@@ -212,6 +238,26 @@ export function FocusHalo({ radius, theme }: { radius: number; theme: Theme }) {
         backgroundColor: theme.colors['accent-soft'],
       }}
     />
+  );
+}
+
+/**
+ * Ce qui va, sous un champ : une icône et un texte, jamais la couleur seule
+ * (chantier 32, D12). Dit dès qu'il paraît, comme une erreur.
+ */
+export function FieldSuccess({ message }: { message: string }) {
+  useAnnouncement(message);
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+    >
+      <Icon name="check-circle" size={16} color="text-success" />
+      <Text variant="footnote" weight={600} color="text-success" style={{ flexShrink: 1 }}>
+        {message}
+      </Text>
+    </View>
   );
 }
 

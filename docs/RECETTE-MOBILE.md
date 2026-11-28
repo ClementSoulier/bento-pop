@@ -1519,6 +1519,26 @@ lui-même, `docker stop supabase_kong_<projet>`, la connexion est refusée et
 l'écran tombe en erreur après les trois essais de React Query, environ
 7 secondes ; puis `docker start` et attendre une réponse 200.
 
+### Metro en mode CI ne recharge rien
+
+`CI=1 expo start` affiche « Metro is running in CI mode, reloads are disabled » :
+aucune modification n'arrive à l'app, ni par le rafraîchissement, ni par un
+rechargement. C'est ce qui servait l'ancien code au lot 3 du chantier 32, pris
+d'abord pour l'absence de `watchman`. Avec `CI=1`, relancer Metro à vide après
+chaque retouche ; sans, le rafraîchissement suit.
+
+### Une `Modal` présentée pendant qu'une route se ferme, sur iOS
+
+Une demande du chantier 32 (`AskSheet`, dans une `Modal`) levée juste après une
+proposition s'est présentée pendant qu'iOS fermait encore la recherche, une
+route en `transparentModal`. Le journal du simulateur l'a dit (`log show
+--predicate 'process == "MonBentoPop"'`) : « Attempt to present
+RCTFabricModalHostViewController … which is already presenting RNSScreen ». La
+présentation refusée, la route est restée posée, transparente : l'écran
+s'affichait normalement et ne répondait plus. La navigation dit la route
+partie avant la fin de sa fermeture native : une `Modal` attend un instant
+après elle (`ASK_SETTLE_MS`).
+
 ### Relancer une pile Supabase dont le dossier a disparu
 
 Une pile montée depuis le dossier temporaire de la session (cf. « Recetter à

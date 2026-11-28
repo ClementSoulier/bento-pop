@@ -175,14 +175,20 @@ export function TopBar({
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 44 }}>{lead}</View>
-        <Text
-          variant="label-l"
-          numberOfLines={reachesWrapScale(fontScale) ? undefined : 1}
-          accessibilityRole="header"
-          style={{ flex: 1, textAlign: 'center' }}
-        >
-          {title}
-        </Text>
+        {/* Sans titre, la place reste, mais aucun en-tête vide pour le lecteur
+            d'écran : le retour seul, au-dessus d'un parcours (`u01`, chantier 32). */}
+        {title ? (
+          <Text
+            variant="label-l"
+            numberOfLines={reachesWrapScale(fontScale) ? undefined : 1}
+            accessibilityRole="header"
+            style={{ flex: 1, textAlign: 'center' }}
+          >
+            {title}
+          </Text>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
         {trail ?? <View style={{ minWidth: 44 }} />}
       </View>
       {children}

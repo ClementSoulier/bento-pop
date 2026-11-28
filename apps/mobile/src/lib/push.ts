@@ -36,8 +36,8 @@ export function shouldOfferPushAsk(permission: PushPermission): boolean {
 export function pushAskTitle(itemTitle: string): string {
   const title = itemTitle.trim();
   return title
-    ? `On te prévient quand « ${title} » est validé ?`
-    : 'On te prévient quand ton item est validé ?';
+    ? `On te prévient quand «\u00a0${title}\u00a0» est validé\u00a0?`
+    : 'On te prévient quand ton item est validé\u00a0?';
 }
 
 export const PUSH_ASK_MESSAGE =
@@ -401,7 +401,8 @@ export function shouldOfferEditorialAsk(input: {
   return input.permission.granted || input.permission.canAskAgain;
 }
 
-export const EDITORIAL_ASK_TITLE = 'On te prévient quand une édition sort ?';
-export const EDITORIAL_ASK_MESSAGE = 'Une notification par semaine, le jeudi à 18 h.';
+export const EDITORIAL_ASK_TITLE = 'On te prévient quand une édition sort\u00a0?';
+// Insécables : « 18 h » et « ? » ne finissent jamais seuls sur leur ligne (chantier 32).
+export const EDITORIAL_ASK_MESSAGE = 'Une notification par semaine, le jeudi à 18\u00a0h.';
 export const EDITORIAL_ASK_ACCEPT = 'Oui';
 export const EDITORIAL_ASK_DECLINE = 'Non merci';

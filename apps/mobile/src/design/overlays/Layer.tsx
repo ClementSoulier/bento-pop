@@ -193,6 +193,7 @@ export function SheetLayer({
   inScreen,
   head,
   overlay,
+  onPanelHeight,
   children,
 }: {
   visible: boolean;
@@ -213,6 +214,8 @@ export function SheetLayer({
   head?: ReactNode;
   /** Ce qui se pose au-dessus de la feuille : les confettis d'une `AskSheet`. */
   overlay?: ReactNode;
+  /** La hauteur du panneau, à chaque mise en page : un toast se pose au-dessus (D12 du 32). */
+  onPanelHeight?: (height: number) => void;
   children: ReactNode;
 }) {
   const { colors, radius } = useTheme();
@@ -254,6 +257,7 @@ export function SheetLayer({
 
   const onPanelLayout = (event: LayoutChangeEvent) => {
     distance.value = event.nativeEvent.layout.height;
+    onPanelHeight?.(event.nativeEvent.layout.height);
     if (measured.current) return;
     measured.current = true;
     if (latest.current.visible) enter();

@@ -21,6 +21,7 @@ import {
 import { errorFeedback, successFeedback } from '@/lib/haptics';
 import { useBento } from '@/state/bento';
 import { useOwnWhys } from '@/state/own-whys';
+import { celebrate } from '@/state/ask';
 import { useSession } from '@/state/session';
 import { usePushTarget } from '@/state/push-target';
 import { editableBentoId, markPublishOnValidation, publishBento } from '@/lib/bento-actions';
@@ -384,12 +385,14 @@ export default function ComposeTab() {
       // Chantier 8 : publié, le rappel tombe.
       void cancelReadyReminder(bentoId);
       if (adressePublique) router.push(adressePublique);
-      // Feedback de succès — montré APRÈS le push pour que le toast
-      // s'affiche sur la page publique (où l'utilisateur peut partager).
-      showToast('Bento publié ! Partage-le 🍱', {
+      // Feedback de succès, montré après le push pour que le toast s'affiche sur
+      // la page publique, où l'on peut partager. Sans émoji, et la publication
+      // célèbre, une fois : confettis et retour de succès sur la page (D13 du 32).
+      showToast('Bento publié. Partage-le !', {
         variant: 'success',
         durationMs: 3500,
       });
+      celebrate();
       // Le premier des deux moments de l'accord éditorial (D20) : on est
       // désormais dans le fil, l'édition de jeudi a un sens.
       void offerEditorialConsent();

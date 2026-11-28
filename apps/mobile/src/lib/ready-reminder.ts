@@ -119,7 +119,7 @@ export function reminderBody(bento: { isPrimary: boolean; name: string } | null)
 
 /** La question au départ, une alerte native comme celles du chantier 17. */
 export const REMINDER_ASK_TITLE = 'Ton bento est prêt';
-export const REMINDER_ASK_MESSAGE = "On te le rappelle demain s'il n'est pas publié ?";
+export const REMINDER_ASK_MESSAGE = "On te le rappelle demain s'il n'est pas publié\u00a0?";
 export const REMINDER_ASK_ACCEPT = 'Oui, rappelle-moi';
 export const REMINDER_ASK_DECLINE = 'Non merci';
 /** Le lien sous « Publier mon bento », pour un départ que rien n'intercepte (D10). */

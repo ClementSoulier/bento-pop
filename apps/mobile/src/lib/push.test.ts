@@ -40,15 +40,18 @@ describe('shouldOfferPushAsk', () => {
 
 describe('pushAskTitle', () => {
   it("nomme l'item proposé", () => {
-    assert.equal(pushAskTitle('Interstellar'), 'On te prévient quand « Interstellar » est validé ?');
+    assert.equal(
+      pushAskTitle('Interstellar'),
+      'On te prévient quand «\u00a0Interstellar\u00a0» est validé\u00a0?',
+    );
   });
 
   it('ôte les espaces autour du titre', () => {
-    assert.equal(pushAskTitle('  Dune  '), 'On te prévient quand « Dune » est validé ?');
+    assert.equal(pushAskTitle('  Dune  '), 'On te prévient quand «\u00a0Dune\u00a0» est validé\u00a0?');
   });
 
   it('se passe du titre quand il est vide', () => {
-    assert.equal(pushAskTitle('   '), 'On te prévient quand ton item est validé ?');
+    assert.equal(pushAskTitle('   '), 'On te prévient quand ton item est validé\u00a0?');
   });
 });
 
